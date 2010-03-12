@@ -63,7 +63,7 @@
       <file leaf-file-name="Point.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Point.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="324" column="26" selection-start="9928" selection-end="9928" vertical-scroll-proportion="0.648688">
+            <state line="289" column="13" selection-start="8856" selection-end="8856" vertical-scroll-proportion="0.35674158">
               <folding />
             </state>
           </provider>
@@ -72,7 +72,7 @@
       <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="12" column="12" selection-start="246" selection-end="246" vertical-scroll-proportion="0.0">
+            <state line="1" column="8" selection-start="11" selection-end="11" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -366,7 +366,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="3" y="22" width="1389" height="860" extended-state="0" />
+    <frame x="2" y="22" width="1389" height="860" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
@@ -431,14 +431,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="12" column="12" selection-start="246" selection-end="246" vertical-scroll-proportion="0.0">
+        <state line="1" column="8" selection-start="11" selection-end="11" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Point.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="324" column="26" selection-start="9928" selection-end="9928" vertical-scroll-proportion="0.648688">
+        <state line="289" column="13" selection-start="8856" selection-end="8856" vertical-scroll-proportion="0.35674158">
           <folding />
         </state>
       </provider>

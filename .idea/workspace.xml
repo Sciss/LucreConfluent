@@ -60,19 +60,28 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Point.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Point.scala">
+      <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="289" column="13" selection-start="8856" selection-end="8856" vertical-scroll-proportion="0.35674158">
+            <state line="27" column="1" selection-start="0" selection-end="960" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
+      <file leaf-file-name="Interval.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="1" column="8" selection-start="11" selection-end="11" vertical-scroll-proportion="0.0">
+            <state line="30" column="2" selection-start="994" selection-end="994" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Period.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="315" column="92" selection-start="9831" selection-end="9831" vertical-scroll-proportion="0.27696794">
               <folding />
             </state>
           </provider>
@@ -90,6 +99,8 @@
       <list>
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/Point.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Period.scala" />
       </list>
     </option>
   </component>
@@ -381,7 +392,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24981357" sideWeight="0.6608108" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="FLOATING" visible="false" weight="0.32972974" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="27" y="330" width="1341" height="244" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="FLOATING" visible="true" weight="0.32972974" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -431,14 +442,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="8" selection-start="11" selection-end="11" vertical-scroll-proportion="0.0">
+        <state line="27" column="1" selection-start="0" selection-end="960" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Point.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="289" column="13" selection-start="8856" selection-end="8856" vertical-scroll-proportion="0.35674158">
+        <state line="30" column="2" selection-start="994" selection-end="994" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="315" column="92" selection-start="9831" selection-end="9831" vertical-scroll-proportion="0.27696794">
           <folding />
         </state>
       </provider>

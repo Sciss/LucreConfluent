@@ -312,11 +312,31 @@ trait PeriodVar extends PeriodLike {
    def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
 }
 
-trait PeriodHolder {
-   def period: PeriodLike
-//   def +( ph: PeriodHolder )
-}
+class PeriodHolder( initial: PeriodLike )
+extends PeriodVar with PeriodDependant {  // XXX TO-DO : needs to extend PeriodLike instead!
+   private var periodVar = initial
 
+   // ---- constructor ----
+   {
+      initial.addDependant( this )
+   }
+
+   def period: PeriodLike = periodVar
+   def period_=( newP: PeriodLike ) {
+      periodVar.removeDependant( this )
+      periodVar = newP
+      periodVar.addDependant( this )
+      replacedBy( this )   // XXX not so elegant
+   }
+
+   def periodReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+      period = newP
+   }
+
+   def inf: PeriodConst = period.inf
+   def sup: PeriodConst = period.sup
+   def getValue: Option[ PeriodConst ] = period.getValue
+}
 
 case class PeriodConst( sec: Double ) extends PeriodLike {
    def +( b: PeriodConst )   = PeriodConst( sec + b.sec )
@@ -428,6 +448,11 @@ object Period {
 
    def test {
       implicit val sr = SampleRate( 44100 )
+
+      val p1 = new PeriodHolder( 0⏊10 )
+      val p2 = p1 + 0⏊20
+      p1.period = 0⏊11
+      println( "p2 = " + p2.value )
 /*
       val iv1 = ⋯(0⏊00, 1⏊00)
       val dt  = BoundedRandomPeriod( 0⏊10, 0⏊20 ) 

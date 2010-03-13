@@ -28,16 +28,11 @@
 
 package de.sciss.temporal
 
-/**
- * Created by IntelliJ IDEA.
- * User: rutz
- * Date: 11.03.2010
- * Time: 18:46:04
- * To change this template use File | Settings | File Templates.
- */
+import java.awt.{ EventQueue }
 
 object Main {
    def main( args: Array[ String ]) {
-      Period.test
+//      Period.test
+      EventQueue.invokeLater( new Runnable { def run { new gui.ScalaInterpreterFrame }})
    }
 }

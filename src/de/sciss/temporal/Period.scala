@@ -1,5 +1,5 @@
 /*
- *  Point.scala
+ *  Period.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
@@ -31,11 +31,7 @@ package de.sciss.temporal
 import scala.collection.mutable.{ WeakHashMap }
 import scala.util.{ Random }
 
-trait PeriodDependant {
-   def periodReplaced( oldP: PeriodLike, newP: PeriodLike ) : Unit
-}
-
-trait PeriodLike {
+trait PeriodLike extends MutableModel[ PeriodLike ] {
    def isInstantiated: Boolean
    def getValue: Option[ PeriodConst ]
    def value = getValue getOrElse error( "Not realized" )
@@ -55,20 +51,12 @@ trait PeriodLike {
 
    def overlaps( b: PeriodLike ) = if( inf < b.inf ) sup > b.inf else b.sup > inf
 
-   def addDependant( pd: PeriodDependant ) : Unit
-   def removeDependant( pd: PeriodDependant ) : Unit
+//   def addDependant( pd: PeriodDependant ) : Unit
+//   def removeDependant( pd: PeriodDependant ) : Unit
+
+//   def ::( b: PeriodLike ) : IntervalLike
+   def ::( b: PeriodLike ) : IntervalLike = IntervalVar( this, b )
 }
- 
-//trait IntervalLike {
-//   def start: Period
-//   def stop: Period
-//   def +( p: Period ): IntervalLike
-//}
-//
-//case class ⋯( start: Period, stop: Period )
-//extends IntervalLike {
-//   def +( p: Period ) = ⋯( start + p, stop + p )
-//}
 
 trait RandomGen {
 //   def inf: Double
@@ -109,10 +97,17 @@ extends PeriodLike {
 //}
 
 abstract class UnaryPeriodExpr( a: PeriodLike )
-extends PeriodVar with PeriodDependant {
+extends PeriodVar {
    // ---- constructor ----
    {
-      a.addDependant( this )
+      a.addDependant( new PeriodDependant {
+         pd =>
+         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+            oldP.removeDependant( pd )
+            val newThis = copy( newP ) // establishes new dependencies
+            replacedBy( newThis ) // propagate
+         }
+      })
    }
 
    def getValue: Option[ PeriodConst ] =
@@ -121,46 +116,36 @@ extends PeriodVar with PeriodDependant {
    override def value = if( isInstantiated ) eval( a.value ) else error( "Not realized" )
    protected def eval( av: PeriodConst ) : PeriodConst
    protected def copy( newA: PeriodLike ) : PeriodLike
-
-   def periodReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-      oldP.removeDependant( this )
-      val newThis = copy( newP ) // establishes new dependencies
-      replacedBy( newThis ) // propagate
-   }
 }
 
 abstract class BinaryPeriodExpr( a: PeriodLike, b: PeriodLike )
-extends PeriodVar with PeriodDependant {
+extends PeriodVar {
    // ---- constructor ----
    {
-      a.addDependant( this )
-      b.addDependant( this )
+      a.addDependant( new PeriodDependant {
+         pd =>
+         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+            oldP.removeDependant( pd )
+            val newThis = copy( newP, b ) // establishes new dependencies
+            replacedBy( newThis ) // propagate
+         }
+      })
+      b.addDependant( new PeriodDependant {
+         pd =>
+         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+            oldP.removeDependant( pd )
+            val newThis = copy( a, newP ) // establishes new dependencies
+            replacedBy( newThis ) // propagate
+         }
+      })
    }
 
-//   def isInstantiated = a.isInstantiated && b.isInstantiated
    def getValue: Option[ PeriodConst ] =
       if( isInstantiated ) Some( eval( a.value, b.value )) else None
 
    override def value = if( isInstantiated ) eval( a.value, b.value ) else error( "Not realized" )
-//   def inf = a.min( b )
-//   def sup = a.max( b )
    protected def eval( av: PeriodConst, bv: PeriodConst ) : PeriodConst
    protected def copy( newA: PeriodLike, newB: PeriodLike ) : PeriodLike
-
-   def periodReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-      val newA = if( oldP eq a ) {
-         oldP.removeDependant( this )
-         newP
-      } else a
-
-      val newB = if( oldP eq b ) {
-         oldP.removeDependant( this )
-         newP
-      } else b
-
-      val newThis = copy( newA, newB ) // establishes new dependencies
-      replacedBy( newThis ) // propagate
-   }
 }
 
 case class PlusPeriodExpr( a: PeriodLike, b: PeriodLike )
@@ -229,79 +214,10 @@ extends UnaryPeriodExpr( a ) {
    protected def copy( newA: PeriodLike ) : PeriodLike = newA / b
 }
 
-/*
-trait IntervalVarDependant {
-   def intervalReplaced( oldI: IntervalVar, newI: IntervalVar ) : Unit
-}
+trait PeriodVarLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
 
-trait IntervalLike {
-   def start: PeriodLike
-   def stop: PeriodLike
-//   def +( p: Period ): IntervalLike
-}
-
-case class IntervalVar( start: PeriodVar, stop: PeriodVar )
-extends IntervalLike with IntervalVarDependant {
-   private var dependants = new WeakHashMap[ IntervalVarDependant, Int ]() // maps to use count
-
-   // ---- constructor ----
-   {
-      lazy val startDep: PeriodDependant = new PeriodDependant {
-         def periodReplaced( oldP: PeriodVar, newP: PeriodVar ) {
-            oldP.removeDependant( startDep )
-            val newThis = IntervalVar( newP, stop )
-            replacedBy( newThis )
-         }
-      }
-      start.addDependant( startDep )
-
-      lazy val stopDep: PeriodDependant = new PeriodDependant {
-         def periodReplaced( oldP: PeriodVar, newP: PeriodVar ) {
-            oldP.removeDependant( stopDep )
-            val newThis = IntervalVar( start, newP )
-            replacedBy( newThis )
-         }
-      }
-      stop.addDependant( stopDep )
-   }
-
-   def replacedBy( iv: IntervalVar ) {
-      dependants.keys.foreach( _.intervalReplaced( this, iv ))
-   }
-
-   def addDependant( id: IntervalVarDependant ) {
-      dependants += id -> (dependants.getOrElse( id, 0 ) + 1)
-   }
-
-   def removeDependant( id: IntervalVarDependant ) {
-      dependants.remove( id ).foreach( cnt => {
-         if( cnt > 1 ) {
-            dependants += id -> (cnt - 1)
-         }
-      })
-   }
-}
-*/
-
-trait PeriodVar extends PeriodLike {
-   private var dependants = new WeakHashMap[ PeriodDependant, Int ]() // maps to use count
+abstract class PeriodVar extends de.sciss.temporal.PeriodVarLike {
    def isInstantiated = false
-
-   protected def replacedBy( p: PeriodLike ) {
-      dependants.keysIterator.foreach( _.periodReplaced( this, p ))
-   }
-
-   def addDependant( pd: PeriodDependant ) {
-      dependants += pd -> (dependants.getOrElse( pd, 0 ) + 1)
-   }
-
-   def removeDependant( pd: PeriodDependant ) {
-      dependants.remove( pd ).foreach( cnt => {
-         if( cnt > 1 ) {
-            dependants += pd -> (cnt - 1)
-         }
-      })
-   }
 
    def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
    def -( b: PeriodLike ) : PeriodLike    = MinusPeriodExpr( this, b )
@@ -312,8 +228,9 @@ trait PeriodVar extends PeriodLike {
    def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
 }
 
+/*
 class PeriodHolder( initial: PeriodLike )
-extends PeriodVar with PeriodDependant {  // XXX TO-DO : needs to extend PeriodLike instead!
+extends PeriodVarLike with PeriodListener {
    private var periodVar = initial
 
    // ---- constructor ----
@@ -329,20 +246,32 @@ extends PeriodVar with PeriodDependant {  // XXX TO-DO : needs to extend PeriodL
       replacedBy( this )   // XXX not so elegant
    }
 
-   def periodReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+   def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
       period = newP
    }
 
+   def isInstantiated = false
+
+   def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
+   def -( b: PeriodLike ) : PeriodLike    = MinusPeriodExpr( this, b )
+   def min( b: PeriodLike ) : PeriodLike  = MinimumPeriodExpr( this, b )
+   def max( b: PeriodLike ) : PeriodLike  = MaximumPeriodExpr( this, b )
+
+   def *( b: Double ) : PeriodLike        = TimesPeriodExpr( this, b )
+   def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
+   
    def inf: PeriodConst = period.inf
    def sup: PeriodConst = period.sup
    def getValue: Option[ PeriodConst ] = period.getValue
 }
+*/
 
 case class PeriodConst( sec: Double ) extends PeriodLike {
    def +( b: PeriodConst )   = PeriodConst( sec + b.sec )
    def -( b: PeriodConst )   = PeriodConst( sec - b.sec )
    def min( b: PeriodConst ) = PeriodConst( scala.math.min( sec, b.sec ))
    def max( b: PeriodConst ) = PeriodConst( scala.math.max( sec, b.sec ))
+   def ::( b: PeriodConst )  = IntervalConst( this, b )
 
    def +( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => this.+( pc )   // why do we need this. ?
@@ -364,7 +293,7 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
       case _ => b.max( this ) 
    }
 
-   def *( d: Double )      = PeriodConst( sec + d )
+   def *( d: Double )      = PeriodConst( sec * d )
    def /( d: Double )      = PeriodConst( sec / d )
    def <( b: PeriodConst ) = sec < b.sec
    def >( b: PeriodConst ) = sec > b.sec
@@ -449,10 +378,10 @@ object Period {
    def test {
       implicit val sr = SampleRate( 44100 )
 
-      val p1 = new PeriodHolder( 0⏊10 )
-      val p2 = p1 + 0⏊20
-      p1.period = 0⏊11
-      println( "p2 = " + p2.value )
+//      val p1 = new PeriodHolder( 0⏊10 )
+//      val p2 = p1 + 0⏊20
+//      p1.period = 0⏊11
+//      println( "p2 = " + p2.value )
 /*
       val iv1 = ⋯(0⏊00, 1⏊00)
       val dt  = BoundedRandomPeriod( 0⏊10, 0⏊20 ) 

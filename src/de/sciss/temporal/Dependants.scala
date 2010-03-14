@@ -9,6 +9,7 @@ trait MutableModelDependant[ T ] {
 trait MutableModel[ T ] {
    def addDependant( l: MutableModelDependant[ T ]) : Unit
    def removeDependant( l: MutableModelDependant[ T ]) : Unit
+//   def replacedBy( newModel: T ) : Unit
 }
 
 trait MutableModelImpl[ T ] extends MutableModel[ T ] {
@@ -16,7 +17,7 @@ trait MutableModelImpl[ T ] extends MutableModel[ T ] {
    
    private var dependants = new WeakHashMap[ MutableModelDependant[ T ], Int ]() // maps to use count
 
-   protected def replacedBy( newModel: T ) {
+   def replacedBy( newModel: T ) {
       dependants.keysIterator.foreach( _.modelReplaced( model, newModel ))
    }
 

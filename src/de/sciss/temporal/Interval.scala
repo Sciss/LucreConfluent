@@ -99,4 +99,6 @@ extends IntervalVarLike {
 
    def +( p: PeriodLike ) = IntervalVar( start + p, stop + p )
    def -( p: PeriodLike ) = IntervalVar( start - p, stop - p )
+
+   override def toString = "(" + start + " :: " + stop + ")"
 }

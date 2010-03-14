@@ -228,7 +228,7 @@ extends UnaryPeriodExpr( a ) {
 
 trait PeriodVarLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
 
-abstract class PeriodVar extends de.sciss.temporal.PeriodVarLike {
+abstract class PeriodVar extends PeriodVarLike {
    def isInstantiated = false
 
    def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
@@ -279,6 +279,10 @@ extends PeriodVarLike with PeriodListener {
    def getValue: Option[ PeriodConst ] = period.getValue
 }
 */
+
+//trait PeriodConstLike extends PeriodLike {
+//
+//}
 
 case class PeriodConst( sec: Double ) extends PeriodLike {
    def +( b: PeriodConst )   = PeriodConst( sec + b.sec )
@@ -389,7 +393,7 @@ case class SampleRate( rate: Double )
 
 object Period {
 //   implicit def intToTemporalSource( i: Int ) = new TemporalSource( i )
-   implicit def doubleToPeriodConst( d: Double ) = new PeriodConstFactory( d )
+//   implicit def doubleToPeriodConst( d: Double ) = new PeriodConstFactory( d )
 //   implicit def tuple2ToIntervalLiteral( t: Tuple2[ Period, Period ]) = Interval( t._1, t._2 )
 
 //   (3 hours, 4 mins, 33 secs)

@@ -32,7 +32,6 @@ import java.awt.{ EventQueue }
 
 object Main {
    def main( args: Array[ String ]) {
-//      Period.test
-      EventQueue.invokeLater( new Runnable { def run { new gui.ScalaInterpreterFrame }})
+      EventQueue.invokeLater( new Runnable { def run { new ex.Example }})
    }
 }

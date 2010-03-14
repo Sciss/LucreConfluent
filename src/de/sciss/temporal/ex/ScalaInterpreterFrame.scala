@@ -1,17 +1,31 @@
-package de.sciss.temporal.gui
+package de.sciss.temporal.ex
 
 import java.awt.event.{ InputEvent, KeyEvent }
 import javax.swing.{ WindowConstants, JFrame, KeyStroke }
+import scala.tools.nsc.{ Interpreter }
 
-class ScalaInterpreterFrame extends JFrame( "Scala Interpreter" ) {
+class ScalaInterpreterFrame( implicit mgr: RegionManager )
+extends JFrame( "Scala Interpreter" ) {
 
    // ---- constructor ----
    {
       val cp = getContentPane
       val ip = new ScalaInterpreterPane {
+         override protected def createInitialBindings( in: Interpreter ) {
+            in.bind( "regionMgr", mgr.getClass.getName, mgr )
+         }
+
+         override protected def initialText = {
+            super.initialText + """
+val r1 = Region( "Test", 0⏊00 :: 3⏊00 )"""
+         }
+
          override protected def initialCode = Some( """
             import de.sciss.temporal._
             import de.sciss.temporal.Period._
+            import de.sciss.temporal.ex._
+            import de.sciss.temporal.ex.Region._
+            implicit val rm = regionMgr
          """ )
 
          override protected lazy val customKeyProcessAction = Some( (e: KeyEvent) => {

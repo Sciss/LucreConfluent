@@ -30,6 +30,7 @@ package de.sciss.temporal
 
 import scala.collection.mutable.{ WeakHashMap }
 import scala.util.{ Random }
+import scala.math._
 
 trait PeriodLike extends MutableModel[ PeriodLike ] {
    def isInstantiated: Boolean
@@ -46,6 +47,8 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
    def *( b: Double ): PeriodLike
    def /( b: Double ): PeriodLike
 
+   def unary_- : PeriodLike
+
 //   def ⋯( b: PeriodLike ) = new ⋯( this, b )
 //   def ⟛( b: Period ) = new ⋯( this, b )
 
@@ -55,7 +58,7 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
 //   def removeDependant( pd: PeriodDependant ) : Unit
 
 //   def ::( b: PeriodLike ) : IntervalLike
-   def ::( b: PeriodLike ) : IntervalLike = IntervalVar( this, b )
+   def ::( b: PeriodLike ) : IntervalLike = IntervalVar( b, this ) // note argument reversal
 }
 
 trait RandomGen {
@@ -214,6 +217,15 @@ extends UnaryPeriodExpr( a ) {
    protected def copy( newA: PeriodLike ) : PeriodLike = newA / b
 }
 
+case class UnaryMinusPeriodExpr( a: PeriodLike )
+extends UnaryPeriodExpr( a ) {
+   protected def eval( av: PeriodConst ) = -av
+   def inf = -a.sup
+   def sup = -a.inf
+
+   protected def copy( newA: PeriodLike ) : PeriodLike = -newA
+}
+
 trait PeriodVarLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
 
 abstract class PeriodVar extends de.sciss.temporal.PeriodVarLike {
@@ -226,6 +238,8 @@ abstract class PeriodVar extends de.sciss.temporal.PeriodVarLike {
 
    def *( b: Double ) : PeriodLike        = TimesPeriodExpr( this, b )
    def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
+
+   def unary_- : PeriodLike               = UnaryMinusPeriodExpr( this )
 }
 
 /*
@@ -271,7 +285,7 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def -( b: PeriodConst )   = PeriodConst( sec - b.sec )
    def min( b: PeriodConst ) = PeriodConst( scala.math.min( sec, b.sec ))
    def max( b: PeriodConst ) = PeriodConst( scala.math.max( sec, b.sec ))
-   def ::( b: PeriodConst )  = IntervalConst( this, b )
+   def ::( b: PeriodConst )  = IntervalConst( b, this )  // note argument reversal
 
    def +( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => this.+( pc )   // why do we need this. ?
@@ -298,6 +312,8 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def <( b: PeriodConst ) = sec < b.sec
    def >( b: PeriodConst ) = sec > b.sec
 
+   def unary_- = PeriodConst( -sec )
+
 //   def +( b: Period ) : Period = b match {
 //      case plit: PeriodConst => PeriodConst( sec + plit.sec )
 //      case _ => PeriodExpr.plus( this, b )
@@ -316,27 +332,29 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def removeDependant( pd: PeriodDependant ) {}
 
    override def toString = {
-      val millis  = (sec * 1000).toLong
+      val asec    = abs( sec )
+      val millis  = (asec * 1000).toLong
       val milli   = (millis % 1000)
-      val secs    = sec.toLong
+      val secs    = asec.toLong
       val s       = secs % 60
       val mins    = secs / 60
       val min     = mins % 60
       val hours   = mins / 60
 
       if( hours > 0 ) {
+         val s1 = (if( sec < 0 ) "-" else "") + hours.toString + "⏊" + (100 + min).toString.substring( 1 ) +
+            "⏊" + (100 + s).toString.substring( 1 )
          if( milli > 0 ) {
-            hours.toString + "⏊" + (100 + min).toString.substring( 1 ) + "⏊" + (100 + s).toString.substring( 1 ) + "." +
-               (milli + 1000).toString.substring( 1 )
+            s1 + "." + (milli + 1000).toString.substring( 1 )
          } else {
-            hours.toString + "⏊" + (100 + min).toString.substring( 1 ) + "⏊" + (100 + s).toString.substring( 1 )
+            s1
          }
       } else {
+         val s1 = (if( sec < 0) "-" else "") + min.toString + "⏊" + (100 + s).toString.substring( 1 )
          if( milli > 0 ) {
-            min.toString + "⏊" + (100 + s).toString.substring( 1 ) + "." +
-               (milli + 1000).toString.substring( 1 )
+            s1 + "." + (milli + 1000).toString.substring( 1 )
          } else {
-            min.toString + "⏊" + (100 + s).toString.substring( 1 )
+            s1
          }
       }
    }
@@ -350,7 +368,10 @@ class PeriodConstFactory( d: Double ) {
    def mins   = new PeriodConst( d * 60 )
    def secs   = new PeriodConst( d )
    def msecs  = new PeriodConst( d / 1000 )
-   def ⏊( b: Double ) = new PeriodConst( d * 60 + b )
+//   def ⏊( b: Double ) = new PeriodConst( if( d < 0 ) d * 60 - b else d * 60 + b )
+   def ⏊( b: Double ) = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
+      new PeriodConst( d * 60 + b )
+   }
    def ⎍( implicit sr: SampleRate ) = new PeriodConst( d / sr.rate )
 }
 

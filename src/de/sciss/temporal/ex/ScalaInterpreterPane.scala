@@ -26,7 +26,7 @@
  *  Changelog:
  */
 
-package de.sciss.temporal.gui
+package de.sciss.temporal.ex
 
 import java.awt.{ BorderLayout, Dimension, Font, GraphicsEnvironment, Toolkit }
 import java.awt.event.{ ActionEvent, KeyEvent, KeyListener }
@@ -57,11 +57,16 @@ extends JPanel {
    // preferred fonts. note: font sizes are specified for
    // mac os x, they scale down on linux and windows by
    // 3/4 (hope that is correct regarding default dpi settings of 72 versus 96)
-   protected def preferredFonts = List( "Menlo" -> 12, "Monaco" -> 12, "Anonymous Pro" -> 12,
-      "Bitstream Vera Sans Mono" -> 12 )
+   protected def preferredFonts = List( "DejaVu Sans Mono" -> 12, "Bitstream Vera Sans Mono" -> 12, "Menlo" -> 12,
+      "Monaco" -> 12, "Anonymous Pro" -> 12 )
 
    protected def customKeyMapActions:    Map[ KeyStroke, Function0[ Unit ]] = Map.empty
    protected def customKeyProcessAction: Option[ Function1[ KeyEvent, KeyEvent ]] = None
+
+   protected def initialText = """// Type Scala code here.
+// Press '""" + executeKeyStroke + """' to execute selected text
+// or current line.
+"""
 
    private val ggStatus = new JLabel( "Initializing..." )
 
@@ -105,7 +110,7 @@ extends JPanel {
             ggProgressInvis.setVisible( true )
             ggProgress.setVisible( false )
             editorPane.setContentType( "text/scala" )
-            editorPane.setText( "// Type Scala code here.\n// Press '" + executeKeyStroke + "' to execute selected text\n// or current line.\n" )
+            editorPane.setText( initialText )
             doc = editorPane.getDocument() match {
                case sdoc: SyntaxDocument => Some( sdoc )
                case _ => None

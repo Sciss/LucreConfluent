@@ -30,10 +30,11 @@ package de.sciss.temporal
 
 import scala.collection.mutable.{ WeakHashMap }
 
-trait IntervalLike {
+trait IntervalLike extends MutableModel[ IntervalLike ] {
    def start: PeriodLike
    def stop: PeriodLike
    def +( p: PeriodLike ): IntervalLike
+   def -( p: PeriodLike ): IntervalLike
 }
 
 //object ⋯ {
@@ -45,8 +46,21 @@ trait IntervalLike {
 case class IntervalConst( val start: PeriodConst, val stop: PeriodConst )
 extends IntervalLike {
    def +( p: PeriodConst ) = IntervalConst( start + p, stop + p )
+   def -( p: PeriodConst ) = IntervalConst( start - p, stop - p )
 
-   def +( p: PeriodLike ) = (start + p) :: (stop + p)
+   def +( p: PeriodLike ) = p match {
+      case pc: PeriodConst => this.+( pc )
+      case _ => (start + p) :: (stop + p)
+   }
+
+   def -( p: PeriodLike ) = p match {
+      case pc: PeriodConst => this.-( pc )
+      case _ => (start - p) :: (stop - p)
+   }
+
+   // these are no-ops for a constant interval
+   def addDependant( id: IntervalDependant ) {}
+   def removeDependant( id: IntervalDependant ) {}
 
    override def toString = "(" + start + " :: " + stop + ")"
 }
@@ -84,4 +98,5 @@ extends IntervalVarLike {
    }
 
    def +( p: PeriodLike ) = IntervalVar( start + p, stop + p )
+   def -( p: PeriodLike ) = IntervalVar( start - p, stop - p )
 }

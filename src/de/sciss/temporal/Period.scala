@@ -101,17 +101,12 @@ extends PeriodLike {
 
 abstract class UnaryPeriodExpr( a: PeriodLike )
 extends PeriodVar {
-   // ---- constructor ----
-   {
-      a.addDependant( new PeriodDependant {
-         pd =>
-         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-            oldP.removeDependant( pd )
-            val newThis = copy( newP ) // establishes new dependencies
-            replacedBy( newThis ) // propagate
-         }
-      })
-   }
+   private val aDep = a.addDependant( new PeriodDependant {
+      def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+         val newThis = copy( newP ) // establishes new dependencies
+         replacedBy( newThis ) // propagate
+      }
+   })
 
    def getValue: Option[ PeriodConst ] =
       if( isInstantiated ) Some( eval( a.value )) else None
@@ -123,25 +118,18 @@ extends PeriodVar {
 
 abstract class BinaryPeriodExpr( a: PeriodLike, b: PeriodLike )
 extends PeriodVar {
-   // ---- constructor ----
-   {
-      a.addDependant( new PeriodDependant {
-         pd =>
-         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-            oldP.removeDependant( pd )
-            val newThis = copy( newP, b ) // establishes new dependencies
-            replacedBy( newThis ) // propagate
-         }
-      })
-      b.addDependant( new PeriodDependant {
-         pd =>
-         def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-            oldP.removeDependant( pd )
-            val newThis = copy( a, newP ) // establishes new dependencies
-            replacedBy( newThis ) // propagate
-         }
-      })
-   }
+   private val aDep = a.addDependant( new PeriodDependant {
+      def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+         val newThis = copy( newP, b ) // establishes new dependencies
+         replacedBy( newThis ) // propagate
+      }
+   })
+   private val bDep = b.addDependant( new PeriodDependant {
+      def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
+         val newThis = copy( a, newP ) // establishes new dependencies
+         replacedBy( newThis ) // propagate
+      }
+   })
 
    def getValue: Option[ PeriodConst ] =
       if( isInstantiated ) Some( eval( a.value, b.value )) else None
@@ -332,8 +320,9 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def sup              = this
 
    // these are no-ops for a constant period
-   def addDependant( pd: PeriodDependant ) {}
-   def removeDependant( pd: PeriodDependant ) {}
+   def addDependant( pd: PeriodDependant ) = pd
+//   def removeDependant( pd: PeriodDependant ) {}
+   def printDependants { println( "No dependants" )}
 
    override def toString = {
       val asec    = abs( sec )

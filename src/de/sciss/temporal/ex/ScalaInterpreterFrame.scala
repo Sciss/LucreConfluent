@@ -17,7 +17,10 @@ extends JFrame( "Scala Interpreter" ) {
 
          override protected def initialText = {
             super.initialText + """
-val r1 = Region( "Test", 0⏊00 :: 3⏊00 )"""
+val r1 = Region( "Test", 0⏊00 :: 3⏊00 )
+val r2 = Region( "Dep", r1.interval + 1⏊00 )
+val r3 = Region( "Indep", 0⏊00 :: 3⏊00 )
+r1.moveBy( 0⏊11 )"""
          }
 
          override protected def initialCode = Some( """

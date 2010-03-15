@@ -19,16 +19,11 @@ object Region {
 class Region private( val name: String, val interval: IntervalVarLike, protected[ex] val handle: RegionHandle ) {
    private var removed = false
 
-   private val ivDep = new IntervalDependant {
+   private val ivDep = interval.addDependant( new IntervalDependant {
       def modelReplaced( oldInterval: IntervalLike, newInterval: IntervalLike ) {
-         replace( newInterval )
+         if( !removed ) replace( newInterval )
       }
-   }
-
-   // ---- constructor ----
-   {
-      interval.addDependant( ivDep )
-   }
+   })
 
    private def replace( newInterval: IntervalLike ) {
       val newThis = new Region( name, newInterval, handle )
@@ -37,7 +32,7 @@ class Region private( val name: String, val interval: IntervalVarLike, protected
    }
 
    private def dispose {
-      interval.removeDependant( ivDep )
+//      interval.removeDependant( ivDep )
       removed = true
    }
 
@@ -47,8 +42,7 @@ class Region private( val name: String, val interval: IntervalVarLike, protected
    }
 
    def moveBy( delta: PeriodLike ) {
-//      replace( interval + delta )
-      interval.replacedBy( interval + delta ) // triggers replace
+      interval.replacedBy( interval.detach + delta ) // triggers replace
    }
 
    override def toString = "Region(" + name + ", " + interval + ")"

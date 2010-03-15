@@ -49,21 +49,12 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
 
    def unary_- : PeriodLike
 
-//   def ⋯( b: PeriodLike ) = new ⋯( this, b )
-//   def ⟛( b: Period ) = new ⋯( this, b )
-
    def overlaps( b: PeriodLike ) = if( inf < b.inf ) sup > b.inf else b.sup > inf
 
-//   def addDependant( pd: PeriodDependant ) : Unit
-//   def removeDependant( pd: PeriodDependant ) : Unit
-
-//   def ::( b: PeriodLike ) : IntervalLike
    def ::( b: PeriodLike ) : IntervalLike = IntervalVar( b, this ) // note argument reversal
 }
 
 trait RandomGen {
-//   def inf: Double
-//   def sup: Double
    def realize: Double
    def name: String
 }
@@ -72,32 +63,6 @@ object UniformRandomGen extends RandomGen {
    def realize = Random.nextDouble()
    def name = "uniform"
 }
-
-/*
-case class BoundedRandomPeriod( lo: PeriodLike, hi: PeriodLike, gen: RandomGen = UniformRandomGen )
-extends PeriodLike {
-//   private var isRealized = false
-   private var realized: Option[ PeriodConst ] = None
-   def isInstantiated = realized.isDefined
-   def getValue = realized
-   def inf = lo.inf
-   def sup = hi.sup
-
-//   def +( b: Period ) = PeriodExpr.plus( this, b )
-
-   override def toString = "RRand(" + lo + "," + hi + "," + gen.name + ")"
-}
-*/
-
-//case class UniformBoundedRandomPeriod( lo: Period, hi: Period ) extends Period {
-//
-//}
-
-//object PeriodExpr {
-//   def plus( a: PeriodLike, b: PeriodLike ) : PeriodLike = new PlusPeriodExpr( a, b )
-//   def min( a: PeriodLike, b: PeriodLike ) : PeriodLike  = new MinimumPeriodExpr( a, b )
-//   def max( a: PeriodLike, b: PeriodLike ) : PeriodLike  = new MaximumPeriodExpr( a, b )
-//}
 
 abstract class UnaryPeriodExpr( a: PeriodLike )
 extends PeriodVar {
@@ -230,48 +195,6 @@ abstract class PeriodVar extends PeriodVarLike {
    def unary_- : PeriodLike               = UnaryMinusPeriodExpr( this )
 }
 
-/*
-class PeriodHolder( initial: PeriodLike )
-extends PeriodVarLike with PeriodListener {
-   private var periodVar = initial
-
-   // ---- constructor ----
-   {
-      initial.addDependant( this )
-   }
-
-   def period: PeriodLike = periodVar
-   def period_=( newP: PeriodLike ) {
-      periodVar.removeDependant( this )
-      periodVar = newP
-      periodVar.addDependant( this )
-      replacedBy( this )   // XXX not so elegant
-   }
-
-   def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-      period = newP
-   }
-
-   def isInstantiated = false
-
-   def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
-   def -( b: PeriodLike ) : PeriodLike    = MinusPeriodExpr( this, b )
-   def min( b: PeriodLike ) : PeriodLike  = MinimumPeriodExpr( this, b )
-   def max( b: PeriodLike ) : PeriodLike  = MaximumPeriodExpr( this, b )
-
-   def *( b: Double ) : PeriodLike        = TimesPeriodExpr( this, b )
-   def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
-   
-   def inf: PeriodConst = period.inf
-   def sup: PeriodConst = period.sup
-   def getValue: Option[ PeriodConst ] = period.getValue
-}
-*/
-
-//trait PeriodConstLike extends PeriodLike {
-//
-//}
-
 case class PeriodConst( sec: Double ) extends PeriodLike {
    def +( b: PeriodConst )   = PeriodConst( sec + b.sec )
    def -( b: PeriodConst )   = PeriodConst( sec - b.sec )
@@ -306,13 +229,6 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
 
    def unary_- = PeriodConst( -sec )
 
-//   def +( b: Period ) : Period = b match {
-//      case plit: PeriodConst => PeriodConst( sec + plit.sec )
-//      case _ => PeriodExpr.plus( this, b )
-//   }
-
-//   def xx( b: PeriodConst ) : PeriodConst
-
    def isInstantiated   = true
    def getValue         = Some( this )
    override def value   = this
@@ -321,7 +237,6 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
 
    // these are no-ops for a constant period
    def addDependant( pd: PeriodDependant ) = pd
-//   def removeDependant( pd: PeriodDependant ) {}
    def printDependants { println( "No dependants" )}
 
    override def toString = {
@@ -353,90 +268,15 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    }
 }
 
-// class FuzzyPeriodSeconds( minSec: Double, maxSec: Double )
-
-
 class PeriodConstFactory( d: Double ) {
    def hours  = new PeriodConst( d * 360 )
    def mins   = new PeriodConst( d * 60 )
    def secs   = new PeriodConst( d )
    def msecs  = new PeriodConst( d / 1000 )
-//   def ⏊( b: Double ) = new PeriodConst( if( d < 0 ) d * 60 - b else d * 60 + b )
    def ⏊( b: Double ) = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
       new PeriodConst( d * 60 + b )
    }
    def ⎍( implicit sr: SampleRate ) = new PeriodConst( d / sr.rate )
 }
 
-//class IntervalFactory( p: Period ) {
-//   def hours  = new PeriodConst( d * 360 )
-//   def mins   = new PeriodConst( d * 60 )
-//   def secs   = new PeriodConst( d )
-//   def msecs  = new PeriodConst( d / 1000 )
-//   def ⏊( b: Double ) = new PeriodConst( d * 60 + b )
-//}
-
-//case class XX(start: Period, stop: Period)
-
 case class SampleRate( rate: Double )
-
-object Period {
-//   implicit def intToTemporalSource( i: Int ) = new TemporalSource( i )
-//   implicit def doubleToPeriodConst( d: Double ) = new PeriodConstFactory( d )
-//   implicit def tuple2ToIntervalLiteral( t: Tuple2[ Period, Period ]) = Interval( t._1, t._2 )
-
-//   (3 hours, 4 mins, 33 secs)
-//
-//   3.hours+4.mins+33.secs
-
-   def test {
-      implicit val sr = SampleRate( 44100 )
-
-//      val p1 = new PeriodHolder( 0⏊10 )
-//      val p2 = p1 + 0⏊20
-//      p1.period = 0⏊11
-//      println( "p2 = " + p2.value )
-/*
-      val iv1 = ⋯(0⏊00, 1⏊00)
-      val dt  = BoundedRandomPeriod( 0⏊10, 0⏊20 ) 
-      val iv2 = iv1 + dt
-
-      println( iv1 + " ; " + dt )
-      println( iv2.start.inf )
-      println( iv2.stop.sup )
-
-//      val x = 44100⎍
-//      val x = 44100¬
-      val x = 44100⎍
-//      val x = 44100
-      val y = 4⏊33 ⋯ (5⏊05)
-//      val y = 4⏊33 ¬ 5⏊05
-//        val z = 4⏊33 ⟛ 5⏊05
-//      val y = 4⏊33 ⧦ 5⏊05
-//      val y = 4⏊33 ⋯ 5⏊05
-      val intvl = ⋯(4⏊33, 6⏊03)
-//      (4⏊33, 6⏊03)
-      val plit: PeriodConst = 4⏊33 + 5⏊45
-      val plit2: PeriodConst = 8⏊01
-      println( plit )
-      println( plit + x )
-      println( intvl )
-      println( y )
-      println( plit.min( plit2 ))
-      println( plit.max( plit2 ))
-//      (4∶33, 44⏊44, 3⊹44, 6⋮44⋮54, 3⌖56, 6⌽55, 3⏀55, 4⏊33, 4◌55, 3⟘33, 3⟝44, 3⟡45, 3!45, 1!45!33, 3¶45, 3°45)
-//     ⋯ \u22EF "MIDDLE HORIZONTAL ELLIPSIS
-//      1◌04◌55
-//      1⋮04⋮55
-//      1⊤04⊤55
-//      1⏀04⏀55
-//      1⏊04⏊55
-//      1⟘04⟘55
-//      1⟡04⟡55
-//      1!04!55
-//      1°04°55
-//      4⏊55
-      // ⏊ \u23C9 \u23CA  "DENTISTRY SYMBOL LIGHT UP AND HORIZONTAL"
-      */
-   }
-}

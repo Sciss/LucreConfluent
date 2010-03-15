@@ -32,7 +32,6 @@ class Region private( val name: String, val interval: IntervalVarLike, protected
    }
 
    private def dispose {
-//      interval.removeDependant( ivDep )
       removed = true
    }
 

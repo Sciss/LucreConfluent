@@ -39,12 +39,6 @@ trait IntervalLike extends MutableModel[ IntervalLike ] {
    def detach: IntervalLike
 }
 
-//object ⋯ {
-//   def apply( start: PeriodConst, stop: PeriodConst ) = new ⋯( start, stop )
-//   def apply( start: PeriodLike, stop: PeriodLike ) : IntervalLike =
-//      new IntervalVar( start, stop )
-//}
-
 case class IntervalConst( val start: PeriodConst, val stop: PeriodConst )
 extends IntervalLike {
    def +( p: PeriodConst ) = IntervalConst( start + p, stop + p )
@@ -62,7 +56,6 @@ extends IntervalLike {
 
    // these are no-ops for a constant interval
    def addDependant( id: IntervalDependant ) = id
-//   def removeDependant( id: IntervalDependant ) {}
    def printDependants { println( "No dependants" )}
    def detach: IntervalLike = this // no dependants
 
@@ -117,8 +110,6 @@ extends IntervalVarLike {
       }
    })
 
-// override def value = if( isInstantiated ) eval( a.value, b.value ) else error( "Not realized" )
-// protected def eval( av: PeriodConst, bv: PeriodConst ) : PeriodConst
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike
 }
 

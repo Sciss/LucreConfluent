@@ -3,6 +3,10 @@ package de.sciss.temporal.ex
 import de.sciss.trees.{ FatIdentifier => FId, FatPointer => FPtr, Version }
 
 trait CInterval {
+   def kukuu( implicit version: Version ): Tuple2[ Double, Double ] = {
+      println( "aqui" )
+      span( version )
+   }
    def span( implicit version: Version ): Tuple2[ Double, Double ]
 //   def plus( p: Double )( implicit version: Version ): CInterval = PlusInterval( FId( version.path, this ), p )
    def plus( p: Double ): CInterval = PlusInterval( this, p )
@@ -22,11 +26,26 @@ case class PlusInterval( interval: CInterval, plus: Double ) extends CInterval {
    }
 }
 
-case class PlusInterval2( interval: FPtr[ CInterval ], plus: Double )( implicit creationVersion: Version )
+case class PlusInterval2( interval: FPtr[ CInterval ], plus: Double )( implicit val inputIntervalVersion: Version )
 extends CInterval {
    def span( implicit version: Version ): Tuple2[ Double, Double ] = {
 //      val iv = interval.value.span( version )
-      val iv = interval.get()( creationVersion ).value.span( version )
+      val iv = interval.get()( inputIntervalVersion ).value.span( version )
+      (iv._1 + plus, iv._2 + plus )
+   }
+}
+
+case class PlusInterval3( interval: FPtr[ CInterval ], plus: Double )
+extends CInterval {
+   def span( implicit version: Version ): Tuple2[ Double, Double ] = {
+//      val iv = interval.value.span( version )
+      var iv2: CInterval = this
+      var version2 = version
+      while( iv2 == this ) {
+         iv2 = interval.get()( version2 ).value
+         version2 = Version( version2.path.dropRight( 1 ))
+      }
+      val iv = iv2.span( version )
       (iv._1 + plus, iv._2 + plus )
    }
 }

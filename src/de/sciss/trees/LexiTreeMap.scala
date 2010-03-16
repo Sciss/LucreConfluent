@@ -248,6 +248,33 @@ extends TS[ T, V ]
         Tuple2( v, cnt )
     }
 
+   // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
+   def findMaxPrefix3( path: Seq[T] ) : Tuple2[ V, Int ] = {
+        var v				= null.asInstanceOf[ V ]
+       var sup : TS[T,V]	= this
+       var cnt				= 0
+       var checka : T   = null.asInstanceOf[ T ]
+       var doChecka     = false
+
+       path.foreach( i => {
+          if( doChecka && i.compare( checka ) > 0 ) return Tuple2( v, cnt - 1 )
+          if( sup.middle == null ) return Tuple2( v, cnt )
+          splay( i, sup )
+          val r = sup.middle
+//          if( i.compare( r.item ) != 0 ) return Tuple2( v, cnt )
+          if( i.compare( r.item ) != 0 ) {
+             checka  = i
+             doChecka = true
+          } else {
+             if( r.terminal ) v = r.value
+             doChecka = false
+             sup		= r
+          }
+          cnt    += 1
+       })
+       Tuple2( v, cnt )
+    }
+
 // 	def findMaxPrefix2( path: Seq[T] ) : Tuple2[ V, Int ] = {
 //      	// separately checked since we enter the do loop with
 //        // assumption that iter.next works

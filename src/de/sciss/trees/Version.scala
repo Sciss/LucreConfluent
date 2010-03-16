@@ -70,7 +70,7 @@ object Version {
 	def current : Version = {
 //		testChain ::= uniqueID
 //		uniqueID += 1
-		Version( testChain ) // XXX
+		Version( testChain.toList ) // XXX ; toList is important, otherwise we create a mutable Version!!
 	}
 
     def addListener( l: (Symbol) => Unit ) {

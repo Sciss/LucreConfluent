@@ -27,17 +27,61 @@ val r1 = new CRegion
 r1.interval.set( iv0 )
 r1.interval.get.value.span
 val r2 = new CRegion
-r2.interval.set( PlusInterval2( r1.interval, 11.1 ))
+r2.interval.set( PlusInterval3( r1.interval, 11.1 ))
 r2.interval.get.value.span
 
 //makeCurrent( Version( List( 0 )))
-val iv1 = PlusInterval2( r2.interval, 13.3 )
-currentInc
+val v0 = current
+currentInc  // 01
 
-r1.interval.get.value.span
-r2.interval.get.value.span
+r1.interval.get2.value.span   // 0.0 ok
+r2.interval.get2.value.span   // 11.1 ok
+val iv1 = PlusInterval3( r2.interval, 13.3 )
 r2.interval.set( iv1 )
-r2.interval.get.value.span
+r2.interval.get2.value.span  // 24.4 ok
+
+makeCurrent( v0 )
+currentInc  // 02
+
+val iv2 = PlusInterval3( r1.interval, 17.7 )
+r1.interval.set( iv2 )
+r1.interval.get2.value.span  // 17.7 ok
+r2.interval.get2.value.span  // 28.8 ok
+
+val v01 = Version( List( 0, 1 ))
+makeCurrent( v01 )
+r1.interval.get2.value.span  // 0.0 YES
+r2.interval.get2.value.span  // 24.4 YES
+
+val v021= Version( List( 0, 2, 1 ))
+makeCurrent( v021 )
+r1.interval.get2.value.span   // 17.7 ok
+r2.interval.get2.value.span   // 42.1 ok
+
+makeCurrent( v0 )
+currentInc
+val v03 = current
+r1.interval.get2.value.span  // 0.0 ok
+r2.interval.get2.value.span  // 11.1 ok
+val iv3 = PlusInterval3( r1.interval, 19.9 )
+r1.interval.set( iv3 )
+r1.interval.get2.value.span  // 19.9 ok
+r2.interval.get2.value.span  // 31.0 ok
+
+val iv4 = ConstantInterval( (55.0, 66.0) )
+val r3 = new CRegion
+r3.interval.set( iv4 )  // XXX TO-DO : inspect to see if path is <3> or <0,3> (should be the former?)
+r3.interval.get2.value.span  // 55.0 ok
+
+currentInc
+val v04 = current
+r3.interval.get2.value.span
+
+makeCurrent( v01 )
+val iv4 = PlusInterval3( r3.interval, 1.111 )
+iv4.span    // --> nope
+val iv4b = PlusInterval2( r3.interval, 1.111 )
+iv4b.span   // --> nope
 """
          }
 

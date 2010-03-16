@@ -81,6 +81,14 @@ class FatPointer[ T ] {
 	  	id.substitute( version, off )
 	}
 
+   // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
+   def get2()( implicit version: Version ) : FatIdentifier[ T ] = {
+      val (id, off) = pa.findMaxPrefix3( version.path )
+        if( id == null ) return id
+//	  	println( "id = " + id + "; off = " + off + "; version = " + version )
+        id.substitute( version.path, off )
+   }
+
 	def get()( implicit version: Version ) : FatIdentifier[ T ] = {
 		val (id, off) = pa.findMaxPrefix2( version.path )
 	  	if( id == null ) return id

@@ -20,14 +20,33 @@ extends JFrame( "Scala Interpreter" ) {
 val r1 = Region( "Test", 0⏊00 :: 3⏊00 )
 val r2 = Region( "Dep", r1.interval + 1⏊00 )
 val r3 = Region( "Indep", 0⏊00 :: 3⏊00 )
-r1.moveBy( 0⏊11 )"""
+r1.moveBy( 0⏊11 )
+
+val iv0 = ConstantInterval( (0.0, 60.0) )
+val r1 = new CRegion
+r1.interval.set( iv0 )
+r1.interval.get.value.span
+val r2 = new CRegion
+r2.interval.set( PlusInterval2( r1.interval, 11.1 ))
+r2.interval.get.value.span
+
+//makeCurrent( Version( List( 0 )))
+val iv1 = PlusInterval2( r2.interval, 13.3 )
+currentInc
+
+r1.interval.get.value.span
+r2.interval.get.value.span
+r2.interval.set( iv1 )
+r2.interval.get.value.span
+"""
          }
 
          override protected def initialCode = Some( """
             import de.sciss.temporal._
-            import de.sciss.temporal.Period._
             import de.sciss.temporal.ex._
             import de.sciss.temporal.ex.Region._
+            import de.sciss.trees._
+            import de.sciss.trees.Version._
             implicit val rm = regionMgr
          """ )
 

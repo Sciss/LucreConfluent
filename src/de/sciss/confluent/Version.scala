@@ -45,7 +45,7 @@ trait VersionPath {
 }
 
 object VersionPath {
-   val init: VersionPath = new VersionPathImpl( Version.init, Queue( 0 ))
+   val init: VersionPath = new VersionPathImpl( Version.init, Queue( 0, 0 ))
 
    private case class VersionPathImpl( version: Version, path: CompressedPath )
    extends VersionPath {

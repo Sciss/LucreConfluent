@@ -56,6 +56,8 @@ class FatValue[ T ] extends FatField[ T ] {
       val idx  = version.dropRight( 1 )
       val t    = version.last 
 		map.findMaxPrefix( version ).map( order => {
+         // XXX here is a mistake (and thus we cannot use IntMap): we need the DSST
+         // struct to find out the most recent ancestor of t instead of get( t )!!!
          order.get( t ) orElse (idx.lastOption.map( order.get( _ )) getOrElse None)
       }) getOrElse None
 	}

@@ -92,6 +92,13 @@ val x = new FatValue[ Double ]
 val id0 = VersionPath.init
 x.assign( id0.path, 33.3 )
 x.inspect
+val id01 = id0.newBranch
+x.assign( id01.path, 44.4 )
+x.inspect
+val id012 = id01.newBranch
+x.access( id012.path )  // --> 33.3 WRONG
+x.access( id01.path )   // --> 44.4 OK
+x.access( id0.path )    // --> 33.3 OK
 """
          }
 

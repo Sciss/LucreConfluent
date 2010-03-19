@@ -51,8 +51,10 @@ import scala.collection.immutable.{ Queue }
  * 	@author		Hanns Holger Rutz
  */
 @specialized
-class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
+class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
 {
+   import ordering._
+
    type Path = Seq[ T ]
 
    private var root: Node     = null
@@ -97,20 +99,20 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
 //       }
 //   }
 
- 	private def insert( i: T, m: Access ) : Unit = {
+ 	private def insert( key: T, m: Access ) : Unit = {
     	if( m.middle == null ) {
-    		m.middle = new Index( i, null, null )
+    		m.middle = new Index( key, null, null )
     		return
     	}
-    	splay( i, m )
+    	splay( key, m )
       val rNew = m.middle
-      val c = i.compare( rNew.key )
+      val c = compare( key, rNew.key )
       if( c < 0 ) {
-         val n		   = new Index( i, rNew.left, rNew )
+         val n		   = new Index( key, rNew.left, rNew )
          rNew.left	= null
          m.middle    = n
       } else if( c > 0 ){
-         val n		   = new Index( i, rNew, rNew.right )
+         val n		   = new Index( key, rNew, rNew.right )
          rNew.right	= null
          m.middle	   = n
 //    	} else {
@@ -119,20 +121,20 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
       }
     }
 
-   private def insert( i: T, m: Access, value: V ) : Unit = {
+   private def insert( key: T, m: Access, value: V ) : Unit = {
     	if( m.middle == null ) {
-    		m.middle = new Leaf( i, value, null, null )
+    		m.middle = new Leaf( key, value, null, null )
     		return
     	}
-    	splay( i, m )
+    	splay( key, m )
     	val rNew = m.middle
-      val c		= i.compare( rNew.key )
+      val c		= compare( key, rNew.key )
       if( c < 0 ) {
-         val n		   = new Leaf( i, value, rNew.left, rNew )
+         val n		   = new Leaf( key, value, rNew.left, rNew )
          rNew.left	= null
          m.middle	   = n
       } else if( c > 0 ){
-         val n		   = new Leaf( i, value, rNew, rNew.right )
+         val n		   = new Leaf( key, value, rNew, rNew.right )
          rNew.right	= null
          m.middle	   = n
       } else {
@@ -142,7 +144,7 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
 //		    // we don't yet replace the node by VN with
 //		    // the appropriate 'value'
 //		    throw new IllegalArgumentException( "Trying to overwrite subpath " + i )
-         val n		= new Leaf( i, value, rNew.left, rNew.right )
+         val n		= new Leaf( key, value, rNew.left, rNew.right )
          m.middle	= n
       }
    }
@@ -192,51 +194,66 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
     *  Find an key in the tree.
     */
    def find( path: Path ) : Option[ V ] = {
+      if( path.isEmpty ) return None
+
       var sup: Access = RootAccess
-      var v: Option[ V ] = None
-      path.foreach( key => {
-         if( sup.middle == null ) return None
+      val iter = path.iterator
+      while( sup.middle != null ) {
+         val key = iter.next
          splay( key, sup )
          val n = sup.middle
-         if( n == null || key.compare( n.key ) == 0 ) return None
+         if( (n == null) || (compare( key, n.key ) == 0) ) return None
          sup = n
-         v   = n.value
-      })
-      v
+         if( !iter.hasNext ) {
+            return if( n.terminal ) Some( n.value ) else None
+         }
+      }
+      None
    }
 
 	def findMaxPrefix( path: Path ) : Option[ V ] = {
-	  	var v : Option[ V ]  = None
-    	var sup : Access	   = RootAccess
+    	var sup: Access = RootAccess
+      var l: Node = null
 
-    	path.foreach( i => {
-    		if( sup.middle == null ) return v
-      	splay( i, sup )
-    		val r	= sup.middle
-         if( i.compare( r.key ) != 0 ) return v
-      	if( r.terminal ) v = r.value
-         sup		= r
-      })
-      v
+      val iter = path.iterator
+      var cond = true
+    	while( cond && iter.hasNext && (sup.middle != null) ) {
+         val key = iter.next
+         splay( key, sup )
+    		val n	= sup.middle
+         if( compare( key, n.key ) != 0 ) {
+            cond = false
+         } else {
+      	   if( n.terminal ) l = n
+            sup = n
+         }
+      }
+      if( l != null ) Some( l.value ) else None
    }
 
 	def findMaxPrefix2( path: Path ) : Tuple2[ Option[ V ], Int ] = {
-	  	var v : Option[ V ]  = None
-    	var sup : Access	   = RootAccess
-    	var cnt				   = 0
+      var sup: Access = RootAccess
+      var l: Node = null
+    	var cnt = 0
 
-    	path.foreach( i => {
-    		if( sup.middle == null ) return Tuple2( v, cnt )
-         splay( i, sup )
-    		val r	= sup.middle
-      	if( i.compare( r.key ) != 0 ) return Tuple2( v, cnt )
-      	if( r.terminal ) v = r.value
-      	sup		= r
-      	cnt    += 1
-    	})
-      Tuple2( v, cnt )
+      val iter = path.iterator
+      var cond = true
+      while( cond && iter.hasNext && sup.middle != null ) {
+         val key = iter.next
+         splay( key, sup )
+    		val n	= sup.middle
+      	if( compare( key, n.key ) != 0 ) {
+            cond = false
+         } else {
+            if( n.terminal ) l = n
+            sup	= n
+            cnt  += 1
+         }
+    	}
+      (if( l != null ) Some( l.value ) else None, cnt)
    }
 
+/*
    // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
    def findMaxPrefix3( path: Path ) : Tuple2[ Option[ V ], Int ] = {
       var v : Option[ V ]  = None
@@ -250,7 +267,6 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
          if( sup.middle == null ) return Tuple2( v, cnt )
          splay( i, sup )
          val r = sup.middle
-//          if( i.compare( r.key ) != 0 ) return Tuple2( v, cnt )
          if( i.compare( r.key ) != 0 ) {
             checka  = i
             doChecka = true
@@ -263,6 +279,7 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
       })
       Tuple2( v, cnt )
    }
+*/
 
 // 	def findMaxPrefix2( path: Path ) : Tuple2[ V, Int ] = {
 //      	// separately checked since we enter the do loop with
@@ -383,19 +400,19 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
     *	@param m	the subtree provider. note that m.middle must not be null
     * 				as this is not checked!
     */
-   private def splay( i: T, m: Access ) {
+   private def splay( key: T, m: Access ) {
 		var l          = header
 		var r          = header
 		var t			   = m.middle
 		header.left		= null
 		header.right	= null
 		while( true ) {
-			val c = i.compare( t.key )
+			val c = compare( key, t.key )
 			if( c < 0 ) {
 				if( t.left == null ) {
 					return assemble( l, r, t, m )
 				}
-				if( i.compare( t.left.key ) < 0 ) {
+				if( compare( key, t.left.key ) < 0 ) {
 					val y    = t.left						// rotate right
 					t.left	= y.right
 					y.right	= t
@@ -411,7 +428,7 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
 				if( t.right == null ) {
 					return assemble( l, r, t, m )
 				}
-				if( i.compare( t.right.key ) > 0 ) {
+				if( compare( key, t.right.key ) > 0 ) {
 					val y	= t.right						// rotate left
 					t.right	= y.left
 					y.left	= t
@@ -440,13 +457,11 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
    }
 
    // ---- Internal classes ----
-   @specialized
    trait Access {
       def middle: Node
       def middle_=( m: Node ) : Unit
    }
 
-   @specialized
    protected object RootAccess
    extends Access {
       def middle = root
@@ -455,7 +470,6 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
       }
    }
 
-   @specialized
    protected trait Node
    extends Access {
       val key: T
@@ -471,7 +485,7 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
          mid = m
       }
 
-      def value: Option[ V ]
+      def value: V      
       def terminal: Boolean
 
       def inspect( pre: Queue[ T ]) {
@@ -481,23 +495,20 @@ class LexiTreeMap[ T, V ]()( implicit view : (T) => Ordered[ T ])
       }
    }
 
-   @specialized
    protected class Index( val key: T, var left: Node, var right: Node )
    extends Node {
       def terminal = false
-      def value : Option[ V ] = None //  = error( "Index does not have a value" )
+      def value : V = error( "Index does not have a value" )
    }
 
-   @specialized
-   protected class Leaf( val key: T, v: V, var left: Node, var right: Node )
+   protected class Leaf( val key: T, val value: V, var left: Node, var right: Node )
    extends Node {
       def terminal = true
-      def value : Option[ V ] = Some( v )
       
       override def inspect( pre: Queue[ T ]) {
          val succ = pre enqueue key
          if( left != null )   left.inspect( pre )
-         println( succ.mkString( "<", ",", ">: " ) + value )
+         println( succ.mkString( "<", ",", ">: " ) + value /* orNull */)
          if( middle != null ) middle.inspect( succ )
          if( right != null )  right.inspect( pre )
       }

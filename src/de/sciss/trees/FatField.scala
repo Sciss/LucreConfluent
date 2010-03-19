@@ -51,10 +51,16 @@ class FatValue[ T ] {
 //val version = VersionImplicits.currentInc
 		pa.insert( version.path, value )
 	}
+
+   override def toString = "FVal#" + hashCode
 }
 
 class FatPointer[ T ] {
 	private val pa = new LexiTreeMap[ Int, FatIdentifier[ T ]]()
+
+   def inspect {
+      pa.inspect
+   }
 
 	def assign( path: Seq[ Int ], valuePath: Seq[ Int ], value: T ) {
 		pa.insert( path, FatIdentifier( valuePath, value ))
@@ -106,6 +112,8 @@ class FatPointer[ T ] {
 		pa.insert( version.path,
 		           FatIdentifier( List( version.path.last ) /* XXX last is O(N) */, v ))
 	}
+
+   override def toString = "FPtr#" + hashCode
 }
 
 case class FatIdentifier[ T ]( val path: Seq[ Int ], val value: T ) {
@@ -120,4 +128,6 @@ case class FatIdentifier[ T ]( val path: Seq[ Int ], val value: T ) {
 	  	val sub = path ++ accessPath.drop( off )
 	  	FatIdentifier( sub, value )
 	}
+
+   override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
 }

@@ -16,7 +16,7 @@ extends JFrame( "Scala Interpreter" ) {
          }
 
          override protected def initialText = {
-            super.initialText + """
+/*            super.initialText + """
 val r1 = Region( "Test", 0⏊00 :: 3⏊00 )
 val r2 = Region( "Dep", r1.interval + 1⏊00 )
 val r3 = Region( "Indep", 0⏊00 :: 3⏊00 )
@@ -77,22 +77,37 @@ currentInc
 val v04 = current
 r3.interval.get2.value.span
 
+r1.interval.inspect
+r2.interval.inspect
+r3.interval.inspect
+
 makeCurrent( v01 )
 val iv4 = PlusInterval3( r3.interval, 1.111 )
 iv4.span    // --> nope
 val iv4b = PlusInterval2( r3.interval, 1.111 )
 iv4b.span   // --> nope
+"""*/
+            super.initialText + """
+val x = new FatValue[ Double ]
+val id0 = VersionPath.init
+x.assign( id0.path, 33.3 )
+x.inspect
 """
          }
 
-         override protected def initialCode = Some( """
+         override protected def initialCode = Some(
+/*"""
             import de.sciss.temporal._
             import de.sciss.temporal.ex._
             import de.sciss.temporal.ex.Region._
             import de.sciss.trees._
             import de.sciss.trees.Version._
             implicit val rm = regionMgr
-         """ )
+         """*/
+"""
+            import de.sciss.confluent._
+"""
+)
 
          override protected lazy val customKeyProcessAction = Some( (e: KeyEvent) => {
 //            println( "GOT " + e )

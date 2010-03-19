@@ -14,6 +14,7 @@ trait CInterval {
 
 case class ConstantInterval( value: Tuple2[ Double, Double ]) extends CInterval {
    def span( implicit version: Version ): Tuple2[ Double, Double ] = value
+   override def toString = "I(" + value._1 + " :: " + value._2 + ")"
 }
 
 // actually we do not need the FId of the interval arg...

@@ -127,6 +127,8 @@ val id012 = id01.newBranch
 x.access( id012.path )  // --> 44.4 OK
 x.access( id01.path )   // --> 44.4 OK
 x.access( id0.path )    // --> 33.3 OK
+val id03 = id0.newBranch
+x.access( id03.path )    // --> 33.3 OK
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")

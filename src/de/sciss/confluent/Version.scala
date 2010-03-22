@@ -28,7 +28,7 @@
 
 package de.sciss.confluent
 
-import scala.collection.immutable.{ Queue, Seq => ISeq }
+import collection.immutable.{ Queue, Seq => ISeq }
 
 /**
  *    Note: this is a sub-_tree_,

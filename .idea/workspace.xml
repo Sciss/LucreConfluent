@@ -20,7 +20,7 @@
   </component>
   <component name="DebuggerManager">
     <line_breakpoints>
-      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala" line="43" class="Class at Region.scala:43" package="">
+      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala" line="43" class="de.sciss.temporal.ex.Region" package="de.sciss.temporal.ex">
         <option name="ENABLED" value="true" />
         <option name="LOG_ENABLED" value="false" />
         <option name="LOG_EXPRESSION_ENABLED" value="false" />
@@ -47,6 +47,19 @@
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
       <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/trees/LexiTreeMap.scala" line="115" class="Class at LexiTreeMap.scala:115" package="">
+        <option name="ENABLED" value="true" />
+        <option name="LOG_ENABLED" value="false" />
+        <option name="LOG_EXPRESSION_ENABLED" value="false" />
+        <option name="SUSPEND_POLICY" value="SuspendAll" />
+        <option name="COUNT_FILTER_ENABLED" value="false" />
+        <option name="COUNT_FILTER" value="0" />
+        <option name="CONDITION_ENABLED" value="false" />
+        <option name="CLASS_FILTERS_ENABLED" value="false" />
+        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
+        <option name="CONDITION" value="" />
+        <option name="LOG_MESSAGE" value="" />
+      </breakpoint>
+      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" line="142" class="de.sciss.confluent.TotalOrder" package="de.sciss.confluent">
         <option name="ENABLED" value="true" />
         <option name="LOG_ENABLED" value="false" />
         <option name="LOG_EXPRESSION_ENABLED" value="false" />
@@ -104,7 +117,7 @@
       <file leaf-file-name="TotalOrder.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="1" column="14" selection-start="18" selection-end="18" vertical-scroll-proportion="0.0">
+            <state line="168" column="0" selection-start="5133" selection-end="5133" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -113,16 +126,16 @@
       <file leaf-file-name="PackageObject.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="1" column="17" selection-start="21" selection-end="21" vertical-scroll-proportion="0.0">
+            <state line="30" column="7" selection-start="1019" selection-end="1019" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Version.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Version.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="116" column="6" selection-start="3477" selection-end="3477" vertical-scroll-proportion="2.4472573">
+            <state line="90" column="9" selection-start="2769" selection-end="2769" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -146,10 +159,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="1" column="25" selection-start="29" selection-end="29" vertical-scroll-proportion="0.0">
+            <state line="129" column="0" selection-start="3805" selection-end="3805" vertical-scroll-proportion="0.8129676">
               <folding />
             </state>
           </provider>
@@ -176,10 +189,10 @@
         <option value="$PROJECT_DIR$/src/de/sciss/trees/LexiTreeMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
       </list>
     </option>
@@ -517,14 +530,14 @@
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.39973614" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32189974" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24925373" sideWeight="0.3364865" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2474074" sideWeight="0.66886544" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2474074" sideWeight="0.59102905" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32849604" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -622,28 +635,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="17" selection-start="21" selection-end="21" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="14" selection-start="18" selection-end="18" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="17" selection-start="21" selection-end="21" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="1" column="25" selection-start="29" selection-end="29" vertical-scroll-proportion="0.0">
+        <state line="30" column="7" selection-start="1019" selection-end="1019" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
@@ -655,9 +647,30 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="1" column="17" selection-start="21" selection-end="21" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="168" column="0" selection-start="5133" selection-end="5133" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="116" column="6" selection-start="3477" selection-end="3477" vertical-scroll-proportion="2.4472573">
+        <state line="90" column="9" selection-start="2769" selection-end="2769" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="129" column="0" selection-start="3805" selection-end="3805" vertical-scroll-proportion="0.8129676">
           <folding />
         </state>
       </provider>

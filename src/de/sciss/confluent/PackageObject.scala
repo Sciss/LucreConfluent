@@ -28,7 +28,7 @@
 
 package de.sciss
 
-import scala.collection.immutable.{ IntMap, Seq => ISeq, SortedSet => ISortedSet }
+import collection.immutable.{ IntMap, Seq => ISeq, SortedSet => ISortedSet }
 
 package object confluent {
 //   type VersionID       = Int

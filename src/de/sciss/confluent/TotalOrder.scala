@@ -35,7 +35,7 @@ import math.Ordering.{ Long => LongOrd }
  *    by Dietz and Sleator. I'm not smart enough to implement the worst-case version,
  *    so this might eventually produce trouble in a real-time context.
  *
- *    @version 0.10, 21-Mar-09
+ *    @version 0.11, 22-Mar-09
  */
 object TotalOrder {
    private type Tag = Long
@@ -46,10 +46,12 @@ object TotalOrder {
       private[TotalOrder] var succ: Record
    }
 
-   class UserRecord[ T ]( val elem: T, private[TotalOrder] var v: Long /* Tag */,
+   class UserRecord[ T ] private[TotalOrder] ( val elem: T, private[TotalOrder] var v: Long /* Tag */,
                           private[TotalOrder] var pred: Record,
                           private[TotalOrder] var succ: Record )
-   extends Record
+   extends Record {
+      override def toString = "URec(" + v + " -> " + elem + ")"
+   }
 
    // note: we need headroom to perform wj * k!
    // this is the maximum mask for which holds:
@@ -139,16 +141,16 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
       if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
 
       val v0      = x.v
-      var j       = 1
+      var j       = 1L  // careful to use long since we do j*j
       val sx      = x.succ
       var iter    = sx
-      var wj      = ((iter.v - v0) & mask)
+      var wj      = if( j < n ) ((iter.v - v0) & mask) else m
       while( wj <= (j*j) ) {
          iter     = iter.succ
          j       += 1
-         wj       = ((iter.v - v0) & mask)
+         wj       = if( j < n ) ((iter.v - v0) & mask) else m
       }
-      var k       = 1
+      var k       = 1L
       iter        = sx
       while( k < j ) {
          iter.v   = (wj * k / j + v0) & mask
@@ -160,6 +162,8 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
       val vy      = (((v0 - vb) & mask) + vbxstar) / 2
 
       val rec     = new URec( y, vy, x, sx )
+      x.succ      = rec
+      sx.pred     = rec
 
       n += 1
       rec
@@ -169,5 +173,7 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
       var v: Tag = 0 // arbitrary
       var pred: Record = this
       var succ: Record = this
+
+      override def toString = "Base(" + v + ")"
    }
 }

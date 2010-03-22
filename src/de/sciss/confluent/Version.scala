@@ -28,7 +28,7 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{ Queue, Seq => ISeq }
+import collection.immutable.{ Vector }
 
 /**
  *    Note: this is a sub-_tree_,
@@ -127,7 +127,7 @@ trait VersionPath {
 object VersionPath {
    val init: VersionPath = {
       val vinit = Version.init 
-      new VersionPathImpl( vinit, Queue( vinit, vinit ))
+      new VersionPathImpl( vinit, Vector( vinit, vinit ))
    }
 
    private case class VersionPathImpl( version: Version, path: CompressedPath )

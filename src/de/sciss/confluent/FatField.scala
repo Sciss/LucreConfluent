@@ -30,7 +30,7 @@ package de.sciss.confluent
 
 trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
-   protected val lexi = new LexiTreeMap[ Version, BinaryTreeMap[ Version, V ]]()( Version.IDOrdering )
+   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IDOrdering )
 
    def inspect {
       lexi.inspect
@@ -42,21 +42,28 @@ trait FatField[ V ] {
  */
 class FatValue[ V ] extends FatField[ V ] {
 	def assign( version: CompressedPath, value: V ) {
-      val idx  = version.dropRight( 1 )   // XXX this might not be optimal
-      val t    = version.last
-      val previous = lexi.find( idx ) getOrElse {
-         access( version ).map( lastValue => {
-            BinaryTreeMap( idx.last -> lastValue )( Version.AncestorOrdering )
-         }) getOrElse BinaryTreeMap.empty( Version.AncestorOrdering )
+      val idx        = version.dropRight( 1 )   // XXX this might not be optimal
+      val newEntry   = (version.last -> value)
+      lexi.find( idx ).map( oracle => {
+         // note: we update the mutable oracle, no need to call lexi.insert
+//         println( "BEFORE " + oracle )
+         oracle += newEntry
+//         println( "AFTER " + oracle )
+      }) getOrElse {
+         // create a new oracle with new entry and
+         // tree-entrance-entry (if found),
+         // then insert oracle into the lexi
+         val oracle = access( version ).map( lastValue => {
+            OracleMap( idx.last -> lastValue, newEntry )
+         }) getOrElse OracleMap( newEntry )
+         lexi.insert( idx, oracle )
       }
-      val next = previous + (t -> value)
-      lexi.insert( idx, next )
 	}
 
 	def access( version: CompressedPath ) : Option[ V ] = {
 //      val idx  = version.dropRight( 1 )   // XXX this might not be optimal
 //      val t    = version.last
-		lexi.findMaxPrefix( version ).map( _.getClosestLessOrEqualTo( version.last )) getOrElse None
+		lexi.findMaxPrefix( version ).map( _.query( version.last )) getOrElse None
 //
 //         // XXX here is a mistake (and thus we cannot use IntMap): we need the DSST
 //         // struct to find out the most recent ancestor of t instead of get( t )!!!

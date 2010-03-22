@@ -202,7 +202,7 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
          val key = iter.next
          splay( key, sup )
          val n = sup.middle
-         if( (n == null) || (compare( key, n.key ) == 0) ) return None
+         if( (n == null) || (compare( key, n.key ) != 0) ) return None
          sup = n
          if( !iter.hasNext ) {
             return if( n.terminal ) Some( n.value ) else None

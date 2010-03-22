@@ -32,16 +32,7 @@ trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
    /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IDOrdering )
 
-   def inspect {
-      lexi.inspect
-   }
-}
-
-/**
- * 	@version	   0.13, 22-Mar-09
- */
-class FatValue[ V ] extends FatField[ V ] {
-	def assign( version: CompressedPath, value: V ) {
+   def assign( version: CompressedPath, value: V ) {
       val idx        = version.dropRight( 1 )
 //      val newEntry   = (version.last -> value)
 // SUCKY VECTOR DOES NOT IMPLEMENT LAST AS OF 22-MAR-10
@@ -55,23 +46,29 @@ class FatValue[ V ] extends FatField[ V ] {
          // create a new oracle with new entry and
          // tree-entrance-entry (if found),
          // then insert oracle into the lexi
-         val oracle = access( version ).map( lastValue => {
+         val oracle = accessPlain( version ).map( lastValue => {
             OracleMap( idx.last -> lastValue, newEntry )
          }) getOrElse OracleMap( newEntry )
          lexi.insert( idx, oracle )
       }
+   }
+
+   protected def accessPlain( version: CompressedPath ) : Option[ V ] = {
+		lexi.findMaxPrefix( version ).map( _.query( version.last )) getOrElse None
 	}
 
-	def access( version: CompressedPath ) : Option[ V ] = {
-//      val idx  = version.dropRight( 1 )   // XXX this might not be optimal
-//      val t    = version.last
-		lexi.findMaxPrefix( version ).map( _.query( version.last )) getOrElse None
-//
-//         // XXX here is a mistake (and thus we cannot use IntMap): we need the DSST
-//         // struct to find out the most recent ancestor of t instead of get( t )!!!
-//         order.get( t ) orElse (idx.lastOption.map( order.get( _ )) getOrElse None)
-//      }) getOrElse None
-	}
+   def inspect {
+      lexi.inspect
+   }
+}
+
+/**
+ * 	@version	   0.13, 22-Mar-09
+ *    @todo       use Vector.last once it is properly implemented
+ *    @todo       Vector.++ is inefficient i guess, should use a catenable Deque instead! 
+ */
+class FatValue[ V ] extends FatField[ V ] {
+	def access( version: CompressedPath ) : Option[ V ] = accessPlain( version )
 
 //	def get()( implicit version: Version ) : T = {
 //		pa.findMaxPrefix( version.path )
@@ -87,6 +84,7 @@ class FatValue[ V ] extends FatField[ V ] {
 }
 
 class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
+   type I = FatIdentifier[ V ]
 
 //	def assign( path: CompressedPath, valuePath: CompressedPath, value: T ) {
 //		pa.insert( path, FatIdentifier( valuePath, value ))
@@ -104,14 +102,10 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 //		pa.find( version )
 //	}
 
-//	def access( version: CompressedPath ) : FatIdentifier[ T ] = {
-//	  	val (idOption, off) = map.findMaxPrefix2( version )
-//      idOption.map( id => {
-//         id.substitute( version, off )
-//      }) getOrElse {
-//         FatIdentifier( version, null.asInstanceOf[ T ])
-//      }
-//	}
+	def access( version: CompressedPath ) : Option[ I ] = {
+      val (idOption, off) = lexi.findMaxPrefix2( version )
+      idOption.map( _.query( version.last ).map( _.substitute( version, off ))) getOrElse None
+	}
 
 //   // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
 //   def get2()( implicit version: Version ) : FatIdentifier[ T ] = {
@@ -143,17 +137,23 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 }
 
 case class FatIdentifier[ V ]( path: CompressedPath, value: V ) {
+   type I = FatIdentifier[ V ] 
+
 //	def append( i: Int ) : FatIdentifier[ T ] = {
 //	  	FatIdentifier( path ++ List( i ), value ) // XXX inefficient
 //	}
 
-	def setValue( v: V ) : FatIdentifier[ V ] = FatIdentifier( path, v )
+	def setValue( v: V ) : I = FatIdentifier( path, v )
 
-//	def substitute( accessPath: Seq[ Int ], off: Int ) : FatIdentifier[ T ] = {
-//	  	// XXX inefficient
-//	  	val sub = path ++ accessPath.drop( off )
-//	  	FatIdentifier( sub, value )
-//	}
+	def substitute( accessPath: CompressedPath, off: Int ) : I = {
+	  	// ++ XXX inefficient, should use a catenable Deque instead!
+//      println( "SUBSTITUTE " + path.size + " / " + off )
+      // i suspect that the code should be
+      // path.dropRight( 1 ) ++ accessPath.drop( off )
+//      val sub = path ++ accessPath.drop( off )
+	  	val sub = path.dropRight( 1 ) ++ accessPath.drop( off )
+	  	FatIdentifier( sub, value )
+	}
 
    override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
 }

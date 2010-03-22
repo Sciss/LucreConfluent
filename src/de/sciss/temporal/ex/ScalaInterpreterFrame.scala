@@ -132,6 +132,23 @@ x.access( id03.path )    // --> 33.3 OK
 x.assign( id03.path, 99.9 )
 x.access( id03.path )    // --> 99.9 OK
 x.access( id012.path )  // --> 44.4 OK
+
+val x = new FatValue[ Double ]
+val z = new FatValue[ Double ]
+val y = new FatPointer[ FatValue[ Double ]]
+val id0 = VersionPath.init
+y.access( id0.path )
+x.assign( id0.path, 33.3 )
+z.assign( id0.path, 66.6 )
+y.assign( id0.path, FatIdentifier( id0.path, x ))
+val yval = y.access( id0.path ).get
+yval.value.access( yval.path )
+val id01 = id0.newBranch
+y.assign( id01.path, FatIdentifier( id01.path, z ))
+val yval = y.access( id0.path ).get
+yval.value.access( yval.path )  // 33.3 OK
+val yval = y.access( id01.path ).get
+yval.value.access( yval.path )  // 66.6OK
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")

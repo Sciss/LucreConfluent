@@ -135,7 +135,7 @@ object VersionPath {
       def newBranch : VersionPath = {
          val newVersion = Version.newFrom( version )
          val newPath = // if( newVersion.level == version.level ) {
-            path.dropRight( 1 ) :+ newVersion
+         path.dropRight( 1 ) :+ newVersion
 //       } else {
 //          path :+ newVersion.id :+ newVersion.id
 //       }

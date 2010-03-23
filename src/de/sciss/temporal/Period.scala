@@ -28,14 +28,13 @@
 
 package de.sciss.temporal
 
-import scala.collection.mutable.{ WeakHashMap }
-import scala.util.{ Random }
-import scala.math._
+import util.{ Random }
+import math._
 
 trait PeriodLike extends MutableModel[ PeriodLike ] {
-   def isInstantiated: Boolean
-   def getValue: Option[ PeriodConst ]
-   def value = getValue getOrElse error( "Not realized" )
+//   def isInstantiated: Boolean
+   def getEval: Option[ PeriodConst ]
+   def eval = getEval getOrElse error( "Not realized" )
    def inf: PeriodConst   // PeriodConst ?
    def sup: PeriodConst   // PeriodConst ?
 
@@ -51,7 +50,7 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
 
    def overlaps( b: PeriodLike ) = if( inf < b.inf ) sup > b.inf else b.sup > inf
 
-   def ::( b: PeriodLike ) : IntervalLike = IntervalVar( b, this ) // note argument reversal
+   def ::( b: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( b, this ) // note argument reversal
 }
 
 trait RandomGen {
@@ -65,7 +64,7 @@ object UniformRandomGen extends RandomGen {
 }
 
 abstract class UnaryPeriodExpr( a: PeriodLike )
-extends PeriodVar {
+extends PeriodExpr {
    private val aDep = a.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
          val newThis = copy( newP ) // establishes new dependencies
@@ -73,16 +72,16 @@ extends PeriodVar {
       }
    })
 
-   def getValue: Option[ PeriodConst ] =
-      if( isInstantiated ) Some( eval( a.value )) else None
+   def getEval: Option[ PeriodConst ] =
+      if( isInstantiated ) Some( eval( a.eval )) else None
 
-   override def value = if( isInstantiated ) eval( a.value ) else error( "Not realized" )
+   override def eval = if( isInstantiated ) eval( a.eval ) else error( "Not realized" )
    protected def eval( av: PeriodConst ) : PeriodConst
    protected def copy( newA: PeriodLike ) : PeriodLike
 }
 
 abstract class BinaryPeriodExpr( a: PeriodLike, b: PeriodLike )
-extends PeriodVar {
+extends PeriodExpr {
    private val aDep = a.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
          val newThis = copy( newP, b ) // establishes new dependencies
@@ -96,10 +95,10 @@ extends PeriodVar {
       }
    })
 
-   def getValue: Option[ PeriodConst ] =
-      if( isInstantiated ) Some( eval( a.value, b.value )) else None
+   def getEval: Option[ PeriodConst ] =
+      if( isInstantiated ) Some( eval( a.eval, b.eval )) else None
 
-   override def value = if( isInstantiated ) eval( a.value, b.value ) else error( "Not realized" )
+   override def eval = if( isInstantiated ) eval( a.eval, b.eval ) else error( "Not realized" )
    protected def eval( av: PeriodConst, bv: PeriodConst ) : PeriodConst
    protected def copy( newA: PeriodLike, newB: PeriodLike ) : PeriodLike
 }
@@ -179,9 +178,9 @@ extends UnaryPeriodExpr( a ) {
    protected def copy( newA: PeriodLike ) : PeriodLike = -newA
 }
 
-trait PeriodVarLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
+trait PeriodExprLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
 
-abstract class PeriodVar extends PeriodVarLike {
+abstract class PeriodExpr extends PeriodExprLike {
    def isInstantiated = false
 
    def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
@@ -230,8 +229,8 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def unary_- = PeriodConst( -sec )
 
    def isInstantiated   = true
-   def getValue         = Some( this )
-   override def value   = this
+   def getEval          = Some( this )
+   override def eval    = this
    def inf              = this
    def sup              = this
 

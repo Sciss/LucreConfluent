@@ -109,7 +109,7 @@ object Version {
       }
    }
 
-   object IDOrdering extends Ordering[ Version ] {
+   object IdOrdering extends Ordering[ Version ] {
       def compare( x: Version, y: Version ) = x.id - y.id
    }
 }

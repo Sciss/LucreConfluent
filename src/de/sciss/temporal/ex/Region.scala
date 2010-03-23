@@ -16,7 +16,7 @@ object Region {
    }
 }
 
-class Region private( val name: String, val interval: IntervalVarLike, protected[ex] val handle: RegionHandle ) {
+class Region private( val name: String, val interval: IntervalLike, protected[ex] val handle: RegionHandle ) {
    private var removed = false
 
    private val ivDep = interval.addDependant( new IntervalDependant {
@@ -40,9 +40,9 @@ class Region private( val name: String, val interval: IntervalVarLike, protected
       handle.mgr.remove( this )
    }
 
-   def moveBy( delta: PeriodLike ) {
-      interval.replacedBy( interval.detach + delta ) // triggers replace
-   }
+//   def moveBy( delta: PeriodLike ) {
+//      interval.replacedBy( interval.detach + delta ) // triggers replace
+//   }
 
    override def toString = "Region(" + name + ", " + interval + ")"
 }

@@ -28,18 +28,16 @@
 
 package de.sciss.temporal
 
-import scala.collection.mutable.{ WeakHashMap }
-
 trait IntervalLike extends MutableModel[ IntervalLike ] {
    def start: PeriodLike
    def stop: PeriodLike
    def +( p: PeriodLike ): IntervalLike
    def -( p: PeriodLike ): IntervalLike
 
-   def detach: IntervalLike
+   def eval: IntervalConst
 }
 
-case class IntervalConst( val start: PeriodConst, val stop: PeriodConst )
+case class IntervalConst( start: PeriodConst, stop: PeriodConst )
 extends IntervalLike {
    def +( p: PeriodConst ) = IntervalConst( start + p, stop + p )
    def -( p: PeriodConst ) = IntervalConst( start - p, stop - p )
@@ -57,12 +55,12 @@ extends IntervalLike {
    // these are no-ops for a constant interval
    def addDependant( id: IntervalDependant ) = id
    def printDependants { println( "No dependants" )}
-   def detach: IntervalLike = this // no dependants
+   def eval: IntervalConst = this // no dependants
 
    override def toString = "(" + start + " :: " + stop + ")"
 }
 
-trait IntervalVarLike
+trait IntervalExprLike
 extends MutableModelImpl[ IntervalLike ] with IntervalLike {
    def +( p: PeriodLike ) = PlusIntervalPeriodExpr( this, p )
    def -( p: PeriodLike ) = MinusIntervalPeriodExpr( this, p )
@@ -75,28 +73,28 @@ extends MutableModelImpl[ IntervalLike ] with IntervalLike {
  *          eliminating the necessity to check for temporarily illegal intervals
  *          (start > stop)
  */
-case class IntervalVar( start: PeriodLike, stop: PeriodLike )
-extends IntervalVarLike {
+class IntervalPeriodExpr( val start: PeriodLike, val stop: PeriodLike )
+extends IntervalExprLike {
    private val startDep = start.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-         val newThis = IntervalVar( newP, stop )
+         val newThis = new IntervalPeriodExpr( newP, stop )
          replacedBy( newThis )
       }
    })
    private val stopDep = stop.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-         val newThis = IntervalVar( start, newP )
+         val newThis = new IntervalPeriodExpr( start, newP )
          replacedBy( newThis )
       }
    })
 
-   def detach: IntervalLike = IntervalVar( start, stop )
+   def eval: IntervalConst = IntervalConst( start.eval, stop.eval )
 
-   override def toString = "IV(" + start + " :: " + stop + ")"
+   override def toString = "Ix(" + start + " :: " + stop + ")"
 }
 
-abstract class IntervalPeriodExpr( a: IntervalLike, b: PeriodLike )
-extends IntervalVarLike {
+abstract class IntervalPeriodOpExpr( a: IntervalLike, b: PeriodLike )
+extends IntervalExprLike {
    private val aDep = a.addDependant( new IntervalDependant {
       def modelReplaced( oldI: IntervalLike, newI: IntervalLike ) {
          val newThis = copy( newI, b ) // establishes new dependencies
@@ -114,19 +112,21 @@ extends IntervalVarLike {
 }
 
 case class PlusIntervalPeriodExpr( a: IntervalLike, b: PeriodLike )
-extends IntervalPeriodExpr( a, b ) {
+extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start + b
    def stop  = a.stop + b
 
-   def detach: IntervalLike = PlusIntervalPeriodExpr( a, b )
+// def detach: IntervalLike = PlusIntervalPeriodExpr( a, b )
+   def eval: IntervalConst = a.eval + b.eval
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA + newB
 }
 
 case class MinusIntervalPeriodExpr( a: IntervalLike, b: PeriodLike )
-extends IntervalPeriodExpr( a, b ) {
+extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start - b
    def stop  = a.stop - b
 
-   def detach: IntervalLike = MinusIntervalPeriodExpr( a, b )
+//   def detach: IntervalLike = MinusIntervalPeriodExpr( a, b )
+   def eval: IntervalConst = a.eval - b.eval
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA - newB
 }

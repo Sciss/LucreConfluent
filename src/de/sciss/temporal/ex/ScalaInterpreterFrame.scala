@@ -149,6 +149,13 @@ val yval = y.access( id0.path ).get
 yval.value.access( yval.path )  // 33.3 OK
 val yval = y.access( id01.path ).get
 yval.value.access( yval.path )  // 66.6OK
+
+val r1 = Region( "Schoko", 0⏊00 :: 0⏊05 )
+r1.interval.fixed
+val id0 = VersionPath.init
+val id01 = id0.newBranch
+val r2 = Region( "Gaga", r1.interval )
+r2.interval.fixed
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")
@@ -168,6 +175,7 @@ yval.value.access( yval.path )  // 66.6OK
             implicit val rm = regionMgr
          """*/
 """
+            import de.sciss.temporal._
             import de.sciss.confluent._
 """
 )

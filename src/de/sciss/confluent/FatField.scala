@@ -30,7 +30,7 @@ package de.sciss.confluent
 
 trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
-   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IDOrdering )
+   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
 
    def assign( version: CompressedPath, value: V ) {
       val idx        = version.dropRight( 1 )

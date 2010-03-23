@@ -1,6 +1,6 @@
 package de.sciss.temporal
 
-import de.sciss.confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, _ }
+import de.sciss.confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, FatValue => FVal, _ }
 
 object VersionManagement {
    private var currentPathVar = VersionPath.init
@@ -8,28 +8,40 @@ object VersionManagement {
    def currentVersion: VersionPath   = currentPathVar
    def currentAccess: CompressedPath = currentPathVar.path
 
-   def get[ V ]( fptr: FPtr[ V ]) = {
-      val fid = fptr.access( currentAccess )
-      fid.get.value
+   def get[ V ]( fval: FVal[ V ]) = {
+      fval.access( currentAccess ).get
    }
 
-//   def set[ V ]( fptr: FPtr[ V ], value: V ) {
-//      fptr.assign( FId( currentAccess, value ))
-//   }
+   def set[ V ]( fval: FVal[ V ], value: V ) {
+      fval.assign( currentAccess, value )
+   }
 }
 
-class IntervalAccess( val path: CompressedPath, val fptr: FPtr[ IntervalLike ])
+//class IntervalAccess( val path: CompressedPath, val fptr: FPtr[ IntervalLike ])
+//extends IntervalExprLike {
+//   import VersionManagement._
+//
+//   def start: PeriodLike = detach.start
+//   def stop: PeriodLike = detach.stop
+////   def +( p: PeriodLike ): IntervalLike
+////   def -( p: PeriodLike ): IntervalLike
+//
+//   def eval: IntervalConst = detach.eval
+//   def detach: IntervalLike = get( fptr ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
+////   def set( i: IntervalLike ) = set( fptr, i )
+//}
+
+class IntervalProxy( fi: FVal[ IntervalLike ])
 extends IntervalExprLike {
    import VersionManagement._
 
-   def start: PeriodLike = detach.start
-   def stop: PeriodLike = detach.stop
+   def start: PeriodLike   = access.start
+   def stop: PeriodLike    = access.stop
 //   def +( p: PeriodLike ): IntervalLike
 //   def -( p: PeriodLike ): IntervalLike
 
-   def eval: IntervalConst = detach.eval
-   def detach: IntervalLike = get( fptr ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
-//   def set( i: IntervalLike ) = set( fptr, i )
+   def fixed: IntervalLike = access.fixed
+   @inline private def access: IntervalLike = get( fi ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
 }
 
 object Region {
@@ -46,16 +58,10 @@ object Region {
 class Region private ( val name: String ) {
    import VersionManagement._
 
-   private val intervalPtr = new FPtr[ IntervalLike ]
-   def interval: IntervalLike = new IntervalAccess( currentAccess, intervalPtr )
+   private val fi = new FVal[ IntervalLike ]
+//   def interval: IntervalLike = new IntervalAccess( currentAccess, intervalPtr )
+   def interval: IntervalLike = new IntervalProxy( fi )
    def interval_=( i: IntervalLike ) = {
-      // XXX should match here against IntervalAccess to prevent loops (e.g. r.interval = r.interval)
-      val fid = i match {
-         case ia: IntervalAccess => FId( ia.path, ia.detach )
-         case _ => FId( currentAccess, i )
-      }
-      intervalPtr.assign( currentAccess, fid )
-
-//      set( intervalPtr, i )
+       set( fi, i )
    }
 }

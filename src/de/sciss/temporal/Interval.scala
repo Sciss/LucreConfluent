@@ -34,7 +34,7 @@ trait IntervalLike extends MutableModel[ IntervalLike ] {
    def +( p: PeriodLike ): IntervalLike
    def -( p: PeriodLike ): IntervalLike
 
-   def eval: IntervalConst
+   def fixed: IntervalLike
 }
 
 case class IntervalConst( start: PeriodConst, stop: PeriodConst )
@@ -55,7 +55,8 @@ extends IntervalLike {
    // these are no-ops for a constant interval
    def addDependant( id: IntervalDependant ) = id
    def printDependants { println( "No dependants" )}
-   def eval: IntervalConst = this // no dependants
+//   def eval: IntervalConst = this // no dependants
+   def fixed: IntervalConst = this // no dependants
 
    override def toString = "(" + start + " :: " + stop + ")"
 }
@@ -88,7 +89,8 @@ extends IntervalExprLike {
       }
    })
 
-   def eval: IntervalConst = IntervalConst( start.eval, stop.eval )
+//   def eval: IntervalConst = IntervalConst( start.eval, stop.eval )
+   def fixed: IntervalLike = start.fixed :: stop.fixed
 
    override def toString = "Ix(" + start + " :: " + stop + ")"
 }
@@ -117,7 +119,8 @@ extends IntervalPeriodOpExpr( a, b ) {
    def stop  = a.stop + b
 
 // def detach: IntervalLike = PlusIntervalPeriodExpr( a, b )
-   def eval: IntervalConst = a.eval + b.eval
+//   def eval: IntervalConst = a.eval + b.eval
+   def fixed: IntervalLike = a.fixed + b.fixed
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA + newB
 }
 
@@ -127,6 +130,7 @@ extends IntervalPeriodOpExpr( a, b ) {
    def stop  = a.stop - b
 
 //   def detach: IntervalLike = MinusIntervalPeriodExpr( a, b )
-   def eval: IntervalConst = a.eval - b.eval
+//   def eval: IntervalConst = a.eval - b.eval
+   def fixed: IntervalLike = a.fixed - b.fixed
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA - newB
 }

@@ -114,10 +114,19 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Holder.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Holder.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="58" column="14" selection-start="1796" selection-end="1826" vertical-scroll-proportion="0.8312236">
+            <state line="42" column="41" selection-start="1357" selection-end="1357" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="RegionManager.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionManager.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="8" column="6" selection-start="201" selection-end="201" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -126,7 +135,16 @@
       <file leaf-file-name="Interval.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="62" column="22" selection-start="1971" selection-end="1987" vertical-scroll-proportion="0.0">
+            <state line="41" column="29" selection-start="1328" selection-end="1328" vertical-scroll-proportion="-5.5384617">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Period.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="280" column="6" selection-start="9644" selection-end="9644" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -135,7 +153,7 @@
       <file leaf-file-name="FatField.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="69" column="6" selection-start="2471" selection-end="2471" vertical-scroll-proportion="0.0">
+            <state line="41" column="50" selection-start="1623" selection-end="1623" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -150,28 +168,19 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CRegion.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/CRegion.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="4" column="6" selection-start="113" selection-end="113" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="PackageObject.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="21" selection-start="450" selection-end="450" vertical-scroll-proportion="0.0">
+            <state line="8" column="12" selection-start="306" selection-end="307" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="151" column="0" selection-start="4538" selection-end="4538" vertical-scroll-proportion="0.0">
+            <state line="177" column="36" selection-start="5318" selection-end="5318" vertical-scroll-proportion="0.78762305">
               <folding />
             </state>
           </provider>
@@ -195,14 +204,14 @@
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Period.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Period.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
       </list>
     </option>
   </component>
@@ -301,6 +310,32 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="temporal" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="sciss" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="temporal" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="ex" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -533,7 +568,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="22" width="1392" height="878" extended-state="0" />
+    <frame x="2" y="22" width="1392" height="878" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -546,7 +581,7 @@
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24925373" sideWeight="0.3364865" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24869695" sideWeight="0.66886544" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24869695" sideWeight="0.6622691" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32849604" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -589,13 +624,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionManager.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="2" column="7" selection-start="37" selection-end="37" vertical-scroll-proportion="0.043290045">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/Version.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="100" column="79" selection-start="3032" selection-end="3032" vertical-scroll-proportion="0.57865167">
@@ -631,13 +659,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="151" column="0" selection-start="4538" selection-end="4538" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="41" column="50" selection-start="1558" selection-end="1558" vertical-scroll-proportion="0.6835443">
@@ -645,30 +666,16 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionManager.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="52" column="48" selection-start="1812" selection-end="1812" vertical-scroll-proportion="0.21518987">
+        <state line="8" column="6" selection-start="201" selection-end="201" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/CRegion.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="4" column="6" selection-start="113" selection-end="113" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="18" column="40" selection-start="611" selection-end="629" vertical-scroll-proportion="0.35161743">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="21" selection-start="450" selection-end="450" vertical-scroll-proportion="0.0">
+        <state line="4" column="6" selection-start="113" selection-end="113" vertical-scroll-proportion="0.08438819">
           <folding />
         </state>
       </provider>
@@ -680,23 +687,51 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="62" column="22" selection-start="1971" selection-end="1987" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="69" column="6" selection-start="2471" selection-end="2471" vertical-scroll-proportion="0.0">
+        <state line="6" column="36" selection-start="241" selection-end="241" vertical-scroll-proportion="0.08438819">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="58" column="14" selection-start="1796" selection-end="1826" vertical-scroll-proportion="0.8312236">
+        <state line="42" column="41" selection-start="1357" selection-end="1357" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="41" column="29" selection-start="1328" selection-end="1328" vertical-scroll-proportion="-5.5384617">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="41" column="50" selection-start="1623" selection-end="1623" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="280" column="6" selection-start="9644" selection-end="9644" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="8" column="12" selection-start="306" selection-end="307" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="177" column="36" selection-start="5318" selection-end="5318" vertical-scroll-proportion="0.78762305">
           <folding />
         </state>
       </provider>

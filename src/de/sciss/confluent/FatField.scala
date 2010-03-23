@@ -35,8 +35,8 @@ trait FatField[ V ] {
    def assign( version: CompressedPath, value: V ) {
       val idx        = version.dropRight( 1 )
 //      val newEntry   = (version.last -> value)
-// SUCKY VECTOR DOES NOT IMPLEMENT LAST AS OF 22-MAR-10
-      val newEntry   = (version.takeRight( 1 ).head -> value)
+// VECTOR DOES NOT IMPLEMENT LAST AS OF 22-MAR-10
+      val newEntry   = (version( version.length - 1 ) -> value)
       lexi.find( idx ).map( oracle => {
          // note: we update the mutable oracle, no need to call lexi.insert
 //         println( "BEFORE " + oracle )

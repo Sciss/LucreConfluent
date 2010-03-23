@@ -141,10 +141,19 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="FatField.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="FatField.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="149" column="22" selection-start="5141" selection-end="5200" vertical-scroll-proportion="0.50549453">
+            <state line="37" column="2" selection-start="1355" selection-end="1355" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Period.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="252" column="66" selection-start="8520" selection-end="8521" vertical-scroll-proportion="0.5907173">
               <folding />
             </state>
           </provider>
@@ -542,7 +551,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="27" y="22" width="1393" height="878" extended-state="0" />
+    <frame x="0" y="22" width="1392" height="878" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -555,9 +564,9 @@
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24925373" sideWeight="0.3364865" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24851191" sideWeight="0.6622691" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24869695" sideWeight="0.6622691" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32849604" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32849604" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -598,11 +607,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="94" column="34" selection-start="3183" selection-end="3246" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/immutable/Queue.class">
       <provider selected="true" editor-type-id="text-editor">
         <state line="17" column="0" selection-start="1348" selection-end="1348" vertical-scroll-proportion="0.0" />
@@ -695,7 +699,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="149" column="22" selection-start="5141" selection-end="5200" vertical-scroll-proportion="0.50549453">
+        <state line="37" column="2" selection-start="1355" selection-end="1355" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Period.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="252" column="66" selection-start="8520" selection-end="8521" vertical-scroll-proportion="0.5907173">
           <folding />
         </state>
       </provider>

@@ -27,15 +27,6 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/libraries/jsyntaxpane-0.9.5-b29.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
           <root url="jar://$MODULE_DIR$/libraries/jung-algorithms-2.0.jar!/" />
         </CLASSES>
         <JAVADOC />
@@ -73,6 +64,15 @@
       <library>
         <CLASSES>
           <root url="jar://$MODULE_DIR$/libraries/collections-generic-4.01.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/libraries/ScalaInterpreterPane.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

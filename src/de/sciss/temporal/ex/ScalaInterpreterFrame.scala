@@ -29,8 +29,10 @@
 package de.sciss.temporal.ex
 
 import java.awt.event.{ InputEvent, KeyEvent }
-import javax.swing.{ WindowConstants, JFrame, KeyStroke }
 import scala.tools.nsc.{ Interpreter }
+import javax.swing._
+import java.awt.GraphicsEnvironment
+import de.sciss.scalainterpreter.{ LogPane, ScalaInterpreterPane }
 
 class ScalaInterpreterFrame( implicit mgr: RegionManager )
 extends JFrame( "Scala Interpreter" ) {
@@ -38,12 +40,13 @@ extends JFrame( "Scala Interpreter" ) {
    // ---- constructor ----
    {
       val cp = getContentPane
-      val ip = new ScalaInterpreterPane {
-         override protected def createInitialBindings( in: Interpreter ) {
-            in.bind( "regionMgr", mgr.getClass.getName, mgr )
-         }
+      val ip = new ScalaInterpreterPane
 
-         override protected def initialText = {
+//      ip.bindingsCreator = Some( in => {
+//         in.bind( "regionMgr", mgr.getClass.getName, mgr )
+//      })
+
+      ip.initialText = ip.initialText +
 /*            super.initialText + """
 val r1 = Region( "Test", 0⏊00 :: 3⏊00 )
 val r2 = Region( "Dep", r1.interval + 1⏊00 )
@@ -115,7 +118,7 @@ iv4.span    // --> nope
 val iv4b = PlusInterval2( r3.interval, 1.111 )
 iv4b.span   // --> nope
 """*/
-            super.initialText + """
+            """
 val x = new FatValue[ Double ]
 val id0 = VersionPath.init
 x.assign( id0.path, 33.3 )
@@ -163,38 +166,44 @@ r2.interval.fixed
 //            t += (30 -> "thirty")
 //            t += (100 -> "hundred")
 //            t += (0 -> "zero")
+
+//      ip.initialCode = Some(
+///*"""
+//            import de.sciss.temporal._
+//            import de.sciss.temporal.ex._
+//            import de.sciss.temporal.ex.Region._
+//            import de.sciss.trees._
+//            import de.sciss.trees.Version._
+//            implicit val rm = regionMgr
+//         """*/
+//"""
+//         import de.sciss.temporal._
+//         import de.sciss.confluent._
+//"""
+//      )
+
+      ip.customKeyProcessAction = Some( (e: KeyEvent) => {
+         e.getKeyChar match {
+            case 'π' => e.setKeyChar( '⏊' )
+            case '⁄' => e.setKeyChar( '⋯' )
+            case _ =>
          }
+         e
+      })
 
-         override protected def initialCode = Some(
-/*"""
-            import de.sciss.temporal._
-            import de.sciss.temporal.ex._
-            import de.sciss.temporal.ex.Region._
-            import de.sciss.trees._
-            import de.sciss.trees.Version._
-            implicit val rm = regionMgr
-         """*/
-"""
-            import de.sciss.temporal._
-            import de.sciss.confluent._
-"""
-)
+      val lp = new LogPane
+      lp.init
+      ip.out = Some( lp.writer )
 
-         override protected lazy val customKeyProcessAction = Some( (e: KeyEvent) => {
-//            println( "GOT " + e )
-
-//            if( /*(e.getID == KeyEvent.KEY_TYPED) &&*/ (e.getKeyCode == KeyEvent.VK_P) &&
-//               ((e.getModifiers & InputEvent.ALT_MASK) != 0) ) {}
-            e.getKeyChar match {
-               case 'π' => e.setKeyChar( '⏊' )
-               case '⁄' => e.setKeyChar( '⋯' )
-               case _ =>
-            }
-            e
-         })
-      }
-      cp.add( ip )
-      setSize( 400, 400 )
+      ip.init
+      val sp = new JSplitPane( SwingConstants.HORIZONTAL )
+      sp.setTopComponent( ip )
+      sp.setBottomComponent( lp )
+      cp.add( sp )
+      val b = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
+      setSize( b.width / 2, b.height * 5 / 6 )
+//      sp.setDividerLocation( 0.8 )
+      sp.setDividerLocation( b.height * 2 / 3 )
       setLocationRelativeTo( null )
       setDefaultCloseOperation( WindowConstants.EXIT_ON_CLOSE )
       setVisible( true )

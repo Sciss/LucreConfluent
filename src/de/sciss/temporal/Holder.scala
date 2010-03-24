@@ -42,6 +42,8 @@ extends IntervalExprLike {
 
    def fixed: IntervalLike = access.fixed
    @inline private def access: IntervalLike = get( fi ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
+
+   override def toString = try { access.toString } catch { case _ => super.toString }
 }
 
 object Region {
@@ -63,5 +65,12 @@ class Region private ( val name: String ) {
    def interval: IntervalLike = new IntervalProxy( fi )
    def interval_=( i: IntervalLike ) = {
        set( fi, i )
+   }
+
+   override def toString = "Region( " + name + ", " + (try { get( fi ).toString } catch { case _ => fi.toString }) + " )"
+
+   def inspect {
+      println( toString )
+      fi.inspect
    }
 }

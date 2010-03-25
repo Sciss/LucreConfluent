@@ -32,7 +32,7 @@ import collection.immutable.{ Vector }
 
 package object confluent {
 //   type VersionID       = Int
-   type VersionVertex     = TotalOrder.UserRecord[ Version ]
+   type VersionRecord      = TotalOrder.UserRecord[ Version ]
 // XXX this doesn't go well with the lexi tree
 //   type CompressedPath  = ISeq[ Tuple2[ VersionID, VersionID ]]
    type CompressedPath  = Vector[ Version ]

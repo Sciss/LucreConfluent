@@ -112,19 +112,26 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
       n -= 1
    }
 
-//   /**
-//    *    Inserts the first element
-//    *    into the order. This throws an
-//    *    exception if there already elements
-//    *    in the order.
-//    *
-//    *    @param   y  the element to insert
-//    *    @return     the corresponding record
-//    */
-//   def insert( y: T ) : Rec = {
-//      require( n == 1 )
-//      insert( Base, y )
-//   }
+   /**
+    *    Inserts the first element
+    *    into the order. This throws an
+    *    exception if there already elements
+    *    in the order.
+    *
+    *    @param   y  the element to insert
+    *    @return     the corresponding record
+    */
+   def insertFirst( y: T ) : URec = {
+      require( n == 1 )
+      insertAfter( Base, y )
+   }
+
+   def insertBefore( x: Record, y: T ) : URec = {
+//      if( n == nmax ) error( "Maximum capacity reached" )
+      if( x == Base ) error( "Should not insert element before base")
+
+      insertAfter( x.pred, y )
+   }
 
    /**
     *    Inserts an element 'y' immediately after 
@@ -136,9 +143,9 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
     * @param y the element to insert
     * @returns the record for 'y'
     */
-   def insert( x: Record, y: T ) : URec = {
+   def insertAfter( x: Record, y: T ) : URec = {
       if( n == nmax ) error( "Maximum capacity reached" )
-      if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
+//      if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
 
       val v0      = x.v
       var j       = 1L  // careful to use long since we do j*j

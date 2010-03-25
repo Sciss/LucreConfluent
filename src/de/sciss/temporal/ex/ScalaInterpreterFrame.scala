@@ -122,15 +122,17 @@ iv4b.span   // --> nope
 val x = new FatValue[ Double ]
 val id0 = VersionPath.init
 x.assign( id0.path, 33.3 )
+x.access( id0.path )
 x.inspect
-val id01 = id0.newBranch
+val id01 = versionStep
 x.assign( id01.path, 44.4 )
 x.inspect
-val id012 = id01.newBranch
+val id012 = versionStep
 x.access( id012.path )  // --> 44.4 OK
 x.access( id01.path )   // --> 44.4 OK
 x.access( id0.path )    // --> 33.3 OK
-val id03 = id0.newBranch
+makeCurrent( id0 )
+val id03 = versionStep
 x.access( id03.path )    // --> 33.3 OK
 x.assign( id03.path, 99.9 )
 x.access( id03.path )    // --> 99.9 OK
@@ -156,9 +158,23 @@ yval.value.access( yval.path )  // 66.6OK
 val r1 = Region( "Schoko", 0⏊00 :: 0⏊05 )
 r1.interval.fixed
 val id0 = VersionPath.init
-val id01 = id0.newBranch
+val id01 = versionStep
 val r2 = Region( "Gaga", r1.interval )
 r2.interval.fixed
+r2.inspect
+val id012 = versionStep
+makeCurrent( id0 )
+r1  // 0 bis 5 OK
+r2  // No Value OK
+//val id031 = id03 ... ??
+val id03 = versionStep
+r1.interval = 0⏊07 :: 0⏊11
+id03.version.tree.order.compare( id03.version.vertex, id01.version.vertex )
+id03.version.tree.order.compare( id03.version.vertex, id0.version.vertex )
+0 < 03 < 01
+val fval = r1.interval.asInstanceOf[IntervalProxy].fi
+val tree = fval.lexi.find( id0.path.dropRight( 1 )).get
+tree.query( id012.path.last ) // oddly this returns the v3 entry
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")
@@ -167,20 +183,21 @@ r2.interval.fixed
 //            t += (100 -> "hundred")
 //            t += (0 -> "zero")
 
-//      ip.initialCode = Some(
-///*"""
-//            import de.sciss.temporal._
-//            import de.sciss.temporal.ex._
-//            import de.sciss.temporal.ex.Region._
-//            import de.sciss.trees._
-//            import de.sciss.trees.Version._
-//            implicit val rm = regionMgr
-//         """*/
-//"""
-//         import de.sciss.temporal._
-//         import de.sciss.confluent._
-//"""
-//      )
+      ip.initialCode = Some(
+/*"""
+            import de.sciss.temporal._
+            import de.sciss.temporal.ex._
+            import de.sciss.temporal.ex.Region._
+            import de.sciss.trees._
+            import de.sciss.trees.Version._
+            implicit val rm = regionMgr
+         """*/
+"""
+         import de.sciss.temporal._
+         import de.sciss.confluent._
+         import de.sciss.temporal.VersionManagement._
+"""
+      )
 
       ip.customKeyProcessAction = Some( (e: KeyEvent) => {
          e.getKeyChar match {
@@ -194,6 +211,8 @@ r2.interval.fixed
       val lp = new LogPane
       lp.init
       ip.out = Some( lp.writer )
+      Console.setOut( lp.outputStream )
+      Console.setErr( lp.outputStream )
 
       ip.init
       val sp = new JSplitPane( SwingConstants.HORIZONTAL )

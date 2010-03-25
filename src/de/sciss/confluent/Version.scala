@@ -36,7 +36,9 @@ import collection.immutable.{ Vector }
  */
 trait VersionTree {
    val level: Int
-   val order: TotalOrder[ Version ]
+   def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex
+   val preOrder:  TotalOrder[ Version ]
+   val postOrder: TotalOrder[ Version ]
 }
 
 trait Version {
@@ -45,6 +47,8 @@ trait Version {
    def level:  Int
    val tree:   VersionTree
 }
+
+case class VersionVertex( preRec: VersionRecord, postRec: VersionRecord )
 
 object Version {
    private var idValCnt = 0
@@ -66,9 +70,9 @@ object Version {
       // second case, each time a new tree is created, although
       // we might then have several trees with the same level.
       // this is indicated by figure 5 (p. 22)
-      val (level, predO) = vs.foldLeft[ Tuple2[ Int, Option[ Version ]]]( (0, None) )( (tup, v) => {
-         val (level, predO) = tup
-         predO.map( pred => {
+      val (level, parentO) = vs.foldLeft[ Tuple2[ Int, Option[ Version ]]]( (0, None) )( (tup, v) => {
+         val (level, parentO) = tup
+         parentO.map( parent => {
             if( v.level == level ) {
                (level + 1, None)
             } else if( v.level > level ) {
@@ -80,18 +84,13 @@ object Version {
       })
 
       val idVal = idValCnt; idValCnt += 1
-      val (tree, pred) = predO.map( pred => {
-         pred.tree -> pred.vertex
-      }) getOrElse {
-         val tree = new VersionTreeImpl( level )
-         tree -> tree.order.Base
-      }
-      new VersionImpl( idVal, tree, pred )
+      val tree = parentO.map( _.tree ) getOrElse new VersionTreeImpl( level )
+      new VersionImpl( idVal, tree, parentO )
    }
 
-   private class VersionImpl( val id: Int, val tree: VersionTree, pred: TotalOrder.Record )
+   private class VersionImpl( val id: Int, val tree: VersionTree, parent: Option[ Version ])
    extends Version {
-      val vertex = tree.order.insert( pred, this )
+      val vertex = tree.insert( parent, this )
       def level: Int = tree.level
 
       override def toString = "v" + id
@@ -99,13 +98,26 @@ object Version {
 
    private class VersionTreeImpl( val level: Int )
    extends VersionTree {
-      val order = new TotalOrder[ Version ]
+      val preOrder   = new TotalOrder[ Version ]
+      val postOrder  = new TotalOrder[ Version ]
+
+      def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex = {
+         parent.map( p => {
+            val preRec  = preOrder.insertAfter( p.vertex.preRec, newVersion )
+            val postRec = postOrder.insertBefore( p.vertex.postRec, newVersion )
+            VersionVertex( preRec, postRec )
+         }) getOrElse {
+            val preRec  = preOrder.insertFirst( newVersion )
+            val postRec = postOrder.insertFirst( newVersion )
+            VersionVertex( preRec, postRec )
+         }
+      }
    }
 
    object AncestorOrdering extends Ordering[ Version ] {
       def compare( x: Version, y: Version ) = {
          require( x.tree == y.tree )
-         x.tree.order.compare( x.vertex, y.vertex )
+         x.tree.preOrder.compare( x.vertex.preRec, y.vertex.postRec )
       }
    }
 

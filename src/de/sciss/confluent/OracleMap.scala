@@ -33,6 +33,13 @@ class OracleMap[ V ] private ( private var tree: BinaryTreeMap[ Version, V ]) {
 }
 */
 
+/**
+ *    Note: this is a simple O(n) implementation.
+ *    We didn't bother to optimize it, as the approach with
+ *    TotalOrder would in any case require a two dimensional search.
+ *    Eventually we should implement the algorithm described by
+ *    Alstrup et al. in "Marked Ancestor Problems" (section 5 and 6) 
+ */
 object OracleMap {
 //   def empty[ V ]: OracleMap[ V ] = new OracleMap( BinaryTreeMap.empty( Version.AncestorOrdering ))
 

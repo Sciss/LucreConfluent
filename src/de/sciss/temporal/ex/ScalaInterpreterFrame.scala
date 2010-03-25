@@ -169,12 +169,8 @@ r2  // No Value OK
 //val id031 = id03 ... ??
 val id03 = versionStep
 r1.interval = 0⏊07 :: 0⏊11
-id03.version.tree.order.compare( id03.version.vertex, id01.version.vertex )
-id03.version.tree.order.compare( id03.version.vertex, id0.version.vertex )
-0 < 03 < 01
-val fval = r1.interval.asInstanceOf[IntervalProxy].fi
-val tree = fval.lexi.find( id0.path.dropRight( 1 )).get
-tree.query( id012.path.last ) // oddly this returns the v3 entry
+makeCurrent( id012 )
+r1 // OK
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")

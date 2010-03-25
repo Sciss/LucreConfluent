@@ -31,27 +31,41 @@ package de.sciss.confluent
 import math.Ordering.{ Long => LongOrd }
 
 /**
- *    This is an implementation of the "Simple O(log n) Amortized Time Algorithm"
+ *    This is derived from an implementation of the "Simple O(log n) Amortized Time Algorithm"
  *    by Dietz and Sleator. I'm not smart enough to implement the worst-case version,
  *    so this might eventually produce trouble in a real-time context.
  *
- *    @version 0.11, 22-Mar-09
+ *    The original insert would _not_ produce a pre-order traversal of a tree as
+ *    claimed by DSST. to fix this, we add a special stop-marker record in the pre-order
+ *    version that allows us to jump to the end of a parent's children list in O(1)
+ *
+ *    @version 0.12, 25-Mar-09
  */
 object TotalOrder {
-   private type Tag = Long
+   type Tag = Long
 
-   trait Record {
-      private[TotalOrder] var v: Tag
-      private[TotalOrder] var pred: Record
-      private[TotalOrder] var succ: Record
+   trait Record[ T, Repr ] {
+      var v: Tag
+      var pred: Repr
+      var succ: Repr
+      def moveRight: Repr
+      def elem: T
    }
 
-   class UserRecord[ T ] private[TotalOrder] ( val elem: T, private[TotalOrder] var v: Long /* Tag */,
-                          private[TotalOrder] var pred: Record,
-                          private[TotalOrder] var succ: Record )
-   extends Record {
-      override def toString = "URec(" + v + " -> " + elem + ")"
-   }
+//   trait UserRecord[ T, Repr ] extends Record[ Repr ] {
+//      val elem: T
+//   }
+
+//   class UserRecord[ T ] private[TotalOrder] ( val elem: T, private[TotalOrder] var v: Long /* Tag */,
+//                          private[TotalOrder] var pred: Record,
+//                          private[TotalOrder] var succ: Record )
+//   extends Record {
+//      override def toString = "URec(" + v + " -> " + elem + ")"
+//   }
+
+//   trait UserRecord[ T ] extends Record {
+//      val elem: T
+//   }
 
    // note: we need headroom to perform wj * k!
    // this is the maximum mask for which holds:
@@ -61,12 +75,18 @@ object TotalOrder {
    private val nmax        = (math.sqrt( m ) - 1).toInt  // i.e. 2965819
 }
 
-class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
+abstract class TotalOrder[ T, Rec <: TotalOrder.Record[ T, Rec ]]
+extends Ordering[ Rec ] {
    import TotalOrder._
 
-   type URec = UserRecord[ T ]
 //   private val b     = new Record( 0 )
-   private var n     = 1   // i suppose we count the base... 
+   protected var n     = 1   // i suppose we count the base...
+
+   def insertChild( parent: Rec, child: T ) : Rec
+   protected def createRecord( child: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
+   protected val base: Rec
+
+//   type URec <: Rec with { def elem: T }
 
 //   // ---- constructor ----
 //   {
@@ -81,13 +101,13 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
     *    @param   y  the second record to compare
     *    @returns    true if x is an ancestor if y, false otherwise
     */
-   def getOrder( x: Record, y: Record ) : Boolean = compare( x, y ) < 0
+//   def getOrder( x: Record, y: Record ) : Boolean = compare( x, y ) < 0
 
    /**
     *    Implementation of the Ordering trait
     */
-   def compare( x: Record, y: Record ) : Int = {
-      val vb  = Base.v
+   def compare( x: Rec, y: Rec ) : Int = {
+      val vb  = base.v
       val vbx = (x.v - vb) & mask
       val vby = (y.v - vb) & mask
       LongOrd.compare( vbx, vby )
@@ -101,16 +121,16 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
     * @throws NullPointerException if trying to remove a record
     *             that had already been previously removed
     */
-   def remove( x: Record ) {
-      val pred    = x.pred
-      val succ    = x.succ
-      pred.succ   = succ
-      succ.pred   = pred
-      x.pred      = null
-      x.succ      = null
-
-      n -= 1
-   }
+//   def remove( x: Record ) {
+//      val pred    = x.pred
+//      val succ    = x.succ
+//      pred.succ   = succ
+//      succ.pred   = pred
+//      x.pred      = null
+//      x.succ      = null
+//
+//      n -= 1
+//   }
 
    /**
     *    Inserts the first element
@@ -118,69 +138,182 @@ class TotalOrder[ T ] extends Ordering[ TotalOrder.Record ] {
     *    exception if there already elements
     *    in the order.
     *
-    *    @param   y  the element to insert
+    *    @param   root  the element to insert
     *    @return     the corresponding record
     */
-   def insertFirst( y: T ) : URec = {
+   def insertRoot( root: T ) : Rec = {
       require( n == 1 )
-      insertAfter( Base, y )
-   }
-
-   def insertBefore( x: Record, y: T ) : URec = {
-//      if( n == nmax ) error( "Maximum capacity reached" )
-      if( x == Base ) error( "Should not insert element before base")
-
-      insertAfter( x.pred, y )
+      insertAfter( base, root )
    }
 
    /**
-    *    Inserts an element 'y' immediately after 
-    *    a given record 'x', creating and returning
-    *    a new record for it, and performing relabeling
-    *    if necessary
+    *    Inserts a child element
     *
-    * @param x the predecessor after which to insert
-    * @param y the element to insert
-    * @returns the record for 'y'
+    * @param   parent the parent after which to insert
+    * @param   child the element to insert
+    * @returns the child's record
     */
-   def insertAfter( x: Record, y: T ) : URec = {
+   protected def insertAfter( parent: Rec, child: T ) : Rec = {
       if( n == nmax ) error( "Maximum capacity reached" )
 //      if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
 
-      val v0      = x.v
+      val v0      = parent.v
       var j       = 1L  // careful to use long since we do j*j
-      val sx      = x.succ
-      var iter    = sx
+      val sp      = parent.moveRight
+      var iter    = sp
       var wj      = if( j < n ) ((iter.v - v0) & mask) else m
       while( wj <= (j*j) ) {
-         iter     = iter.succ
+         iter     = iter.moveRight
          j       += 1
          wj       = if( j < n ) ((iter.v - v0) & mask) else m
       }
       var k       = 1L
-      iter        = sx
+      iter        = sp
       while( k < j ) {
          iter.v   = (wj * k / j + v0) & mask
-         iter     = iter.succ
+         iter     = iter.moveRight
          k       += 1
       }
-      val vb      = Base.v
-      val vbxstar = if( sx == Base ) m else ((sx.v - vb) & mask)
-      val vy      = (((v0 - vb) & mask) + vbxstar) / 2
+      val vb      = base.v
+      val vbpstar = if( sp == base ) m else ((sp.v - vb) & mask)
+      val vch     = (((v0 - vb) & mask) + vbpstar) / 2
 
-      val rec     = new URec( y, vy, x, sx )
-      x.succ      = rec
-      sx.pred     = rec
+      val rec     = createRecord( child, vch, parent, parent.succ ) // use parent.succ here to _not_ skip tail marker
 
       n += 1
       rec
    }
 
-   object Base extends Record {
-      var v: Tag = 0 // arbitrary
-      var pred: Record = this
-      var succ: Record = this
+   def inspect {
+      var iter    = base.moveRight
+      var succ    = false
+      print( "[")
+      while( iter != base ) {
+         if( succ ) print( ", " ) else succ = true
+         print( iter )
+         iter     = iter.moveRight
+      }
+      println( "]")
+   }
 
-      override def toString = "Base(" + v + ")"
+   def inspectVerbose {
+//      var iter    = base.moveRight
+      var iter    = base
+      var succ    = false
+      print( "[")
+//      while( iter != base ) {}
+      do {
+         if( succ ) print( ", " ) else succ = true
+         print( iter )
+//         iter     = iter.moveRight
+         iter     = iter.succ
+      } while( iter != base )
+      println( "]")
+   }
+}
+
+object PostOrder {
+   trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]]
+//   trait UserRecord[ T ] extends /* Record with*/ TotalOrder.UserRecord[ T, UserRecord[ T ]]
+}
+
+class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
+   import TotalOrder.{ Tag }
+   import PostOrder.{ Record }
+   type Rec = Record[ T ]
+
+   def insertChild( parent: Rec, child: T ) : Rec = {
+      require( n > 1 )
+      insertAfter( parent.pred, child )
+   }
+
+   protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : Rec = {
+      val rec     = new URec( child, vch, parent, sp )
+      parent.succ = rec
+      sp.pred     = rec
+      rec
+   }
+
+   protected val base = Base
+
+   protected object Base extends Rec {
+      var v: Tag = 0 // arbitrary
+      var pred: Rec = this
+      var succ: Rec = this
+      def moveRight = succ
+      def elem = error( "Illegal Access" )
+
+      override def toString = "Base"
+   }
+
+   class URec( val elem: T, var v: Tag, var pred: Rec, var succ: Rec )
+   extends Rec {
+      def moveRight: Rec = succ
+      override def toString = elem.toString
+   }
+}
+
+object PreOrder {
+   trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]] {
+      def tail: Record[ T ]
+      def skip: Record[ T ]
+   }
+
+//   trait UserRecord[ T ] extends Record with TotalOrder.UserRecord[ T, UserRecord[ T ]]
+}
+
+class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
+   import TotalOrder.{ Tag }
+   import PreOrder.{ Record }
+   type Rec = Record[ T ]
+
+//   type URec = PreOrder.UserRecord[ T ]
+
+   def insertChild( parent: Rec, child: T ) : Rec = {
+      require( n > 1 )
+      insertAfter( parent.tail.pred, child )
+   }
+
+   protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : URec = {
+      val rec     = new URec( child, vch, parent, sp )
+      val tail    = rec.tail
+      parent.succ = rec
+      sp.pred     = tail
+      rec
+   }
+
+   protected val base = Base
+
+   protected object Base extends Rec {
+      var v: Tag = 0 // arbitrary
+      var pred: Rec = this
+      var succ: Rec = this
+      def moveRight = succ.skip
+      def skip: Rec = this
+      def elem = error( "Illegal Access" ) // not very pretty, but we had to escape from type hell
+      def tail = error( "Illegal Access" )
+
+      override def toString = "Base"
+   }
+
+   protected class TailMark( ref: Rec, var succ: Rec ) extends Rec {
+      var pred = ref
+      var v: Tag = 0 // never used
+      def moveRight = succ.skip
+      def skip: Rec = succ.skip
+      def elem = error( "Illegal Access" )
+      def tail = error( "Illegal Access" )
+
+      override def toString = "M(" + ref + ")"
+   }
+
+   class URec( val elem: T, var v: Tag, var pred: Rec, tailSucc: Rec )
+   extends Rec {
+      val tail = new TailMark( this, tailSucc )
+      var succ: Rec = tail
+      def moveRight: Rec = succ.skip
+      def skip: Rec = this
+
+      override def toString = elem.toString
    }
 }

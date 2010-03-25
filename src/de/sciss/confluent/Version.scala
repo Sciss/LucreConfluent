@@ -37,8 +37,14 @@ import collection.immutable.{ Vector }
 trait VersionTree {
    val level: Int
    def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex
-   val preOrder:  TotalOrder[ Version ]
-   val postOrder: TotalOrder[ Version ]
+   val preOrder:  PreOrder[ Version ]
+   val postOrder: PostOrder[ Version ]
+   def inspect {
+      println( "--PRE--")
+      preOrder.inspect
+      println( "--POST--")
+      postOrder.inspect
+   }
 }
 
 trait Version {
@@ -48,7 +54,7 @@ trait Version {
    val tree:   VersionTree
 }
 
-case class VersionVertex( preRec: VersionRecord, postRec: VersionRecord )
+case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
 
 object Version {
    private var idValCnt = 0
@@ -98,17 +104,21 @@ object Version {
 
    private class VersionTreeImpl( val level: Int )
    extends VersionTree {
-      val preOrder   = new TotalOrder[ Version ]
-      val postOrder  = new TotalOrder[ Version ]
+      val preOrder   = new PreOrder[ Version ]
+      val postOrder  = new PostOrder[ Version ]
 
       def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex = {
          parent.map( p => {
-            val preRec  = preOrder.insertAfter( p.vertex.preRec, newVersion )
-            val postRec = postOrder.insertBefore( p.vertex.postRec, newVersion )
+            val preRec  = preOrder.insertChild( p.vertex.preRec, newVersion )
+            val postRec = postOrder.insertChild( p.vertex.postRec, newVersion )
+println( "---> new vertex" )
+inspect
             VersionVertex( preRec, postRec )
          }) getOrElse {
-            val preRec  = preOrder.insertFirst( newVersion )
-            val postRec = postOrder.insertFirst( newVersion )
+            val preRec  = preOrder.insertRoot( newVersion )
+            val postRec = postOrder.insertRoot( newVersion )
+println( "---> first vertex" )
+inspect
             VersionVertex( preRec, postRec )
          }
       }
@@ -117,7 +127,7 @@ object Version {
    object AncestorOrdering extends Ordering[ Version ] {
       def compare( x: Version, y: Version ) = {
          require( x.tree == y.tree )
-         x.tree.preOrder.compare( x.vertex.preRec, y.vertex.postRec )
+         x.tree.preOrder.compare( x.vertex.preRec, y.vertex.preRec )
       }
    }
 

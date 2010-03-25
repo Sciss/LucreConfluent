@@ -83,7 +83,7 @@ extends Ordering[ Rec ] {
    protected var n     = 1   // i suppose we count the base...
 
    def insertChild( parent: Rec, child: T ) : Rec
-   protected def createRecord( child: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
+   protected def createRecord( elem: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
    protected val base: Rec
 
 //   type URec <: Rec with { def elem: T }
@@ -143,7 +143,7 @@ extends Ordering[ Rec ] {
     */
    def insertRoot( root: T ) : Rec = {
       require( n == 1 )
-      insertAfter( base, root )
+      insertAfter( base, base.v, root )
    }
 
    /**
@@ -153,13 +153,13 @@ extends Ordering[ Rec ] {
     * @param   child the element to insert
     * @returns the child's record
     */
-   protected def insertAfter( parent: Rec, child: T ) : Rec = {
+   protected def insertAfter( pred: Rec, v0: Tag, elem: T ) : Rec = {
       if( n == nmax ) error( "Maximum capacity reached" )
 //      if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
 
-      val v0      = parent.v
+//      val v0      = parent.v
       var j       = 1L  // careful to use long since we do j*j
-      val sp      = parent.moveRight
+      val sp      = pred.moveRight
       var iter    = sp
       var wj      = if( j < n ) ((iter.v - v0) & mask) else m
       while( wj <= (j*j) ) {
@@ -178,7 +178,7 @@ extends Ordering[ Rec ] {
       val vbpstar = if( sp == base ) m else ((sp.v - vb) & mask)
       val vch     = (((v0 - vb) & mask) + vbpstar) / 2
 
-      val rec     = createRecord( child, vch, parent, parent.succ ) // use parent.succ here to _not_ skip tail marker
+      val rec     = createRecord( elem, vch, pred, pred.succ ) // use parent.succ here to _not_ skip tail marker
 
       n += 1
       rec
@@ -224,7 +224,8 @@ class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
 
    def insertChild( parent: Rec, child: T ) : Rec = {
       require( n > 1 )
-      insertAfter( parent.pred, child )
+      val pred = parent.pred
+      insertAfter( pred, pred.v, child )
    }
 
    protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : Rec = {
@@ -256,7 +257,10 @@ class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
 object PreOrder {
    trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]] {
       def tail: Record[ T ]
-      def skip: Record[ T ]
+      def moveLeft: Record[ T ]  = pred.skipLeft
+      def moveRight: Record[ T ] = succ.skipRight
+      def skipLeft: Record[ T ]  = this
+      def skipRight: Record[ T ] = this
    }
 
 //   trait UserRecord[ T ] extends Record with TotalOrder.UserRecord[ T, UserRecord[ T ]]
@@ -271,7 +275,10 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
 
    def insertChild( parent: Rec, child: T ) : Rec = {
       require( n > 1 )
-      insertAfter( parent.tail.pred, child )
+      val tail = parent.tail
+      val pred = tail.pred
+      val v0   = tail.moveLeft.v 
+      insertAfter( pred, v0, child )
    }
 
    protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : URec = {
@@ -288,8 +295,6 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
       var v: Tag = 0 // arbitrary
       var pred: Rec = this
       var succ: Rec = this
-      def moveRight = succ.skip
-      def skip: Rec = this
       def elem = error( "Illegal Access" ) // not very pretty, but we had to escape from type hell
       def tail = error( "Illegal Access" )
 
@@ -298,9 +303,11 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
 
    protected class TailMark( ref: Rec, var succ: Rec ) extends Rec {
       var pred = ref
-      var v: Tag = 0 // never used
-      def moveRight = succ.skip
-      def skip: Rec = succ.skip
+//      var v: Tag = 0 // never used
+      def v: Tag = error( "Illegal Access" )
+      def v_=( newTag: Tag ) = error( "Illegal Access" ) 
+      override def skipLeft: Rec  = moveLeft
+      override def skipRight: Rec = moveRight
       def elem = error( "Illegal Access" )
       def tail = error( "Illegal Access" )
 
@@ -311,9 +318,7 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
    extends Rec {
       val tail = new TailMark( this, tailSucc )
       var succ: Rec = tail
-      def moveRight: Rec = succ.skip
-      def skip: Rec = this
 
-      override def toString = elem.toString
+      override def toString = elem.toString // + " #" + v
    }
 }

@@ -171,6 +171,10 @@ val id03 = versionStep
 r1.interval = 0⏊07 :: 0⏊11
 makeCurrent( id012 )
 r1 // OK
+r2 // OK
+val id0124 = versionStep
+r1 // OK
+r2 // OK
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")

@@ -111,14 +111,14 @@ object Version {
          parent.map( p => {
             val preRec  = preOrder.insertChild( p.vertex.preRec, newVersion )
             val postRec = postOrder.insertChild( p.vertex.postRec, newVersion )
-println( "---> new vertex" )
-inspect
+//println( "---> new vertex" )
+//inspect
             VersionVertex( preRec, postRec )
          }) getOrElse {
             val preRec  = preOrder.insertRoot( newVersion )
             val postRec = postOrder.insertRoot( newVersion )
-println( "---> first vertex" )
-inspect
+//println( "---> first vertex" )
+//inspect
             VersionVertex( preRec, postRec )
          }
       }

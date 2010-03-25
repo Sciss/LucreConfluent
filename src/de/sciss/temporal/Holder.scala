@@ -121,4 +121,8 @@ class Region private ( val name: String, val sp: CompressedPath ) {
       println( toString )
       fi.inspect
    }
+
+   def lulu {
+      println( get( fi, sp ))
+   }
 }

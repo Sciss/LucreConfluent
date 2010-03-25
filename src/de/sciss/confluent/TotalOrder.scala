@@ -83,6 +83,9 @@ extends Ordering[ Rec ] {
    protected var n     = 1   // i suppose we count the base...
 
    def insertChild( parent: Rec, child: T ) : Rec
+   def insertRetroParent( child: Rec, parent: T ) : Rec
+   def insertRetroChild( parent: Rec, child: T ) : Rec
+
    protected def createRecord( elem: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
    protected val base: Rec
 
@@ -212,48 +215,6 @@ extends Ordering[ Rec ] {
    }
 }
 
-object PostOrder {
-   trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]]
-//   trait UserRecord[ T ] extends /* Record with*/ TotalOrder.UserRecord[ T, UserRecord[ T ]]
-}
-
-class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
-   import TotalOrder.{ Tag }
-   import PostOrder.{ Record }
-   type Rec = Record[ T ]
-
-   def insertChild( parent: Rec, child: T ) : Rec = {
-      require( n > 1 )
-      val pred = parent.pred
-      insertAfter( pred, pred.v, child )
-   }
-
-   protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : Rec = {
-      val rec     = new URec( child, vch, parent, sp )
-      parent.succ = rec
-      sp.pred     = rec
-      rec
-   }
-
-   protected val base = Base
-
-   protected object Base extends Rec {
-      var v: Tag = 0 // arbitrary
-      var pred: Rec = this
-      var succ: Rec = this
-      def moveRight = succ
-      def elem = error( "Illegal Access" )
-
-      override def toString = "Base"
-   }
-
-   class URec( val elem: T, var v: Tag, var pred: Rec, var succ: Rec )
-   extends Rec {
-      def moveRight: Rec = succ
-      override def toString = elem.toString
-   }
-}
-
 object PreOrder {
    trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]] {
       def tail: Record[ T ]
@@ -266,6 +227,14 @@ object PreOrder {
 //   trait UserRecord[ T ] extends Record with TotalOrder.UserRecord[ T, UserRecord[ T ]]
 }
 
+//////////////////////////////////////////////////////////////////
+//  P r e O r d e r  /////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+/**
+ *    @todo    tailmark could be created lazily. for d(V) >> e(V) this would
+ *             save quite some space
+ */
 class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
    import TotalOrder.{ Tag }
    import PreOrder.{ Record }
@@ -280,6 +249,14 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
       val v0   = tail.moveLeft.v 
       insertAfter( pred, v0, child )
    }
+
+   def insertRetroParent( child: Rec, parent: T ) : Rec = {
+      val pred = child.moveLeft
+      insertAfter( pred, pred.v, parent )
+   }
+
+   def insertRetroChild( parent: Rec, child: T ) : Rec =
+      insertAfter( parent, parent.v, child )
 
    protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : URec = {
       val rec     = new URec( child, vch, parent, sp )
@@ -322,3 +299,56 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
       override def toString = elem.toString // + " #" + v
    }
 }
+
+//////////////////////////////////////////////////////////////////
+//  P o s t O r d e r  ///////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+object PostOrder {
+   trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]]
+//   trait UserRecord[ T ] extends /* Record with*/ TotalOrder.UserRecord[ T, UserRecord[ T ]]
+}
+
+class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
+   import TotalOrder.{ Tag }
+   import PostOrder.{ Record }
+   type Rec = Record[ T ]
+
+   def insertChild( parent: Rec, child: T ) : Rec = {
+      require( n > 1 )
+      val pred = parent.pred
+      insertAfter( pred, pred.v, child )
+   }
+
+   def insertRetroParent( child: Rec, parent: T ) : Rec =
+      insertAfter( child, child.v, parent )
+
+   def insertRetroChild( parent: Rec, child: T ) : Rec =
+      insertChild( parent, child ) // i.e. insertAfter( parent.pred, ... )
+
+   protected def createRecord( child: T, vch: Tag, parent: Rec, sp: Rec ) : Rec = {
+      val rec     = new URec( child, vch, parent, sp )
+      parent.succ = rec
+      sp.pred     = rec
+      rec
+   }
+
+   protected val base = Base
+
+   protected object Base extends Rec {
+      var v: Tag = 0 // arbitrary
+      var pred: Rec = this
+      var succ: Rec = this
+      def moveRight = succ
+      def elem = error( "Illegal Access" )
+
+      override def toString = "Base"
+   }
+
+   class URec( val elem: T, var v: Tag, var pred: Rec, var succ: Rec )
+   extends Rec {
+      def moveRight: Rec = succ
+      override def toString = elem.toString
+   }
+}
+

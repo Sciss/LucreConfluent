@@ -1,7 +1,38 @@
+/**
+ *  VersionManagement
+ *  (de.sciss.temporal package)
+ *
+ *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
+ *
+ *	 This software is free software; you can redistribute it and/or
+ *	 modify it under the terms of the GNU General Public License
+ *	 as published by the Free Software Foundation; either
+ *	 version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *	 This software is distributed in the hope that it will be useful,
+ *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *	 General Public License for more details.
+ *
+ *	 You should have received a copy of the GNU General Public
+ *	 License (gpl.txt) along with this software; if not, write to the Free Software
+ *	 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *	 For further information, please contact Hanns Holger Rutz at
+ *	 contact@sciss.de
+ *
+ *
+ *  Changelog:
+ */
+
 package de.sciss.temporal
 
 import de.sciss.confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, FatValue => FVal, _ }
 
+/**
+ *    @version 0.11, 25-Mar-10
+ */
 object VersionManagement {
    private var currentPathVar = VersionPath.init
 
@@ -55,8 +86,54 @@ object VersionManagement {
 //      }}
 //   }
 
+   // ---- navigation ----
+
+   /**
+    *    Creates a new (non-melded) node
+    *    branching off from the current version.
+    *    It does so by adding the new node
+    *    _after_ the current node
+    *    (i.e. becoming the new children's tail)
+    *    in the pre-order list,
+    *    and _before_ the current node in
+    *    the post-order list
+    */
    def versionStep : VersionPath = {
       currentPathVar = currentPathVar.newBranch
+      currentPathVar
+   }
+
+   /**
+    *    Inserts a retroactive node
+    *    before the current version.
+    *    It does so by adding the new
+    *    node _before_ the current node
+    *    in the pre-order list, and
+    *    _after_ the current node in
+    *    the post-order list. Makes the
+    *    retroactive node the current node.
+    * 
+    *    @return  the new retroactive node
+    */
+   def prependRetro : VersionPath = {
+      currentPathVar = currentPathVar.newRetroParent
+      currentPathVar
+   }
+
+   /**
+    *    Inserts a retroactive node
+    *    after the current version.
+    *    It does so by adding the new
+    *    node _right after_ the current node
+    *    (i.e. becoming the new children's head)
+    *    in the pre-order list,
+    *    and _before_ the current node in
+    *    the post-order list
+    *
+    *    @return  the new retroactive node
+    */
+   def appendRetro : VersionPath = {
+      currentPathVar = currentPathVar.newRetroChild
       currentPathVar
    }
 

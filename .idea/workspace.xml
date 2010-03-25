@@ -59,19 +59,6 @@
         <option name="CONDITION" value="" />
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
-      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala" line="125" class="Class at Holder.scala:125" package="">
-        <option name="ENABLED" value="true" />
-        <option name="LOG_ENABLED" value="false" />
-        <option name="LOG_EXPRESSION_ENABLED" value="false" />
-        <option name="SUSPEND_POLICY" value="SuspendAll" />
-        <option name="COUNT_FILTER_ENABLED" value="false" />
-        <option name="COUNT_FILTER" value="0" />
-        <option name="CONDITION_ENABLED" value="false" />
-        <option name="CLASS_FILTERS_ENABLED" value="false" />
-        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
-        <option name="CONDITION" value="" />
-        <option name="LOG_MESSAGE" value="" />
-      </breakpoint>
       <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" line="60" class="Class at OracleMap.scala:60" package="">
         <option name="ENABLED" value="true" />
         <option name="LOG_ENABLED" value="false" />
@@ -127,19 +114,19 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="FatField.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
+      <file leaf-file-name="TotalOrder.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="56" column="0" selection-start="2143" selection-end="2143" vertical-scroll-proportion="0.0">
+            <state line="306" column="32" selection-start="9327" selection-end="9327" vertical-scroll-proportion="0.09943182">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="OracleMap.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
+      <file leaf-file-name="Version.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="65" column="0" selection-start="2146" selection-end="2146" vertical-scroll-proportion="0.0">
+            <state line="27" column="5" selection-start="0" selection-end="987" vertical-scroll-proportion="-15.576923">
               <folding />
             </state>
           </provider>
@@ -148,34 +135,7 @@
       <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="159" column="98" selection-start="4662" selection-end="4662" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="TotalOrder.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="321" column="47" selection-start="9545" selection-end="9545" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Holder.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="125" column="0" selection-start="3949" selection-end="3949" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Version.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="122" column="0" selection-start="4005" selection-end="4005" vertical-scroll-proportion="0.8082192">
+            <state line="5" column="92" selection-start="138" selection-end="138" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -202,11 +162,11 @@
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/LogPane.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala" />
       </list>
     </option>
   </component>
@@ -671,13 +631,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="56" column="0" selection-start="2143" selection-end="2143" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/immutable/List.class">
       <provider selected="true" editor-type-id="text-editor">
         <state line="45" column="0" selection-start="5300" selection-end="5300" vertical-scroll-proportion="0.0">
@@ -692,37 +645,37 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="321" column="47" selection-start="9545" selection-end="9545" vertical-scroll-proportion="0.0">
+        <state line="56" column="0" selection-start="2143" selection-end="2143" vertical-scroll-proportion="0.20547946">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="65" column="0" selection-start="2146" selection-end="2146" vertical-scroll-proportion="0.0">
+        <state line="65" column="0" selection-start="2146" selection-end="2146" vertical-scroll-proportion="0.42465752">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="159" column="98" selection-start="4662" selection-end="4662" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="125" column="0" selection-start="3949" selection-end="3949" vertical-scroll-proportion="0.0">
+        <state line="5" column="92" selection-start="138" selection-end="138" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="122" column="0" selection-start="4005" selection-end="4005" vertical-scroll-proportion="0.8082192">
+        <state line="27" column="5" selection-start="0" selection-end="987" vertical-scroll-proportion="-15.576923">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="306" column="32" selection-start="9327" selection-end="9327" vertical-scroll-proportion="0.09943182">
           <folding />
         </state>
       </provider>

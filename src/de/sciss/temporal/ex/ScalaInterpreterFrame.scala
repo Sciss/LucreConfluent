@@ -175,6 +175,19 @@ r2 // OK
 val id0124 = versionStep
 r1 // OK
 r2 // OK
+
+val id0 = VersionPath.init
+val id1 = versionStep
+val id2 = versionStep
+val id3 = versionStep
+makeCurrent( id2 )
+val id4 = versionStep
+//makeCurrent( id2 )
+//val id5 = versionStep   // OK
+//val id5 = appendRetro   // OK
+makeCurrent( id3 )
+val id5 = prependRetro    // OK
+id0.version.tree.inspect
 """
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")

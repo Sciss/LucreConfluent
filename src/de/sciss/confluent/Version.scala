@@ -36,9 +36,14 @@ import collection.immutable.{ Vector }
  */
 trait VersionTree {
    val level: Int
-   def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex
    val preOrder:  PreOrder[ Version ]
    val postOrder: PostOrder[ Version ]
+
+   def insertRoot( version: Version ) : VersionVertex
+   def insertChild( parent: Version )( child: Version ) : VersionVertex
+   def insertRetroParent( child: Version )( parent: Version ) : VersionVertex
+   def insertRetroChild( parent: Version )( child: Version ) : VersionVertex
+
    def inspect {
       println( "--PRE--")
       preOrder.inspect
@@ -59,7 +64,10 @@ case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder
 object Version {
    private var idValCnt = 0
 
-   val init: Version = newFrom()
+   val init: Version = {
+      val tree = new VersionTreeImpl( 0 )
+      new VersionImpl( tree, tree.insertRoot )
+   }
 
 //   val init: Version = {
 //      val tree = new VersionTreeImpl( 0 )
@@ -67,7 +75,10 @@ object Version {
 //      new VersionImpl( idVal, tree )
 //   }
 
-   def newFrom( vs: Version* ) : Version = {
+   def newFrom( v: Version, vs: Version* ) : Version = {
+
+      if( vs.nonEmpty ) println( "WARNING: melding not yet implemented!!!" )
+
       // the new version's level is the maximum of the levels of
       // the ancestor versions, unless there is more than one
       // ancestor with that maximum level in which case that
@@ -76,27 +87,31 @@ object Version {
       // second case, each time a new tree is created, although
       // we might then have several trees with the same level.
       // this is indicated by figure 5 (p. 22)
-      val (level, parentO) = vs.foldLeft[ Tuple2[ Int, Option[ Version ]]]( (0, None) )( (tup, v) => {
-         val (level, parentO) = tup
-         parentO.map( parent => {
-            if( v.level == level ) {
-               (level + 1, None)
-            } else if( v.level > level ) {
-               (v.level, Some( v ))
-            } else {
-               tup
-            }
-         }) getOrElse (v.level, Some( v ))
+      val allV = v :: vs.toList
+      val level = allV.foldLeft[ Int ]( v.level )( (level, v) => {
+         if( v.level == level ) level + 1 else math.max( v.level, level )
       })
 
-      val idVal = idValCnt; idValCnt += 1
-      val tree = parentO.map( _.tree ) getOrElse new VersionTreeImpl( level )
-      new VersionImpl( idVal, tree, parentO )
+      val tree = v.tree
+      new VersionImpl( tree, tree.insertChild( v ))
    }
 
-   private class VersionImpl( val id: Int, val tree: VersionTree, parent: Option[ Version ])
+   def newRetroParent( child: Version ) : Version = {
+      val tree = child.tree
+      new VersionImpl( tree, tree.insertRetroParent( child ))
+   }
+
+   def newRetroChild( parent: Version ) : Version = {
+      val tree = parent.tree
+      new VersionImpl( tree, tree.insertRetroChild( parent ))
+   }
+
+   private def nextID = { val idVal = idValCnt; idValCnt += 1; idVal }
+
+   private class VersionImpl( val tree: VersionTree, insertionFun: (Version) => VersionVertex )
    extends Version {
-      val vertex = tree.insert( parent, this )
+      val id: Int    = nextID
+      val vertex     = insertionFun( this )
       def level: Int = tree.level
 
       override def toString = "v" + id
@@ -107,29 +122,42 @@ object Version {
       val preOrder   = new PreOrder[ Version ]
       val postOrder  = new PostOrder[ Version ]
 
-      def insert( parent: Option[ Version ], newVersion: Version ) : VersionVertex = {
-         parent.map( p => {
-            val preRec  = preOrder.insertChild( p.vertex.preRec, newVersion )
-            val postRec = postOrder.insertChild( p.vertex.postRec, newVersion )
-//println( "---> new vertex" )
-//inspect
-            VersionVertex( preRec, postRec )
-         }) getOrElse {
-            val preRec  = preOrder.insertRoot( newVersion )
-            val postRec = postOrder.insertRoot( newVersion )
+      def insertRoot( version: Version ) : VersionVertex = {
+         val preRec  = preOrder.insertRoot( version )
+         val postRec = postOrder.insertRoot( version )
 //println( "---> first vertex" )
 //inspect
-            VersionVertex( preRec, postRec )
-         }
+         VersionVertex( preRec, postRec )
+      }
+
+      def insertChild( parent: Version )( child: Version ) : VersionVertex = {
+         val preRec  = preOrder.insertChild( parent.vertex.preRec, child )
+         val postRec = postOrder.insertChild( parent.vertex.postRec, child )
+//println( "---> new vertex" )
+//inspect
+         VersionVertex( preRec, postRec )
+      }
+
+      def insertRetroParent( child: Version )( parent: Version ) : VersionVertex = {
+         val preRec  = preOrder.insertRetroParent( child.vertex.preRec, parent )
+         val postRec = postOrder.insertRetroParent( child.vertex.postRec, parent )
+         VersionVertex( preRec, postRec )
+      }
+
+      def insertRetroChild( parent: Version )( child: Version ) : VersionVertex = {
+         val preRec  = preOrder.insertRetroChild( parent.vertex.preRec, child )
+         val postRec = postOrder.insertRetroChild( parent.vertex.postRec, child )
+         VersionVertex( preRec, postRec )
       }
    }
 
-   object AncestorOrdering extends Ordering[ Version ] {
-      def compare( x: Version, y: Version ) = {
-         require( x.tree == y.tree )
-         x.tree.preOrder.compare( x.vertex.preRec, y.vertex.preRec )
-      }
-   }
+//   // not used any more
+//   object AncestorOrdering extends Ordering[ Version ] {
+//      def compare( x: Version, y: Version ) = {
+//         require( x.tree == y.tree )
+//         x.tree.preOrder.compare( x.vertex.preRec, y.vertex.preRec )
+//      }
+//   }
 
    object IdOrdering extends Ordering[ Version ] {
       def compare( x: Version, y: Version ) = x.id - y.id
@@ -141,6 +169,8 @@ trait VersionPath {
    def path: CompressedPath
 
    def newBranch : VersionPath
+   def newRetroParent : VersionPath
+   def newRetroChild : VersionPath
 
    // XXX might need to be vps: VersionPath* ???
 //   def newBranchWith( vs: Version* ) : VersionPath
@@ -154,14 +184,22 @@ object VersionPath {
 
    private case class VersionPathImpl( version: Version, path: CompressedPath )
    extends VersionPath {
-      def newBranch : VersionPath = {
-         val newVersion = Version.newFrom( version )
+      def newBranch : VersionPath =
+         newTail( Version.newFrom( version ))
+            
+      def newRetroParent : VersionPath =
+         newTail( Version.newRetroParent( version ))
+
+      def newRetroChild : VersionPath =
+         newTail( Version.newRetroChild( version ))
+
+      private def newTail( tailVersion: Version ) : VersionPath = {
          val newPath = // if( newVersion.level == version.level ) {
-         path.dropRight( 1 ) :+ newVersion
+            path.dropRight( 1 ) :+ tailVersion
 //       } else {
 //          path :+ newVersion.id :+ newVersion.id
 //       }
-         VersionPathImpl( newVersion, newPath )
+         VersionPathImpl( tailVersion, newPath )
       }
 
       override def toString = path.mkString( "<", ", ", ">" )

@@ -118,6 +118,8 @@ iv4.span    // --> nope
 val iv4b = PlusInterval2( r3.interval, 1.111 )
 iv4b.span   // --> nope
 """*/
+
+/*
             """
 val x = new FatValue[ Double ]
 val id0 = VersionPath.init
@@ -189,6 +191,10 @@ makeCurrent( id3 )
 val id5 = prependRetro    // OK
 id0.version.tree.inspect
 """
+*/
+         """
+         """
+
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")
 //            t += (20 -> "twenty")
@@ -233,7 +239,7 @@ id0.version.tree.inspect
       sp.setBottomComponent( lp )
       cp.add( sp )
       val b = GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds
-      setSize( b.width / 2, b.height * 5 / 6 )
+      setSize( b.width / 2, b.height * 7 / 8 )
 //      sp.setDividerLocation( 0.8 )
       sp.setDividerLocation( b.height * 2 / 3 )
       setLocationRelativeTo( null )

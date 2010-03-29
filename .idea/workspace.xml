@@ -3,19 +3,25 @@
   <component name="ChangeListManager" verified="true">
     <list default="true" readonly="true" id="fc0f8092-ddbf-4502-9ef0-7275b1d71efc" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/licenses/ScissLib-License.txt" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/vcs.xml" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Transport.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/VersionManagement.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/view/TopPaintable.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/view/Axis.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/view/KContainerView.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/view/SonogramManager.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Region.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/TemporalObjects.iml" afterPath="$PROJECT_DIR$/TemporalObjects.iml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" />
     </list>
-    <ignored path=".idea/workspace.xml" />
     <ignored path="TemporalObjects.iws" />
+    <ignored path=".idea/workspace.xml" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,19 +77,6 @@
         <option name="CONDITION" value="" />
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
-      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" line="60" class="Class at OracleMap.scala:60" package="">
-        <option name="ENABLED" value="true" />
-        <option name="LOG_ENABLED" value="false" />
-        <option name="LOG_EXPRESSION_ENABLED" value="false" />
-        <option name="SUSPEND_POLICY" value="SuspendAll" />
-        <option name="COUNT_FILTER_ENABLED" value="false" />
-        <option name="COUNT_FILTER" value="0" />
-        <option name="CONDITION_ENABLED" value="false" />
-        <option name="CLASS_FILTERS_ENABLED" value="false" />
-        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
-        <option name="CONDITION" value="" />
-        <option name="LOG_MESSAGE" value="" />
-      </breakpoint>
     </line_breakpoints>
     <breakpoint_any>
       <breakpoint>
@@ -126,19 +119,10 @@
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="VersionManagement.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/VersionManagement.scala">
+      <file leaf-file-name="AudioRegion.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="181" column="1" selection-start="5703" selection-end="5703" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Container.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="27" column="33" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+            <state line="35" column="4" selection-start="1358" selection-end="1358" vertical-scroll-proportion="0.9322799">
               <folding />
             </state>
           </provider>
@@ -147,25 +131,34 @@
       <file leaf-file-name="DomainSpecificLanguage.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="0" selection-start="196" selection-end="196" vertical-scroll-proportion="0.0">
+            <state line="37" column="8" selection-start="1153" selection-end="1153" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
+      <file leaf-file-name="KContainerView.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/KContainerView.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="241" column="44" selection-start="6674" selection-end="6674" vertical-scroll-proportion="0.0">
+            <state line="103" column="52" selection-start="3338" selection-end="3338" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AudioRegion.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala">
+      <file leaf-file-name="Version.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="6" selection-start="188" selection-end="188" vertical-scroll-proportion="0.0">
+            <state line="213" column="0" selection-start="6707" selection-end="6886" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="SonogramManager.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/SonogramManager.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="23" column="108" selection-start="799" selection-end="799" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -174,16 +167,25 @@
       <file leaf-file-name="AudioFileElement.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="10" column="89" selection-start="349" selection-end="349" vertical-scroll-proportion="0.0">
+            <state line="15" column="85" selection-start="564" selection-end="564" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="FileLocation.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala">
+      <file leaf-file-name="Container.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="12" column="1" selection-start="263" selection-end="263" vertical-scroll-proportion="0.40632054">
+            <state line="84" column="55" selection-start="2213" selection-end="2342" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="OracleMap.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="56" column="16" selection-start="1856" selection-end="1856" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -199,22 +201,22 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/TemporalDependancies.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/CustomizableFont.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterPane.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/LogPane.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Holder.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/view/TopPaintable.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/view/Axis.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/VersionManagement.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Region.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/view/SonogramManager.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/view/KContainerView.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" />
       </list>
     </option>
   </component>
@@ -253,9 +255,8 @@
       <sortByType />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="PackagesPane" />
-      <pane id="Favorites" />
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -336,12 +337,61 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
+              <option name="myItemId" value="view" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="sciss" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="temporal" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
               <option name="myItemId" value="ex" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TemporalObjects" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="src" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="sciss" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="confluent" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
+      <pane id="Favorites" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -357,9 +407,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="options.searchVisible" value="true" />
-    <property name="options.splitter.details.proportions" value="0.2" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="options.searchVisible" value="true" />
   </component>
   <component name="RunManager" selected="Application.Main">
     <configuration default="false" name="Main" type="Application" factoryName="Application" temporary="true">
@@ -545,7 +595,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="22" width="1389" height="860" extended-state="0" />
+    <frame x="-10" y="22" width="1389" height="860" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -553,14 +603,14 @@
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33245382" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32162163" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.31621623" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24869695" sideWeight="0.22295515" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24850747" sideWeight="0.6621622" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32837838" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32837838" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -601,100 +651,114 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/immutable/List.class">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/Axis.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="45" column="0" selection-start="5300" selection-end="5300" vertical-scroll-proportion="0.0" />
+        <state line="189" column="7" selection-start="6340" selection-end="6347" vertical-scroll-proportion="-15.230769">
+          <folding />
+        </state>
       </provider>
     </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/LinearSeqLike.class">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
+        <state line="2" column="44" selection-start="71" selection-end="71" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/Example.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="56" column="0" selection-start="2143" selection-end="2143" vertical-scroll-proportion="0.20547946" />
+        <state line="12" column="0" selection-start="249" selection-end="281" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="65" column="0" selection-start="2146" selection-end="2146" vertical-scroll-proportion="0.42465752" />
+        <state line="39" column="6" selection-start="1183" selection-end="1183" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="306" column="32" selection-start="9327" selection-end="9327" vertical-scroll-proportion="-2.6923077" />
+        <state line="62" column="0" selection-start="2053" selection-end="2053" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionViewPane.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="58" column="22" selection-start="1924" selection-end="1924" vertical-scroll-proportion="0.0" />
+        <state line="9" column="6" selection-start="331" selection-end="331" vertical-scroll-proportion="-0.34632036">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/SonogramManager.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="23" column="108" selection-start="799" selection-end="799" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="27" column="5" selection-start="0" selection-end="987" vertical-scroll-proportion="0.57528406" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/VersionManagement.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="181" column="1" selection-start="5703" selection-end="5703" vertical-scroll-proportion="0.0">
+        <state line="213" column="0" selection-start="6707" selection-end="6886" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="6" selection-start="188" selection-end="188" vertical-scroll-proportion="0.0">
+        <state line="56" column="16" selection-start="1856" selection-end="1856" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Transport.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/KContainerView.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="6" selection-start="188" selection-end="188" vertical-scroll-proportion="0.33482143">
+        <state line="103" column="52" selection-start="3338" selection-end="3338" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Region.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="0" selection-start="196" selection-end="196" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/VersionGraphPanel.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="38" column="6" selection-start="1861" selection-end="1861" vertical-scroll-proportion="1.0513393">
+        <state line="31" column="0" selection-start="800" selection-end="992" vertical-scroll-proportion="0.63203466">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="241" column="44" selection-start="6674" selection-end="6674" vertical-scroll-proportion="0.0">
+        <state line="206" column="0" selection-start="5766" selection-end="5766" vertical-scroll-proportion="0.56854254">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="89" selection-start="349" selection-end="349" vertical-scroll-proportion="0.0">
+        <state line="37" column="8" selection-start="1153" selection-end="1153" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="27" column="33" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+        <state line="84" column="55" selection-start="2213" selection-end="2342" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioFileElement.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="12" column="1" selection-start="263" selection-end="263" vertical-scroll-proportion="0.40632054">
+        <state line="15" column="85" selection-start="564" selection-end="564" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="35" column="4" selection-start="1358" selection-end="1358" vertical-scroll-proportion="0.9322799">
           <folding />
         </state>
       </provider>

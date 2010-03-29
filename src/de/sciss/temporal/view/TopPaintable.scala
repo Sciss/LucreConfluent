@@ -1,8 +1,8 @@
 /*
- *  Main.scala
+ *  TopPaintable.scala
  *  (TemporalObjects)
  *
- *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2004-2010 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is free software; you can redistribute it and/or
  *	modify it under the terms of the GNU General Public License
@@ -26,17 +26,26 @@
  *  Changelog:
  */
 
-package de.sciss.temporal
+package de.sciss.temporal.view
 
-import ex.ScalaInterpreterFrame
-import java.awt.{ EventQueue }
+import java.awt.{ Graphics2D }
+import scala.collection.immutable.{ Queue }
 
-object Main extends Runnable {
-   def main( args: Array[ String ]) {
-      EventQueue.invokeLater( this )
+trait TopPaintable {
+   private var topPainters: Queue[ Graphics2D => Unit ] = Queue.Empty
+
+   def addTopPainter( t: Graphics2D => Unit ) {
+      topPainters = topPainters.enqueue( t )
    }
 
-   def run {
-      new ScalaInterpreterFrame
+   protected def paintOnTop( g: Graphics2D ) {
+      topPainters.foreach( _.apply( g ))
+   }
+
+   def removeTopPainter( t: Graphics2D => Unit ) {
+      var filtered: Queue[ Graphics2D => Unit ] = Queue.Empty
+      topPainters.foreach( x => if( x != t )
+      filtered = filtered.enqueue( x )) // ugly; no easier way??
+      topPainters = filtered
    }
 }

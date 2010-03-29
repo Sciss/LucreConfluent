@@ -34,7 +34,7 @@ import javax.swing._
 import java.awt.GraphicsEnvironment
 import de.sciss.scalainterpreter.{ LogPane, ScalaInterpreterPane }
 
-class ScalaInterpreterFrame( implicit mgr: RegionManager )
+class ScalaInterpreterFrame // ( implicit mgr: RegionManager )
 extends JFrame( "Scala Interpreter" ) {
 
    // ---- constructor ----
@@ -193,7 +193,18 @@ id0.version.tree.inspect
 """
 */
          """
-         """
+val c = container()
+audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )
+val af = audioFile( "MetallScheibe1TestN.aif" )
+val ar1 = af.use { c.use { audioRegion( 0⏊01, 0⏊02 :: 0⏊05 )}}
+val ar2 = af.use { c.use { audioRegion( 0⏊02, 0⏊07 :: 0⏊13 )}}
+c.interval // 0:00 ... 0:03 OK
+c.use { kView }
+versionStep
+val ar3 = af.use { c.use { audioRegion( 0⏊04, 0⏊05 :: 0⏊10 )}}
+c.use { kView }
+ar1.interval = 0⏊00 :: 0⏊03
+"""
 
 //            var t = new BinaryTreeMap[ Int, String ]
 //            t += (10 -> "ten")
@@ -214,7 +225,8 @@ id0.version.tree.inspect
 """
          import de.sciss.temporal._
          import de.sciss.confluent._
-         import de.sciss.temporal.VersionManagement._
+         import de.sciss.confluent.VersionManagement._
+         import de.sciss.temporal.DomainSpecificLanguage._
 """
       )
 

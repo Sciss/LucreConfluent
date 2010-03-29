@@ -26,9 +26,9 @@
  *  Changelog:
  */
 
-package de.sciss.temporal
-
-import de.sciss.confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, FatValue => FVal, _ }
+package de.sciss {
+import confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, FatValue => FVal, _ }
+package confluent {
 
 /**
  *    @version 0.11, 25-Mar-10
@@ -46,6 +46,18 @@ object VersionManagement {
    // avec lazy access
    def get[ V ]( fval: FVal[ V ], seminalPath: CompressedPath ) = {
       fval.access( substitute( currentAccess, seminalPath )).get
+   }
+
+   def get[ V ]( fval: FVal[ V ], seminalPath: CompressedPath, access: CompressedPath ) = {
+      fval.access( substitute( access, seminalPath )).get
+   }
+
+   def getO[ V ]( fval: FVal[ V ], seminalPath: CompressedPath ) = {
+      fval.access( substitute( currentAccess, seminalPath ))
+   }
+
+   def getO[ V ]( fval: FVal[ V ], seminalPath: CompressedPath, access: CompressedPath ) = {
+      fval.access( substitute( access, seminalPath ))
    }
 
    def set[ V ]( fval: FVal[ V ], value: V ) {
@@ -77,14 +89,15 @@ object VersionManagement {
       fval.assign( substitute( currentAccess, seminalPath ), value )
    }
 
-//   def transaction( thunk: => Unit ) {
-//      try {
-//
-//      } catch { case x => {
-//
-//         throw e
-//      }}
-//   }
+   def use[ T ]( v: VersionPath )( thunk: => T ) = {
+      val oldV = currentPathVar
+      try {
+         currentPathVar = v
+         thunk
+      } finally {
+         currentPathVar = oldV
+      }
+   }
 
    // ---- navigation ----
 
@@ -156,50 +169,4 @@ object VersionManagement {
 ////   def set( i: IntervalLike ) = set( fptr, i )
 //}
 
-class IntervalProxy( val fi: FVal[ IntervalLike ], sp: CompressedPath )
-extends IntervalExprLike {
-   import VersionManagement._
-
-   def start: PeriodLike   = access.start
-   def stop: PeriodLike    = access.stop
-//   def +( p: PeriodLike ): IntervalLike
-//   def -( p: PeriodLike ): IntervalLike
-
-   def fixed: IntervalLike = access.fixed
-   @inline private def access: IntervalLike = get( fi, sp ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
-
-   override def toString = try { access.toString } catch { case _ => super.toString }
-}
-
-object Region {
-   import VersionManagement._
-
-   def apply( name: String, i: IntervalLike ) = {
-      val r = new Region( name, currentVersion.path.takeRight( 2 ))
-      r.interval = i
-      r
-   }
-}
-
-// note: eventually 'name' should also be confluent
-class Region private ( val name: String, val sp: CompressedPath ) {
-   import VersionManagement._
-
-   private val fi = new FVal[ IntervalLike ]
-//   def interval: IntervalLike = new IntervalAccess( currentAccess, intervalPtr )
-   def interval: IntervalLike = new IntervalProxy( fi, sp )
-   def interval_=( i: IntervalLike ) = {
-       set( fi, i, sp )
-   }
-
-   override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
-
-   def inspect {
-      println( toString )
-      fi.inspect
-   }
-
-   def lulu {
-      println( get( fi, sp ))
-   }
-}
+}}

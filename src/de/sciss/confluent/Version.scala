@@ -174,6 +174,9 @@ trait VersionPath {
 
    // XXX might need to be vps: VersionPath* ???
 //   def newBranchWith( vs: Version* ) : VersionPath
+
+   def use[ T ]( thunk: => T ) =
+      VersionManagement.use( this )( thunk )
 }
 
 object VersionPath {
@@ -203,5 +206,10 @@ object VersionPath {
       }
 
       override def toString = path.mkString( "<", ", ", ">" )
+
+//      override def equals( o: Any ) = o match {
+//         case vp: VersionPath => (vp.version == version) && (vp.path == path)
+//         case _ => super.equals( o )
+//      }
    }
 }

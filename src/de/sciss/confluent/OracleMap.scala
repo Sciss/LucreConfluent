@@ -54,7 +54,11 @@ class OracleMap[ V ] private () {
    private var entries: List[ Tuple2[ Version, V ]] = Nil
 
    def +=( entry: Tuple2[ Version, V ]) {
-      entries ::= entry
+      entries = if( entries.isEmpty || (entries.head._1 != entry._1) ) {
+         entry :: entries
+      } else {
+         entry :: entries.tail
+      }
    }
 
    def query( t: Version ) : Option[ V ] = {

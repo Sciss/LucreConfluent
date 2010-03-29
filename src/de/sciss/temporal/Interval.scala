@@ -31,6 +31,7 @@ package de.sciss.temporal
 trait IntervalLike extends MutableModel[ IntervalLike ] {
    def start: PeriodLike
    def stop: PeriodLike
+   def dur: PeriodLike
    def +( p: PeriodLike ): IntervalLike
    def -( p: PeriodLike ): IntervalLike
 

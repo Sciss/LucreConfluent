@@ -171,6 +171,7 @@ trait VersionPath {
    def newBranch : VersionPath
    def newRetroParent : VersionPath
    def newRetroChild : VersionPath
+   def tail: Path = path.takeRight( 2 )
 
    // XXX might need to be vps: VersionPath* ???
 //   def newBranchWith( vs: Version* ) : VersionPath

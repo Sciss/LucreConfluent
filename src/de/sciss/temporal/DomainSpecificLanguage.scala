@@ -38,6 +38,12 @@ object DomainSpecificLanguage {
       ar
    }
 
+   def ref( ar: AudioRegion ) : AudioRegion = {
+      val arRef = ar.ref
+      Container.current.add( arRef )
+      arRef
+   }
+
    def transport : Transport = {
       error( "Not yet implemented" )
    }

@@ -198,6 +198,8 @@ audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages
 val af = audioFile( "MetallScheibe1TestN.aif" ).use
 val ar1 = audioRegion( "R #1", 0⏊01, 0⏊02 :: 0⏊05 )
 val ar2 = audioRegion( "R #2", 0⏊02, 0⏊07 :: 0⏊13 )
+val ar1r = ref( ar1 )
+ar1r.interval = ar1r.interval + (ar1r.interval.stop - ar1r.interval.start)
 c.interval // 0:00 ... 0:03 OK
 kView
 versionStep
@@ -211,6 +213,11 @@ val v2 = appendRetro
 ar2.interval = ar2.interval.fixed - 0⏊02
 makeCurrent( v1 )
 ar2.interval  // 0⏊05 :: 0⏊11 OK
+val v3 = versionStep
+Container.root.use
+val c2 = container()
+c2.add( c )
+c2.use { kView }
 """
 
 //            var t = new BinaryTreeMap[ Int, String ]

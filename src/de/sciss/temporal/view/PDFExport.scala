@@ -33,9 +33,12 @@ import java.io.{ File, FileOutputStream }
 import com.itextpdf.text.pdf.{ PdfWriter }
 import java.awt.{ Component, Insets }
 
+/**
+ *    @version 0.10, 29-Mar-10
+ */
 object PDFExport {
    // note: resolution is 72 dpi
-   def export( c: Component, f: File, margin: Insets = new Insets( 72, 72, 72, 72 )) {
+   def export( c: Component, f: File, margin: Insets = new Insets( 0, 0, 0, 0 )) { // Insets( 72, 72, 72, 72 )
       val cmpWidth   = c.getWidth
       val cmpHeight  = c.getHeight
       val pageWidth  = cmpWidth + (margin.left + margin.right)

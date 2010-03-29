@@ -39,7 +39,10 @@ import de.sciss.temporal.{AudioRegion, ContainerLike}
 import de.sciss.sonogram.SonogramPaintController
 import de.sciss.io.IOUtil
 
-class KContainerView( c: ContainerLike[ _ ], version: VersionPath )
+/**
+ *    @version 0.11, 29-Mar-10 
+ */
+class KContainerView( c: ContainerLike, version: VersionPath )
 extends JPanel with SonogramPaintController {
    kview =>
    
@@ -85,7 +88,7 @@ extends JPanel with SonogramPaintController {
          def actionPerformed( e: ActionEvent ) {
             val folder = new File( new File( System.getProperty( "user.home" ), "TemporalObjects" ), "export" )
             folder.mkdirs
-            val file = IOUtil.nonExistentFileVariant( new File( folder, "kView.pdf" ), 5, null, ".pdf" )
+            val file = IOUtil.nonExistentFileVariant( new File( folder, "kView.pdf" ), 5, null, null )
             PDFExport.export( kview, file )
          }
       })
@@ -110,13 +113,22 @@ extends JPanel with SonogramPaintController {
 
    private class RegionPane extends JComponent {
       override def paintComponent( g: Graphics ) {
-         var cnt = 0
-         var y   = 0
-         val dur = stopSec - startSec
-         if( dur == 0.0 ) return
-         val hScale = getWidth / dur
          val g2 = g.asInstanceOf[ Graphics2D ]
+         paintContainer( g2, c, 0, 0, getWidth, true, None )
+      }
+
+      private def paintContainer( g2: Graphics2D, c: ContainerLike, x: Int, y: Int, w: Int,
+                                  expanded: Boolean, colrBg: Option[ Color ]) : Int = {
+         var cnt = 0
+         var ry = y
          version.use {
+            val (start, stop) = version.use {
+               val i = c.interval
+               (i.start.inf.sec, i.stop.sup.sec)
+            }
+            val dur = stop - start
+            if( dur == 0.0 ) return y
+            val hScale = w / dur
             c.foreach( r => {
 //println( "#" + (cnt+1) + " - " + region )
                val i             = r.interval
@@ -127,11 +139,15 @@ extends JPanel with SonogramPaintController {
                val stableStart   = startInf == startSup
                val stableStop    = stopInf == stopSup
 
+               val rx = (hScale * startInf).toInt + x
+               val rw = (hScale * stopSup).toInt + x - rx
+               colrBg.foreach( colr => {
+                  g2.setColor( colr )
+                  g2.fillRect( x, ry, w, 18 )
+               })
                g2.setColor( Color.black )
-               val x = (hScale * startInf).toInt
-               val w = (hScale * stopSup).toInt - x
-               g2.fillRect( x, y, w, 17 )
-               g2.fillRect( x, y + 18, w, 50 )
+               g2.fillRect( rx, ry, rw, 17 )
+
                if( !stableStart ) {
                   // XXX
                }
@@ -140,34 +156,57 @@ extends JPanel with SonogramPaintController {
                }
                g2.setColor( Color.white )
                val clipOrig = g2.getClip
-               g2.clipRect( x, y, w, 17 )
-               g2.drawString( r.name, x + 4, y + 13 )
+               g2.clipRect( rx, ry, rw, 17 )
+               g2.drawString( r.name, rx + 4, ry + 13 )
                g2.setClip( clipOrig )
 
-               if( stableStart ) r match {
-                  case ar: AudioRegion => {
-                     val offset     = ar.offset
-                     val offsetSup  = offset.sup.sec
-                     val offsetInf  = offset.inf.sec
-                     if( offsetSup == offsetInf ) {
-                        val afe        = ar.audioFile
-                        SonogramManager.get( afe ).foreach( ov => {
-                           val sr         = afe.sampleRate
-                           val spanStart  = offsetInf * sr
-                           val spanStop   = (stopSup - startInf) * sr // inf?
-                           g2.clipRect( x + 1, y + 19, w - 2, 48 )
-                           ov.paint( spanStart, spanStop, g2, x + 1, y + 19, w - 2, 48, kview )
-                           g2.setClip( clipOrig )
+               ry += 18
+               if( stableStart ) {
+                  ry = r match {
+                     case ar: AudioRegion if( expanded ) => {
+                        colrBg.foreach( colr => {
+                           g2.setColor( colr )
+                           g2.fillRect( x, ry, w, 52 )
                         })
+                        g2.setColor( Color.black )
+                        g2.fillRect( rx, ry, rw, 50 )
+                        val offset     = ar.offset
+                        val offsetSup  = offset.sup.sec
+                        val offsetInf  = offset.inf.sec
+                        if( offsetSup == offsetInf ) {
+                           val afe        = ar.audioFile
+                           SonogramManager.get( afe ).foreach( ov => {
+                              val sr         = afe.sampleRate
+                              val spanStart  = offsetInf * sr
+                              val spanStop   = (stopSup - startInf) * sr // inf?
+                              g2.clipRect( rx + 1, ry + 1, rw - 2, 48 )
+                              ov.paint( spanStart, spanStop, g2, rx + 1, ry + 1, rw - 2, 48, kview )
+                              g2.setClip( clipOrig )
+                           })
+                        }
+                        ry + 52
                      }
+                     case cSub: ContainerLike => {
+                        g2.clipRect( rx + 2, ry + 2, rw - 4, 0xFFFF )
+                        val yres = paintContainer( g2, cSub, rx + 1, ry + 1, rw - 2, false, Some( Color.lightGray )) + 2
+                        g2.setClip( clipOrig )
+                        g2.setColor( Color.black )
+                        g2.drawRect( rx, ry, rw, yres - ry )
+                        colrBg.foreach( colr => {
+                           g2.setColor( colr )
+                           g2.fillRect( x, ry, rx - x, yres - ry )
+                           g2.fillRect( rx + rw, ry, w - (rx + rw), yres - ry )
+                        })
+                        yres
+                     }
+                     case _ => ry
                   }
-                  case _ =>
                }
 
-               y += 70
                cnt += 1
             })
          }
+         ry
       }
    }
 }

@@ -32,22 +32,22 @@ import de.sciss.confluent.{ FatPointer => FPtr, FatValue => FVal, _ }
 import VersionManagement._
 import collection.{IterableLike, SeqLike}
 
-trait ContainerLike[ +Repr ]
-extends RegionLike[ Repr ] with Iterable[ RegionLike[ _ ]] {
-   def add( c: RegionLike[ _ ]) : Repr
+trait ContainerLike
+extends RegionLike with Iterable[ RegionLike ] {
+   def add( c: RegionLike ) : ContainerLike
    def interval: IntervalLike
-//   def iterator: Iterator
+   def ref: ContainerLike
 }
 
 object Container {
 //   type ContainerRepr = ContainerLike[ R <: ContainerLike[ R ]]
 
    val root = Container( "root", 0⏊00 )   // workspace?
-   private var currentVar: ContainerLike[ _ ] = root
+   private var currentVar: ContainerLike = root
 
    def current = currentVar
 
-   def use[ T ]( c: ContainerLike[ _ ], thunk: => T ) = {
+   def use[ T ]( c: ContainerLike, thunk: => T ) = {
       val oldC = currentVar
       currentVar = c
       try {
@@ -57,23 +57,24 @@ object Container {
       }
    }
 
-   def use( c: ContainerLike[ _ ]) {
+   def use( c: ContainerLike ) {
       currentVar = c
    }
 
    def apply( name: String, start: PeriodLike ) : Container = {
-      val r = new Container( name, start, currentVersion.path.takeRight( 2 ))
+      val r = new Container( name, start, currentVersion.tail )
       r
    }
 }
 
 class Container private ( val name: String, start: PeriodLike, val sp: Path )
-extends ContainerLike[ Container ] {
+extends ContainerLike {
    private val regions      = new FVal[ ListEntry ]
    private val numRegionsF  = new FVal[ Int ]
 
    private val fi = new FVal[ IntervalLike ]
-   def interval: IntervalLike = new IntervalProxy( fi, sp )
+   def interval: IntervalLike = get( fi, sp )
+   def intervalRef: IntervalLike = new IntervalProxy( fi, sp )
 
    // ---- constructor ----
    {
@@ -81,12 +82,16 @@ extends ContainerLike[ Container ] {
       set( numRegionsF, 0, sp )
    }
 
+   def ref : Container = {
+      error( "WARNING: Container:ref not yet implemented" )
+   }
+   
    def use[ T ]( thunk: => T ) =
       Container.use( this, thunk )
 
    def use = { Container.use( this ); this }
    
-   def add( r: RegionLike[ _ ]) = {
+   def add( r: RegionLike ) = {
       val newEntry = new ListEntry( r )
       var entryF  = regions
       var entryO  = getO( entryF, sp )
@@ -101,7 +106,7 @@ extends ContainerLike[ Container ] {
 
       // update bounding interval
       val ivOld = get( fi, sp )
-      val ri = r.interval
+      val ri = r.intervalRef
       set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
 
       // update numRegions
@@ -118,19 +123,19 @@ extends ContainerLike[ Container ] {
    }
    
    // ---- Iterable ----
-   def iterator: Iterator[ RegionLike[ _ ]] = new ListIterator( currentAccess )
+   def iterator: Iterator[ RegionLike ] = new ListIterator( currentAccess )
 //   def apply( idx: Int ) : RegionLike[ _ ] = iterator.drop( idx ).next
    def numRegions = get( numRegionsF, sp )
    override def size = numRegions
 
-   private class ListEntry( val elem: RegionLike[ _ ]) {
+   private class ListEntry( val elem: RegionLike ) {
       val next = new FVal[ ListEntry ]
    }
 
-   private class ListIterator( access: Path ) extends Iterator[ RegionLike[ _ ]] {
+   private class ListIterator( access: Path ) extends Iterator[ RegionLike ] {
       private var nextF = regions
 
-      def next: RegionLike[ _ ] = {
+      def next: RegionLike = {
          val x = get( nextF, sp, access )
          nextF = x.next
          x.elem

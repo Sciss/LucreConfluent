@@ -34,27 +34,41 @@ object Region {
    import VersionManagement._
 
    def apply( name: String, i: IntervalLike ) = {
-      val r = new Region( name, currentVersion.path.takeRight( 2 ))
+      val r = new Region( name, currentVersion.tail )
       r.interval = i
       r
    }
 }
 
-trait RegionLike[ +Repr ] {
+trait RegionLike {
    def interval: IntervalLike
+   def intervalRef : IntervalLike
    def name: String
+   def ref : RegionLike
 }
+
+//class RegionProxy( r: Region, sp: Path ) extends RegionLike {
+//   def ref : RegionLike = this // ??? or nest
+//   def name : String = r.name
+//   def interval
+//}
 
 // note: eventually 'name' should also be confluent
 class Region private ( val name: String, val sp: Path )
-extends RegionLike[ Region ] {
+extends RegionLike {
    import VersionManagement._
 
    private val fi = new FVal[ IntervalLike ]
 //   def interval: IntervalLike = new IntervalAccess( currentAccess, intervalPtr )
-   def interval: IntervalLike = new IntervalProxy( fi, sp )
+//   def interval: IntervalLike = new IntervalProxy( fi, sp )
+   def interval: IntervalLike = get( fi, sp )
    def interval_=( i: IntervalLike ) = {
        set( fi, i, sp )
+   }
+   def intervalRef : IntervalLike = new IntervalProxy( fi, sp )
+
+   def ref : Region = {
+      error( "WARNING: Region:ref not yet implemented" )
    }
 
    override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"

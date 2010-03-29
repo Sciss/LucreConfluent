@@ -1,12 +1,43 @@
+/**
+ *  KContainerView.scala
+ *  (TemporalObjects)
+ *
+ *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
+ *
+ *	 This software is free software; you can redistribute it and/or
+ *	 modify it under the terms of the GNU General Public License
+ *	 as published by the Free Software Foundation; either
+ *	 version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *	 This software is distributed in the hope that it will be useful,
+ *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *	 General Public License for more details.
+ *
+ *	 You should have received a copy of the GNU General Public
+ *	 License (gpl.txt) along with this software; if not, write to the Free Software
+ *	 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *
+ *	 For further information, please contact Hanns Holger Rutz at
+ *	 contact@sciss.de
+ *
+ *
+ *  Changelog:
+ */
+
 package de.sciss.temporal.view
 
+import java.awt.{ BorderLayout, Color, Font, Graphics, Graphics2D }
+import java.awt.event.{ ActionEvent }
+import java.awt.image.ImageObserver
+import java.io.File
+import javax.swing.{ AbstractAction, Box, JButton, JComponent, JFrame, JPanel }
 import de.sciss.gui.VectorSpace
 import de.sciss.confluent.VersionPath
-import javax.swing.{ JComponent, JFrame, JPanel }
 import de.sciss.temporal.{AudioRegion, ContainerLike}
-import java.awt._
 import de.sciss.sonogram.SonogramPaintController
-import image.ImageObserver
+import de.sciss.io.IOUtil
 
 class KContainerView( c: ContainerLike[ _ ], version: VersionPath )
 extends JPanel with SonogramPaintController {
@@ -46,8 +77,24 @@ extends JPanel with SonogramPaintController {
    }
 
    def makeWindow = {
-      val f = new JFrame( "View : " + c.name )
-      f.getContentPane.add( this, BorderLayout.CENTER )
+      val f = new JFrame( "View : " + c.name + " <" + version.version + ">" )
+      val cp = f.getContentPane
+      cp.add( this, BorderLayout.CENTER )
+      val bar = Box.createHorizontalBox
+      val ggPDF = new JButton( new AbstractAction( "PDF" ) {
+         def actionPerformed( e: ActionEvent ) {
+            val folder = new File( new File( System.getProperty( "user.home" ), "TemporalObjects" ), "export" )
+            folder.mkdirs
+            val file = IOUtil.nonExistentFileVariant( new File( folder, "kView.pdf" ), 5, null, ".pdf" )
+            PDFExport.export( kview, file )
+         }
+      })
+      ggPDF.putClientProperty( "JComponent.sizeVariant", "small" )
+      ggPDF.putClientProperty( "JButton.buttonType", "bevel" )
+      ggPDF.setFocusable( false )
+      bar.add( ggPDF )
+      bar.add( Box.createHorizontalGlue )
+      cp.add( bar, BorderLayout.SOUTH )
       f.setSize( 600, 300 )
       f.setLocationRelativeTo( null )
       f.setVisible( true )
@@ -84,7 +131,7 @@ extends JPanel with SonogramPaintController {
                val x = (hScale * startInf).toInt
                val w = (hScale * stopSup).toInt - x
                g2.fillRect( x, y, w, 17 )
-               g2.fillRect( x, y + 18, w, 45 )
+               g2.fillRect( x, y + 18, w, 50 )
                if( !stableStart ) {
                   // XXX
                }
@@ -108,7 +155,9 @@ extends JPanel with SonogramPaintController {
                            val sr         = afe.sampleRate
                            val spanStart  = offsetInf * sr
                            val spanStop   = (stopSup - startInf) * sr // inf?
+                           g2.clipRect( x + 1, y + 19, w - 2, 48 )
                            ov.paint( spanStart, spanStop, g2, x + 1, y + 19, w - 2, 48, kview )
+                           g2.setClip( clipOrig )
                         })
                      }
                   }

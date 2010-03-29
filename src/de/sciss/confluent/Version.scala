@@ -166,7 +166,7 @@ object Version {
 
 trait VersionPath {
    val version: Version
-   def path: CompressedPath
+   def path: Path
 
    def newBranch : VersionPath
    def newRetroParent : VersionPath
@@ -185,7 +185,7 @@ object VersionPath {
       new VersionPathImpl( vinit, Vector( vinit, vinit ))
    }
 
-   private case class VersionPathImpl( version: Version, path: CompressedPath )
+   private case class VersionPathImpl( version: Version, path: Path )
    extends VersionPath {
       def newBranch : VersionPath =
          newTail( Version.newFrom( version ))

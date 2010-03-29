@@ -37,26 +37,26 @@ object VersionManagement {
    private var currentPathVar = VersionPath.init
 
    def currentVersion: VersionPath   = currentPathVar
-   def currentAccess: CompressedPath = currentPathVar.path
+   def currentAccess: Path = currentPathVar.path
 
    def get[ V ]( fval: FVal[ V ]) = {
       fval.access( currentAccess ).get
    }
 
    // avec lazy access
-   def get[ V ]( fval: FVal[ V ], seminalPath: CompressedPath ) = {
+   def get[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
       fval.access( substitute( currentAccess, seminalPath )).get
    }
 
-   def get[ V ]( fval: FVal[ V ], seminalPath: CompressedPath, access: CompressedPath ) = {
+   def get[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
       fval.access( substitute( access, seminalPath )).get
    }
 
-   def getO[ V ]( fval: FVal[ V ], seminalPath: CompressedPath ) = {
+   def getO[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
       fval.access( substitute( currentAccess, seminalPath ))
    }
 
-   def getO[ V ]( fval: FVal[ V ], seminalPath: CompressedPath, access: CompressedPath ) = {
+   def getO[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
       fval.access( substitute( access, seminalPath ))
    }
 
@@ -65,7 +65,7 @@ object VersionManagement {
    }
 
    // substitutes an access path to become an assignment pedigree
-   private def substitute( access: CompressedPath, seminalPath: CompressedPath ) : CompressedPath = {
+   private def substitute( access: Path, seminalPath: Path ) : Path = {
       // XXX this needs to be optimized one day
       // XXX bug in Vector (23-Mar-10) : indexOf returns -1 for the last element
 //      val off = access.indexOf( seminalVersion ) match {
@@ -83,7 +83,7 @@ object VersionManagement {
    }
 
    // avec lazy access
-   def set[ V ]( fval: FVal[ V ], value: V, seminalPath: CompressedPath ) {
+   def set[ V ]( fval: FVal[ V ], value: V, seminalPath: Path ) {
 //      val pedigree = substitute( currentAccess, seminalVersion )
 //      println( "pedigree = " + pedigree )
       fval.assign( substitute( currentAccess, seminalPath ), value )
@@ -155,7 +155,7 @@ object VersionManagement {
    }
 }
 
-//class IntervalAccess( val path: CompressedPath, val fptr: FPtr[ IntervalLike ])
+//class IntervalAccess( val path: Path, val fptr: FPtr[ IntervalLike ])
 //extends IntervalExprLike {
 //   import VersionManagement._
 //

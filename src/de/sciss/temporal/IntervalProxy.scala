@@ -2,7 +2,7 @@ package de.sciss.temporal
 
 import de.sciss.confluent.{ FatValue => FVal, _ }
 
-class IntervalProxy( val fi: FVal[ IntervalLike ], sp: CompressedPath )
+class IntervalProxy( val fi: FVal[ IntervalLike ], sp: Path )
 extends IntervalExprLike {
    import VersionManagement._
 

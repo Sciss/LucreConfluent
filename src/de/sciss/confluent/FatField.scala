@@ -32,7 +32,7 @@ trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
    /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
 
-   def assign( version: CompressedPath, value: V ) {
+   def assign( version: Path, value: V ) {
       val idx        = version.dropRight( 1 )
 //      val newEntry   = (version.last -> value)
 // VECTOR DOES NOT IMPLEMENT LAST AS OF 22-MAR-10
@@ -53,7 +53,7 @@ trait FatField[ V ] {
       }
    }
 
-   protected def accessPlain( version: CompressedPath ) : Option[ V ] = {
+   protected def accessPlain( version: Path ) : Option[ V ] = {
 		lexi.findMaxPrefix( version ).map( _.query( version.last )) getOrElse None
 	}
 
@@ -68,7 +68,7 @@ trait FatField[ V ] {
  *    @todo       Vector.++ is inefficient i guess, should use a catenable Deque instead! 
  */
 class FatValue[ V ] extends FatField[ V ] {
-	def access( version: CompressedPath ) : Option[ V ] = accessPlain( version )
+	def access( version: Path ) : Option[ V ] = accessPlain( version )
 
 //	def get()( implicit version: Version ) : T = {
 //		pa.findMaxPrefix( version.path )
@@ -86,7 +86,7 @@ class FatValue[ V ] extends FatField[ V ] {
 class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
    type I = FatIdentifier[ V ]
 
-//	def assign( path: CompressedPath, valuePath: CompressedPath, value: T ) {
+//	def assign( path: Path, valuePath: Path, value: T ) {
 //		pa.insert( path, FatIdentifier( valuePath, value ))
 //	}
 
@@ -94,7 +94,7 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 //		pa.insert( path, null )
 //	}
 
-//	def assign( path: CompressedPath, id: FatIdentifier[ T ]) {
+//	def assign( path: Path, id: FatIdentifier[ T ]) {
 //		map.insert( path, id )
 //	}
 
@@ -102,7 +102,7 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 //		pa.find( version )
 //	}
 
-	def access( version: CompressedPath ) : Option[ I ] = {
+	def access( version: Path ) : Option[ I ] = {
       val (idOption, off) = lexi.findMaxPrefix2( version )
       idOption.map( _.query( version.last ).map( _.substitute( version, off ))) getOrElse None
 	}
@@ -136,7 +136,7 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
    override def toString = "FPtr#" + hashCode
 }
 
-case class FatIdentifier[ V ]( path: CompressedPath, value: V ) {
+case class FatIdentifier[ V ]( path: Path, value: V ) {
    type I = FatIdentifier[ V ] 
 
 //	def append( i: Int ) : FatIdentifier[ T ] = {
@@ -145,7 +145,7 @@ case class FatIdentifier[ V ]( path: CompressedPath, value: V ) {
 
 	def setValue( v: V ) : I = FatIdentifier( path, v )
 
-	def substitute( accessPath: CompressedPath, off: Int ) : I = {
+	def substitute( accessPath: Path, off: Int ) : I = {
 	  	// ++ XXX inefficient, should use a catenable Deque instead!
 //      println( "SUBSTITUTE " + path.size + " / " + off )
       // i suspect that the code should be

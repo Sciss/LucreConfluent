@@ -35,7 +35,7 @@ package object confluent {
 //   type VersionRecord      = TotalOrder.UserRecord[ Version ]
 // XXX this doesn't go well with the lexi tree
 //   type CompressedPath  = ISeq[ Tuple2[ VersionID, VersionID ]]
-   type CompressedPath  = Vector[ Version ]
+   type Path  = Vector[ Version ]
 //   type DSSTEntry[ V ]  = Tuple2[ VersionID, V ] 
 //   type TotalOrder[ V ] = IntMap[ V ]
 //   val TotalOrder       = IntMap    // XXX this is obviously not the DSST structure with O(1) lookup

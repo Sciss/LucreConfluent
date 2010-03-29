@@ -26,7 +26,7 @@ object DomainSpecificLanguage {
       AudioFileElement.fromUnresolvedLoc( loc )
    }
 
-   def audioRegion( offset: PeriodLike, interval: IntervalLike, name: String = "#auto" ) : AudioRegion = {
+   def audioRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : AudioRegion = {
       val afe        = AudioFileElement.current
       val rName      = if( name == "#auto" ) afe.name else name
       val ar         = new AudioRegion( currentAccess )

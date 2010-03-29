@@ -1,6 +1,6 @@
 /**
- *  ScalaInterpreterFrame
- *  (de.sciss.temporal.ex package)
+ *  ScalaInterpreterFrame.scala
+ *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
  *
@@ -193,17 +193,24 @@ id0.version.tree.inspect
 """
 */
          """
-val c = container()
+val c = container().use
 audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )
-val af = audioFile( "MetallScheibe1TestN.aif" )
-val ar1 = af.use { c.use { audioRegion( 0⏊01, 0⏊02 :: 0⏊05 )}}
-val ar2 = af.use { c.use { audioRegion( 0⏊02, 0⏊07 :: 0⏊13 )}}
+val af = audioFile( "MetallScheibe1TestN.aif" ).use
+val ar1 = audioRegion( "R #1", 0⏊01, 0⏊02 :: 0⏊05 )
+val ar2 = audioRegion( "R #2", 0⏊02, 0⏊07 :: 0⏊13 )
 c.interval // 0:00 ... 0:03 OK
-c.use { kView }
+kView
 versionStep
-val ar3 = af.use { c.use { audioRegion( 0⏊04, 0⏊05 :: 0⏊10 )}}
-c.use { kView }
+val ar3 = audioRegion( "R #3", 0⏊04, 0⏊05 :: 0⏊10 )
+kView
 ar1.interval = 0⏊00 :: 0⏊03
+val v1 = currentVersion
+val v0 = VersionPath.init
+makeCurrent( v0 )
+val v2 = appendRetro
+ar2.interval = ar2.interval.fixed - 0⏊02
+makeCurrent( v1 )
+ar2.interval  // 0⏊05 :: 0⏊11 OK
 """
 
 //            var t = new BinaryTreeMap[ Int, String ]

@@ -31,32 +31,40 @@ package de.sciss.temporal
 import de.sciss.confluent.{ FatValue => FVal, _ }
 import VersionManagement._
 
-class AudioRegion( sp: Path ) extends RegionLike {
-   private val nameF       = new FVal[ String ]
-   private val intervalF   = new FVal[ IntervalLike ]
-   private val audioFileF  = new FVal[ AudioFileElement ]
-   private val offsetF     = new FVal[ PeriodLike ]
-
-   def name       = get( nameF, sp )         // XXX +proxy
-   def interval: IntervalLike = get( intervalF, sp )
-   def intervalRef: IntervalLike = new IntervalProxy( intervalF, sp )
-   def audioFile  = get( audioFileF, sp )    // XXX +proxy
-   def offset     = get( offsetF, sp )       // XXX +proxy
-
-   def name_=( newName: String ) = set( nameF, newName, sp )
-   def interval_=( newInterval: IntervalLike ) = set( intervalF, newInterval, sp )
-   def audioFile_=( newAudioFile: AudioFileElement ) = set( audioFileF, newAudioFile, sp )
-   def offset_=( newOffset: PeriodLike ) = set( offsetF, newOffset, sp )
-
-   def ref : AudioRegion = {
-      println( "WARNING: AudioRegion:ref not yet implemented" )
-      val ar = new AudioRegion( currentVersion.tail )
-      ar.interval = intervalRef
-      ar.name = name // XXX Ref
-      ar.audioFile = audioFile // XXX Ref
-      ar.offset = offset // XXX Ref
-      ar
+object AudioRegion {
+   class Data {
+      val nameF       = new FVal[ String ]
+      val intervalF   = new FVal[ IntervalLike ]
+      val audioFileF  = new FVal[ AudioFileElement ]
+      val offsetF     = new FVal[ PeriodLike ]
    }
+}
+
+class AudioRegion private ( sp: Path, d: AudioRegion.Data )
+extends RegionLike {
+   def this( sp: Path ) = this( sp, new AudioRegion.Data )
+
+   def access = sp // XXX for debugging
+
+   def name       = get( d.nameF, sp )         // XXX +proxy
+   def interval: IntervalLike = get( d.intervalF, sp )
+   def intervalRef: IntervalLike = new IntervalProxy( d.intervalF, sp )
+   def audioFile  = get( d.audioFileF, sp )    // XXX +proxy
+   def offset     = get( d.offsetF, sp )       // XXX +proxy
+
+   def name_=( newName: String ) = set( d.nameF, newName, sp )
+   def interval_=( newInterval: IntervalLike ) = set( d.intervalF, newInterval, sp )
+   def audioFile_=( newAudioFile: AudioFileElement ) = set( d.audioFileF, newAudioFile, sp )
+   def offset_=( newOffset: PeriodLike ) = set( d.offsetF, newOffset, sp )
+
+   def moveBy( delta: PeriodLike ) : AudioRegion = {
+      interval = interval + delta
+      newAccess
+   }
+
+   def gugu = get( d.intervalF, sp ) 
+
+   private def newAccess = new AudioRegion( substitute( writeAccess, sp ), d )
 
    override def toString = try {
       "AudioRegion( " + name + ", " + interval + ", " + audioFile + ", " + offset + " )"
@@ -65,12 +73,12 @@ class AudioRegion( sp: Path ) extends RegionLike {
    def inspect {
       println( toString )
       println( "...name:" )
-      nameF.inspect
+      d.nameF.inspect
       println( "...interval:" )
-      intervalF.inspect
+      d.intervalF.inspect
       println( "...audioFile:" )
-      audioFileF.inspect
+      d.audioFileF.inspect
       println( "...offset:" )
-      offsetF.inspect
+      d.offsetF.inspect
    }
 }

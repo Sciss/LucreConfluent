@@ -62,7 +62,7 @@ object Container {
    }
 
    def apply( name: String, start: PeriodLike ) : Container = {
-      val r = new Container( name, start, currentVersion.tail )
+      val r = new Container( name, start, seminalPath )
       r
    }
 }
@@ -107,7 +107,14 @@ extends ContainerLike {
       // update bounding interval
       val ivOld = get( fi, sp )
       val ri = r.intervalRef
-      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
+//      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
+
+      val oldStart = ivOld.start
+      val oldStop  = ivOld.stop
+      val childStop= ri.stop
+      val newStop  = oldStop.max( start + childStop )
+      val newIv    = new IntervalPeriodExpr( oldStart, newStop )
+      set( fi, newIv, sp )
 
       // update numRegions
       set( numRegionsF, cnt, sp )
@@ -123,7 +130,7 @@ extends ContainerLike {
    }
    
    // ---- Iterable ----
-   def iterator: Iterator[ RegionLike ] = new ListIterator( currentAccess )
+   def iterator: Iterator[ RegionLike ] = new ListIterator( readAccess )
 //   def apply( idx: Int ) : RegionLike[ _ ] = iterator.drop( idx ).next
    def numRegions = get( numRegionsF, sp )
    override def size = numRegions

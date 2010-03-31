@@ -35,17 +35,25 @@ package confluent {
  */
 object VersionManagement {
    private var currentPathVar = VersionPath.init
+   private var readPathVar = VersionPath.init  
 
-   def currentVersion: VersionPath   = currentPathVar
-   def currentAccess: Path = currentPathVar.path
+//   def currentVersion: VersionPath   = currentPathVar
+//   def currentAccess: Path = currentPathVar.path
+
+   def currentVersion: VersionPath = currentPathVar
+   def readVersion: VersionPath = readPathVar
+   def writeVersion: VersionPath = currentPathVar
+   def readAccess:  Path = readPathVar.path
+   def writeAccess: Path = currentPathVar.path
+   def seminalPath: Path = currentPathVar.tail
 
    def get[ V ]( fval: FVal[ V ]) = {
-      fval.access( currentAccess ).get
+      fval.access( readAccess ).get
    }
 
    // avec lazy access
    def get[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
-      fval.access( substitute( currentAccess, seminalPath )).get
+      fval.access( substitute( readAccess, seminalPath )).get
    }
 
    def get[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
@@ -53,7 +61,7 @@ object VersionManagement {
    }
 
    def getO[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
-      fval.access( substitute( currentAccess, seminalPath ))
+      fval.access( substitute( readAccess, seminalPath ))
    }
 
    def getO[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
@@ -61,11 +69,11 @@ object VersionManagement {
    }
 
    def set[ V ]( fval: FVal[ V ], value: V ) {
-      fval.assign( currentAccess, value )
+      fval.assign( writeAccess, value )
    }
 
    // substitutes an access path to become an assignment pedigree
-   private def substitute( access: Path, seminalPath: Path ) : Path = {
+   def substitute( access: Path, seminalPath: Path ) : Path = {
       // XXX this needs to be optimized one day
       // XXX bug in Vector (23-Mar-10) : indexOf returns -1 for the last element
 //      val off = access.indexOf( seminalVersion ) match {
@@ -78,15 +86,36 @@ object VersionManagement {
 //      } else {
 //         seminalVersion +: access.drop( off )
 //      }
-      val off = access.indexOf( seminalPath.head )
-      if( off == 0 ) access else access.drop( off )
+      val sh = seminalPath.head 
+      val off = access.indexOf( sh )
+      val accessLen = access.length
+      // XXX THIS IS WRONG - WE JUST KEEP IT HERE TILL THE REAL
+      // SOLUTION IS IMPLEMENTED ; THIS WORKS ONLY UP TO ONE
+      // LEFT OF MELDING XXX
+      if( off + 2 == accessLen ) {
+         if( off == 0 ) access else access.drop( off )
+      } else {
+         val res = sh +: seminalPath( 1 ) +: access.drop( off + 2 )
+         println( "RES = " + res )
+         res
+      }
+
+//      while(
+//
+//      if( (off + 2) == seminalPath.length == seminalPath( 1 ).level ) { //
+//         if( off == 0 ) access else access.drop( off )
+//      } else { // access = <v0, v0, v2, v2> ; s = <v0, v1> --> <v0, v1, v2, v2>
+//
+//      }
+
+      // access = <v0, v0, v2, v2> ; s = <v0, v1, v2, v2>
    }
 
    // avec lazy access
    def set[ V ]( fval: FVal[ V ], value: V, seminalPath: Path ) {
 //      val pedigree = substitute( currentAccess, seminalVersion )
 //      println( "pedigree = " + pedigree )
-      fval.assign( substitute( currentAccess, seminalPath ), value )
+      fval.assign( substitute( writeAccess, seminalPath ), value )
    }
 
    def use[ T ]( v: VersionPath )( thunk: => T ) = {
@@ -152,6 +181,15 @@ object VersionManagement {
 
    def makeCurrent( version: VersionPath ) {
       currentPathVar = version
+      readPathVar    = version
+   }
+
+   def makeWrite( version: VersionPath ) {
+      currentPathVar = version
+   }
+
+   def makeRead( version: VersionPath ) {
+      readPathVar = version
    }
 }
 

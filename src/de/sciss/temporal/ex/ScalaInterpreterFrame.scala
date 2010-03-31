@@ -197,6 +197,9 @@ val c = container().use
 audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )
 val af = audioFile( "MetallScheibe1TestN.aif" ).use
 val ar1 = audioRegion( "R #1", 0⏊01, 0⏊02 :: 0⏊05 )
+val ar1c = meld { ar1.moveBy( ar1.interval.dur )} into c.add _
+kView
+
 val ar2 = audioRegion( "R #2", 0⏊02, 0⏊07 :: 0⏊13 )
 val ar1r = ref( ar1 )
 ar1r.interval = ar1r.interval + (ar1r.interval.stop - ar1r.interval.start)

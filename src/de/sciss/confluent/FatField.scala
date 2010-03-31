@@ -54,7 +54,8 @@ trait FatField[ V ] {
    }
 
    protected def accessPlain( version: Path ) : Option[ V ] = {
-		lexi.findMaxPrefix( version ).map( _.query( version.last )) getOrElse None
+      val (oracleO, off) = lexi.findMaxPrefix2( version )
+      oracleO.map( _.query( version( off ))) getOrElse None
 	}
 
    def inspect {

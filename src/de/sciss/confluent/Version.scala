@@ -77,7 +77,7 @@ object Version {
 
    def newFrom( v: Version, vs: Version* ) : Version = {
 
-      if( vs.nonEmpty ) println( "WARNING: melding not yet implemented!!!" )
+//      if( vs.nonEmpty ) println( "WARNING: melding not yet implemented!!!" )
 
       // the new version's level is the maximum of the levels of
       // the ancestor versions, unless there is more than one
@@ -87,13 +87,18 @@ object Version {
       // second case, each time a new tree is created, although
       // we might then have several trees with the same level.
       // this is indicated by figure 5 (p. 22)
-      val allV = v :: vs.toList
-      val level = allV.foldLeft[ Int ]( v.level )( (level, v) => {
-         if( v.level == level ) level + 1 else math.max( v.level, level )
+//      val allV = v :: vs.toList
+      val level = vs.foldLeft[ Int ]( v.level )( (level, vi) => {
+         if( vi.level == level ) level + 1 else math.max( vi.level, level )
       })
 
-      val tree = v.tree
-      new VersionImpl( tree, tree.insertChild( v ))
+      if( level == v.level ) {
+         val tree = v.tree
+         new VersionImpl( tree, tree.insertChild( v ))
+      } else {
+         val tree = new VersionTreeImpl( level )
+         new VersionImpl( tree, tree.insertRoot )
+      }
    }
 
    def newRetroParent( child: Version ) : Version = {
@@ -169,6 +174,7 @@ trait VersionPath {
    def path: Path
 
    def newBranch : VersionPath
+   def meldWith( v: Version ) : VersionPath
    def newRetroParent : VersionPath
    def newRetroChild : VersionPath
    def tail: Path = path.takeRight( 2 )
@@ -190,6 +196,10 @@ object VersionPath {
    extends VersionPath {
       def newBranch : VersionPath =
          newTail( Version.newFrom( version ))
+
+      def meldWith( v: Version ) : VersionPath = {
+         newTail( Version.newFrom( version, v ))
+      }
             
       def newRetroParent : VersionPath =
          newTail( Version.newRetroParent( version ))
@@ -198,11 +208,11 @@ object VersionPath {
          newTail( Version.newRetroChild( version ))
 
       private def newTail( tailVersion: Version ) : VersionPath = {
-         val newPath = // if( newVersion.level == version.level ) {
+         val newPath = if( tailVersion.level == version.level ) {
             path.dropRight( 1 ) :+ tailVersion
-//       } else {
-//          path :+ newVersion.id :+ newVersion.id
-//       }
+         } else {
+            path :+ tailVersion :+ tailVersion
+         }
          VersionPathImpl( tailVersion, newPath )
       }
 

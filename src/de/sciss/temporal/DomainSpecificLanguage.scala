@@ -29,7 +29,7 @@ object DomainSpecificLanguage {
    def audioRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : AudioRegion = {
       val afe        = AudioFileElement.current
       val rName      = if( name == "#auto" ) afe.name else name
-      val ar         = new AudioRegion( currentAccess )
+      val ar         = new AudioRegion( seminalPath )
       ar.name        = rName
       ar.interval    = interval
       ar.audioFile   = afe
@@ -38,11 +38,11 @@ object DomainSpecificLanguage {
       ar
    }
 
-   def ref( ar: AudioRegion ) : AudioRegion = {
-      val arRef = ar.ref
-      Container.current.add( arRef )
-      arRef
-   }
+//   def ref( ar: AudioRegion ) : AudioRegion = {
+//      val arRef = ar.ref
+//      Container.current.add( arRef )
+//      arRef
+//   }
 
    def transport : Transport = {
       error( "Not yet implemented" )
@@ -58,8 +58,32 @@ object DomainSpecificLanguage {
       error( "Not yet implemented" )
    }
 
-   def t {
-      error( "Not yet implemented" )
+   def t[ T ]( thunk: => T ) : T = {
+      val current = currentVersion
+      val write   = current.newBranch
+      makeWrite( write )
+      try {
+         thunk
+      } finally {
+         makeCurrent( write )
+      }
+   }
+
+   def meld[ T ]( thunk: => T ) : Meld[ T ] = {
+      val current    = currentVersion
+      val write      = current.newBranch
+      makeWrite( write )
+//      val oldContext = transactionContext
+//      val meld       = new MeldTransactionContext
+//      transactionContext = meld
+      try {
+         Meld( thunk, write )
+      } finally {
+         makeCurrent( current )
+//         transactionContext = oldContext
+//         meld.createdObjects.foreach( _ match {
+//         })
+      }
    }
 
    // ---- implicits ----
@@ -70,4 +94,10 @@ object DomainSpecificLanguage {
    }
    
    implicit def fileToFileLocation( f: File ) : FileLocation = URIFileLocation( f.toURI )
+
+//   // ---- transactions ----
+//   def transactionContext: TransactionContext = DummyTransactionContext
+//   private def transactionContext_=( newContext: TransactionContext ) {
+//      transactionContext = newContext
+//   }
 }

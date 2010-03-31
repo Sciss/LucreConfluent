@@ -252,7 +252,7 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
     	}
       (if( l != null ) Some( l.value ) else None, cnt)
    }
-
+  
 /*
    // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
    def findMaxPrefix3( path: Path ) : Tuple2[ Option[ V ], Int ] = {

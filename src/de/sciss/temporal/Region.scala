@@ -34,7 +34,7 @@ object Region {
    import VersionManagement._
 
    def apply( name: String, i: IntervalLike ) = {
-      val r = new Region( name, currentVersion.tail )
+      val r = new Region( name, seminalPath )
       r.interval = i
       r
    }
@@ -44,7 +44,7 @@ trait RegionLike {
    def interval: IntervalLike
    def intervalRef : IntervalLike
    def name: String
-   def ref : RegionLike
+//   def ref : RegionLike
 }
 
 //class RegionProxy( r: Region, sp: Path ) extends RegionLike {
@@ -67,9 +67,9 @@ extends RegionLike {
    }
    def intervalRef : IntervalLike = new IntervalProxy( fi, sp )
 
-   def ref : Region = {
-      error( "WARNING: Region:ref not yet implemented" )
-   }
+//   def ref : Region = {
+//      error( "WARNING: Region:ref not yet implemented" )
+//   }
 
    override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
 

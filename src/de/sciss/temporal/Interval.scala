@@ -30,27 +30,28 @@ package de.sciss.temporal
 
 trait IntervalLike extends MutableModel[ IntervalLike ] {
    def start: PeriodLike
-   def stop: PeriodLike
-   def dur: PeriodLike = stop - start
+   def dur: PeriodLike
+   def stop: PeriodLike = start + dur
    def +( p: PeriodLike ): IntervalLike
    def -( p: PeriodLike ): IntervalLike
 
    def fixed: IntervalLike
+   def isConstant = start.isConstant && dur.isConstant
 }
 
-case class IntervalConst( start: PeriodConst, stop: PeriodConst )
+case class IntervalConst( start: PeriodConst, dur: PeriodConst )
 extends IntervalLike {
-   def +( p: PeriodConst ) = IntervalConst( start + p, stop + p )
-   def -( p: PeriodConst ) = IntervalConst( start - p, stop - p )
+   def +( p: PeriodConst ) = IntervalConst( start + p, dur )
+   def -( p: PeriodConst ) = IntervalConst( start - p, dur )
 
    def +( p: PeriodLike ) = p match {
       case pc: PeriodConst => this.+( pc )
-      case _ => (start + p) :: (stop + p)
+      case _ => (start + p) :< dur
    }
 
    def -( p: PeriodLike ) = p match {
       case pc: PeriodConst => this.-( pc )
-      case _ => (start - p) :: (stop - p) // XXX ?
+      case _ => (start - p) :< dur
    }
 
    // these are no-ops for a constant interval
@@ -59,7 +60,7 @@ extends IntervalLike {
 //   def eval: IntervalConst = this // no dependants
    def fixed: IntervalConst = this // no dependants
 
-   override def toString = "(" + start + " :: " + stop + ")"
+   override def toString = "(" + start + " :< " + dur + ")"
 }
 
 trait IntervalExprLike
@@ -75,15 +76,15 @@ extends MutableModelImpl[ IntervalLike ] with IntervalLike {
  *          eliminating the necessity to check for temporarily illegal intervals
  *          (start > stop)
  */
-class IntervalPeriodExpr( val start: PeriodLike, val stop: PeriodLike )
+case class IntervalPeriodExpr( start: PeriodLike, dur: PeriodLike )
 extends IntervalExprLike {
    private val startDep = start.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
-         val newThis = new IntervalPeriodExpr( newP, stop )
+         val newThis = new IntervalPeriodExpr( newP, dur )
          replacedBy( newThis )
       }
    })
-   private val stopDep = stop.addDependant( new PeriodDependant {
+   private val durDep = dur.addDependant( new PeriodDependant {
       def modelReplaced( oldP: PeriodLike, newP: PeriodLike ) {
          val newThis = new IntervalPeriodExpr( start, newP )
          replacedBy( newThis )
@@ -91,9 +92,9 @@ extends IntervalExprLike {
    })
 
 //   def eval: IntervalConst = IntervalConst( start.eval, stop.eval )
-   def fixed: IntervalLike = start.fixed :: stop.fixed
+   def fixed: IntervalLike = start.fixed :< dur.fixed
 
-   override def toString = "Ix(" + start + " :: " + stop + ")"
+   override def toString = "Ix(" + start + " :< " + dur + ")"
 }
 
 abstract class IntervalPeriodOpExpr( a: IntervalLike, b: PeriodLike )
@@ -117,7 +118,7 @@ extends IntervalExprLike {
 case class PlusIntervalPeriodExpr( a: IntervalLike, b: PeriodLike )
 extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start + b
-   def stop  = a.stop + b
+   def dur   = a.dur
 
 // def detach: IntervalLike = PlusIntervalPeriodExpr( a, b )
 //   def eval: IntervalConst = a.eval + b.eval
@@ -128,7 +129,7 @@ extends IntervalPeriodOpExpr( a, b ) {
 case class MinusIntervalPeriodExpr( a: IntervalLike, b: PeriodLike )
 extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start - b
-   def stop  = a.stop - b
+   def dur   = a.dur
 
 //   def detach: IntervalLike = MinusIntervalPeriodExpr( a, b )
 //   def eval: IntervalConst = a.eval - b.eval

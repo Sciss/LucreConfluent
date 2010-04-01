@@ -10,5 +10,8 @@ package de.sciss {
 //         case ivar: IntervalExprLike => ivar
 //         case _ => IntervalExpr( iv.start, iv.stop )  // wrap
 //      }
+
+      val IndetStart = PeriodConst( Double.NegativeInfinity ) :? PeriodConst( Double.PositiveInfinity )
+      val IndetDur   = PeriodConst( 0.0 ) :? PeriodConst( Double.PositiveInfinity )
    }
 } 

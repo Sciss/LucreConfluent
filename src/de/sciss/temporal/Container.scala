@@ -110,10 +110,10 @@ extends ContainerLike {
 //      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
 
       val oldStart = ivOld.start
-      val oldStop  = ivOld.stop
+      val oldDur   = ivOld.dur
       val childStop= ri.stop
-      val newStop  = oldStop.max( start + childStop )
-      val newIv    = new IntervalPeriodExpr( oldStart, newStop )
+      val newDur   = oldDur.max( childStop )
+      val newIv    = oldStart :< newDur // new IntervalPeriodExpr( oldStart, newDur )
       set( fi, newIv, sp )
 
       // update numRegions

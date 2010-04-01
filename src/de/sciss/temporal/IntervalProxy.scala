@@ -25,12 +25,12 @@ extends IntervalExprLike {
       override def toString = try { access.start.toString } catch { case _ => super.toString }
    }
 
-   object stop extends PeriodExpr {
-      def inf: PeriodConst = access.stop.inf
-      def sup: PeriodConst = access.stop.sup
-      def fixed: PeriodLike = access.stop.fixed
+   object dur extends PeriodExpr {
+      def inf: PeriodConst = access.dur.inf
+      def sup: PeriodConst = access.dur.sup
+      def fixed: PeriodLike = access.dur.fixed
 
-      override def toString = try { access.stop.toString } catch { case _ => super.toString }
+      override def toString = try { access.dur.toString } catch { case _ => super.toString }
    }
 }
 

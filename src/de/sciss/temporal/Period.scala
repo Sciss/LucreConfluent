@@ -38,6 +38,7 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
    def fixed: PeriodLike // = getEval getOrElse error( "Not realized" )
    def inf: PeriodConst   // PeriodConst ?
    def sup: PeriodConst   // PeriodConst ?
+   def isConstant = false
 
    def +( b: PeriodLike ) : PeriodLike // = PeriodExpr.plus( this, b )
    def -( b: PeriodLike ) : PeriodLike // = PeriodExpr.plus( this, b )
@@ -51,7 +52,11 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
 
    def overlaps( b: PeriodLike ) = if( inf < b.inf ) sup > b.inf else b.sup > inf
 
-   def ::( b: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( b, this ) // note argument reversal
+//   def :<( dur: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( this, dur )
+//   def ::( start: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( start, this - start ) // note argument reversal
+   def :<( dur: PeriodLike ) : IntervalLike
+   def ::( start: PeriodLike ) : IntervalLike
+   def :?( b: PeriodLike ) : PeriodLike
 }
 
 trait RandomGen {
@@ -77,7 +82,7 @@ extends PeriodExpr {
 //      if( isInstantiated ) Some( eval( a.eval )) else None
 
 //   override def eval = if( isInstantiated ) eval( a.eval ) else error( "Not realized" )
-   override def fixed: PeriodLike = fixed( a.fixed )
+   def fixed: PeriodLike = fixed( a.fixed )
    protected def fixed( af: PeriodLike ) : PeriodLike
    protected def copy( newA: PeriodLike ) : PeriodLike
 }
@@ -101,7 +106,7 @@ extends PeriodExpr {
 //      if( isInstantiated ) Some( eval( a.eval, b.eval )) else None
 
 //   override def eval = if( isInstantiated ) eval( a.eval, b.eval ) else error( "Not realized" )
-   override def fixed: PeriodLike = fixed( a.fixed, b.fixed )
+   def fixed: PeriodLike = fixed( a.fixed, b.fixed )
    protected def fixed( af: PeriodLike, bf: PeriodLike ) : PeriodLike
    protected def copy( newA: PeriodLike, newB: PeriodLike ) : PeriodLike
 }
@@ -202,14 +207,19 @@ abstract class PeriodExpr extends PeriodExprLike {
    def /( b: Double ) : PeriodLike        = DivPeriodExpr( this, b )
 
    def unary_- : PeriodLike               = UnaryMinusPeriodExpr( this )
+
+   def :<( dur: PeriodLike ) : IntervalLike = IntervalPeriodExpr( this, dur )
+   def ::( start: PeriodLike ) : IntervalLike = IntervalPeriodExpr( start, this - start ) // note argument reversal
+   def :?( b: PeriodLike ) : PeriodLike   = BoundedPeriodExpr( this, b )
 }
 
 case class PeriodConst( sec: Double ) extends PeriodLike {
-   def +( b: PeriodConst )   = PeriodConst( sec + b.sec )
-   def -( b: PeriodConst )   = PeriodConst( sec - b.sec )
-   def min( b: PeriodConst ) = PeriodConst( scala.math.min( sec, b.sec ))
-   def max( b: PeriodConst ) = PeriodConst( scala.math.max( sec, b.sec ))
-   def ::( b: PeriodConst )  = IntervalConst( b, this )  // note argument reversal
+   def +( b: PeriodConst )       = PeriodConst( sec + b.sec )
+   def -( b: PeriodConst )       = PeriodConst( sec - b.sec )
+   def min( b: PeriodConst )     = PeriodConst( scala.math.min( sec, b.sec ))
+   def max( b: PeriodConst )     = PeriodConst( scala.math.max( sec, b.sec ))
+   def :<( dur: PeriodConst )    = IntervalConst( this, dur )
+   def ::( start: PeriodConst )  = IntervalConst( start, this - start )  // note argument reversal
 
    def +( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => this.+( pc )   // why do we need this. ?
@@ -218,38 +228,64 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
 
    def -( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => this.-( pc )
-      case _ => b - this 
+      case _ => MinusPeriodExpr( this, b )
    }
 
    def min( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => min( pc )
-      case _ => b.min( this )
+      case _ => MinimumPeriodExpr( this, b )
    }
 
    def max( b: PeriodLike ) : PeriodLike = b match {
       case pc: PeriodConst => max( pc )
-      case _ => b.max( this ) 
+      case _ => MaximumPeriodExpr( this, b )
    }
 
+   def :<( dur: PeriodLike ) : IntervalLike = dur match {
+      case pc: PeriodConst => this.:<( pc )
+      case _ => IntervalPeriodExpr( this, dur )
+   }
+
+   def ::( start: PeriodLike ) : IntervalLike = start match {
+      case pc: PeriodConst => this.::( start )
+      case _ => IntervalPeriodExpr( start, this - start )
+   }
+
+   def :?( b: PeriodLike ) : PeriodLike = if( b == this ) this else BoundedPeriodExpr( this, b )
+   
    def *( d: Double )      = PeriodConst( sec * d )
    def /( d: Double )      = PeriodConst( sec / d )
    def <( b: PeriodConst ) = sec < b.sec
    def >( b: PeriodConst ) = sec > b.sec
+
+   def isFinite      = !(sec.isInfinity || sec.isNaN)  // is that a sensible name?
+   def isInfinity    = sec.isInfinity
+   def isPosInfinity = sec.isPosInfinity
+   def isNegInfinity = sec.isNegInfinity
 
    def unary_- = PeriodConst( -sec )
 
 //   def isInstantiated   = true
 //   def getEval          = Some( this )
 //   override def eval    = this
-   override def fixed    = this
+   def fixed            = this
    def inf              = this
    def sup              = this
+   override def isConstant = true
 
    // these are no-ops for a constant period
    def addDependant( pd: PeriodDependant ) = pd
    def printDependants { println( "No dependants" )}
 
-   override def toString = {
+   override def toString : String = {
+      if( sec.isPosInfinity ) {
+         return "+inf"
+      } else if( sec.isNegInfinity ) {
+         return "-inf"
+      } else if( sec.isNaN ) {
+         return "?"
+      }
+
       val asec    = abs( sec )
       val millis  = (asec * 1000).toLong
       val milli   = (millis % 1000)
@@ -276,6 +312,16 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
          }
       }
    }
+}
+
+// - XXX should we also have a BoundedPeriodConst ?
+// - could this be IntervalLike?
+case class BoundedPeriodExpr( infExpr: PeriodLike, supExpr: PeriodLike  ) extends PeriodExpr {
+   def inf: PeriodConst = infExpr.inf.min( supExpr.inf )
+   def sup: PeriodConst = infExpr.sup.max( supExpr.sup )
+   def fixed: PeriodLike = infExpr.fixed :? supExpr.fixed
+
+   override def toString = "(" + infExpr.toString + " :? " + supExpr.toString + ")"
 }
 
 class PeriodConstFactory( d: Double ) {

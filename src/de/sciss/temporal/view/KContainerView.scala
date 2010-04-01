@@ -51,10 +51,7 @@ extends JPanel with SonogramPaintController {
       axis.setFont( new Font( "Lucida Grande", Font.PLAIN, 9 ))
       axis
    }
-
-   private var startSec = 0.0
-   private var stopSec  = 0.0
-
+   
    private val regionPane = {
       val pane = new RegionPane
       pane.setFont( new Font( "Lucida Grande", Font.PLAIN, 10 ))
@@ -70,13 +67,8 @@ extends JPanel with SonogramPaintController {
    }
 
    private def updateAxis {
-      val (start, stop) = version.use {
-         val i = c.interval
-         (i.start.inf.sec, i.stop.sup.sec)
-      }
-      startSec             = start
-      stopSec              = stop
-      timelineAxis.space   = VectorSpace.createLinSpace( 0.0, stop - start, 0.0, 1.0, null, null, null, null )
+      val dur = version.use { c.interval.dur.sup.sec }
+      timelineAxis.space = VectorSpace.createLinSpace( 0.0, dur, 0.0, 1.0, null, null, null, null )
    }
 
    def makeWindow = {

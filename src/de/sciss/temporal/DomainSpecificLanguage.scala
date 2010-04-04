@@ -3,19 +3,24 @@ package de.sciss.temporal
 import java.io.File
 import java.net.URI
 import view.KContainerView
-import de.sciss.confluent.VersionManagement
+import de.sciss.confluent.{ Handle, VersionManagement }
 
 import VersionManagement._
 
 object DomainSpecificLanguage {
    // ---- commands ----
 
-   def container( name: String = "#auto", start: PeriodLike = 0⏊00 ) : Container = {
+   def container( name: String = "#auto", start: PeriodLike = 0.secs ) : Handle[ Container ] = {
       val parent  = Container.current
       val cName   = if( name == "#auto" ) ("Container #" + (parent.size + 1)) else name
-      val c       = Container( cName, start )
+//      val c       = Container( cName, start )
+      val cd         = new ContainerData
+      val sp         = seminalPath
+      val c          = cd.access( sp, sp )
+      c.name         = cName
+      c.interval     = start :< 0.secs
       parent.add( c )
-      c
+      Handle( cd, sp )
    }
 
    def audioFileLocation( loc: FileLocation ) {
@@ -36,6 +41,18 @@ object DomainSpecificLanguage {
       ar.offset      = offset
       Container.current.add( ar )
       ar
+   }
+
+   def region( name: String = "#auto", interval: IntervalLike ) : Handle[ Region ] = {
+      val c          = Container.current
+      val rName      = if( name == "#auto" ) { "R #" + (c.size + 1) } else name
+      val rd         = new RegionData
+      val sp         = seminalPath
+      val r          = rd.access( sp, sp )
+      r.name         = rName
+      r.interval     = interval
+      c.add( r )
+      Handle( rd, sp )
    }
 
 //   def ref( ar: AudioRegion ) : AudioRegion = {
@@ -94,6 +111,7 @@ object DomainSpecificLanguage {
    }
    
    implicit def fileToFileLocation( f: File ) : FileLocation = URIFileLocation( f.toURI )
+   implicit def handleToAccess[ T ]( h: Handle[ T ]) : T = h.access( readAccess, writeAccess )
 
 //   // ---- transactions ----
 //   def transactionContext: TransactionContext = DummyTransactionContext

@@ -1,4 +1,4 @@
-/**
+/*
  *  Region.scala
  *  (TemporalObjects)
  *
@@ -28,57 +28,70 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatValue => FVal, _ }
+import de.sciss.confluent.{ FatValue => FVal, FatRef => FRef, _ }
 
-object Region {
-   import VersionManagement._
-
-   def apply( name: String, i: IntervalLike ) = {
-      val r = new Region( name, seminalPath )
-      r.interval = i
-      r
-   }
-}
+//object Region {
+//   import VersionManagement._
+//
+//   def apply( name: String, i: IntervalLike ) = {
+//      val r = new Region( name, seminalPath )
+//      r.interval = i
+//      r
+//   }
+//}
 
 trait RegionLike {
    def interval: IntervalLike
-   def intervalRef : IntervalLike
+//   def intervalRef : IntervalLike
    def name: String
 //   def ref : RegionLike
 }
 
 //class RegionProxy( r: Region, sp: Path ) extends RegionLike {
-//   def ref : RegionLike = this // ??? or nest
 //   def name : String = r.name
 //   def interval
 //}
 
-// note: eventually 'name' should also be confluent
-class Region private ( val name: String, val sp: Path )
-extends RegionLike {
+class RegionData extends NodeAccess[ Region ] {
+   val name     = new FVal[ String ]
+   val interval = new FRef[ IntervalLike ]
+
+   def access( readPath: Path, writePath: Path ) = new Region( this, readPath, writePath )
+}
+
+class Region( data: RegionData, protected val readPath: Path, writePath: Path )
+extends RegionLike with NodeID[ Region ] {
    import VersionManagement._
 
-   private val fi = new FVal[ IntervalLike ]
-//   def interval: IntervalLike = new IntervalAccess( currentAccess, intervalPtr )
-//   def interval: IntervalLike = new IntervalProxy( fi, sp )
-   def interval: IntervalLike = get( fi, sp )
-   def interval_=( i: IntervalLike ) = {
-       set( fi, i, sp )
-   }
-   def intervalRef : IntervalLike = new IntervalProxy( fi, sp )
+   def name: String = get( data.name, readPath )
+   def name_=( n: String ) = set( data.name, writePath, n )
+   def interval: IntervalLike = get( data.interval, readPath, writePath )
+   def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
+
+//   def access( readPath: Path, writePath: Path ) : Region = {
+//
+//   }
+
+   protected def nodeAccess: NodeAccess[ Region ] = data
+   
+   //   def intervalRef : IntervalLike = new IntervalProxy( fi, sp )
 
 //   def ref : Region = {
 //      error( "WARNING: Region:ref not yet implemented" )
 //   }
 
-   override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
+//   override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
 
    def inspect {
       println( toString )
-      fi.inspect
+      println( "read = " + readPath + "; write = " + writePath )
+      println( "NAME:" )
+      data.name.inspect
+      println( "INTERVAL:" )
+      data.interval.inspect
    }
 
    def lulu {
-      println( get( fi, sp ))
+//      println( get( fi, sp ))
    }
 }

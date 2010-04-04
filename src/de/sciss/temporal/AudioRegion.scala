@@ -1,4 +1,4 @@
-/**
+/*
  *  AudioRegion.scala
  *  (TemporalObjects)
  *
@@ -52,10 +52,10 @@ extends RegionLike {
    def audioFile  = get( d.audioFileF, sp )    // XXX +proxy
    def offset     = get( d.offsetF, sp )       // XXX +proxy
 
-   def name_=( newName: String ) = set( d.nameF, newName, sp )
-   def interval_=( newInterval: IntervalLike ) = set( d.intervalF, newInterval, sp )
-   def audioFile_=( newAudioFile: AudioFileElement ) = set( d.audioFileF, newAudioFile, sp )
-   def offset_=( newOffset: PeriodLike ) = set( d.offsetF, newOffset, sp )
+   def name_=( newName: String ) = set( d.nameF, sp, newName ) // XXX WRONG
+   def interval_=( newInterval: IntervalLike ) = set( d.intervalF, sp, newInterval ) // XXX WRONG
+   def audioFile_=( newAudioFile: AudioFileElement ) = set( d.audioFileF, sp, newAudioFile ) // XXX WRONG
+   def offset_=( newOffset: PeriodLike ) = set( d.offsetF, sp, newOffset ) // XXX WRONG
 
    def moveBy( delta: PeriodLike ) : AudioRegion = {
       interval = interval + delta

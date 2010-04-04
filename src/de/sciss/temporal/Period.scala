@@ -214,6 +214,9 @@ abstract class PeriodExpr extends PeriodExprLike {
 }
 
 case class PeriodConst( sec: Double ) extends PeriodLike {
+//   def ❞ = this
+//   def ❞() = this
+
    def +( b: PeriodConst )       = PeriodConst( sec + b.sec )
    def -( b: PeriodConst )       = PeriodConst( sec - b.sec )
    def min( b: PeriodConst )     = PeriodConst( scala.math.min( sec, b.sec ))
@@ -325,11 +328,14 @@ case class BoundedPeriodExpr( infExpr: PeriodLike, supExpr: PeriodLike  ) extend
 }
 
 class PeriodConstFactory( d: Double ) {
-   def hours  = new PeriodConst( d * 360 )
-   def mins   = new PeriodConst( d * 60 )
-   def secs   = new PeriodConst( d )
-   def msecs  = new PeriodConst( d / 1000 )
-   def ⏊( b: Double ) = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
+   def hours            = new PeriodConst( d * 360 )
+   def mins             = new PeriodConst( d * 60 )
+   def ❜                = new PeriodConst( d * 60 )
+   def secs             = new PeriodConst( d )
+   def ❞                = new PeriodConst( d )
+   def ❜( s: Double )   = new PeriodConst( d * 60 + s )
+   def msecs            = new PeriodConst( d / 1000 )
+   def ⏊( b: Double )   = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
       new PeriodConst( d * 60 + b )
    }
    def ⎍( implicit sr: SampleRate ) = new PeriodConst( d / sr.rate )

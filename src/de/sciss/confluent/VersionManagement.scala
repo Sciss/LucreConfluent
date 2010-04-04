@@ -27,7 +27,7 @@
  */
 
 package de.sciss {
-import confluent.{ VersionPath, FatIdentifier => FId, FatPointer => FPtr, FatValue => FVal, _ }
+import confluent.{ VersionPath, FatRef => FRef, FatValue => FVal, _ }
 package confluent {
 
 /**
@@ -47,29 +47,55 @@ object VersionManagement {
    def writeAccess: Path = currentPathVar.path
    def seminalPath: Path = currentPathVar.tail
 
-   def get[ V ]( fval: FVal[ V ]) = {
-      fval.access( readAccess ).get
+//   def get[ V ]( fval: FVal[ V ]) = {
+//      fval.access( readAccess ).get
+//   }
+
+   def get[ V ]( fval: FVal[ V ], path: Path ) = {
+      fval.access( path ).get
    }
 
-   // avec lazy access
-   def get[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
-      fval.access( substitute( readAccess, seminalPath )).get
+   def get[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : V = {
+      fref.access( readPath ).map {
+         case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+         case x => x
+      } get
+   }
+   
+//   def get[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
+//      fval.access( substitute( access, seminalPath )).get
+//   }
+
+   def getO[ V ]( fval: FVal[ V ], path: Path ) = {
+      fval.access( path )
    }
 
-   def get[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
-      fval.access( substitute( access, seminalPath )).get
+   def getO[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : Option[ V ] = {
+      fref.access( readPath ).map {
+         case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+         case v => v
+      }
    }
 
-   def getO[ V ]( fval: FVal[ V ], seminalPath: Path ) = {
-      fval.access( substitute( readAccess, seminalPath ))
+   def resolve[ V ]( readPath: Path, writePath: Path, v: V ) : V = v match {
+      case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+      case _ => v
    }
 
-   def getO[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
-      fval.access( substitute( access, seminalPath ))
+//   def getO[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
+//      fval.access( substitute( access, seminalPath ))
+//   }
+
+//   def set[ V ]( fval: FVal[ V ], value: V ) {
+//      fval.assign( writeAccess, value )
+//   }
+
+   def set[ V ]( fval: FVal[ V ], path: Path, value: V ) {
+      fval.assign( path, value )
    }
 
-   def set[ V ]( fval: FVal[ V ], value: V ) {
-      fval.assign( writeAccess, value )
+   def set[ V ]( fref: FRef[ V ], path: Path, value: V ) {
+      fref.assign( path, value )
    }
 
    // substitutes an access path to become an assignment pedigree
@@ -111,20 +137,20 @@ object VersionManagement {
       // access = <v0, v0, v2, v2> ; s = <v0, v1, v2, v2>
    }
 
-   // avec lazy access
-   def set[ V ]( fval: FVal[ V ], value: V, seminalPath: Path ) {
-//      val pedigree = substitute( currentAccess, seminalVersion )
-//      println( "pedigree = " + pedigree )
-      fval.assign( substitute( writeAccess, seminalPath ), value )
-   }
+//   // avec lazy access
+//   def set[ V ]( fval: FVal[ V ], value: V, seminalPath: Path ) {
+////      val pedigree = substitute( currentAccess, seminalVersion )
+////      println( "pedigree = " + pedigree )
+//      fval.assign( substitute( writeAccess, seminalPath ), value )
+//   }
 
-   def use[ T ]( v: VersionPath )( thunk: => T ) = {
-      val oldV = currentPathVar
+   def read[ T ]( v: VersionPath )( thunk: => T ) = {
+      val oldV = readPathVar
       try {
-         currentPathVar = v
+         readPathVar = v
          thunk
       } finally {
-         currentPathVar = oldV
+         readPathVar = oldV
       }
    }
 

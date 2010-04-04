@@ -28,7 +28,7 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatPointer => FPtr, FatValue => FVal, _ }
+import de.sciss.confluent.{ FatRef => FRef, FatValue => FVal, _ }
 import VersionManagement._
 import collection.{IterableLike, SeqLike}
 
@@ -36,16 +36,28 @@ trait ContainerLike
 extends RegionLike with Iterable[ RegionLike ] {
    def add( c: RegionLike ) : ContainerLike
    def interval: IntervalLike
-   def ref: ContainerLike
+//   def ref: ContainerLike
 }
 
 object Container {
 //   type ContainerRepr = ContainerLike[ R <: ContainerLike[ R ]]
 
-   val root = Container( "root", 0⏊00 )   // workspace?
-   private var currentVar: ContainerLike = root
+   private val rootVar = {
+      val sp      = seminalPath
+      val c       = (new ContainerData).access( sp, sp )
+      c.name      = "root"
+      c.interval  = 0.secs :< 0.secs
+      c
+   }
+   private var currentVar: ContainerLike = rootVar
+   
+   def root : Container = {
+      resolve( readAccess, writeAccess, rootVar )
+   }
 
-   def current = currentVar
+   def current : ContainerLike = {
+      resolve( readAccess, writeAccess, currentVar )
+   }
 
    def use[ T ]( c: ContainerLike, thunk: => T ) = {
       val oldC = currentVar
@@ -61,52 +73,71 @@ object Container {
       currentVar = c
    }
 
-   def apply( name: String, start: PeriodLike ) : Container = {
-      val r = new Container( name, start, seminalPath )
-      r
-   }
+//   def apply( name: String, start: PeriodLike ) : Container = {
+//      val r = new Container( name, start, seminalPath )
+//      r
+//   }
 }
 
-class Container private ( val name: String, start: PeriodLike, val sp: Path )
-extends ContainerLike {
-   private val regions      = new FVal[ ListEntry ]
-   private val numRegionsF  = new FVal[ Int ]
+class FatLinkedListElem[ T ]( val elem: T ) {
+   val next = new FVal[ FatLinkedListElem[ T ]]
+}
 
-   private val fi = new FVal[ IntervalLike ]
-   def interval: IntervalLike = get( fi, sp )
-   def intervalRef: IntervalLike = new IntervalProxy( fi, sp )
+class ContainerData extends NodeAccess[ Container ] {
+   val name       = new FVal[ String ]
+   val interval   = new FRef[ IntervalLike ]
+   val numRegions = new FVal[ Int ]
+   val regions    = new FVal[ FatLinkedListElem[ RegionLike ]] // head of linked list
+
+   def access( readPath: Path, writePath: Path ) = new Container( this, readPath, writePath )
+}
+
+class Container( data: ContainerData, protected val readPath: Path, writePath: Path )
+extends ContainerLike with NodeID[ Container ] {
+//   def intervalRef: IntervalLike = new IntervalProxy( fi, sp )
 
    // ---- constructor ----
    {
-      set( fi, new IntervalPeriodExpr( start, start ), sp )
-      set( numRegionsF, 0, sp )
+//      set( data.interval, writePath, 0.secs :< 0.secs ) // new IntervalPeriodExpr( start, 0.secs )
+      set( data.numRegions, writePath, 0 )
    }
 
-   def ref : Container = {
-      error( "WARNING: Container:ref not yet implemented" )
-   }
+//   def ref : Container = {
+//      error( "WARNING: Container:ref not yet implemented" )
+//   }
+
+//   def start_=( p: PeriodLike ) {
+////      set( data.interval, new IntervalPeriodExpr( start, data.interval.dur )
+//   }
+
+   def name: String = get( data.name, readPath )
+   def name_=( n: String ) = set( data.name, writePath, n )
+   def interval: IntervalLike = get( data.interval, readPath, writePath )
+   def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
    
+   protected def nodeAccess: NodeAccess[ Container ] = data
+
    def use[ T ]( thunk: => T ) =
       Container.use( this, thunk )
 
    def use = { Container.use( this ); this }
    
    def add( r: RegionLike ) = {
-      val newEntry = new ListEntry( r )
-      var entryF  = regions
-      var entryO  = getO( entryF, sp )
+      val newEntry = new FatLinkedListElem( r )
+      var entryF  = data.regions
+      var entryO  = getO( entryF, readPath )
       var cnt     = 1
       while( entryO.isDefined ) {
          val entry = entryO.get
          entryF   = entry.next
-         entryO   = getO( entryF, sp )
+         entryO   = getO( entryF, readPath )
          cnt     += 1
       }
-      set( entryF, newEntry, sp )
+      set( entryF, writePath, newEntry )
 
       // update bounding interval
-      val ivOld = get( fi, sp )
-      val ri = r.intervalRef
+      val ivOld = get( data.interval, readPath, writePath )
+      val ri = r.interval // XXXX XXXX intervalRef
 //      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
 
       val oldStart = ivOld.start
@@ -114,40 +145,45 @@ extends ContainerLike {
       val childStop= ri.stop
       val newDur   = oldDur.max( childStop )
       val newIv    = oldStart :< newDur // new IntervalPeriodExpr( oldStart, newDur )
-      set( fi, newIv, sp )
+      set( data.interval, writePath, newIv )
 
       // update numRegions
-      set( numRegionsF, cnt, sp )
+      set( data.numRegions, writePath, cnt )
       
       this
    }
 
-   override def toString = "Container( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
+//   override def toString = "Container( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
 
    def inspect {
       println( toString )
-      fi.inspect
+      println( "read = " + readPath + "; write = " + writePath )
+      println( "NAME:" )
+      data.name.inspect
+      println( "INTERVAL:" )
+      data.interval.inspect
+      println( "NUMREGIONS:" )
+      data.numRegions.inspect
+      println( "REGIONS:" )
+      data.regions.inspect
    }
    
    // ---- Iterable ----
-   def iterator: Iterator[ RegionLike ] = new ListIterator( readAccess )
+   def iterator: Iterator[ RegionLike ] = new ListIterator // ( readAccess )
 //   def apply( idx: Int ) : RegionLike[ _ ] = iterator.drop( idx ).next
-   def numRegions = get( numRegionsF, sp )
+   def numRegions = get( data.numRegions, readPath )
    override def size = numRegions
 
-   private class ListEntry( val elem: RegionLike ) {
-      val next = new FVal[ ListEntry ]
-   }
-
-   private class ListIterator( access: Path ) extends Iterator[ RegionLike ] {
-      private var nextF = regions
+   private class ListIterator
+   extends Iterator[ RegionLike ] {
+      private var nextF = data.regions
 
       def next: RegionLike = {
-         val x = get( nextF, sp, access )
+         val x = get( nextF, readPath )
          nextF = x.next
-         x.elem
+         resolve( readPath, writePath, x.elem )
       }
 
-      def hasNext: Boolean = getO( nextF, sp, access ).isDefined 
+      def hasNext: Boolean = getO( nextF, readPath ).isDefined 
    }
 }

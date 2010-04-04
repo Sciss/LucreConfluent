@@ -84,6 +84,12 @@ class FatValue[ V ] extends FatField[ V ] {
    override def toString = "FVal#" + hashCode
 }
 
+class FatRef[ V ] extends FatField[ V ] {
+   def access( version: Path ) : Option[ V ] = accessPlain( version )
+
+   override def toString = "FRef#" + hashCode
+}
+
 class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
    type I = FatIdentifier[ V ]
 

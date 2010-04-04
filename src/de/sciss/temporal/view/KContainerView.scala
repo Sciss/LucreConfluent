@@ -1,4 +1,4 @@
-/**
+/*
  *  KContainerView.scala
  *  (TemporalObjects)
  *
@@ -67,7 +67,7 @@ extends JPanel with SonogramPaintController {
    }
 
    private def updateAxis {
-      val dur = version.use { c.interval.dur.sup.sec }
+      val dur = version.read { c.interval.dur.sup.sec }
       timelineAxis.space = VectorSpace.createLinSpace( 0.0, dur, 0.0, 1.0, null, null, null, null )
    }
 
@@ -113,8 +113,8 @@ extends JPanel with SonogramPaintController {
                                   expanded: Boolean, colrBg: Option[ Color ]) : Int = {
          var cnt = 0
          var ry = y
-         version.use {
-            val (start, stop) = version.use {
+         version.read {
+            val (start, stop) = {
                val i = c.interval
                (i.start.inf.sec, i.stop.sup.sec)
             }

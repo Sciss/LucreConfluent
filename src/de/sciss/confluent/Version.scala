@@ -182,8 +182,8 @@ trait VersionPath {
    // XXX might need to be vps: VersionPath* ???
 //   def newBranchWith( vs: Version* ) : VersionPath
 
-   def use[ T ]( thunk: => T ) =
-      VersionManagement.use( this )( thunk )
+   def read[ T ]( thunk: => T ) =
+      VersionManagement.read( this )( thunk )
 }
 
 object VersionPath {

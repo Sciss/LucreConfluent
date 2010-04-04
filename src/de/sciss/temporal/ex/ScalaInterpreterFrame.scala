@@ -193,6 +193,11 @@ id0.version.tree.inspect
 """
 */
          """
+val r1 = t { region("r1", 0.secs :< 3.secs)}
+val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
+t { r1.interval = 0.secs :< 7.secs }
+kView
+
 val c = container().use
 audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )
 val af = audioFile( "MetallScheibe1TestN.aif" ).use
@@ -244,6 +249,7 @@ c2.use { kView }
          import de.sciss.confluent._
          import de.sciss.confluent.VersionManagement._
          import de.sciss.temporal.DomainSpecificLanguage._
+         Container.root // initializes root
 """
       )
 
@@ -251,6 +257,8 @@ c2.use { kView }
          e.getKeyChar match {
             case 'π' => e.setKeyChar( '⏊' )
             case '⁄' => e.setKeyChar( '⋯' )
+            case '‚' => e.setKeyChar( '❞' )
+            case 'µ' => e.setKeyChar( '❜' )
             case _ =>
          }
          e

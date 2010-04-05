@@ -1,4 +1,4 @@
-/**
+/*
  *  VersionManagement
  *  (de.sciss.temporal package)
  *

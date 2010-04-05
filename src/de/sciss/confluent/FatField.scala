@@ -1,4 +1,4 @@
-/**
+/*
  *  FatField
  *  (de.sciss.confluent package)
  *

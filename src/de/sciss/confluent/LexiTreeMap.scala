@@ -1,4 +1,4 @@
-/**
+/*
  * 	LexiTreeMap
  * 	(de.sciss.tree package)
  *

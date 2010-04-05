@@ -85,7 +85,7 @@ class FatLinkedListElem[ T ]( val elem: T ) {
 
 class ContainerData extends NodeAccess[ Container ] {
    val name       = new FVal[ String ]
-   val interval   = new FRef[ IntervalLike ]
+   val interval   = new FVal[ IntervalLike ]
    val numRegions = new FVal[ Int ]
    val regions    = new FVal[ FatLinkedListElem[ RegionLike ]] // head of linked list
 
@@ -112,9 +112,10 @@ extends ContainerLike with NodeID[ Container ] {
 
    def name: String = get( data.name, readPath )
    def name_=( n: String ) = set( data.name, writePath, n )
-   def interval: IntervalLike = get( data.interval, readPath, writePath )
+   def interval: IntervalLike = get( data.interval, readPath )
    def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
-   
+   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+
    protected def nodeAccess: NodeAccess[ Container ] = data
 
    def use[ T ]( thunk: => T ) =
@@ -136,7 +137,7 @@ extends ContainerLike with NodeID[ Container ] {
       set( entryF, writePath, newEntry )
 
       // update bounding interval
-      val ivOld = get( data.interval, readPath, writePath )
+      val ivOld = get( data.interval, readPath )
       val ri = r.interval // XXXX XXXX intervalRef
 //      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
 
@@ -167,6 +168,8 @@ extends ContainerLike with NodeID[ Container ] {
       println( "REGIONS:" )
       data.regions.inspect
    }
+
+   def guguData = data
    
    // ---- Iterable ----
    def iterator: Iterator[ RegionLike ] = new ListIterator // ( readAccess )

@@ -65,7 +65,7 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
 	}
 
    def inspect {
-      println( "LEXI" )
+      println( "   LEXI:" )
       if( root != null ) root.inspect( Queue.Empty )
    }
 

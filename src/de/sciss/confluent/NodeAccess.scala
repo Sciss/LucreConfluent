@@ -1,34 +1,45 @@
 package de.sciss.confluent
 
+import VersionManagement._
+
 trait NodeAccess[ T ] {
    def access( readPath: Path, writePath: Path ) : T
 }
 
-trait NodeID[ T ] extends NodeAccess[ T ] {
+object NodeID {
+   def substitute( storedPath: Path, accessPath: Path ) : Path = {
+      val sp1  = storedPath( storedPath.length - 2 )
+      val pd   = accessPath.dropWhile( _ != sp1 )
+      if( pd.length == 2 ) {
+         storedPath.dropRight( 2 ) ++ pd
+      } else {
+         storedPath ++ pd.drop( 2 )
+      }
+   }
+}
+
+trait NodeID[ T ] {
    protected def readPath: Path
 //   protected def writePath: Path
    protected def nodeAccess: NodeAccess[ T ]
 
-   def access( acReadPath: Path, acWritePath: Path ): T = {
+   def substitute( readAccess: Path, writeAccess: Path ): T = {
       val p    = readPath
-      val sp1  = p( p.length - 2 )
-      val rpd  = acReadPath.dropWhile( _ != sp1 )
-      val rpn  = if( rpd.length == 2 ) {
-         p.dropRight( 2 ) ++ rpd
-      } else {
-//         p = <v0, v1>
-//         ac = <v0, v0, v2, v2>
-//         tgt = <v0, v1, v2, v2>  right?
-         p ++ rpd.drop( 2 )
-      }
-      val wpd  = acWritePath.dropWhile( _ != sp1 )
-      val wpn  = if( wpd.length == 2 ) {
-         p.dropRight( 2 ) ++ wpd
-      } else {
-         p ++ wpd.drop( 2 )
-      }
+      val rpn  = NodeID.substitute( p, readAccess )
+      val wpn  = NodeID.substitute( p, writeAccess )
       nodeAccess.access( rpn, wpn )
    }
+
+//   def newAccess : T = substitute( readAccess, writeAccess )
+}
+
+trait NodeProxy[ T ] {
+   protected def readPath: Path
+//   protected def writePath: Path
+   protected def ref: FatValue[ T ]
+
+   @inline protected def access: T =
+      get( ref, NodeID.substitute( readPath, readAccess ))
 }
 
 case class Handle[ T ]( protected val nodeAccess: NodeAccess[ T ], seminalPath: Path )

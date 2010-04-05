@@ -1,9 +1,9 @@
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatValue => FVal, _ }
+import de.sciss.confluent.{ FatValue => FVal, FatRef => FRef, _ }
 
-class IntervalProxy( val fi: FVal[ IntervalLike ], sp: Path )
-extends IntervalExprLike {
+class IntervalProxy( protected val ref: FVal[ IntervalLike ], protected val readPath: Path /*, protected val writePath: Path*/ )
+extends IntervalExprLike with NodeProxy[ IntervalLike ] {
    import VersionManagement._
 
 //   def start: PeriodLike   = access.start
@@ -13,7 +13,10 @@ extends IntervalExprLike {
 //   def -( p: PeriodLike ): IntervalLike
 
    def fixed: IntervalLike = access.fixed
-   @inline private def access: IntervalLike = get( fi, sp ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
+//   @inline private def access: IntervalLike = get( i, readPath, writePath ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
+
+//   def access( rp: Path, wp: Path ) = new IntervalProxy( i, rp, wp )
+//      new IntervalProxy( i, NodeID.substitute( readPath, rp ), NodeID.substitute( writePath, wp ))
 
    override def toString = try { access.toString } catch { case _ => super.toString }
 

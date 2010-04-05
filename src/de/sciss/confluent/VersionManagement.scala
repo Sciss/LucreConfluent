@@ -57,7 +57,7 @@ object VersionManagement {
 
    def get[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : V = {
       fref.access( readPath ).map {
-         case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
          case x => x
       } get
    }
@@ -72,13 +72,13 @@ object VersionManagement {
 
    def getO[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : Option[ V ] = {
       fref.access( readPath ).map {
-         case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
          case v => v
       }
    }
 
    def resolve[ V ]( readPath: Path, writePath: Path, v: V ) : V = v match {
-      case nid: NodeID[ _ ] => nid.access( readPath, writePath ).asInstanceOf[ V ]
+      case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
       case _ => v
    }
 
@@ -99,7 +99,7 @@ object VersionManagement {
    }
 
    // substitutes an access path to become an assignment pedigree
-   def substitute( access: Path, seminalPath: Path ) : Path = {
+   def substituteXXX( access: Path, seminalPath: Path ) : Path = {
       // XXX this needs to be optimized one day
       // XXX bug in Vector (23-Mar-10) : indexOf returns -1 for the last element
 //      val off = access.indexOf( seminalVersion ) match {

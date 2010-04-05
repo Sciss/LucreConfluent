@@ -28,43 +28,47 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatValue => FVal, _ }
+import de.sciss.confluent.{ FatRef => FRef, FatValue => FVal, _ }
 import VersionManagement._
 
-object AudioRegion {
-   class Data {
-      val nameF       = new FVal[ String ]
-      val intervalF   = new FVal[ IntervalLike ]
-      val audioFileF  = new FVal[ AudioFileElement ]
-      val offsetF     = new FVal[ PeriodLike ]
-   }
+class AudioRegionData extends NodeAccess[ AudioRegion ] {
+   val name       = new FVal[ String ]
+   val interval   = new FVal[ IntervalLike ]
+   val audioFile  = new FVal[ AudioFileElement ]
+   val offset     = new FVal[ PeriodLike ]
+
+   def access( readPath: Path, writePath: Path ) = new AudioRegion( this, readPath, writePath )
 }
 
-class AudioRegion private ( sp: Path, d: AudioRegion.Data )
-extends RegionLike {
-   def this( sp: Path ) = this( sp, new AudioRegion.Data )
+class AudioRegion( data: AudioRegionData, protected val readPath: Path, writePath: Path )
+extends RegionLike with NodeID[ AudioRegion ] {
+//   def this( sp: Path ) = this( sp, new AudioRegion.Data )
+//
+//   def access = sp // XXX for debugging
 
-   def access = sp // XXX for debugging
+   def name       = get( data.name, readPath )         // XXX +proxy
+   def interval: IntervalLike = get( data.interval, readPath )
+   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+   def audioFile  = get( data.audioFile, readPath )    // XXX +proxy
+   def offset     = get( data.offset, readPath )       // XXX +proxy
 
-   def name       = get( d.nameF, sp )         // XXX +proxy
-   def interval: IntervalLike = get( d.intervalF, sp )
-   def intervalRef: IntervalLike = new IntervalProxy( d.intervalF, sp )
-   def audioFile  = get( d.audioFileF, sp )    // XXX +proxy
-   def offset     = get( d.offsetF, sp )       // XXX +proxy
+   def name_=( newName: String ) = set( data.name, writePath, newName ) // XXX WRONG
+   def interval_=( newInterval: IntervalLike ) = set( data.interval, writePath, newInterval ) // XXX WRONG
+   def audioFile_=( newAudioFile: AudioFileElement ) = set( data.audioFile, writePath, newAudioFile ) // XXX WRONG
+   def offset_=( newOffset: PeriodLike ) = set( data.offset, writePath, newOffset ) // XXX WRONG
 
-   def name_=( newName: String ) = set( d.nameF, sp, newName ) // XXX WRONG
-   def interval_=( newInterval: IntervalLike ) = set( d.intervalF, sp, newInterval ) // XXX WRONG
-   def audioFile_=( newAudioFile: AudioFileElement ) = set( d.audioFileF, sp, newAudioFile ) // XXX WRONG
-   def offset_=( newOffset: PeriodLike ) = set( d.offsetF, sp, newOffset ) // XXX WRONG
+   protected def nodeAccess = data
 
    def moveBy( delta: PeriodLike ) : AudioRegion = {
       interval = interval + delta
-      newAccess
+//      newAccess
+      this
    }
 
-   def gugu = get( d.intervalF, sp ) 
+   def guguData = data
+   def guguRead = readPath
 
-   private def newAccess = new AudioRegion( substitute( writeAccess, sp ), d )
+//   private def newAccess = new AudioRegion( substitute( writeAccess, sp ), d )
 
    override def toString = try {
       "AudioRegion( " + name + ", " + interval + ", " + audioFile + ", " + offset + " )"
@@ -72,13 +76,14 @@ extends RegionLike {
 
    def inspect {
       println( toString )
-      println( "...name:" )
-      d.nameF.inspect
-      println( "...interval:" )
-      d.intervalF.inspect
-      println( "...audioFile:" )
-      d.audioFileF.inspect
-      println( "...offset:" )
-      d.offsetF.inspect
+      println( "read = " + readPath + "; write = " + writePath )
+      println( "NAME:" )
+      data.name.inspect
+      println( "INTERVAL:" )
+      data.interval.inspect
+      println( "AUDIOFILE:" )
+      data.audioFile.inspect
+      println( "OFFSET:" )
+      data.offset.inspect
    }
 }

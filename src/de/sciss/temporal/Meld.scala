@@ -10,7 +10,7 @@ case class Meld[ V ]( input: V, inputVersion: VersionPath ) {
       makeRead( inputVersion )
       makeWrite( write )
       try {
-         fun.apply( input )
+         fun.apply( resolve( inputVersion.path, write.path, input ))
          input
       } finally {
          makeCurrent( write )

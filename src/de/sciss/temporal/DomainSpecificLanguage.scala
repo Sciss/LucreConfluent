@@ -31,16 +31,18 @@ object DomainSpecificLanguage {
       AudioFileElement.fromUnresolvedLoc( loc )
    }
 
-   def audioRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : AudioRegion = {
+   def audioRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : Handle[ AudioRegion ] = {
       val afe        = AudioFileElement.current
       val rName      = if( name == "#auto" ) afe.name else name
-      val ar         = new AudioRegion( seminalPath )
+      val ard        = new AudioRegionData
+      val sp         = seminalPath
+      val ar         = ard.access( sp, sp )
       ar.name        = rName
       ar.interval    = interval
       ar.audioFile   = afe
       ar.offset      = offset
       Container.current.add( ar )
-      ar
+      Handle( ard, sp )
    }
 
    def region( name: String = "#auto", interval: IntervalLike ) : Handle[ Region ] = {
@@ -111,7 +113,7 @@ object DomainSpecificLanguage {
    }
    
    implicit def fileToFileLocation( f: File ) : FileLocation = URIFileLocation( f.toURI )
-   implicit def handleToAccess[ T ]( h: Handle[ T ]) : T = h.access( readAccess, writeAccess )
+   implicit def handleToAccess[ T ]( h: Handle[ T ]) : T = h.substitute( readAccess, writeAccess )
 
 //   // ---- transactions ----
 //   def transactionContext: TransactionContext = DummyTransactionContext

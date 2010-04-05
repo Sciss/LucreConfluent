@@ -195,6 +195,7 @@ id0.version.tree.inspect
          """
 val r1 = t { region("r1", 0.secs :< 3.secs)}
 val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
+val r3 = t { region("r3", (r1.intervalRef.stop + 2.secs) :< 5.secs) }
 t { r1.interval = 0.secs :< 7.secs }
 kView
 

@@ -204,8 +204,23 @@ object VersionManagement {
       currentPathVar = currentPathVar.newRetroChild
       currentPathVar
    }
+   
+//   def makeCurrent( version: VersionPath ) {
+//      currentPathVar = version
+//      readPathVar    = version
+//   }
 
-   def makeCurrent( version: VersionPath ) {
+//   def use[ T ]( version: VersionPath, thunk: => T ) = {
+//      val oldV = readPathVar
+//      readPathVar = version
+//      try {
+//         thunk
+//      } finally {
+//         readPathVar = oldV
+//      }
+//   }
+
+   def use( version: VersionPath ) {
       currentPathVar = version
       readPathVar    = version
    }

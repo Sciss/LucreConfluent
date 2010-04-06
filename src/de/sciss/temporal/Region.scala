@@ -42,7 +42,7 @@ import de.sciss.confluent.{ FatValue => FVal, FatRef => FRef, _ }
 
 trait RegionLike {
    def interval: IntervalLike
-   def intervalRef : IntervalLike
+//   def intervalRef : IntervalLike
    def name: String
 //   def ref : RegionLike
 }
@@ -65,9 +65,10 @@ extends RegionLike with NodeID[ Region ] {
 
    def name: String = get( data.name, readPath )
    def name_=( n: String ) = set( data.name, writePath, n )
-   def interval: IntervalLike = get( data.interval, readPath )
    def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
-   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+//   def interval: IntervalLike = get( data.interval, readPath )
+//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+   def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
 
 //   def access( readPath: Path, writePath: Path ) : Region = {
 //

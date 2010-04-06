@@ -193,11 +193,25 @@ id0.version.tree.inspect
 """
 */
          """
+// problem 1
 val r1 = t { region("r1", 0.secs :< 3.secs)}
 val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
-val r3 = t { region("r3", (r1.intervalRef.stop + 2.secs) :< 5.secs) }
+val r3 = t { region("r3", (r1.interval.fixed.stop + 2.secs) :< 5.secs) }
 t { r1.interval = 0.secs :< 7.secs }
 kView
+
+// problem 2
+val r1 = t { region("r1", 0.secs :< ?)}
+val v1 = currentVersion
+val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
+val v2 = currentVersion
+v1.use
+val r3 = t { region("r3", (r1.interval.stop + 3.secs) :< 7.secs) }
+val v3 = currentVersion
+v1.use
+retroc { r1.interval = 0.secs :< 4.secs }
+v2.use; kView
+v3.use; kView
 
 val c = container().use
 audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )

@@ -42,7 +42,7 @@ class Meld[ V ]( input: V, inputVersion: VersionPath ) {
          fun.apply( resolved )
          resolved
       } finally {
-         makeCurrent( write )
+         write.use
       }
    }
 }

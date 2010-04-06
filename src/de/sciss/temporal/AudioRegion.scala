@@ -47,8 +47,9 @@ extends RegionLike with NodeID[ AudioRegion ] {
 //   def access = sp // XXX for debugging
 
    def name       = get( data.name, readPath )         // XXX +proxy
-   def interval: IntervalLike = get( data.interval, readPath )
-   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+//   def interval: IntervalLike = get( data.interval, readPath )
+//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+   def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
    def audioFile  = get( data.audioFile, readPath )    // XXX +proxy
    def offset     = get( data.offset, readPath )       // XXX +proxy
 

@@ -112,7 +112,18 @@ object DomainSpecificLanguage {
       try {
          thunk
       } finally {
-         makeCurrent( write )
+         write.use
+      }
+   }
+
+   def retroc[ T ]( thunk: => T ) : T = {
+      val current = currentVersion
+      val write   = current.newRetroChild
+      makeWrite( write )
+      try {
+         thunk
+      } finally {
+         write.use
       }
    }
 
@@ -126,7 +137,7 @@ object DomainSpecificLanguage {
       try {
          new Meld( thunk, write )
       } finally {
-         makeCurrent( current )
+         current.use
 //         transactionContext = oldContext
 //         meld.createdObjects.foreach( _ match {
 //         })
@@ -148,4 +159,6 @@ object DomainSpecificLanguage {
 //   private def transactionContext_=( newContext: TransactionContext ) {
 //      transactionContext = newContext
 //   }
+
+   val ? = PeriodUnknown
 }

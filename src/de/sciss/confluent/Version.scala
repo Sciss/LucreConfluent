@@ -88,6 +88,13 @@ object Version {
       new MultiVersionImpl( tree, insFun )
    }
 
+//   // XXX nasty design somewhat
+//   def newMultiVariant( v: Version ) : Version = {
+////      require( v.isMulti )
+//      val tree = v.tree
+//      new MultiVersionImpl( tree, tree.insertChild( v ))
+//   }
+
    private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionVertex ] = {
 
 //      if( vs.nonEmpty ) println( "WARNING: melding not yet implemented!!!" )
@@ -212,14 +219,16 @@ trait VersionPath {
    def read[ T ]( thunk: => T ) =
       VersionManagement.read( this )( thunk )
 
-   protected[ confluent ] def switchVersion( i: Int, v: Version ) : VersionPath
+   protected[ confluent ] def useVariant( nv: Version, vv: Version, vvs: Set[ Version ]) : VersionPath
 }
 
 trait Multiplicity {
+   def lastVariant : Version
    def currentVariant : Version
    def useVariant( v: Version ) : Multiplicity
    def useNeutral : Multiplicity
    def variant[ T ]( thunk: => T ) : T
+   def neutralVersion: VersionPath
 }
 
 object VersionPath {
@@ -256,9 +265,17 @@ object VersionPath {
          VersionPathImpl( tailVersion, newPath )
       }
 
-      protected[ confluent ] def switchVersion( i: Int, v: Version ) : VersionPath = {
-         val newPath    = path.updated( i, v )
-         val newVersion = if( i != path.size - 1 ) version else v
+      protected[ confluent ] def useVariant( nv: Version, vv: Version, vvs: Set[ Version ]) : VersionPath = {
+         // XXX scala 2.8 beta 1 : indexOf is broken for last element!!!
+//         val idx = path.indexOf( nv )
+         val psz = path.size
+         val idx = if( path( psz - 1 ) == nv ) psz - 1 else path.indexOf( nv )   // XXX scala 2.8 beta 1 : indexOf is broken for last element!!!
+         if( idx == -1 ) return this // error( "Invalid path" )
+         val idx2 = (idx + 2) & ~1 // variant subtree start
+         val newPath = path.patch( idx2,
+            if( vv != nv ) List( vv, vv ) else Nil,
+            if( (psz > idx2) && vvs.contains( path( idx2 ))) 2 else 0 )
+         val newVersion = newPath( newPath.size - 1 ) // if( i != path.size - 1 ) version else v
          VersionPathImpl( newVersion, newPath )
       }
 
@@ -270,25 +287,41 @@ object VersionPath {
 //      }
    }
 
+   // [FIXED] TO-DO : parent should not be an argument, as
+   // it might change with a retroc command. instead
+   // we should introduce edges and query the parent from the tree.
+   // --> FIX : parent is only used to create the neutral path. so no problems with later
+   // changes of parent
    private class MultiplicityImpl( parent: VersionPath ) extends Multiplicity {
    //private class MultiVersionPathImpl( parent: VersionPath, version: Version, path: Path, private var isEmpty: Boolean )
    //extends VersionPathImpl( version, path ) with MultiVersionPath {
 
-      private val neutralVersionPath = createVariantPath
+//      private val neutralVersionPath = {
+//         val tailVersion = Version.newMultiFrom( parent.version )
+//         val newPath = parent.path.dropRight( 1 ) :+ tailVersion
+//         new VersionPathImpl( tailVersion, newPath )
+//      }
+      private val neutralVersionPath = createVariantPath( parent )
       private var currentVariantVar = neutralVersionPath.version
+      private var lastVariantVar = neutralVersionPath.version
+//      private var isNeutral = true
+      private var variantVersions = Set.empty[ Version ]
 
       def currentVariant = currentVariantVar
+      def lastVariant = lastVariantVar
+      def neutralVersion = neutralVersionPath 
 
       def useVariant( v: Version ) : Multiplicity = {
          import VersionManagement._
 
-         val vp = currentVersion.switchVersion( parent.path.size - 1, v )
+         val vp = currentVersion.useVariant( neutralVersionPath.version, v, variantVersions )
          currentVariantVar = v
          vp.use
          this
       }
 
       def useNeutral : Multiplicity = useVariant( neutralVersionPath.version )
+//      def useNeutral : Multiplicity = useVariant( parent.version )
 
 ////      override def asTransactionRead = parent.asTransactionRead
 //
@@ -305,22 +338,36 @@ object VersionPath {
 //      override def newRetroChild : VersionPath =
 //         error( "Not yet supported" )
 
-      private def createVariantPath : VersionPath = {
-         val tailVersion = Version.newMultiFrom( parent.version )
-         val newPath = parent.path.dropRight( 1 ) :+ tailVersion
+//      private def createVariantPath : VersionPath = {
+//         val tailVersion = Version.newMultiVariant( neutralVersionPath.version )
+//         val newPath = neutralVersionPath.path.dropRight( 1 ) :+ tailVersion
+//         new VersionPathImpl( tailVersion, newPath )
+//      }
+
+      private def createVariantPath( p: VersionPath ) : VersionPath = {
+         val tailVersion = Version.newMultiFrom( p.version )
+//         val newPath = p.path.dropRight( 1 ) :+ tailVersion
+         val newPath = if( tailVersion.level == p.version.level ) {
+            p.path.dropRight( 1 ) :+ tailVersion
+         } else {
+            p.path :+ tailVersion :+ tailVersion
+         }
          new VersionPathImpl( tailVersion, newPath )
       }
 
       def variant[ T ]( thunk: => T ) : T = {
          import VersionManagement._
 
-         val write = createVariantPath
-         makeRead( parent )
+//         val write = createVariantPath
+         val write = createVariantPath( neutralVersionPath )
+         variantVersions += write.version
+         makeRead( neutralVersionPath )
          makeWrite( write )
          try {
             thunk
          } finally {
-            currentVariantVar = write.version
+//            currentVariantVar = write.version
+            lastVariantVar = write.version
 //          write.use
             neutralVersionPath.use
          }

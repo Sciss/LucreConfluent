@@ -32,6 +32,9 @@ import de.sciss.confluent.{ FatRef => FRef, FatValue => FVal, _ }
 import VersionManagement._
 import collection.{IterableLike, SeqLike}
 
+/**
+ *    @version 0.11, 09-Apr-10
+ */
 trait ContainerLike
 extends RegionLike with Iterable[ RegionLike ] {
    def add( c: RegionLike ) : ContainerLike
@@ -44,9 +47,9 @@ object Container {
 
    private val rootVar = {
       val sp      = seminalPath
-      val c       = (new ContainerData).access( sp, sp )
-      c.name      = "root"
-      c.interval  = 0.secs :< 0.secs
+      val c       = (new ContainerData( sp, "root", 0.secs :< 0.secs )).access( sp, sp )
+//      c.name      = "root"
+//      c.interval  = 0.secs :< 0.secs
       c
    }
    private var currentVar: ContainerLike = rootVar
@@ -83,13 +86,19 @@ class FatLinkedListElem[ T ]( val elem: T ) {
    val next = new FVal[ FatLinkedListElem[ T ]]
 }
 
-class ContainerData extends NodeAccess[ Container ] {
+class ContainerData( seminalPath: Path, iniName: String, iniInterval: IntervalLike ) extends NodeAccess[ Container ] {
    val name       = new FVal[ String ]
    val interval   = new FVal[ IntervalLike ]
    val numRegions = new FVal[ Int ]
    val regions    = new FVal[ FatLinkedListElem[ RegionLike ]] // head of linked list
 
    def access( readPath: Path, writePath: Path ) = new Container( this, readPath, writePath )
+
+   {
+      set( name, seminalPath, iniName )
+      set( interval, seminalPath, iniInterval )
+      set( numRegions, seminalPath, 0 )
+   }
 }
 
 class Container( data: ContainerData, protected val readPath: Path, writePath: Path )
@@ -97,10 +106,10 @@ extends ContainerLike with NodeID[ Container ] {
 //   def intervalRef: IntervalLike = new IntervalProxy( fi, sp )
 
    // ---- constructor ----
-   {
-//      set( data.interval, writePath, 0.secs :< 0.secs ) // new IntervalPeriodExpr( start, 0.secs )
-      set( data.numRegions, writePath, 0 )
-   }
+//   {
+////      set( data.interval, writePath, 0.secs :< 0.secs ) // new IntervalPeriodExpr( start, 0.secs )
+//      set( data.numRegions, writePath, 0 )
+//   }
 
 //   def ref : Container = {
 //      error( "WARNING: Container:ref not yet implemented" )

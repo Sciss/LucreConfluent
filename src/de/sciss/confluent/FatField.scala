@@ -28,6 +28,9 @@
 
 package de.sciss.confluent
 
+/**
+ *    @version 0.11, 09-Apr-10
+ */
 trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
    /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
@@ -55,7 +58,10 @@ trait FatField[ V ] {
 
    protected def accessPlain( version: Path ) : Option[ V ] = {
       val (oracleO, off) = lexi.findMaxPrefix2( version )
-      oracleO.map( _.query( version( off ))) getOrElse None
+      // map the not-found-offset to the last-in-oracle-index
+      // ; e.g. 1 -> 1, 2 -> 1, 3 -> 3, 4 -> 3, 5 -> 5 etc.
+      val idx = off - 1 + (off & 1)
+      oracleO.map( _.query( version( idx ))) getOrElse None
 	}
 
    def inspect {

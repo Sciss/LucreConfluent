@@ -231,6 +231,15 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
       if( l != null ) Some( l.value ) else None
    }
 
+   /**
+    *    Finds the value which is the nearest
+    *    ancestor in the trie. It returns a tuple
+    *    composed of this value as an Option
+    *    (None if no ancestor assignment found),
+    *    along with an offset Int which is the
+    *    offset into path for the first key
+    *    element _not_ found in the trie.
+    */
 	def findMaxPrefix2( path: Path ) : Tuple2[ Option[ V ], Int ] = {
       var sup: Access = RootAccess
       var l: Node = null

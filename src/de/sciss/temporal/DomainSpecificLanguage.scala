@@ -45,11 +45,11 @@ object DomainSpecificLanguage {
       val parent  = Container.current
       val cName   = if( name == "#auto" ) ("Container #" + (parent.size + 1)) else name
 //      val c       = Container( cName, start )
-      val cd         = new ContainerData
       val sp         = seminalPath
+      val cd         = new ContainerData( sp, cName, start :< 0.secs )
       val c          = cd.access( sp, sp )
-      c.name         = cName
-      c.interval     = start :< 0.secs
+//      c.name         = cName
+//      c.interval     = start :< 0.secs
       parent.add( c )
       Handle( cd, sp )
    }
@@ -114,6 +114,7 @@ object DomainSpecificLanguage {
    }
 
    def gugu[ T ]( thunk: => T ) : T = t( thunk )
+   def regionX( name: String = "#auto", interval: IntervalLike ) : Handle[ Region ] = region( name, interval )
 
    // XXX -> move into VersionManagement
    def t[ T ]( thunk: => T ) : T = {
@@ -146,7 +147,9 @@ object DomainSpecificLanguage {
    // XXX -> move into VersionManagement
    def multi : Multiplicity = {
       val m = currentVersion.newMultiBranch
-      m.useNeutral
+//      m.useNeutral
+      m.neutralVersion.use
+      m
    }
 
    // XXX -> move into VersionManagement

@@ -217,16 +217,18 @@ v3.use; kView
 val c1 = t { container("c1") }
 val m = multi
 c1.use
+//val r1 = m.variant { regionX("r1", 0.secs :< 4.secs) }
+//val r2 = m.variant { regionX("r2", 1.secs :< 3.secs) }
 val (r1, r2) = m.variant {
     (region("r1", 0.secs :< 4.secs),
      region("r2", 5.secs :< 2.secs)) }
-val v2 = m.currentVariant
+val v2 = m.lastVariant
 val (r3, r4) = m.variant {
     (region("r3", 0.secs :< 2.5.secs),
      region("r4", 3.5.secs :< 3.secs)) }
-val v3 = m.currentVariant
+val v3 = m.lastVariant
 rootContainer.use
-val r5 = t { region("r5", (c1.interval.stop +
+val r5 = t { regionX("r5", (c1.interval.stop +
     2.secs) :< 4.secs) }
 val v5 = currentVersion
 m.useVariant( v2 )

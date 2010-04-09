@@ -184,6 +184,7 @@ extends ContainerLike with NodeID[ Container ] {
 
    def guguData = data
    def guguIval: IntervalLike = get( data.interval, readPath )
+   def guguNum = numRegions
 
    // ---- Iterable ----
    def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )

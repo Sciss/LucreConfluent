@@ -33,7 +33,8 @@ package de.sciss.confluent
  */
 trait FatField[ V ] {
 //   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
-   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
+//   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
+   /*protected */ val lexi = new FatFieldMap[ V ]
 
    def assign( version: Path, value: V ) {
       val idx        = version.dropRight( 1 )
@@ -57,7 +58,8 @@ trait FatField[ V ] {
    }
 
    protected def accessPlain( version: Path ) : Option[ V ] = {
-      val (oracleO, off) = lexi.findMaxPrefix2( version )
+//      val (oracleO, off) = lexi.findMaxPrefix2( version )
+      val (oracleO, off) = lexi.multiFindMaxPrefix( version )
       // map the not-found-offset to the last-in-oracle-index
       // ; e.g. 1 -> 1, 2 -> 1, 3 -> 3, 4 -> 3, 5 -> 5 etc.
       val idx = off - 1 + (off & 1)
@@ -96,6 +98,9 @@ class FatRef[ V ] extends FatField[ V ] {
    override def toString = "FRef#" + hashCode
 }
 
+/**
+ *    @warning    not maintained
+ */
 class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
    type I = FatIdentifier[ V ]
 
@@ -116,7 +121,8 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 //	}
 
 	def access( version: Path ) : Option[ I ] = {
-      val (idOption, off) = lexi.findMaxPrefix2( version )
+//      val (idOption, off) = lexi.findMaxPrefix2( version )
+      val (idOption, off) = lexi.multiFindMaxPrefix( version )
       idOption.map( _.query( version.last ).map( _.substitute( version, off ))) getOrElse None
 	}
 

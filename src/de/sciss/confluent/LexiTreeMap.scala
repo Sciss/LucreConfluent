@@ -51,7 +51,7 @@ import scala.collection.immutable.{ Queue }
  * 	@author		Hanns Holger Rutz
  */
 @specialized
-class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
+class LexiTreeMap[ T, V ]()( implicit protected val ordering: Ordering[ T ])
 {
    import ordering._
 
@@ -240,7 +240,7 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
     *    offset into path for the first key
     *    element _not_ found in the trie.
     */
-	def findMaxPrefix2( path: Path ) : Tuple2[ Option[ V ], Int ] = {
+	def findMaxPrefixOffset( path: Path ) : Tuple2[ Option[ V ], Int ] = {
       var sup: Access = RootAccess
       var l: Node = null
     	var cnt = 0
@@ -409,7 +409,7 @@ class LexiTreeMap[ T, V ]()( implicit ordering: Ordering[ T ])
     *	@param m	the subtree provider. note that m.middle must not be null
     * 				as this is not checked!
     */
-   private def splay( key: T, m: Access ) {
+   protected def splay( key: T, m: Access ) {
 		var l          = header
 		var r          = header
 		var t			   = m.middle

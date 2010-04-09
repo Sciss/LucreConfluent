@@ -217,8 +217,6 @@ v3.use; kView
 val c1 = t { container("c1") }
 val m = multi
 c1.use
-//val r1 = m.variant { regionX("r1", 0.secs :< 4.secs) }
-//val r2 = m.variant { regionX("r2", 1.secs :< 3.secs) }
 val (r1, r2) = m.variant {
     (region("r1", 0.secs :< 4.secs),
      region("r2", 5.secs :< 2.secs)) }
@@ -232,8 +230,7 @@ val r5 = t { regionX("r5", (c1.interval.stop +
     2.secs) :< 4.secs) }
 val v5 = currentVersion
 m.useVariant( v2 )
-r5.interval.fixed // result: 8.5.secs :< 4.secs WRONG
-// ---> this mistake is the update of handle c1
+r5.interval.fixed // result: 9.secs :< 4.secs
 m.useVariant( v3 )
 r5.interval.fixed // result: 8.5.secs :< 4.secs
 

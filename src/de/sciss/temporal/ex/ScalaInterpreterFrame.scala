@@ -213,6 +213,29 @@ retroc { r1.interval = 0.secs :< 4.secs }
 v2.use; kView
 v3.use; kView
 
+// problem 3
+val c1 = t { container("c1") }
+val m = multi
+c1.use
+val (r1, r2) = m.variant {
+    (region("r1", 0.secs :< 4.secs),
+     region("r2", 5.secs :< 2.secs)) }
+val v2 = m.currentVariant
+val (r3, r4) = m.variant {
+    (region("r3", 0.secs :< 2.5.secs),
+     region("r4", 3.5.secs :< 3.secs)) }
+val v3 = m.currentVariant
+t { }
+c1.guguIval
+rootContainer.use
+val r5 = t { region("r5", (c1.interval.stop +
+    2.secs) :< 4.secs) }
+m.useVariant( v2 )
+r5.interval.fixed // result: 8.5.secs :< 4.secs WRONG
+// ---> this mistake is the update of handle c1
+m.useVariant( v3 )
+r5.interval.fixed // result: 8.5.secs :< 4.secs
+
 val c = container().use
 audioFileLocation( "/Users/rutz/Library/Application Support/SuperCollider/nuages/tapes" )
 val af = audioFile( "MetallScheibe1TestN.aif" ).use

@@ -112,9 +112,10 @@ extends ContainerLike with NodeID[ Container ] {
 
    def name: String = get( data.name, readPath )
    def name_=( n: String ) = set( data.name, writePath, n )
-   def interval: IntervalLike = get( data.interval, readPath )
+//   def interval: IntervalLike = get( data.interval, readPath )
+   def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
    def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
-   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
+//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
 
    protected def nodeAccess: NodeAccess[ Container ] = data
 
@@ -126,18 +127,21 @@ extends ContainerLike with NodeID[ Container ] {
    def add( r: RegionLike ) = {
       val newEntry = new FatLinkedListElem( r )
       var entryF  = data.regions
-      var entryO  = getO( entryF, readPath )
+//      var entryO  = getO( entryF, readPath )
+      var entryO  = getO( entryF, writePath )
       var cnt     = 1
       while( entryO.isDefined ) {
          val entry = entryO.get
          entryF   = entry.next
-         entryO   = getO( entryF, readPath )
+//         entryO   = getO( entryF, readPath )
+         entryO   = getO( entryF, writePath )
          cnt     += 1
       }
       set( entryF, writePath, newEntry )
 
       // update bounding interval
-      val ivOld = get( data.interval, readPath )
+//      val ivOld = get( data.interval, readPath )
+      val ivOld = get( data.interval, writePath )
       val ri = r.interval // XXXX XXXX intervalRef
 //      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
 
@@ -170,23 +174,27 @@ extends ContainerLike with NodeID[ Container ] {
    }
 
    def guguData = data
-   
+   def guguIval: IntervalLike = get( data.interval, readPath )
+
    // ---- Iterable ----
-   def iterator: Iterator[ RegionLike ] = new ListIterator // ( readAccess )
+   def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
 //   def apply( idx: Int ) : RegionLike[ _ ] = iterator.drop( idx ).next
    def numRegions = get( data.numRegions, readPath )
    override def size = numRegions
 
-   private class ListIterator
+   private class ListIterator( p: Path )
    extends Iterator[ RegionLike ] {
       private var nextF = data.regions
 
       def next: RegionLike = {
-         val x = get( nextF, readPath )
+//         val x = get( nextF, readPath )
+         val x = get( nextF, p )
          nextF = x.next
-         resolve( readPath, writePath, x.elem )
+//         resolve( readPath, writePath, x.elem )
+         resolve( p, writePath, x.elem )
       }
 
-      def hasNext: Boolean = getO( nextF, readPath ).isDefined 
+//      def hasNext: Boolean = getO( nextF, readPath ).isDefined
+      def hasNext: Boolean = getO( nextF, p ).isDefined
    }
 }

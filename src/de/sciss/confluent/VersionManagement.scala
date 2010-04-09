@@ -31,7 +31,7 @@ import confluent.{ VersionPath, FatRef => FRef, FatValue => FVal, _ }
 package confluent {
 
 /**
- *    @version 0.11, 25-Mar-10
+ *    @version 0.12, 08-Apr-10
  */
 object VersionManagement {
    private var currentPathVar = VersionPath.init

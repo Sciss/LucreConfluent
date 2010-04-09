@@ -31,10 +31,13 @@ package de.sciss.temporal
 import java.io.File
 import java.net.URI
 import view.KContainerView
-import de.sciss.confluent.{ Handle, VersionManagement }
+import de.sciss.confluent.{ Handle, MultiVersionPath, VersionManagement }
 
 import VersionManagement._
 
+/**
+ *    @version 0.12, 09-Apr-10
+ */
 object DomainSpecificLanguage {
    // ---- commands ----
 
@@ -50,6 +53,9 @@ object DomainSpecificLanguage {
       parent.add( c )
       Handle( cd, sp )
    }
+
+   def rootContainer = Container.root // XXX handle?
+//   def rootContainer : Handle[ Container ] = Handle[ Container.root ]
 
    def audioFileLocation( loc: FileLocation ) {
       FileLocations.add( loc )
@@ -85,6 +91,8 @@ object DomainSpecificLanguage {
       Handle( rd, sp )
    }
 
+//   def version = currentVersion // x-link from VersionManagement
+
 //   def ref( ar: AudioRegion ) : AudioRegion = {
 //      val arRef = ar.ref
 //      Container.current.add( arRef )
@@ -105,9 +113,11 @@ object DomainSpecificLanguage {
       error( "Not yet implemented" )
    }
 
+   // XXX -> move into VersionManagement
    def t[ T ]( thunk: => T ) : T = {
       val current = currentVersion
       val write   = current.newBranch
+      makeRead( current.asTransactionRead )
       makeWrite( write )
       try {
          thunk
@@ -116,9 +126,11 @@ object DomainSpecificLanguage {
       }
    }
 
+   // XXX -> move into VersionManagement
    def retroc[ T ]( thunk: => T ) : T = {
       val current = currentVersion
       val write   = current.newRetroChild
+      makeRead( current.asTransactionRead )
       makeWrite( write )
       try {
          thunk
@@ -127,9 +139,18 @@ object DomainSpecificLanguage {
       }
    }
 
+   // XXX -> move into VersionManagement
+   def multi : MultiVersionPath = {
+      val m = currentVersion.newMultiBranch
+      m.use
+      m
+   }
+
+   // XXX -> move into VersionManagement
    def meld[ T ]( thunk: => T ) : Meld[ T ] = {
       val current    = currentVersion
       val write      = current.newBranch
+      makeRead( current.asTransactionRead )
       makeWrite( write )
 //      val oldContext = transactionContext
 //      val meld       = new MeldTransactionContext
@@ -160,5 +181,5 @@ object DomainSpecificLanguage {
 //      transactionContext = newContext
 //   }
 
-   val ? = PeriodUnknown
+   val ? : PeriodLike = PeriodUnknown
 }

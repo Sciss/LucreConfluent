@@ -1,4 +1,4 @@
-/**
+/*
  *  Version
  *  (de.sciss.confluent package)
  *
@@ -33,6 +33,8 @@ import collection.immutable.{ Vector }
 /**
  *    Note: this is a sub-_tree_,
  *    not the whole DAG
+ *
+ *    @version 0.11, 09-Apr-10
  */
 trait VersionTree {
    val level: Int
@@ -177,7 +179,9 @@ trait VersionPath {
    def meldWith( v: Version ) : VersionPath
    def newRetroParent : VersionPath
    def newRetroChild : VersionPath
+   def newMultiBranch : MultiVersionPath
    def tail: Path = path.takeRight( 2 )
+   def asTransactionRead : VersionPath
 
    // XXX might need to be vps: VersionPath* ???
 //   def newBranchWith( vs: Version* ) : VersionPath
@@ -186,6 +190,14 @@ trait VersionPath {
 
    def read[ T ]( thunk: => T ) =
       VersionManagement.read( this )( thunk )
+
+   protected[ confluent ] def switchVersion( i: Int, v: Version ) : VersionPath
+}
+
+trait MultiVersionPath extends VersionPath {
+   def currentVariant : Version
+   def useVariant( v: Version ) : VersionPath
+   def variant[ T ]( thunk: => T ) : T
 }
 
 object VersionPath {
@@ -209,7 +221,15 @@ object VersionPath {
       def newRetroChild : VersionPath =
          newTail( Version.newRetroChild( version ))
 
-      private def newTail( tailVersion: Version ) : VersionPath = {
+      def newMultiBranch : MultiVersionPath = {
+         val tailVersion = Version.newFrom( version )
+         val newPath = path.dropRight( 1 ) :+ tailVersion
+         new MultiVersionPathImpl( this, tailVersion, newPath, true )
+      }
+
+      def asTransactionRead : VersionPath = this
+
+      protected def newTail( tailVersion: Version ) : VersionPath = {
          val newPath = if( tailVersion.level == version.level ) {
             path.dropRight( 1 ) :+ tailVersion
          } else {
@@ -218,11 +238,73 @@ object VersionPath {
          VersionPathImpl( tailVersion, newPath )
       }
 
+      protected[ confluent ] def switchVersion( i: Int, v: Version ) : VersionPath = {
+         val newPath    = path.updated( i, v )
+         val newVersion = if( i != path.size - 1 ) version else v
+         VersionPathImpl( newVersion, newPath )
+      }
+
       override def toString = path.mkString( "<", ", ", ">" )
 
 //      override def equals( o: Any ) = o match {
 //         case vp: VersionPath => (vp.version == version) && (vp.path == path)
 //         case _ => super.equals( o )
 //      }
+   }
+
+   private class MultiVersionPathImpl( parent: VersionPath, version: Version, path: Path, private var isEmpty: Boolean )
+   extends VersionPathImpl( version, path ) with MultiVersionPath {
+      private var currentVariantVar = version
+      def currentVariant = currentVariantVar
+      def useVariant( v: Version ) : VersionPath = {
+         import VersionManagement._
+
+         val vp = currentVersion.switchVersion( path.size - 1, v )
+         currentVariantVar = v
+         vp.use
+      }
+
+      override def asTransactionRead = parent.asTransactionRead
+
+      override def newBranch : VersionPath =
+         newTail( Version.newFrom( version, version ))      // enforce tree split
+
+      override def meldWith( v: Version ) : VersionPath = {
+         newTail( Version.newFrom( version, version, v ))   // enforce tree split
+      }
+
+//      override def newRetroParent : VersionPath =
+//         newTail( Version.newRetroParent( version ))
+
+      override def newRetroChild : VersionPath =
+         error( "Not yet supported" )
+
+      def variant[ T ]( thunk: => T ) : T = {
+         import VersionManagement._
+         
+         val write = if( isEmpty ) {
+            isEmpty = false
+            this
+         } else {
+            val tailVersion = Version.newFrom( parent.version )
+            val newPath = parent.path.dropRight( 1 ) :+ tailVersion
+            new MultiVersionPathImpl( this, tailVersion, newPath, false )
+         }
+         makeRead( parent.asTransactionRead )
+         makeWrite( write )
+         try {
+            thunk
+         } finally {
+            currentVariantVar = write.version
+            write.use
+         }
+      }
+
+      // XXX not so elegant
+      override protected[ confluent ] def switchVersion( i: Int, v: Version ) : MultiVersionPath = {
+         val newPath    = path.updated( i, v )
+         val newVersion = if( i != path.size - 1 ) version else v
+         new MultiVersionPathImpl( parent, newVersion, newPath, isEmpty )
+      }
    }
 }

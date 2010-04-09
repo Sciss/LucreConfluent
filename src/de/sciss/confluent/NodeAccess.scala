@@ -36,13 +36,18 @@ trait NodeAccess[ T ] {
 
 object NodeID {
    def substitute( storedPath: Path, accessPath: Path ) : Path = {
-      val sp1  = storedPath( storedPath.length - 2 )
-      val pd   = accessPath.dropWhile( _ != sp1 )
-      if( pd.length == 2 ) {
-         storedPath.dropRight( 2 ) ++ pd
-      } else {
-         storedPath ++ pd.drop( 2 )
-      }
+//      val sp1  = storedPath( storedPath.length - 2 )
+//      val pd   = accessPath.dropWhile( _ != sp1 )
+//      if( pd.length == 2 ) {
+//         storedPath.dropRight( 2 ) ++ pd
+//      } else {
+//         storedPath ++ pd.drop( 2 )
+//      }
+//      pd
+
+      val common  = storedPath( storedPath.length - 2 )
+      val pd      = accessPath.dropWhile( _ != common )
+      storedPath.dropRight( 2 ) ++ pd
    }
 }
 

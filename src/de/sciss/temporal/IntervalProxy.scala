@@ -63,6 +63,8 @@ extends IntervalExprLike with NodeProxy[ IntervalLike ] {
 
       override def toString = try { access.dur.toString } catch { case _ => super.toString }
    }
+
+   def gugu = fixed
 }
 
 //abstract class PeriodProxy( val fi: FVal[ IntervalLike ], sp: Path )

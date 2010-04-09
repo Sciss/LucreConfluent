@@ -31,7 +31,7 @@ package de.sciss.temporal
 import java.io.File
 import java.net.URI
 import view.KContainerView
-import de.sciss.confluent.{ Handle, MultiVersionPath, VersionManagement }
+import de.sciss.confluent.{ Handle, Multiplicity, VersionManagement }
 
 import VersionManagement._
 
@@ -113,11 +113,14 @@ object DomainSpecificLanguage {
       error( "Not yet implemented" )
    }
 
+   def gugu[ T ]( thunk: => T ) : T = t( thunk )
+
    // XXX -> move into VersionManagement
    def t[ T ]( thunk: => T ) : T = {
       val current = currentVersion
       val write   = current.newBranch
-      makeRead( current.asTransactionRead )
+//      makeRead( current.asTransactionRead )
+      makeRead( current )
       makeWrite( write )
       try {
          thunk
@@ -130,7 +133,8 @@ object DomainSpecificLanguage {
    def retroc[ T ]( thunk: => T ) : T = {
       val current = currentVersion
       val write   = current.newRetroChild
-      makeRead( current.asTransactionRead )
+//      makeRead( current.asTransactionRead )
+      makeRead( current )
       makeWrite( write )
       try {
          thunk
@@ -140,17 +144,17 @@ object DomainSpecificLanguage {
    }
 
    // XXX -> move into VersionManagement
-   def multi : MultiVersionPath = {
+   def multi : Multiplicity = {
       val m = currentVersion.newMultiBranch
-      m.use
-      m
+      m.useNeutral
    }
 
    // XXX -> move into VersionManagement
    def meld[ T ]( thunk: => T ) : Meld[ T ] = {
       val current    = currentVersion
       val write      = current.newBranch
-      makeRead( current.asTransactionRead )
+//      makeRead( current.asTransactionRead )
+      makeRead( current )
       makeWrite( write )
 //      val oldContext = transactionContext
 //      val meld       = new MeldTransactionContext

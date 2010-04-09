@@ -225,11 +225,10 @@ val (r3, r4) = m.variant {
     (region("r3", 0.secs :< 2.5.secs),
      region("r4", 3.5.secs :< 3.secs)) }
 val v3 = m.currentVariant
-t { }
-c1.guguIval
 rootContainer.use
 val r5 = t { region("r5", (c1.interval.stop +
     2.secs) :< 4.secs) }
+val v5 = currentVersion
 m.useVariant( v2 )
 r5.interval.fixed // result: 8.5.secs :< 4.secs WRONG
 // ---> this mistake is the update of handle c1

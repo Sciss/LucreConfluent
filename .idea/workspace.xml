@@ -2,8 +2,52 @@
 <project version="4">
   <component name="ChangeListManager" verified="true">
     <list default="true" readonly="true" id="fc0f8092-ddbf-4502-9ef0-7275b1d71efc" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionViewPane.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.txt" afterPath="$PROJECT_DIR$/README.txt" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Main.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/PackageObject.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/trees/Shape.scala" afterPath="$PROJECT_DIR$/src/de/sciss/trees/Shape.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionManager.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/TemporalModel.scala" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/Example.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Dependants.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Dependants.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/trees/LexiTreeMap.scala" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/VersionGraphPanel.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/FileLocation.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/trees/ManagedNumber.scala" afterPath="$PROJECT_DIR$/src/de/sciss/trees/ManagedNumber.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/TemporalObjects.iml" afterPath="$PROJECT_DIR$/TemporalObjects.iml" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/BinaryTreeMap.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Interval.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Region.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Region.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/CRegion.scala" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/trees/Version.scala" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/RegionViewFrame.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Period.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/Period.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Transport.scala" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/Meld.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/Meld.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/trees/FatField.scala" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/Region.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/ex/Model.scala" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/trees/RTree.scala" afterPath="$PROJECT_DIR$/src/de/sciss/trees/RTree.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/trees/Interval.scala" afterPath="$PROJECT_DIR$/src/de/sciss/trees/Interval.scala" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/view/ScalaInterpreterFrame.scala" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/licenses/JUNG-License.txt" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/trees/Rect.scala" afterPath="$PROJECT_DIR$/src/de/sciss/trees/Rect.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/confluent/FatFieldMap.scala" afterPath="$PROJECT_DIR$/src/de/sciss/confluent/FatFieldMap.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala" afterPath="$PROJECT_DIR$/src/de/sciss/temporal/PackageObject.scala" />
     </list>
     <ignored path="TemporalObjects.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -22,34 +66,6 @@
     <disable_hints />
   </component>
   <component name="DebuggerManager">
-    <line_breakpoints>
-      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" line="116" class="Class at DomainSpecificLanguage.scala:116" package="">
-        <option name="ENABLED" value="true" />
-        <option name="LOG_ENABLED" value="false" />
-        <option name="LOG_EXPRESSION_ENABLED" value="false" />
-        <option name="SUSPEND_POLICY" value="SuspendAll" />
-        <option name="COUNT_FILTER_ENABLED" value="false" />
-        <option name="COUNT_FILTER" value="0" />
-        <option name="CONDITION_ENABLED" value="false" />
-        <option name="CLASS_FILTERS_ENABLED" value="false" />
-        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
-        <option name="CONDITION" value="" />
-        <option name="LOG_MESSAGE" value="" />
-      </breakpoint>
-      <breakpoint url="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" line="186" class="Class at Container.scala:186" package="">
-        <option name="ENABLED" value="true" />
-        <option name="LOG_ENABLED" value="false" />
-        <option name="LOG_EXPRESSION_ENABLED" value="false" />
-        <option name="SUSPEND_POLICY" value="SuspendAll" />
-        <option name="COUNT_FILTER_ENABLED" value="false" />
-        <option name="COUNT_FILTER" value="0" />
-        <option name="CONDITION_ENABLED" value="false" />
-        <option name="CLASS_FILTERS_ENABLED" value="false" />
-        <option name="INSTANCE_FILTERS_ENABLED" value="false" />
-        <option name="CONDITION" value="" />
-        <option name="LOG_MESSAGE" value="" />
-      </breakpoint>
-    </line_breakpoints>
     <breakpoint_any>
       <breakpoint>
         <option name="NOTIFY_CAUGHT" value="true" />
@@ -107,98 +123,7 @@
   </component>
   <component name="FileColors" enabled="true" enabledForTabs="true" />
   <component name="FileEditorManager">
-    <leaf>
-      <file leaf-file-name="VersionManagement.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="54" column="0" selection-start="1802" selection-end="1802" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="ScalaInterpreterFrame.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="222" column="18" selection-start="6081" selection-end="6081" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="OracleMap.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="100" column="26" selection-start="3368" selection-end="3368" vertical-scroll-proportion="0.51843816">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="FatField.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="0" column="0" selection-start="0" selection-end="987" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Version.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="291" column="111" selection-start="9879" selection-end="9879" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="LexiTreeMap.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="55" column="17" selection-start="1888" selection-end="1909" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Container.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="191" column="0" selection-start="6052" selection-end="6052" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="FatFieldMap.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatFieldMap.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="62" column="0" selection-start="1992" selection-end="1992" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="DomainSpecificLanguage.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="116" column="0" selection-start="3655" selection-end="3655" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="NodeAccess.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="53" column="0" selection-start="1631" selection-end="1631" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-    </leaf>
+    <leaf />
   </component>
   <component name="FindManager">
     <FindUsagesManager>
@@ -208,22 +133,22 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/AudioRegion.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/PeriodUnknown.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Meld.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/IntervalProxy.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/MultiVersion.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatValueMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/Container.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/FatFieldMap.scala" />
-        <option value="$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Meld.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/Version.scala" />
         <option value="$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/trees/RTree.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/trees/Shape.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/trees/Rect.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/trees/ManagedNumber.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/trees/Interval.scala" />
+        <option value="$PROJECT_DIR$/src/de/sciss/temporal/view/ScalaInterpreterFrame.scala" />
+        <option value="$PROJECT_DIR$/build.xml" />
+        <option value="$PROJECT_DIR$/README.txt" />
       </list>
     </option>
   </component>
@@ -296,76 +221,6 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="temporal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="temporal" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="ex" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="TemporalObjects" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="src" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="sciss" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="confluent" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -591,7 +446,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24850747" sideWeight="0.66318536" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32767624" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32767624" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -632,90 +487,114 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/generic/GenericTraversableTemplate.class">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Meld.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/Traversable.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/IterableLike.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/collection/Iterable.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/None.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$PROJECT_DIR$/../scala-2.8.0-snapshot/lib/scala-library.jar!/scala/Option.class">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="54" column="0" selection-start="1802" selection-end="1802" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="291" column="111" selection-start="9879" selection-end="9879" vertical-scroll-proportion="0.0">
+        <state line="3" column="0" selection-start="40" selection-end="40" vertical-scroll-proportion="0.06097561">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/LexiTreeMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="55" column="17" selection-start="1888" selection-end="1909" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Container.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="191" column="0" selection-start="6052" selection-end="6052" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatFieldMap.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="62" column="0" selection-start="1992" selection-end="1992" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/DomainSpecificLanguage.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="116" column="0" selection-start="3655" selection-end="3655" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="53" column="0" selection-start="1631" selection-end="1631" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/ex/ScalaInterpreterFrame.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="222" column="18" selection-start="6081" selection-end="6081" vertical-scroll-proportion="0.0">
+        <state line="53" column="6" selection-start="1822" selection-end="1822" vertical-scroll-proportion="0.33333334">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/FatField.scala">
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/Version.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="987" vertical-scroll-proportion="0.0">
+        <state line="68" column="11" selection-start="1919" selection-end="1919" vertical-scroll-proportion="1.3900415">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/TotalOrder.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="43" column="7" selection-start="1607" selection-end="1607" vertical-scroll-proportion="0.87398374">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/OracleMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="100" column="26" selection-start="3368" selection-end="3368" vertical-scroll-proportion="0.51843816">
+        <state line="3" column="0" selection-start="39" selection-end="39" vertical-scroll-proportion="0.06097561">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/NodeAccess.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="39" column="7" selection-start="1167" selection-end="1167" vertical-scroll-proportion="0.79268295">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/confluent/VersionManagement.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="3" column="0" selection-start="47" selection-end="47" vertical-scroll-proportion="0.06097561">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/Region.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="0" column="0" selection-start="0" selection-end="980" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/Shape.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="29" column="11" selection-start="1003" selection-end="1003" vertical-scroll-proportion="0.58943087">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/Rect.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="1" column="8" selection-start="11" selection-end="11" vertical-scroll-proportion="0.020325202">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/ManagedNumber.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="1" column="17" selection-start="20" selection-end="20" vertical-scroll-proportion="0.020325202">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/Interval.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="1" column="12" selection-start="15" selection-end="15" vertical-scroll-proportion="0.020325202">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/trees/RTree.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="49" column="6" selection-start="1328" selection-end="1328" vertical-scroll-proportion="0.33333334">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/README.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="1" column="89" selection-start="0" selection-end="944" vertical-scroll-proportion="0.020325202">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/de/sciss/temporal/view/ScalaInterpreterFrame.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="92" column="0" selection-start="2728" selection-end="2728" vertical-scroll-proportion="1.8699187">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/build.xml">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="43" column="0" selection-start="1752" selection-end="1752" vertical-scroll-proportion="0.871612">
           <folding />
         </state>
       </provider>

@@ -28,23 +28,16 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatValue => FVal, FatRef => FRef, _ }
+import de.sciss.confluent.{ FatValue => FVal, _ }
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 class IntervalProxy( protected val ref: FVal[ IntervalLike ], protected val readPath: Path /*, protected val writePath: Path*/ )
 extends IntervalExprLike with NodeProxy[ IntervalLike ] {
    import VersionManagement._
 
-//   def start: PeriodLike   = access.start
-//   def start: PeriodLike   = StartProxy // new PeriodProxy( fi, sp )
-//   def stop: PeriodLike    = access.stop
-//   def +( p: PeriodLike ): IntervalLike
-//   def -( p: PeriodLike ): IntervalLike
-
    def fixed: IntervalLike = access.fixed
-//   @inline private def access: IntervalLike = get( i, readPath, writePath ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
-
-//   def access( rp: Path, wp: Path ) = new IntervalProxy( i, rp, wp )
-//      new IntervalProxy( i, NodeID.substitute( readPath, rp ), NodeID.substitute( writePath, wp ))
 
    override def toString = try { access.toString } catch { case _ => super.toString }
 
@@ -63,8 +56,4 @@ extends IntervalExprLike with NodeProxy[ IntervalLike ] {
 
       override def toString = try { access.dur.toString } catch { case _ => super.toString }
    }
-
-   def gugu = fixed
 }
-
-//abstract class PeriodProxy( val fi: FVal[ IntervalLike ], sp: Path )

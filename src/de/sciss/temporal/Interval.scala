@@ -28,6 +28,9 @@
 
 package de.sciss.temporal
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 trait IntervalLike extends MutableModel[ IntervalLike ] {
    def start: PeriodLike
    def dur: PeriodLike
@@ -57,7 +60,6 @@ extends IntervalLike {
    // these are no-ops for a constant interval
    def addDependant( id: IntervalDependant ) = id
    def printDependants { println( "No dependants" )}
-//   def eval: IntervalConst = this // no dependants
    def fixed: IntervalConst = this // no dependants
 
    override def toString = "(" + start + " :< " + dur + ")"
@@ -91,7 +93,6 @@ extends IntervalExprLike {
       }
    })
 
-//   def eval: IntervalConst = IntervalConst( start.eval, stop.eval )
    def fixed: IntervalLike = start.fixed :< dur.fixed
 
    override def toString = "Ix(" + start + " :< " + dur + ")"
@@ -120,8 +121,6 @@ extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start + b
    def dur   = a.dur
 
-// def detach: IntervalLike = PlusIntervalPeriodExpr( a, b )
-//   def eval: IntervalConst = a.eval + b.eval
    def fixed: IntervalLike = a.fixed + b.fixed
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA + newB
 }
@@ -131,8 +130,6 @@ extends IntervalPeriodOpExpr( a, b ) {
    def start = a.start - b
    def dur   = a.dur
 
-//   def detach: IntervalLike = MinusIntervalPeriodExpr( a, b )
-//   def eval: IntervalConst = a.eval - b.eval
    def fixed: IntervalLike = a.fixed - b.fixed
    protected def copy( newA: IntervalLike, newB: PeriodLike ) : IntervalLike = newA - newB
 }

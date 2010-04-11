@@ -1,6 +1,6 @@
 /*
  *  FatField
- *  (de.sciss.confluent package)
+ *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
  *
@@ -32,9 +32,7 @@ package de.sciss.confluent
  *    @version 0.11, 09-Apr-10
  */
 trait FatField[ V ] {
-//   protected val map = new LexiTreeMap[ Version, TotalOrder[ V ]]()
-//   /*protected */ val lexi = new LexiTreeMap[ Version, OracleMap[ V ]]()( Version.IdOrdering )
-   /*protected */ val lexi = new FatFieldMap[ V ]
+   protected val lexi = new FatFieldMap[ V ]
 
    def assign( version: Path, value: V ) {
       val idx        = version.dropRight( 1 )
@@ -43,9 +41,7 @@ trait FatField[ V ] {
       val newEntry   = (version( version.length - 1 ) -> value)
       lexi.find( idx ).map( oracle => {
          // note: we update the mutable oracle, no need to call lexi.insert
-//         println( "BEFORE " + oracle )
          oracle += newEntry
-//         println( "AFTER " + oracle )
       }) getOrElse {
          // create a new oracle with new entry and
          // tree-entrance-entry (if found),
@@ -58,7 +54,6 @@ trait FatField[ V ] {
    }
 
    protected def accessPlain( version: Path ) : Option[ V ] = {
-//      val (oracleO, off) = lexi.findMaxPrefix2( version )
       val (oracleO, off) = lexi.multiFindMaxPrefix( version )
       // map the not-found-offset to the last-in-oracle-index
       // ; e.g. 1 -> 1, 2 -> 1, 3 -> 3, 4 -> 3, 5 -> 5 etc.
@@ -79,24 +74,14 @@ trait FatField[ V ] {
 class FatValue[ V ] extends FatField[ V ] {
 	def access( version: Path ) : Option[ V ] = accessPlain( version )
 
-//	def get()( implicit version: Version ) : T = {
-//		pa.findMaxPrefix( version.path )
-//	}
-
-//	def set( value: T )( implicit version: Version ) : Unit = {
-//// LexiTreeMap doesn't allow overwrite at the moment XXX
-////val version = VersionImplicits.currentInc
-//		pa.insert( version.path, value )
-//	}
-
    override def toString = "FVal#" + hashCode
 }
 
-class FatRef[ V ] extends FatField[ V ] {
-   def access( version: Path ) : Option[ V ] = accessPlain( version )
-
-   override def toString = "FRef#" + hashCode
-}
+//class FatRef[ V ] extends FatField[ V ] {
+//   def access( version: Path ) : Option[ V ] = accessPlain( version )
+//
+//   override def toString = "FRef#" + hashCode
+//}
 
 /**
  *    @warning    not maintained
@@ -104,53 +89,10 @@ class FatRef[ V ] extends FatField[ V ] {
 class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
    type I = FatIdentifier[ V ]
 
-//	def assign( path: Path, valuePath: Path, value: T ) {
-//		pa.insert( path, FatIdentifier( valuePath, value ))
-//	}
-
-//	def assignNull( path: Seq[ Int ]) {
-//		pa.insert( path, null )
-//	}
-
-//	def assign( path: Path, id: FatIdentifier[ T ]) {
-//		map.insert( path, id )
-//	}
-
-//	def access( version: Seq[ Int ]) : T = {
-//		pa.find( version )
-//	}
-
 	def access( version: Path ) : Option[ I ] = {
-//      val (idOption, off) = lexi.findMaxPrefix2( version )
       val (idOption, off) = lexi.multiFindMaxPrefix( version )
       idOption.map( _.query( version.last ).map( _.substitute( version, off ))) getOrElse None
 	}
-
-//   // EXPERIMENTAL ONE, SKIPPING UNKNOWN INTERMEDIATE HIGHER VERSIONS
-//   def get2()( implicit version: Version ) : FatIdentifier[ T ] = {
-//      val (id, off) = pa.findMaxPrefix3( version.path )
-//        if( id == null ) return id
-////	  	println( "id = " + id + "; off = " + off + "; version = " + version )
-//        id.substitute( version.path, off )
-//   }
-//
-//	def get()( implicit version: Version ) : FatIdentifier[ T ] = {
-//		val (id, off) = pa.findMaxPrefix2( version.path )
-//	  	if( id == null ) return id
-////	  	println( "id = " + id + "; off = " + off + "; version = " + version )
-//	  	id.substitute( version.path, off )
-//	}
-//
-//	def set( id: FatIdentifier[ T ])( implicit version: Version ) : Unit = {
-//// LexiTreeMap doesn't allow overwrite at the moment XXX
-////val version = VersionImplicits.currentInc
-//		pa.insert( version.path, id )
-//	}
-//
-//	def set( v: T )( implicit version: Version ) : Unit = {
-//		pa.insert( version.path,
-//		           FatIdentifier( List( version.path.last ) /* XXX last is O(N) */, v ))
-//	}
 
    override def toString = "FPtr#" + hashCode
 }
@@ -158,18 +100,12 @@ class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
 case class FatIdentifier[ V ]( path: Path, value: V ) {
    type I = FatIdentifier[ V ] 
 
-//	def append( i: Int ) : FatIdentifier[ T ] = {
-//	  	FatIdentifier( path ++ List( i ), value ) // XXX inefficient
-//	}
-
 	def setValue( v: V ) : I = FatIdentifier( path, v )
 
 	def substitute( accessPath: Path, off: Int ) : I = {
 	  	// ++ XXX inefficient, should use a catenable Deque instead!
-//      println( "SUBSTITUTE " + path.size + " / " + off )
       // i suspect that the code should be
       // path.dropRight( 1 ) ++ accessPath.drop( off )
-//      val sub = path ++ accessPath.drop( off )
 	  	val sub = path.dropRight( 1 ) ++ accessPath.drop( off )
 	  	FatIdentifier( sub, value )
 	}

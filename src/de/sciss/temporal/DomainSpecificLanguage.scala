@@ -36,7 +36,7 @@ import de.sciss.confluent.{ Handle, Multiplicity, VersionManagement }
 import VersionManagement._
 
 /**
- *    @version 0.12, 09-Apr-10
+ *    @version 0.13, 11-Apr-10
  */
 object DomainSpecificLanguage {
    // ---- commands ----
@@ -44,12 +44,9 @@ object DomainSpecificLanguage {
    def container( name: String = "#auto", start: PeriodLike = 0.secs ) : Handle[ Container ] = {
       val parent  = Container.current
       val cName   = if( name == "#auto" ) ("Container #" + (parent.size + 1)) else name
-//      val c       = Container( cName, start )
       val sp         = seminalPath
       val cd         = new ContainerData( sp, cName, start :< 0.secs )
       val c          = cd.access( sp, sp )
-//      c.name         = cName
-//      c.interval     = start :< 0.secs
       parent.add( c )
       Handle( cd, sp )
    }
@@ -91,17 +88,9 @@ object DomainSpecificLanguage {
       Handle( rd, sp )
    }
 
-//   def version = currentVersion // x-link from VersionManagement
-
-//   def ref( ar: AudioRegion ) : AudioRegion = {
-//      val arRef = ar.ref
-//      Container.current.add( arRef )
-//      arRef
+//   def transport : Transport = {
+//      error( "Not yet implemented" )
 //   }
-
-   def transport : Transport = {
-      error( "Not yet implemented" )
-   }
 
    def kView : KContainerView = {
       val view = new KContainerView( Container.current, currentVersion )
@@ -109,68 +98,9 @@ object DomainSpecificLanguage {
       view
    }
 
-   def pView {
-      error( "Not yet implemented" )
-   }
-
-   def gugu[ T ]( thunk: => T ) : T = t( thunk )
-   def regionX( name: String = "#auto", interval: IntervalLike ) : Handle[ Region ] = region( name, interval )
-
-   // XXX -> move into VersionManagement
-   def t[ T ]( thunk: => T ) : T = {
-      val current = currentVersion
-      val write   = current.newBranch
-//      makeRead( current.asTransactionRead )
-      makeRead( current )
-      makeWrite( write )
-      try {
-         thunk
-      } finally {
-         write.use
-      }
-   }
-
-   // XXX -> move into VersionManagement
-   def retroc[ T ]( thunk: => T ) : T = {
-      val current = currentVersion
-      val write   = current.newRetroChild
-//      makeRead( current.asTransactionRead )
-      makeRead( current )
-      makeWrite( write )
-      try {
-         thunk
-      } finally {
-         write.use
-      }
-   }
-
-   // XXX -> move into VersionManagement
-   def multi : Multiplicity = {
-      val m = currentVersion.newMultiBranch
-//      m.useNeutral
-      m.neutralVersion.use
-      m
-   }
-
-   // XXX -> move into VersionManagement
-   def meld[ T ]( thunk: => T ) : Meld[ T ] = {
-      val current    = currentVersion
-      val write      = current.newBranch
-//      makeRead( current.asTransactionRead )
-      makeRead( current )
-      makeWrite( write )
-//      val oldContext = transactionContext
-//      val meld       = new MeldTransactionContext
-//      transactionContext = meld
-      try {
-         new Meld( thunk, write )
-      } finally {
-         current.use
-//         transactionContext = oldContext
-//         meld.createdObjects.foreach( _ match {
-//         })
-      }
-   }
+//   def pView {
+//      error( "Not yet implemented" )
+//   }
 
    // ---- implicits ----
 
@@ -181,12 +111,6 @@ object DomainSpecificLanguage {
    
    implicit def fileToFileLocation( f: File ) : FileLocation = URIFileLocation( f.toURI )
    implicit def handleToAccess[ T ]( h: Handle[ T ]) : T = h.substitute( readAccess, writeAccess )
-
-//   // ---- transactions ----
-//   def transactionContext: TransactionContext = DummyTransactionContext
-//   private def transactionContext_=( newContext: TransactionContext ) {
-//      transactionContext = newContext
-//   }
 
    val ? : PeriodLike = PeriodUnknown
 }

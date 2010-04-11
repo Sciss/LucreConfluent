@@ -1,6 +1,6 @@
 /*
  *  VersionManagement
- *  (de.sciss.temporal package)
+ *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
  *
@@ -27,18 +27,15 @@
  */
 
 package de.sciss {
-import confluent.{ VersionPath, FatRef => FRef, FatValue => FVal, _ }
+import confluent.{ FatValue => FVal, _ }
 package confluent {
 
 /**
- *    @version 0.12, 08-Apr-10
+ *    @version 0.13, 11-Apr-10
  */
 object VersionManagement {
    private var currentPathVar = VersionPath.init
    private var readPathVar = VersionPath.init  
-
-//   def currentVersion: VersionPath   = currentPathVar
-//   def currentAccess: Path = currentPathVar.path
 
    def currentVersion: VersionPath = currentPathVar
    def readVersion: VersionPath = readPathVar
@@ -47,101 +44,39 @@ object VersionManagement {
    def writeAccess: Path = currentPathVar.path
    def seminalPath: Path = currentPathVar.tail
 
-//   def get[ V ]( fval: FVal[ V ]) = {
-//      fval.access( readAccess ).get
-//   }
-
    def get[ V ]( fval: FVal[ V ], path: Path ) = {
       fval.access( path ).get
    }
 
-   def get[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : V = {
-      fref.access( readPath ).map {
-         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
-         case x => x
-      } get
-   }
-   
-//   def get[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
-//      fval.access( substitute( access, seminalPath )).get
+//   def get[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : V = {
+//      fref.access( readPath ).map {
+//         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
+//         case x => x
+//      } get
 //   }
 
    def getO[ V ]( fval: FVal[ V ], path: Path ) = {
       fval.access( path )
    }
 
-   def getO[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : Option[ V ] = {
-      fref.access( readPath ).map {
-         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
-         case v => v
-      }
-   }
+//   def getO[ V ]( fref: FRef[ V ], readPath: Path, writePath: Path ) : Option[ V ] = {
+//      fref.access( readPath ).map {
+//         case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
+//         case v => v
+//      }
+//   }
 
    def resolve[ V ]( readPath: Path, writePath: Path, v: V ) : V = v match {
       case nid: NodeID[ _ ] => nid.substitute( readPath, writePath ).asInstanceOf[ V ]
       case _ => v
    }
 
-//   def getO[ V ]( fval: FVal[ V ], seminalPath: Path, access: Path ) = {
-//      fval.access( substitute( access, seminalPath ))
-//   }
-
-//   def set[ V ]( fval: FVal[ V ], value: V ) {
-//      fval.assign( writeAccess, value )
-//   }
-
    def set[ V ]( fval: FVal[ V ], path: Path, value: V ) {
       fval.assign( path, value )
    }
 
-   def set[ V ]( fref: FRef[ V ], path: Path, value: V ) {
-      fref.assign( path, value )
-   }
-
-   // substitutes an access path to become an assignment pedigree
-   def substituteXXX( access: Path, seminalPath: Path ) : Path = {
-      // XXX this needs to be optimized one day
-      // XXX bug in Vector (23-Mar-10) : indexOf returns -1 for the last element
-//      val off = access.indexOf( seminalVersion ) match {
-//         case -1 if( access( access.length - 1 ) == seminalVersion ) => access.length - 1
-//         case x => x
-//      }
-//      // XXX correct?
-//      if( (off & 1) == 0 ) {
-//         access.drop( off )
-//      } else {
-//         seminalVersion +: access.drop( off )
-//      }
-      val sh = seminalPath.head 
-      val off = access.indexOf( sh )
-      val accessLen = access.length
-      // XXX THIS IS WRONG - WE JUST KEEP IT HERE TILL THE REAL
-      // SOLUTION IS IMPLEMENTED ; THIS WORKS ONLY UP TO ONE
-      // LEFT OF MELDING XXX
-      if( off + 2 == accessLen ) {
-         if( off == 0 ) access else access.drop( off )
-      } else {
-         val res = sh +: seminalPath( 1 ) +: access.drop( off + 2 )
-         println( "RES = " + res )
-         res
-      }
-
-//      while(
-//
-//      if( (off + 2) == seminalPath.length == seminalPath( 1 ).level ) { //
-//         if( off == 0 ) access else access.drop( off )
-//      } else { // access = <v0, v0, v2, v2> ; s = <v0, v1> --> <v0, v1, v2, v2>
-//
-//      }
-
-      // access = <v0, v0, v2, v2> ; s = <v0, v1, v2, v2>
-   }
-
-//   // avec lazy access
-//   def set[ V ]( fval: FVal[ V ], value: V, seminalPath: Path ) {
-////      val pedigree = substitute( currentAccess, seminalVersion )
-////      println( "pedigree = " + pedigree )
-//      fval.assign( substitute( writeAccess, seminalPath ), value )
+//   def set[ V ]( fref: FRef[ V ], path: Path, value: V ) {
+//      fref.assign( path, value )
 //   }
 
    def read[ T ]( v: VersionPath )( thunk: => T ) = {
@@ -204,21 +139,6 @@ object VersionManagement {
       currentPathVar = currentPathVar.newRetroChild
       currentPathVar
    }
-   
-//   def makeCurrent( version: VersionPath ) {
-//      currentPathVar = version
-//      readPathVar    = version
-//   }
-
-//   def use[ T ]( version: VersionPath, thunk: => T ) = {
-//      val oldV = readPathVar
-//      readPathVar = version
-//      try {
-//         thunk
-//      } finally {
-//         readPathVar = oldV
-//      }
-//   }
 
    def use( version: VersionPath ) {
       currentPathVar = version
@@ -232,20 +152,50 @@ object VersionManagement {
    def makeRead( version: VersionPath ) {
       readPathVar = version
    }
-}
 
-//class IntervalAccess( val path: Path, val fptr: FPtr[ IntervalLike ])
-//extends IntervalExprLike {
-//   import VersionManagement._
-//
-//   def start: PeriodLike = detach.start
-//   def stop: PeriodLike = detach.stop
-////   def +( p: PeriodLike ): IntervalLike
-////   def -( p: PeriodLike ): IntervalLike
-//
-//   def eval: IntervalConst = detach.eval
-//   def detach: IntervalLike = get( fptr ) // XXX needs to deal with side-branches, e.g. find common ancestor tree etc.
-////   def set( i: IntervalLike ) = set( fptr, i )
-//}
+   // ---- transactions DSL ----
+
+   def t[ T ]( thunk: => T ) : T = {
+      val current = currentVersion
+      val write   = current.newBranch
+      makeRead( current )
+      makeWrite( write )
+      try {
+         thunk
+      } finally {
+         write.use
+      }
+   }
+
+   def retroc[ T ]( thunk: => T ) : T = {
+      val current = currentVersion
+      val write   = current.newRetroChild
+      makeRead( current )
+      makeWrite( write )
+      try {
+         thunk
+      } finally {
+         write.use
+      }
+   }
+
+   def multi : Multiplicity = {
+      val m = currentVersion.newMultiBranch
+      m.neutralVersion.use
+      m
+   }
+
+   def meld[ T ]( thunk: => T ) : Meld[ T ] = {
+      val current    = currentVersion
+      val write      = current.newBranch
+      makeRead( current )
+      makeWrite( write )
+      try {
+         new Meld( thunk, write )
+      } finally {
+         current.use
+      }
+   }
+}
 
 }}

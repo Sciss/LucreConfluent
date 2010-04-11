@@ -28,7 +28,7 @@
 
 package de.sciss.temporal
 
-import ex.ScalaInterpreterFrame
+import view.ScalaInterpreterFrame
 import java.awt.{ EventQueue }
 
 object Main extends Runnable {

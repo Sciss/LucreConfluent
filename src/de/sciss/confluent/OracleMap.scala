@@ -1,6 +1,6 @@
 /*
  *  OracleMap
- *  (de.sciss.confluent package)
+ *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
  *

@@ -28,29 +28,15 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatValue => FVal, FatRef => FRef, _ }
+import de.sciss.confluent.{ FatValue => FVal, _ }
 
-//object Region {
-//   import VersionManagement._
-//
-//   def apply( name: String, i: IntervalLike ) = {
-//      val r = new Region( name, seminalPath )
-//      r.interval = i
-//      r
-//   }
-//}
-
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 trait RegionLike {
    def interval: IntervalLike
-//   def intervalRef : IntervalLike
    def name: String
-//   def ref : RegionLike
 }
-
-//class RegionProxy( r: Region, sp: Path ) extends RegionLike {
-//   def name : String = r.name
-//   def interval
-//}
 
 class RegionData extends NodeAccess[ Region ] {
    val name     = new FVal[ String ]
@@ -66,23 +52,11 @@ extends RegionLike with NodeID[ Region ] {
    def name: String = get( data.name, readPath )
    def name_=( n: String ) = set( data.name, writePath, n )
    def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
-//   def interval: IntervalLike = get( data.interval, readPath )
-//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
-
-//   def access( readPath: Path, writePath: Path ) : Region = {
-//
-//   }
 
    protected def nodeAccess: NodeAccess[ Region ] = data
    
-   //   def intervalRef : IntervalLike = new IntervalProxy( fi, sp )
-
-//   def ref : Region = {
-//      error( "WARNING: Region:ref not yet implemented" )
-//   }
-
-//   override def toString = "Region( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
+   override def toString = "Region( " + name + ", " + (try { get( data.interval, readPath ).toString } catch { case _ => data.interval.toString }) + " )"
 
    def inspect {
       println( toString )
@@ -91,9 +65,5 @@ extends RegionLike with NodeID[ Region ] {
       data.name.inspect
       println( "INTERVAL:" )
       data.interval.inspect
-   }
-
-   def lulu {
-//      println( get( fi, sp ))
    }
 }

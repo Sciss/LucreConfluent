@@ -28,28 +28,22 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatRef => FRef, FatValue => FVal, _ }
+import de.sciss.confluent.{ FatValue => FVal, _ }
 import VersionManagement._
-import collection.{IterableLike, SeqLike}
 
 /**
- *    @version 0.11, 09-Apr-10
+ *    @version 0.12, 11-Apr-10
  */
 trait ContainerLike
 extends RegionLike with Iterable[ RegionLike ] {
    def add( c: RegionLike ) : ContainerLike
    def interval: IntervalLike
-//   def ref: ContainerLike
 }
 
 object Container {
-//   type ContainerRepr = ContainerLike[ R <: ContainerLike[ R ]]
-
    private val rootVar = {
       val sp      = seminalPath
       val c       = (new ContainerData( sp, "root", 0.secs :< 0.secs )).access( sp, sp )
-//      c.name      = "root"
-//      c.interval  = 0.secs :< 0.secs
       c
    }
    private var currentVar: ContainerLike = rootVar
@@ -75,11 +69,6 @@ object Container {
    def use( c: ContainerLike ) {
       currentVar = c
    }
-
-//   def apply( name: String, start: PeriodLike ) : Container = {
-//      val r = new Container( name, start, seminalPath )
-//      r
-//   }
 }
 
 class FatLinkedListElem[ T ]( val elem: T ) {
@@ -103,28 +92,10 @@ class ContainerData( seminalPath: Path, iniName: String, iniInterval: IntervalLi
 
 class Container( data: ContainerData, protected val readPath: Path, writePath: Path )
 extends ContainerLike with NodeID[ Container ] {
-//   def intervalRef: IntervalLike = new IntervalProxy( fi, sp )
-
-   // ---- constructor ----
-//   {
-////      set( data.interval, writePath, 0.secs :< 0.secs ) // new IntervalPeriodExpr( start, 0.secs )
-//      set( data.numRegions, writePath, 0 )
-//   }
-
-//   def ref : Container = {
-//      error( "WARNING: Container:ref not yet implemented" )
-//   }
-
-//   def start_=( p: PeriodLike ) {
-////      set( data.interval, new IntervalPeriodExpr( start, data.interval.dur )
-//   }
-
    def name: String = get( data.name, readPath )
    def name_=( n: String ) = set( data.name, writePath, n )
-//   def interval: IntervalLike = get( data.interval, readPath )
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
    def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
-//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
 
    protected def nodeAccess: NodeAccess[ Container ] = data
 
@@ -136,29 +107,29 @@ extends ContainerLike with NodeID[ Container ] {
    def add( r: RegionLike ) = {
       val newEntry = new FatLinkedListElem( r )
       var entryF  = data.regions
-//      var entryO  = getO( entryF, readPath )
+      // @todo this is a little tricky: we use writePath not readPath,
+      //       because otherwise adding more than one region per
+      //       transaction won't work. This should be handled more
+      //       elegant in the furture.
       var entryO  = getO( entryF, writePath )
       var cnt     = 1
       while( entryO.isDefined ) {
          val entry = entryO.get
          entryF   = entry.next
-//         entryO   = getO( entryF, readPath )
          entryO   = getO( entryF, writePath )
          cnt     += 1
       }
       set( entryF, writePath, newEntry )
 
       // update bounding interval
-//      val ivOld = get( data.interval, readPath )
       val ivOld = get( data.interval, writePath )
-      val ri = r.interval // XXXX XXXX intervalRef
-//      set( fi, new IntervalPeriodExpr( ivOld.start, ivOld.stop.max( start + ri.stop )), sp )
+      val ri = r.interval
 
       val oldStart = ivOld.start
       val oldDur   = ivOld.dur
       val childStop= ri.stop
       val newDur   = oldDur.max( childStop )
-      val newIv    = oldStart :< newDur // new IntervalPeriodExpr( oldStart, newDur )
+      val newIv    = oldStart :< newDur
       set( data.interval, writePath, newIv )
 
       // update numRegions
@@ -167,7 +138,8 @@ extends ContainerLike with NodeID[ Container ] {
       this
    }
 
-//   override def toString = "Container( " + name + ", " + (try { get( fi, sp ).toString } catch { case _ => fi.toString }) + " )"
+   override def toString = "Container( " + name + ", " +
+      (try { get( data.interval, readPath ).toString } catch { case _ => data.interval.toString }) + " )"
 
    def inspect {
       println( toString )
@@ -182,13 +154,8 @@ extends ContainerLike with NodeID[ Container ] {
       data.regions.inspect
    }
 
-   def guguData = data
-   def guguIval: IntervalLike = get( data.interval, readPath )
-   def guguNum = numRegions
-
    // ---- Iterable ----
    def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
-//   def apply( idx: Int ) : RegionLike[ _ ] = iterator.drop( idx ).next
    def numRegions = get( data.numRegions, readPath )
    override def size = numRegions
 
@@ -197,14 +164,11 @@ extends ContainerLike with NodeID[ Container ] {
       private var nextF = data.regions
 
       def next: RegionLike = {
-//         val x = get( nextF, readPath )
          val x = get( nextF, p )
          nextF = x.next
-//         resolve( readPath, writePath, x.elem )
          resolve( p, writePath, x.elem )
       }
 
-//      def hasNext: Boolean = getO( nextF, readPath ).isDefined
       def hasNext: Boolean = getO( nextF, p ).isDefined
    }
 }

@@ -26,11 +26,13 @@
  *  Changelog:
  */
 
-package de.sciss.temporal
+package de.sciss.confluent
 
-import de.sciss.confluent.{ VersionManagement, VersionPath }
 import VersionManagement._
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 class Meld[ V ]( input: V, inputVersion: VersionPath ) {
    def into[ T ]( fun: V => T ) : V = {
       val current    = currentVersion

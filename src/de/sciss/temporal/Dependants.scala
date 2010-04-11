@@ -30,6 +30,9 @@ package de.sciss.temporal
 
 import scala.collection.mutable.{ WeakHashMap }
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 object MutableModel {
    var verbose = false
 }

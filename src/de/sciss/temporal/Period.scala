@@ -28,13 +28,12 @@
 
 package de.sciss.temporal
 
-import util.{ Random }
 import math._
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 trait PeriodLike extends MutableModel[ PeriodLike ] {
-//   def isInstantiated: Boolean
-//   def getEval: Option[ PeriodConst ]
-//   def eval = getEval getOrElse error( "Not realized" )
    def fixed: PeriodLike // = getEval getOrElse error( "Not realized" )
    def inf: PeriodConst   // PeriodConst ?
    def sup: PeriodConst   // PeriodConst ?
@@ -52,21 +51,9 @@ trait PeriodLike extends MutableModel[ PeriodLike ] {
 
    def overlaps( b: PeriodLike ) = if( inf < b.inf ) sup > b.inf else b.sup > inf
 
-//   def :<( dur: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( this, dur )
-//   def ::( start: PeriodLike ) : IntervalLike = new IntervalPeriodExpr( start, this - start ) // note argument reversal
    def :<( dur: PeriodLike ) : IntervalLike
    def ::( start: PeriodLike ) : IntervalLike
    def :?( b: PeriodLike ) : PeriodLike
-}
-
-trait RandomGen {
-   def realize: Double
-   def name: String
-}
-
-object UniformRandomGen extends RandomGen {
-   def realize = Random.nextDouble()
-   def name = "uniform"
 }
 
 abstract class UnaryPeriodExpr( a: PeriodLike )
@@ -78,10 +65,6 @@ extends PeriodExpr {
       }
    })
 
-//   def getEval: Option[ PeriodConst ] =
-//      if( isInstantiated ) Some( eval( a.eval )) else None
-
-//   override def eval = if( isInstantiated ) eval( a.eval ) else error( "Not realized" )
    def fixed: PeriodLike = fixed( a.fixed )
    protected def fixed( af: PeriodLike ) : PeriodLike
    protected def copy( newA: PeriodLike ) : PeriodLike
@@ -102,10 +85,6 @@ extends PeriodExpr {
       }
    })
 
-//   def getEval: Option[ PeriodConst ] =
-//      if( isInstantiated ) Some( eval( a.eval, b.eval )) else None
-
-//   override def eval = if( isInstantiated ) eval( a.eval, b.eval ) else error( "Not realized" )
    def fixed: PeriodLike = fixed( a.fixed, b.fixed )
    protected def fixed( af: PeriodLike, bf: PeriodLike ) : PeriodLike
    protected def copy( newA: PeriodLike, newB: PeriodLike ) : PeriodLike
@@ -113,7 +92,6 @@ extends PeriodExpr {
 
 case class PlusPeriodExpr( a: PeriodLike, b: PeriodLike )
 extends BinaryPeriodExpr( a, b ) {
-//   protected def eval( av: PeriodConst, bv: PeriodConst ) = av + bv
    protected def fixed( af: PeriodLike, bf: PeriodLike ) = af + bf
    def inf = a.inf + b.inf
    def sup = a.sup + b.sup
@@ -123,7 +101,6 @@ extends BinaryPeriodExpr( a, b ) {
 
 case class MinusPeriodExpr( a: PeriodLike, b: PeriodLike )
 extends BinaryPeriodExpr( a, b ) {
-//   protected def eval( av: PeriodConst, bv: PeriodConst ) = av - bv
    protected def fixed( af: PeriodLike, bf: PeriodLike ) = af - bf
    def inf = a.inf - b.sup
    def sup = a.sup - b.inf
@@ -133,7 +110,6 @@ extends BinaryPeriodExpr( a, b ) {
 
 case class MinimumPeriodExpr( a: PeriodLike, b: PeriodLike )
 extends BinaryPeriodExpr( a, b ) {
-//   protected def eval( av: PeriodConst, bv: PeriodConst ) = av.min( bv )
    protected def fixed( af: PeriodLike, bf: PeriodLike ) = af.min( bf )
    def inf = a.inf.min( b.inf )
    def sup = {
@@ -149,7 +125,6 @@ extends BinaryPeriodExpr( a, b ) {
 
 case class MaximumPeriodExpr( a: PeriodLike, b: PeriodLike )
 extends BinaryPeriodExpr( a, b ) {
-//   protected def eval( av: PeriodConst, bv: PeriodConst ) = av.max( bv )
    protected def fixed( af: PeriodLike, bf: PeriodLike ) = af.max( bf )
    def inf = {
       if( a overlaps b ) {
@@ -165,7 +140,6 @@ extends BinaryPeriodExpr( a, b ) {
 
 case class TimesPeriodExpr( a: PeriodLike, b: Double )
 extends UnaryPeriodExpr( a ) {
-//   protected def eval( av: PeriodConst ) = av * b
    protected def fixed( af: PeriodLike ) = af * b
    def inf = (if( b >= 0 ) a.inf else a.sup) * b
    def sup = (if( b >= 0 ) a.sup else a.inf) * b
@@ -175,7 +149,6 @@ extends UnaryPeriodExpr( a ) {
 
 case class DivPeriodExpr( a: PeriodLike, b: Double )
 extends UnaryPeriodExpr( a ) {
-//   protected def eval( av: PeriodConst ) = av / b
    protected def fixed( af: PeriodLike ) = af / b
    def inf = (if( b >= 0 ) a.inf else a.sup) / b
    def sup = (if( b >= 0 ) a.sup else a.inf) / b
@@ -185,7 +158,6 @@ extends UnaryPeriodExpr( a ) {
 
 case class UnaryMinusPeriodExpr( a: PeriodLike )
 extends UnaryPeriodExpr( a ) {
-//   protected def eval( av: PeriodConst ) = -av
    protected def fixed( af: PeriodLike ) = -af
    def inf = -a.sup
    def sup = -a.inf
@@ -196,8 +168,6 @@ extends UnaryPeriodExpr( a ) {
 trait PeriodExprLike extends MutableModelImpl[ PeriodLike ] with PeriodLike
 
 abstract class PeriodExpr extends PeriodExprLike {
-//   def isInstantiated = false
-
    def +( b: PeriodLike ) : PeriodLike    = PlusPeriodExpr( this, b )
    def -( b: PeriodLike ) : PeriodLike    = MinusPeriodExpr( this, b )
    def min( b: PeriodLike ) : PeriodLike  = MinimumPeriodExpr( this, b )
@@ -216,7 +186,6 @@ abstract class PeriodExpr extends PeriodExprLike {
 case class PeriodConst( sec: Double ) extends PeriodLike {
 //   def ❞ = this
 //   def ❞() = this
-
    def +( b: PeriodConst )       = PeriodConst( sec + b.sec )
    def -( b: PeriodConst )       = PeriodConst( sec - b.sec )
    def min( b: PeriodConst )     = PeriodConst( scala.math.min( sec, b.sec ))
@@ -225,7 +194,7 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
    def ::( start: PeriodConst )  = IntervalConst( start, this - start )  // note argument reversal
 
    def +( b: PeriodLike ) : PeriodLike = b match {
-      case pc: PeriodConst => this.+( pc )   // why do we need this. ?
+      case pc: PeriodConst => this.+( pc )
       case _ => b + this 
    }
 
@@ -268,9 +237,6 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
 
    def unary_- = PeriodConst( -sec )
 
-//   def isInstantiated   = true
-//   def getEval          = Some( this )
-//   override def eval    = this
    def fixed            = this
    def inf              = this
    def sup              = this
@@ -299,19 +265,19 @@ case class PeriodConst( sec: Double ) extends PeriodLike {
       val hours   = mins / 60
 
       if( hours > 0 ) {
-         val s1 = (if( sec < 0 ) "-" else "") + hours.toString + "⏊" + (100 + min).toString.substring( 1 ) +
-            "⏊" + (100 + s).toString.substring( 1 )
+         val s1 = (if( sec < 0 ) "-" else "") + hours.toString + "❜" + (100 + min).toString.substring( 1 ) +
+            "❜" + (100 + s).toString.substring( 1 )
          if( milli > 0 ) {
-            s1 + "." + (milli + 1000).toString.substring( 1 )
+            s1 + "." + (milli + 1000).toString.substring( 1 ) + "❞"
          } else {
-            s1
+            s1 + "❞"
          }
       } else {
-         val s1 = (if( sec < 0) "-" else "") + min.toString + "⏊" + (100 + s).toString.substring( 1 )
+         val s1 = (if( sec < 0) "-" else "") + min.toString + "❜" + (100 + s).toString.substring( 1 )
          if( milli > 0 ) {
-            s1 + "." + (milli + 1000).toString.substring( 1 )
+            s1 + "." + (milli + 1000).toString.substring( 1 ) + "❞"
          } else {
-            s1
+            s1 + "❞"
          }
       }
    }
@@ -335,10 +301,10 @@ class PeriodConstFactory( d: Double ) {
    def ❞                = new PeriodConst( d )
    def ❜( s: Double )   = new PeriodConst( d * 60 + s )
    def msecs            = new PeriodConst( d / 1000 )
-   def ⏊( b: Double )   = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
-      new PeriodConst( d * 60 + b )
-   }
-   def ⎍( implicit sr: SampleRate ) = new PeriodConst( d / sr.rate )
+//   def ⏊( b: Double )   = { require( d >= 0 ) // currently -0 is not caught, so better throw an exception
+//      new PeriodConst( d * 60 + b )
+//   }
+//   def ⎍( implicit sr: SampleRate ) = new PeriodConst( d / sr.rate )
 }
 
-case class SampleRate( rate: Double )
+//case class SampleRate( rate: Double )

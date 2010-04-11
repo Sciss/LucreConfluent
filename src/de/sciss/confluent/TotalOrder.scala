@@ -1,6 +1,6 @@
-/**
+/*
  *  TotalOrder
- *  (de.sciss.confluent package)
+ *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2010 Hanns Holger Rutz. All rights reserved.
  *
@@ -39,7 +39,7 @@ import math.Ordering.{ Long => LongOrd }
  *    claimed by DSST. to fix this, we add a special stop-marker record in the pre-order
  *    version that allows us to jump to the end of a parent's children list in O(1)
  *
- *    @version 0.12, 25-Mar-09
+ *    @version 0.13, 11-Apr-10
  */
 object TotalOrder {
    type Tag = Long
@@ -51,21 +51,6 @@ object TotalOrder {
       def moveRight: Repr
       def elem: T
    }
-
-//   trait UserRecord[ T, Repr ] extends Record[ Repr ] {
-//      val elem: T
-//   }
-
-//   class UserRecord[ T ] private[TotalOrder] ( val elem: T, private[TotalOrder] var v: Long /* Tag */,
-//                          private[TotalOrder] var pred: Record,
-//                          private[TotalOrder] var succ: Record )
-//   extends Record {
-//      override def toString = "URec(" + v + " -> " + elem + ")"
-//   }
-
-//   trait UserRecord[ T ] extends Record {
-//      val elem: T
-//   }
 
    // note: we need headroom to perform wj * k!
    // this is the maximum mask for which holds:
@@ -79,7 +64,6 @@ abstract class TotalOrder[ T, Rec <: TotalOrder.Record[ T, Rec ]]
 extends Ordering[ Rec ] {
    import TotalOrder._
 
-//   private val b     = new Record( 0 )
    protected var n     = 1   // i suppose we count the base...
 
    def insertChild( parent: Rec, child: T ) : Rec
@@ -88,23 +72,6 @@ extends Ordering[ Rec ] {
 
    protected def createRecord( elem: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
    protected val base: Rec
-
-//   type URec <: Rec with { def elem: T }
-
-//   // ---- constructor ----
-//   {
-//      b.pred      = b
-//      b.succ      = b
-//   }
-
-   /**
-    *    Queries the order between two records x and y
-    *
-    *    @param   x  the first record to compare
-    *    @param   y  the second record to compare
-    *    @returns    true if x is an ancestor if y, false otherwise
-    */
-//   def getOrder( x: Record, y: Record ) : Boolean = compare( x, y ) < 0
 
    /**
     *    Implementation of the Ordering trait
@@ -115,25 +82,6 @@ extends Ordering[ Rec ] {
       val vby = (y.v - vb) & mask
       LongOrd.compare( vbx, vby )
    }
-
-   /**
-    *     Removes a record x from the order list
-    *
-    * @param x the record to remove
-    *
-    * @throws NullPointerException if trying to remove a record
-    *             that had already been previously removed
-    */
-//   def remove( x: Record ) {
-//      val pred    = x.pred
-//      val succ    = x.succ
-//      pred.succ   = succ
-//      succ.pred   = pred
-//      x.pred      = null
-//      x.succ      = null
-//
-//      n -= 1
-//   }
 
    /**
     *    Inserts the first element
@@ -158,9 +106,7 @@ extends Ordering[ Rec ] {
     */
    protected def insertAfter( pred: Rec, v0: Tag, elem: T ) : Rec = {
       if( n == nmax ) error( "Maximum capacity reached" )
-//      if( (x == Base) && (n != 1) ) error( "Should only insert first element after base")
 
-//      val v0      = parent.v
       var j       = 1L  // careful to use long since we do j*j
       val sp      = pred.moveRight
       var iter    = sp
@@ -200,15 +146,12 @@ extends Ordering[ Rec ] {
    }
 
    def inspectVerbose {
-//      var iter    = base.moveRight
       var iter    = base
       var succ    = false
       print( "[")
-//      while( iter != base ) {}
       do {
          if( succ ) print( ", " ) else succ = true
          print( iter )
-//         iter     = iter.moveRight
          iter     = iter.succ
       } while( iter != base )
       println( "]")
@@ -223,8 +166,6 @@ object PreOrder {
       def skipLeft: Record[ T ]  = this
       def skipRight: Record[ T ] = this
    }
-
-//   trait UserRecord[ T ] extends Record with TotalOrder.UserRecord[ T, UserRecord[ T ]]
 }
 
 //////////////////////////////////////////////////////////////////
@@ -239,8 +180,6 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
    import TotalOrder.{ Tag }
    import PreOrder.{ Record }
    type Rec = Record[ T ]
-
-//   type URec = PreOrder.UserRecord[ T ]
 
    def insertChild( parent: Rec, child: T ) : Rec = {
       require( n > 1 )
@@ -306,7 +245,6 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
 
 object PostOrder {
    trait Record[ T ] extends TotalOrder.Record[ T, Record[ T ]]
-//   trait UserRecord[ T ] extends /* Record with*/ TotalOrder.UserRecord[ T, UserRecord[ T ]]
 }
 
 class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {

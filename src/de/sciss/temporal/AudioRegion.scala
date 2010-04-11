@@ -28,9 +28,12 @@
 
 package de.sciss.temporal
 
-import de.sciss.confluent.{ FatRef => FRef, FatValue => FVal, _ }
+import de.sciss.confluent.{ FatValue => FVal, _ }
 import VersionManagement._
 
+/**
+ *    @version 0.11, 11-Apr-10
+ */
 class AudioRegionData extends NodeAccess[ AudioRegion ] {
    val name       = new FVal[ String ]
    val interval   = new FVal[ IntervalLike ]
@@ -42,13 +45,7 @@ class AudioRegionData extends NodeAccess[ AudioRegion ] {
 
 class AudioRegion( data: AudioRegionData, protected val readPath: Path, writePath: Path )
 extends RegionLike with NodeID[ AudioRegion ] {
-//   def this( sp: Path ) = this( sp, new AudioRegion.Data )
-//
-//   def access = sp // XXX for debugging
-
    def name       = get( data.name, readPath )         // XXX +proxy
-//   def interval: IntervalLike = get( data.interval, readPath )
-//   def intervalRef: IntervalLike = new IntervalProxy( data.interval, readPath )
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
    def audioFile  = get( data.audioFile, readPath )    // XXX +proxy
    def offset     = get( data.offset, readPath )       // XXX +proxy
@@ -62,14 +59,8 @@ extends RegionLike with NodeID[ AudioRegion ] {
 
    def moveBy( delta: PeriodLike ) : AudioRegion = {
       interval = interval + delta
-//      newAccess
       this
    }
-
-   def guguData = data
-   def guguRead = readPath
-
-//   private def newAccess = new AudioRegion( substitute( writeAccess, sp ), d )
 
    override def toString = try {
       "AudioRegion( " + name + ", " + interval + ", " + audioFile + ", " + offset + " )"

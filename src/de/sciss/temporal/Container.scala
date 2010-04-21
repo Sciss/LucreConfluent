@@ -32,12 +32,12 @@ import de.sciss.confluent.{ FatValue => FVal, _ }
 import VersionManagement._
 
 /**
- *    @version 0.12, 11-Apr-10
+ *    @version 0.13, 21-Apr-10
  */
 trait ContainerLike
 extends RegionLike with Iterable[ RegionLike ] {
    def add( c: RegionLike ) : ContainerLike
-   def interval: IntervalLike
+//   def interval: IntervalLike
 }
 
 object Container {

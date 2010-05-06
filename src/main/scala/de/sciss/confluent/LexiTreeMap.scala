@@ -66,7 +66,7 @@ class LexiTreeMap[ T, V ]()( implicit protected val ordering: Ordering[ T ])
 
    def inspect {
       println( "   LEXI:" )
-      if( root != null ) root.inspect( Queue.Empty )
+      if( root != null ) root.inspect( Queue.empty )
    }
 
    def insert( path: Path, value: V ) {

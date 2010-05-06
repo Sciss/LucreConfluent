@@ -76,18 +76,18 @@ extends JPanel with SonogramPaintController {
       val cp = f.getContentPane
       cp.add( this, BorderLayout.CENTER )
       val bar = Box.createHorizontalBox
-      val ggPDF = new JButton( new AbstractAction( "PDF" ) {
-         def actionPerformed( e: ActionEvent ) {
-            val folder = new File( new File( System.getProperty( "user.home" ), "TemporalObjects" ), "export" )
-            folder.mkdirs
-            val file = IOUtil.nonExistentFileVariant( new File( folder, "kView.pdf" ), 5, null, null )
-            PDFExport.export( kview, file )
-         }
-      })
-      ggPDF.putClientProperty( "JComponent.sizeVariant", "small" )
-      ggPDF.putClientProperty( "JButton.buttonType", "bevel" )
-      ggPDF.setFocusable( false )
-      bar.add( ggPDF )
+//      val ggPDF = new JButton( new AbstractAction( "PDF" ) {
+//         def actionPerformed( e: ActionEvent ) {
+//            val folder = new File( new File( System.getProperty( "user.home" ), "TemporalObjects" ), "export" )
+//            folder.mkdirs
+//            val file = IOUtil.nonExistentFileVariant( new File( folder, "kView.pdf" ), 5, null, null )
+//            PDFExport.export( kview, file )
+//         }
+//      })
+//      ggPDF.putClientProperty( "JComponent.sizeVariant", "small" )
+//      ggPDF.putClientProperty( "JButton.buttonType", "bevel" )
+//      ggPDF.setFocusable( false )
+//      bar.add( ggPDF )
       bar.add( Box.createHorizontalGlue )
       cp.add( bar, BorderLayout.SOUTH )
       f.setSize( 600, 300 )

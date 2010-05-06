@@ -1,5 +1,5 @@
 /*
- *  Main.scala
+ *  TemporalObjects.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2010 Hanns Holger Rutz. All rights reserved.
@@ -31,12 +31,14 @@ package de.sciss.temporal
 import view.ScalaInterpreterFrame
 import java.awt.{ EventQueue }
 
-object Main extends Runnable {
-   def main( args: Array[ String ]) {
-      EventQueue.invokeLater( this )
-   }
+object TemporalObjects extends Runnable {
+   val version = 0.11
 
-   def run {
-      new ScalaInterpreterFrame
-   }
+   def main( args: Array[ String ]) {
+       EventQueue.invokeLater( this )
+    }
+
+    def run {
+       new ScalaInterpreterFrame
+    }
 }

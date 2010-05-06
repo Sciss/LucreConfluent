@@ -25,7 +25,7 @@ Furthermore, you need "github.com/Sciss/ScalaInterpreterPane":http://github.com/
 To create and run a self-contained jar:
 
 pre. $ sbt standalone
-java -jar TemporalObjects-full.jar 
+$ java -jar TemporalObjects-full.jar 
 
 h3. download
 

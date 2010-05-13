@@ -36,7 +36,7 @@ import de.sciss.confluent.{ Handle, Multiplicity, VersionManagement }
 import VersionManagement._
 
 /**
- *    @version 0.13, 11-Apr-10
+ *    @version 0.13, 08-May-10
  */
 object DomainSpecificLanguage {
    // ---- commands ----
@@ -62,10 +62,10 @@ object DomainSpecificLanguage {
       AudioFileElement.fromUnresolvedLoc( loc )
    }
 
-   def audioRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : Handle[ AudioRegion ] = {
+   def audioFileRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : Handle[ AudioFileRegion ] = {
       val afe        = AudioFileElement.current
       val rName      = if( name == "#auto" ) afe.name else name
-      val ard        = new AudioRegionData
+      val ard        = new AudioFileRegionData
       val sp         = seminalPath
       val ar         = ard.access( sp, sp )
       ar.name        = rName

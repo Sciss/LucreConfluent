@@ -35,12 +35,12 @@ import java.io.File
 import javax.swing.{ AbstractAction, Box, JButton, JComponent, JFrame, JPanel }
 import de.sciss.gui.VectorSpace
 import de.sciss.confluent.VersionPath
-import de.sciss.temporal.{AudioRegion, ContainerLike}
+import de.sciss.temporal.{ AudioFileRegion, ContainerLike }
 import de.sciss.sonogram.SonogramPaintController
 import de.sciss.io.IOUtil
 
 /**
- *    @version 0.11, 29-Mar-10 
+ *    @version 0.11, 08-May-10 
  */
 class KContainerView( c: ContainerLike, version: VersionPath )
 extends JPanel with SonogramPaintController {
@@ -155,7 +155,7 @@ extends JPanel with SonogramPaintController {
                ry += 18
                if( stableStart ) {
                   ry = r match {
-                     case ar: AudioRegion if( expanded ) => {
+                     case ar: AudioFileRegion if( expanded ) => {
                         colrBg.foreach( colr => {
                            g2.setColor( colr )
                            g2.fillRect( x, ry, w, 52 )

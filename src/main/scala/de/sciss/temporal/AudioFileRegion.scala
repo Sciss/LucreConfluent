@@ -32,19 +32,19 @@ import de.sciss.confluent.{ FatValue => FVal, _ }
 import VersionManagement._
 
 /**
- *    @version 0.11, 11-Apr-10
+ *    @version 0.11, 08-May-10
  */
-class AudioRegionData extends NodeAccess[ AudioRegion ] {
+class AudioFileRegionData extends NodeAccess[ AudioFileRegion ] {
    val name       = new FVal[ String ]
    val interval   = new FVal[ IntervalLike ]
    val audioFile  = new FVal[ AudioFileElement ]
    val offset     = new FVal[ PeriodLike ]
 
-   def access( readPath: Path, writePath: Path ) = new AudioRegion( this, readPath, writePath )
+   def access( readPath: Path, writePath: Path ) = new AudioFileRegion( this, readPath, writePath )
 }
 
-class AudioRegion( data: AudioRegionData, protected val readPath: Path, writePath: Path )
-extends RegionLike with NodeID[ AudioRegion ] {
+class AudioFileRegion( data: AudioFileRegionData, protected val readPath: Path, writePath: Path )
+extends RegionLike with NodeID[ AudioFileRegion ] {
    def name       = get( data.name, readPath )         // XXX +proxy
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
    def audioFile  = get( data.audioFile, readPath )    // XXX +proxy
@@ -57,13 +57,13 @@ extends RegionLike with NodeID[ AudioRegion ] {
 
    protected def nodeAccess = data
 
-   def moveBy( delta: PeriodLike ) : AudioRegion = {
+   def moveBy( delta: PeriodLike ) : AudioFileRegion = {
       interval = interval + delta
       this
    }
 
    override def toString = try {
-      "AudioRegion( " + name + ", " + interval + ", " + audioFile + ", " + offset + " )"
+      "AudioFileRegion( " + name + ", " + interval + ", " + audioFile + ", " + offset + " )"
    } catch { case _ => super.toString }
 
    def inspect {

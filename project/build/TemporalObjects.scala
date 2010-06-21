@@ -7,8 +7,8 @@ class TemporalObjectsProject( info: ProjectInfo ) extends ProguardProject( info 
    // stupidly, we need to redefine the dependancy here, because
    // for some reason, sbt will otherwise try to look in the maven repo
    val dep1 = "jsyntaxpane" % "jsyntaxpane" % "0.9.5-b29" from "http://jsyntaxpane.googlecode.com/files/jsyntaxpane-0.9.5-b29.jar"
-   val dep2 = "de.sciss" %% "scalainterpreterpane" % "0.15"
-   val dep3 = "de.sciss" %% "sonogramoverview" % "0.13"
+   val dep2 = "de.sciss" %% "scalainterpreterpane" % "0.16"
+   val dep3 = "de.sciss" %% "sonogramoverview" % "0.14"
 //   val dep4 = "com.itextpdf" % "itext" % "5.0.2" from "http://sourceforge.net/projects/itext/files/iText/iText5.0.2/iText-5.0.2.jar/download"
 
    val camelCaseName          = "TemporalObjects"

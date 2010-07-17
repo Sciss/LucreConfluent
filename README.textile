@@ -6,7 +6,7 @@ TemporalObjects is (C)opyright 2010 Hanns Holger. It is released under the "GNU 
 
 h3. requirements / installation
 
-Compiles against Scala 2.8.0.RC1 and Java 1.6. The repository contains a project file for Intellij IDEA 9 CE, and project files for sbt. Targets for sbt:
+Compiles against Scala 2.8.0 and Java 1.6. The repository contains a project file for Intellij IDEA 9 CE, and project files for sbt. Targets for sbt:
 
 * @clean@
 * @compile@

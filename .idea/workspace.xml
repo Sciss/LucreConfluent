@@ -2,10 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" readonly="true" id="fc0f8092-ddbf-4502-9ef0-7275b1d71efc" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala" afterPath="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build/TemporalObjects.scala" afterPath="$PROJECT_DIR$/project/build/TemporalObjects.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/build.properties" afterPath="$PROJECT_DIR$/project/build.properties" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.textile" afterPath="$PROJECT_DIR$/README.textile" />
     </list>
     <ignored path="TemporalObjects.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -74,19 +73,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="build.properties" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="build.properties" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/project/build.properties">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="6" column="30" selection-start="178" selection-end="178" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="TemporalObjects.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="35" column="27" selection-start="1175" selection-end="1175" vertical-scroll-proportion="0.17928287">
+            <state line="6" column="26" selection-start="174" selection-end="174" vertical-scroll-proportion="0.119205296">
               <folding />
             </state>
           </provider>
@@ -116,8 +106,8 @@
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/DomainSpecificLanguage.scala" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/view/KContainerView.scala" />
         <option value="$PROJECT_DIR$/project/build/TemporalObjects.scala" />
-        <option value="$PROJECT_DIR$/project/build.properties" />
         <option value="$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala" />
+        <option value="$PROJECT_DIR$/project/build.properties" />
       </list>
     </option>
   </component>
@@ -296,8 +286,8 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
       <pane id="PackagesPane" />
+      <pane id="Scope" />
       <pane id="Favorites" />
     </panes>
   </component>
@@ -314,9 +304,9 @@
     <property name="GoToClass.toSaveIncludeLibraries" value="false" />
     <property name="MemberChooser.showClasses" value="true" />
     <property name="GoToClass.includeLibraries" value="false" />
-    <property name="options.searchVisible" value="true" />
-    <property name="options.splitter.details.proportions" value="0.2" />
     <property name="dynamic.classpath" value="false" />
+    <property name="options.splitter.details.proportions" value="0.2" />
+    <property name="options.searchVisible" value="true" />
   </component>
   <component name="RunManager" selected="Application.Main">
     <configuration default="false" name="Main" type="Application" factoryName="Application" temporary="true">
@@ -507,7 +497,7 @@
     <supportedVersion>125</supportedVersion>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1" y="287" width="1377" height="876" extended-state="0" />
+    <frame x="16" y="22" width="1380" height="878" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -518,7 +508,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3298193" sideWeight="0.6611253" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32907587" sideWeight="0.6611253" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33028722" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32736573" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="23" y="513" width="1341" height="244" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
@@ -592,63 +582,49 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/Dependants.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="59" column="83" selection-start="1665" selection-end="1665" vertical-scroll-proportion="0.48840383">
-          <folding />
-        </state>
+        <state line="59" column="83" selection-start="1665" selection-end="1665" vertical-scroll-proportion="0.48840383" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/view/ScalaInterpreterFrame.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="101" column="28" selection-start="3000" selection-end="3000" vertical-scroll-proportion="0.22237381">
-          <folding />
-        </state>
+        <state line="101" column="28" selection-start="3000" selection-end="3000" vertical-scroll-proportion="0.22237381" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/confluent/BinaryTreeMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="76" column="32" selection-start="2985" selection-end="2985" vertical-scroll-proportion="0.020325202">
-          <folding />
-        </state>
+        <state line="76" column="32" selection-start="2985" selection-end="2985" vertical-scroll-proportion="0.020325202" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/confluent/FatField.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="44" selection-start="1713" selection-end="1713" vertical-scroll-proportion="0.01992032">
-          <folding />
-        </state>
+        <state line="48" column="44" selection-start="1713" selection-end="1713" vertical-scroll-proportion="0.01992032" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/confluent/OracleMap.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="79" column="22" selection-start="2758" selection-end="2758" vertical-scroll-proportion="0.01992032">
-          <folding />
-        </state>
+        <state line="79" column="22" selection-start="2758" selection-end="2758" vertical-scroll-proportion="0.01992032" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/DomainSpecificLanguage.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="110" column="55" selection-start="3519" selection-end="3519" vertical-scroll-proportion="0.77642274">
-          <folding />
-        </state>
+        <state line="110" column="55" selection-start="3519" selection-end="3519" vertical-scroll-proportion="0.77642274" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/project/build/TemporalObjects.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="10" column="54" selection-start="519" selection-end="519" vertical-scroll-proportion="0.0">
+        <state line="10" column="54" selection-start="519" selection-end="519" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="35" column="27" selection-start="1175" selection-end="1175" vertical-scroll-proportion="0.17880794">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/project/build.properties">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="6" column="30" selection-start="178" selection-end="178" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/de/sciss/temporal/TemporalObjects.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="35" column="27" selection-start="1175" selection-end="1175" vertical-scroll-proportion="0.17928287">
+        <state line="6" column="26" selection-start="174" selection-end="174" vertical-scroll-proportion="0.119205296">
           <folding />
         </state>
       </provider>

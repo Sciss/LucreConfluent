@@ -33,11 +33,9 @@ import java.awt.event.{ ActionEvent }
 import java.awt.image.ImageObserver
 import java.io.File
 import javax.swing.{ AbstractAction, Box, JButton, JComponent, JFrame, JPanel }
-import de.sciss.gui.VectorSpace
 import de.sciss.confluent.VersionPath
 import de.sciss.temporal.{ AudioFileRegion, ContainerLike }
 import de.sciss.sonogram.SonogramPaintController
-import de.sciss.io.IOUtil
 
 /**
  *    @version 0.11, 08-May-10 
@@ -68,7 +66,7 @@ extends JPanel with SonogramPaintController {
 
    private def updateAxis {
       val dur = version.read { c.interval.dur.sup.sec }
-      timelineAxis.space = VectorSpace.createLinSpace( 0.0, dur, 0.0, 1.0, null, null, null, null )
+      timelineAxis.space = VectorSpace.linlin( 0.0, dur, 0.0, 1.0 )
    }
 
    def makeWindow = {

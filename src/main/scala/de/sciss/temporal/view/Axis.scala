@@ -37,8 +37,6 @@ import java.util.{ Locale }
 import javax.swing.{ JComponent, JViewport }
 import scala.math._
 
-import de.sciss.gui.{ ComponentHost, VectorSpace }
-
 /**
  *  A GUI element for displaying
  *  the timeline's axis (ruler)
@@ -107,7 +105,7 @@ object Axis {
 //	private static final double	ln10			= Math.log( 10 );
 }
 
-class Axis( orient: Int = Axis.HORIZONTAL, private var flagsVar: Int = 0, host: Option[ ComponentHost ] = None )
+class Axis( orient: Int = Axis.HORIZONTAL, private var flagsVar: Int = 0 /*, host: Option[ ComponentHost ] = None */ )
 extends JComponent //implements Disposable
 with TopPaintable
 {
@@ -477,11 +475,11 @@ with TopPaintable
 
 	private def triggerRedisplay {
 		doRecalc = true
-		if( host.isDefined ) {
-			host.get.update( this )
-		} else if( isVisible() ) {
-			repaint()
-		}
+//      host match {
+//         case Some( h ) => h.update( this )
+//         case None =>
+            if( isVisible() ) repaint()
+//      }
 	}
 
 	// -------------- Disposable interface --------------

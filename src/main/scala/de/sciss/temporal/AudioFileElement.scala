@@ -1,7 +1,7 @@
 package de.sciss.temporal
 
 import java.io.File
-import de.sciss.io.AudioFile
+import de.sciss.synth.io.AudioFile
 
 object AudioFileElement {
    def fromUnresolvedLoc( loc: FileLocation ) : AudioFileElement = {
@@ -10,10 +10,10 @@ object AudioFileElement {
       } else {
          FileLocations.toList.view.map( baseLoc => new File( baseLoc.uri.resolve( loc.uri ))).find( _.isFile ).get
       }
-      val af      = AudioFile.openAsRead( path )
-      val descr   = af.getDescr
-      af.close
-      new AudioFileElement( loc, descr.length, descr.channels, descr.rate, Some( path ))
+//      val af      = AudioFile.openRead( path )
+//      af.close
+      val spec = AudioFile.readSpec( path )
+      new AudioFileElement( loc, spec.numFrames, spec.numChannels, spec.sampleRate, Some( path ))
    }
 
    private var currentVar: AudioFileElement = _

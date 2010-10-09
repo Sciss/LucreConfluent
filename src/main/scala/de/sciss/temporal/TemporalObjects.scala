@@ -33,7 +33,7 @@ import java.awt.{ EventQueue }
 
 object TemporalObjects extends Runnable {
    val name          = "TemporalObjects"
-   val version       = 0.13
+   val version       = 0.14
    val copyright     = "(C)opyright 2010 Hanns Holger Rutz"
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 

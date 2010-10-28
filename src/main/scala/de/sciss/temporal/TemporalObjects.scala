@@ -35,7 +35,12 @@ object TemporalObjects {
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
    def main( args: Array[ String ]) {
-      error( "This is a library that cannot be executed directly" )
+      args.toList match {
+         case "--test1" :: Nil => test1
+         case "--test2" :: Nil => test2
+         case "--test3" :: Nil => test3
+         case _ => error( "This is a library that cannot be executed directly" )
+      }
 //       EventQueue.invokeLater( this )
     }
 
@@ -43,25 +48,29 @@ object TemporalObjects {
 //       new ScalaInterpreterFrame
 //    }
 
-   def test {
-      import de.sciss.temporal._
-      import de.sciss.confluent._
-      import de.sciss.confluent.VersionManagement._
-      import de.sciss.temporal.DomainSpecificLanguage._
+   import de.sciss.temporal._
+   import de.sciss.confluent._
+   import de.sciss.confluent.VersionManagement._
+   import de.sciss.temporal.DomainSpecificLanguage._
+
+   // problem 1
+   def test1 {
       Container.root // initializes root
 
-
-// problem 1
-{
       val r1 = t { region("r1", 0.secs :< 3.secs)}
       val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
       val r3 = t { region("r3", (r1.interval.fixed.stop + 2.secs) :< 5.secs) }
       t { r1.interval = 0.secs :< 7.secs }
+//      val test = r2.interval.fixed
       kView
-}
+      r2.inspect
+      r1.inspect
+   }
 
-// problem 2
-{
+   // problem 2
+   def test2 {
+      Container.root // initializes root
+
       val r1 = t { region("r1", 0.secs :< ?)}
       val v1 = currentVersion
       val r2 = t { region("r2", (r1.interval.stop + 2.secs) :< 5.secs) }
@@ -75,10 +84,12 @@ object TemporalObjects {
       t { }; kView  // effective in children
       v3.use; kView // not yet effective
       t { }; kView  // effective in children
-}
+   }
 
-// problem 3
-{
+   // problem 3
+   def test3 {
+      Container.root // initializes root
+
       val c1 = t { container("c1") }
       val m = multi
       c1.use
@@ -100,6 +111,5 @@ object TemporalObjects {
       m.useVariant( v4 )
       r5.interval.fixed // result: 8.5.secs :< 4.secs
       kView
-}
    }
 }

@@ -31,12 +31,17 @@ package de.sciss.temporal
 import de.sciss.confluent.{ FatValue => FVal, _ }
 
 /**
- *    @version 0.11, 11-Apr-10
+ * With the switch from a mutable trie to changing instances of an immutable trie, we cannot hold
+ * any more the FVal at the point of the proxy creation, but instead we lazily retrieve it when
+ * access is called.
+ *
+ * @version 0.12, 28-Oct-10
  */
-class IntervalProxy( protected val ref: FVal[ IntervalLike ], protected val readPath: Path /*, protected val writePath: Path*/ )
+class IntervalProxy( lazyRef: => FVal[ IntervalLike ], protected val readPath: Path /*, protected val writePath: Path*/ )
 extends IntervalExprLike with NodeProxy[ IntervalLike ] {
    import VersionManagement._
 
+   protected def ref = lazyRef
    def fixed: IntervalLike = access.fixed
 
    override def toString = try { access.toString } catch { case _ => super.toString }

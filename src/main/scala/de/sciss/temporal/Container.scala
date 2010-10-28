@@ -72,9 +72,9 @@ object Container {
    }
 }
 
-class FatLinkedListElem[ T ]( val elem: T ) {
-   var next = FVal.empty[ FatLinkedListElem[ T ]]
-}
+//class FatLinkedListElem[ T ]( val elem: T ) {
+//   var next = FVal.empty[ FatLinkedListElem[ T ]]
+//}
 
 class ContainerData( seminalPath: Path, iniName: String, iniInterval: IntervalLike ) extends NodeAccess[ Container ] {
    var name       = FVal.empty[ String ]
@@ -89,6 +89,7 @@ class ContainerData( seminalPath: Path, iniName: String, iniInterval: IntervalLi
       name        = set( name, seminalPath, iniName )
       interval    = set( interval, seminalPath, iniInterval )
       numRegions  = set( numRegions, seminalPath, 0 )
+      regions     = set( regions, seminalPath, IQueue.empty )
    }
 }
 

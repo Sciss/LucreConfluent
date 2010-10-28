@@ -67,17 +67,25 @@ case class LexiTrie[ @specialized V ]( val value: Option[ V ], protected val sub
    }
 
    /**
+    *    Finds the value which is the nearest
+    *    ancestor in the trie. It returns a tuple
+    *    composed of this value as an Option
+    *    (None if no ancestor assignment found),
+    *    along with an offset Int which is the
+    *    offset into path for the first key
+    *    element _not_ found in the trie.
+    *
     *    Like findMaxPrefixOffset, but with support
     *    for multiplicities
     */
-   def multiFindMaxPrefix( key: Path ) : (Option[ V ], Int) = multiFind( key, 0 )
+   def multiFindMaxPrefix( key: Path ) : (Option[ V ], Int) = multiFind( key, 0, None )
 
-   private def multiFind( key: Path, cnt: Int ) : (Option[ V ], Int ) = key.headOption match {
-       case None => (value, cnt)
+   private def multiFind( key: Path, cnt: Int, found: Option[ V ]) : (Option[ V ], Int ) = key.headOption match {
+       case None => (value.orElse( found ), cnt)
        case Some( head ) => sub.get( head.id ) match {
-          case Some( t ) => multiFind( key.tail, cnt + 1 )     // XXX tailrec 
-          case None if( head.fallBack != head ) => multiFind( head.fallBack +: key.tail, cnt )     // XXX tailrec
-          case _ => (None, cnt)
+          case Some( t ) => t.multiFind( key.tail, cnt + 1, t.value.orElse( found ))     // XXX tailrec
+          case None if( head.fallBack != head ) => multiFind( head.fallBack +: key.tail, cnt, found )     // XXX tailrec
+          case _ => (found, cnt)
        }
    }
 

@@ -1,4 +1,4 @@
-h2. TemporalObjects ==<small>-- version 0.11 (built 06-may-10) --</small>==
+h2. TemporalObjects ==<small>-- version 0.15 (built 28-oct-10) --</small>==
 
 h3. statement
 
@@ -12,22 +12,10 @@ Compiles against Scala 2.8.0 and Java 1.6. The repository contains a project fil
 * @compile@
 * @doc@
 * @package@
-* @run@
-* @standalone@
+* @console@
 
-The dependancies currently need to be installed manually. Your @lib@ folder should contain
-
-* @ScissLib.jar@ (from "sourceforge.net/projects/scisslib":http://sourceforge.net/projects/scisslib/ )
-* @ScissDSP.jar@ (from "github.com/Sciss/ScissDSP":http://github.com/Sciss/ScissDSP )
-
-Furthermore, you need "github.com/Sciss/ScalaInterpreterPane":http://github.com/Sciss/ScalaInterpreterPane and "github.com/Sciss/SonogramOverview":http://github.com/Sciss/SonogramOverview . You can make both available, by cloning their gits and running @sbt publish-local@ in their respective folders.
-
-To create and run a self-contained jar:
-
-pre. $ sbt standalone
-$ java -jar TemporalObjects-full.jar 
+Note: see tag v0.14 for the example using actual audio file regions and sonogram view. The current version is stripped down to prepare for use as library.
 
 h3. download
 
 The current version can be downloaded from "github.com/Sciss/TemporalObjects":http://github.com/Sciss/TemporalObjects
-

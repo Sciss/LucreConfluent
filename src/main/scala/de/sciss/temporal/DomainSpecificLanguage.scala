@@ -54,27 +54,27 @@ object DomainSpecificLanguage {
    def rootContainer = Container.root // XXX handle?
 //   def rootContainer : Handle[ Container ] = Handle[ Container.root ]
 
-   def audioFileLocation( loc: FileLocation ) {
-      FileLocations.add( loc )
-   }
-
-   def audioFile( loc: FileLocation ) : AudioFileElement = {
-      AudioFileElement.fromUnresolvedLoc( loc )
-   }
-
-   def audioFileRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : Handle[ AudioFileRegion ] = {
-      val afe        = AudioFileElement.current
-      val rName      = if( name == "#auto" ) afe.name else name
-      val ard        = new AudioFileRegionData
-      val sp         = seminalPath
-      val ar         = ard.access( sp, sp )
-      ar.name        = rName
-      ar.interval    = interval
-      ar.audioFile   = afe
-      ar.offset      = offset
-      Container.current.add( ar )
-      Handle( ard, sp )
-   }
+//   def audioFileLocation( loc: FileLocation ) {
+//      FileLocations.add( loc )
+//   }
+//
+//   def audioFile( loc: FileLocation ) : AudioFileElement = {
+//      AudioFileElement.fromUnresolvedLoc( loc )
+//   }
+//
+//   def audioFileRegion( name: String = "#auto", offset: PeriodLike, interval: IntervalLike ) : Handle[ AudioFileRegion ] = {
+//      val afe        = AudioFileElement.current
+//      val rName      = if( name == "#auto" ) afe.name else name
+//      val ard        = new AudioFileRegionData
+//      val sp         = seminalPath
+//      val ar         = ard.access( sp, sp )
+//      ar.name        = rName
+//      ar.interval    = interval
+//      ar.audioFile   = afe
+//      ar.offset      = offset
+//      Container.current.add( ar )
+//      Handle( ard, sp )
+//   }
 
    def region( name: String = "#auto", interval: IntervalLike ) : Handle[ Region ] = {
       val c          = Container.current

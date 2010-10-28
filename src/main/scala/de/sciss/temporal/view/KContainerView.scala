@@ -34,14 +34,14 @@ import java.awt.image.ImageObserver
 import java.io.File
 import javax.swing.{ AbstractAction, Box, JButton, JComponent, JFrame, JPanel }
 import de.sciss.confluent.VersionPath
-import de.sciss.temporal.{ AudioFileRegion, ContainerLike }
-import de.sciss.sonogram.SonogramPaintController
+import de.sciss.temporal.{ /* AudioFileRegion, */ ContainerLike }
+//import de.sciss.sonogram.SonogramPaintController
 
 /**
  *    @version 0.11, 08-May-10 
  */
 class KContainerView( c: ContainerLike, version: VersionPath )
-extends JPanel with SonogramPaintController {
+extends JPanel /* with SonogramPaintController */ {
    kview =>
    
    private val timelineAxis = {
@@ -153,29 +153,29 @@ extends JPanel with SonogramPaintController {
                ry += 18
                if( stableStart ) {
                   ry = r match {
-                     case ar: AudioFileRegion if( expanded ) => {
-                        colrBg.foreach( colr => {
-                           g2.setColor( colr )
-                           g2.fillRect( x, ry, w, 52 )
-                        })
-                        g2.setColor( Color.black )
-                        g2.fillRect( rx, ry, rw, 50 )
-                        val offset     = ar.offset
-                        val offsetSup  = offset.sup.sec
-                        val offsetInf  = offset.inf.sec
-                        if( offsetSup == offsetInf ) {
-                           val afe        = ar.audioFile
-                           SonogramManager.get( afe ).foreach( ov => {
-                              val sr         = afe.sampleRate
-                              val spanStart  = offsetInf * sr
-                              val spanStop   = (stopSup - startInf) * sr // inf?
-                              g2.clipRect( rx + 1, ry + 1, rw - 2, 48 )
-                              ov.paint( spanStart, spanStop, g2, rx + 1, ry + 1, rw - 2, 48, kview )
-                              g2.setClip( clipOrig )
-                           })
-                        }
-                        ry + 52
-                     }
+//                     case ar: AudioFileRegion if( expanded ) => {
+//                        colrBg.foreach( colr => {
+//                           g2.setColor( colr )
+//                           g2.fillRect( x, ry, w, 52 )
+//                        })
+//                        g2.setColor( Color.black )
+//                        g2.fillRect( rx, ry, rw, 50 )
+//                        val offset     = ar.offset
+//                        val offsetSup  = offset.sup.sec
+//                        val offsetInf  = offset.inf.sec
+//                        if( offsetSup == offsetInf ) {
+//                           val afe        = ar.audioFile
+//                           SonogramManager.get( afe ).foreach( ov => {
+//                              val sr         = afe.sampleRate
+//                              val spanStart  = offsetInf * sr
+//                              val spanStop   = (stopSup - startInf) * sr // inf?
+//                              g2.clipRect( rx + 1, ry + 1, rw - 2, 48 )
+//                              ov.paint( spanStart, spanStop, g2, rx + 1, ry + 1, rw - 2, 48, kview )
+//                              g2.setClip( clipOrig )
+//                           })
+//                        }
+//                        ry + 52
+//                     }
                      case cSub: ContainerLike => {
                         g2.clipRect( rx + 2, ry + 2, rw - 4, 0xFFFF )
                         val yres = paintContainer( g2, cSub, rx + 1, ry + 1, rw - 2, false, Some( Color.lightGray )) + 2

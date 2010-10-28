@@ -70,27 +70,35 @@ class OracleMap[ V ] private ( private var tree: BinaryTreeMap[ Version, V ]) {
  *
  *    A linearization rule has been added for retroactive vertices.
  *
- *    @version 0.11, 10-Apr-10 
+ *    @version 0.12, 28-Oct-10 
  */
 object OracleMap {
 //   def empty[ V ]: OracleMap[ V ] = new OracleMap( BinaryTreeMap.empty( Version.AncestorOrdering ))
 
    def apply[ V ]( entries: Tuple2[ Version, V ]* ): OracleMap[ V ] = {
-      val map = new OracleMap[ V ]
-      entries.foreach( map += _ )
+      val map = new OracleMap[ V ]( entries.toList )
+//      entries.foreach( map += _ )
       map
    }
 }
 
-class OracleMap[ V ] private () {
-   private var entries: List[ Tuple2[ Version, V ]] = Nil
+class OracleMap[ V ] private (entries: List[ Tuple2[ Version, V ]]) {
+//   private var entries: List[ Tuple2[ Version, V ]] = Nil
 
-   def +=( entry: Tuple2[ Version, V ]) {
-      entries = if( entries.isEmpty || (entries.head._1 != entry._1) ) {
+//   def +=( entry: Tuple2[ Version, V ]) {
+//      entries = if( entries.isEmpty || (entries.head._1 != entry._1) ) {
+//         entry :: entries
+//      } else {
+//         entry :: entries.tail
+//      }
+//   }
+
+   def +( entry: Tuple2[ Version, V ]) : OracleMap[ V ] = {
+      new OracleMap( if( entries.isEmpty || (entries.head._1 != entry._1) ) {
          entry :: entries
       } else {
          entry :: entries.tail
-      }
+      })
    }
 
    def query( t: Version ) : Option[ V ] = {

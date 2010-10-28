@@ -39,8 +39,8 @@ trait RegionLike {
 }
 
 class RegionData extends NodeAccess[ Region ] {
-   val name     = new FVal[ String ]
-   val interval = new FVal[ IntervalLike ]
+   var name     = FVal.empty[ String ]
+   var interval = FVal.empty[ IntervalLike ]
 
    def access( readPath: Path, writePath: Path ) = new Region( this, readPath, writePath )
 }
@@ -50,8 +50,8 @@ extends RegionLike with NodeID[ Region ] {
    import VersionManagement._
 
    def name: String = get( data.name, readPath )
-   def name_=( n: String ) = set( data.name, writePath, n )
-   def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
+   def name_=( n: String ) { data.name = set( data.name, writePath, n )}
+   def interval_=( i: IntervalLike ) { data.interval = set( data.interval, writePath, i )}
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
 
    protected def nodeAccess: NodeAccess[ Region ] = data

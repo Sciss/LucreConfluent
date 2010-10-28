@@ -71,7 +71,7 @@ object VersionManagement {
       case _ => v
    }
 
-   def set[ V ]( fval: FVal[ V ], path: Path, value: V ) {
+   def set[ V ]( fval: FVal[ V ], path: Path, value: V ) : FVal[ V ] = {
       fval.assign( path, value )
    }
 

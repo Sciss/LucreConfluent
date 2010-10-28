@@ -29,6 +29,7 @@
 package de.sciss.temporal
 
 import de.sciss.confluent.{ FatValue => FVal, _ }
+import collection.immutable.{ Queue => IQueue }
 import VersionManagement._
 
 /**
@@ -72,30 +73,31 @@ object Container {
 }
 
 class FatLinkedListElem[ T ]( val elem: T ) {
-   val next = new FVal[ FatLinkedListElem[ T ]]
+   var next = FVal.empty[ FatLinkedListElem[ T ]]
 }
 
 class ContainerData( seminalPath: Path, iniName: String, iniInterval: IntervalLike ) extends NodeAccess[ Container ] {
-   val name       = new FVal[ String ]
-   val interval   = new FVal[ IntervalLike ]
-   val numRegions = new FVal[ Int ]
-   val regions    = new FVal[ FatLinkedListElem[ RegionLike ]] // head of linked list
+   var name       = FVal.empty[ String ]
+   var interval   = FVal.empty[ IntervalLike ]
+   var numRegions = FVal.empty[ Int ]
+//   var regions    = FVal.empty[ FatLinkedListElem[ RegionLike ]] // head of linked list
+   var regions    = FVal.empty[ IQueue[ RegionLike ]] // head of linked list
 
    def access( readPath: Path, writePath: Path ) = new Container( this, readPath, writePath )
 
    {
-      set( name, seminalPath, iniName )
-      set( interval, seminalPath, iniInterval )
-      set( numRegions, seminalPath, 0 )
+      name        = set( name, seminalPath, iniName )
+      interval    = set( interval, seminalPath, iniInterval )
+      numRegions  = set( numRegions, seminalPath, 0 )
    }
 }
 
 class Container( data: ContainerData, protected val readPath: Path, writePath: Path )
 extends ContainerLike with NodeID[ Container ] {
    def name: String = get( data.name, readPath )
-   def name_=( n: String ) = set( data.name, writePath, n )
+   def name_=( n: String ) { data.name = set( data.name, writePath, n )}
    def interval: IntervalLike = new IntervalProxy( data.interval, readPath )
-   def interval_=( i: IntervalLike ) = set( data.interval, writePath, i )
+   def interval_=( i: IntervalLike ) { data.interval = set( data.interval, writePath, i )}
 
    protected def nodeAccess: NodeAccess[ Container ] = data
 
@@ -103,23 +105,25 @@ extends ContainerLike with NodeID[ Container ] {
       Container.use( this, thunk )
 
    def use = { Container.use( this ); this }
-   
+
    def add( r: RegionLike ) = {
-      val newEntry = new FatLinkedListElem( r )
-      var entryF  = data.regions
-      // @todo this is a little tricky: we use writePath not readPath,
-      //       because otherwise adding more than one region per
-      //       transaction won't work. This should be handled more
-      //       elegant in the furture.
-      var entryO  = getO( entryF, writePath )
-      var cnt     = 1
-      while( entryO.isDefined ) {
-         val entry = entryO.get
-         entryF   = entry.next
-         entryO   = getO( entryF, writePath )
-         cnt     += 1
-      }
-      set( entryF, writePath, newEntry )
+//      val newEntry = new FatLinkedListElem( r )
+//      var entryF  = data.regions
+//      // @todo this is a little tricky: we use writePath not readPath,
+//      //       because otherwise adding more than one region per
+//      //       transaction won't work. This should be handled more
+//      //       elegant in the future.
+//      var entryO  = getO( entryF, writePath )
+//      var cnt     = 1
+//      while( entryO.isDefined ) {
+//         val entry = entryO.get
+//         entryF   = entry.next
+//         entryO   = getO( entryF, writePath )
+//         cnt     += 1
+//      }
+//      ??? = set( entryF, writePath, newEntry )
+
+      data.regions = set( data.regions, writePath, get( data.regions, writePath ) enqueue r )
 
       // update bounding interval
       val ivOld = get( data.interval, writePath )
@@ -130,10 +134,16 @@ extends ContainerLike with NodeID[ Container ] {
       val childStop= ri.stop
       val newDur   = oldDur.max( childStop )
       val newIv    = oldStart :< newDur
-      set( data.interval, writePath, newIv )
+      data.interval = set( data.interval, writePath, newIv )
+
+      // @todo this is a little tricky: we use writePath not readPath,
+      //       because otherwise adding more than one region per
+      //       transaction won't work. This should be handled more
+      //       elegant in the future.
+      val cnt = get( data.numRegions, writePath ) + 1
 
       // update numRegions
-      set( data.numRegions, writePath, cnt )
+      data.numRegions = set( data.numRegions, writePath, cnt )
       
       this
    }
@@ -155,20 +165,21 @@ extends ContainerLike with NodeID[ Container ] {
    }
 
    // ---- Iterable ----
-   def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
+//   def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
+   def iterator: Iterator[ RegionLike ] = get( data.regions, readPath ).iterator
    def numRegions = get( data.numRegions, readPath )
    override def size = numRegions
 
-   private class ListIterator( p: Path )
-   extends Iterator[ RegionLike ] {
-      private var nextF = data.regions
-
-      def next: RegionLike = {
-         val x = get( nextF, p )
-         nextF = x.next
-         resolve( p, writePath, x.elem )
-      }
-
-      def hasNext: Boolean = getO( nextF, p ).isDefined
-   }
+//   private class ListIterator( p: Path )
+//   extends Iterator[ RegionLike ] {
+//      private var nextF = data.regions
+//
+//      def next: RegionLike = {
+//         val x = get( nextF, p )
+//         nextF = x.next
+//         resolve( p, writePath, x.elem )
+//      }
+//
+//      def hasNext: Boolean = getO( nextF, p ).isDefined
+//   }
 }

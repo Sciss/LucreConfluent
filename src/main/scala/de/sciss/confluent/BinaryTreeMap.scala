@@ -42,7 +42,7 @@ object BinaryTreeMap extends ImmutableSortedMapFactory[ BinaryTreeMap ] {
 }
 
 /**
- *    Basically like TreeMap, but with add functionality
+ *    Basically like Scala's immutable TreeMap, but with add functionality
  *    of method 'getClosestLessOrEqualTo'. Unfortunately, tree is
  *    not accessible in TreeMap, so we need to copy all the crap over.
  *    Hopefully this survives some updates of scala.collection in the future...

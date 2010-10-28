@@ -35,10 +35,10 @@ import VersionManagement._
  *    @version 0.11, 08-May-10
  */
 class AudioFileRegionData extends NodeAccess[ AudioFileRegion ] {
-   val name       = new FVal[ String ]
-   val interval   = new FVal[ IntervalLike ]
-   val audioFile  = new FVal[ AudioFileElement ]
-   val offset     = new FVal[ PeriodLike ]
+   var name       = FVal.empty[ String ]
+   var interval   = FVal.empty[ IntervalLike ]
+   var audioFile  = FVal.empty[ AudioFileElement ]
+   var offset     = FVal.empty[ PeriodLike ]
 
    def access( readPath: Path, writePath: Path ) = new AudioFileRegion( this, readPath, writePath )
 }
@@ -50,10 +50,10 @@ extends RegionLike with NodeID[ AudioFileRegion ] {
    def audioFile  = get( data.audioFile, readPath )    // XXX +proxy
    def offset     = get( data.offset, readPath )       // XXX +proxy
 
-   def name_=( newName: String ) = set( data.name, writePath, newName ) // XXX WRONG
-   def interval_=( newInterval: IntervalLike ) = set( data.interval, writePath, newInterval ) // XXX WRONG
-   def audioFile_=( newAudioFile: AudioFileElement ) = set( data.audioFile, writePath, newAudioFile ) // XXX WRONG
-   def offset_=( newOffset: PeriodLike ) = set( data.offset, writePath, newOffset ) // XXX WRONG
+   def name_=( newName: String ) { data.name =set( data.name, writePath, newName )} // XXX WRONG
+   def interval_=( newInterval: IntervalLike ) { data.interval = set( data.interval, writePath, newInterval )} // XXX WRONG
+   def audioFile_=( newAudioFile: AudioFileElement ) { data.audioFile = set( data.audioFile, writePath, newAudioFile )} // XXX WRONG
+   def offset_=( newOffset: PeriodLike ) { data.offset = set( data.offset, writePath, newOffset )} // XXX WRONG
 
    protected def nodeAccess = data
 

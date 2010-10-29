@@ -104,14 +104,16 @@ extends JPanel /* with SonogramPaintController */ {
    private class RegionPane extends JComponent {
       override def paintComponent( g: Graphics ) {
          val g2 = g.asInstanceOf[ Graphics2D ]
-         paintContainer( g2, c, 0, 0, getWidth, true, None )
+         version.read {
+            paintContainer( g2, c, 0, 0, getWidth, true, None )
+         }
       }
 
       private def paintContainer( g2: Graphics2D, c: ContainerLike, x: Int, y: Int, w: Int,
                                   expanded: Boolean, colrBg: Option[ Color ]) : Int = {
 //         var cnt = 0
          var ry = y
-         version.read {
+//         version.read {
             val (start, stop) = {
                val i = c.interval
                (i.start.inf.sec, i.stop.sup.sec)
@@ -121,15 +123,15 @@ extends JPanel /* with SonogramPaintController */ {
                return y
             }
             val hScale = w / dur
-println( "PAINING " + c + " ; #" + c.iterator.toList.size + " ; " + version )
+//println( "PAINTING " + c + " ; #" + c.iterator.toList.size + " ; " + version )
             c.foreach( r => ry = paintRegion( g2, hScale, x, ry, w, colrBg, r ))
-         }
+//         }
          ry
       }
 
       private def paintRegion( g2: Graphics2D, hScale: Double, x: Int, ry0: Int, w: Int,
                                colrBg: Option[ Color ], r: RegionLike ) : Int = {
-println( "#" + r )
+//println( "#" + r )
          val i             = r.interval
          val startInf      = i.start.inf.sec
          val startSup      = i.start.sup.sec

@@ -28,6 +28,8 @@
 
 package de.sciss.temporal
 
+import java.awt.EventQueue
+
 object TemporalObjects {
    val name          = "TemporalObjects"
    val version       = 0.15
@@ -35,12 +37,13 @@ object TemporalObjects {
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
    def main( args: Array[ String ]) {
+      EventQueue.invokeLater( new Runnable { def run {
       args.toList match {
          case "--test1" :: Nil => test1
          case "--test2" :: Nil => test2
          case "--test3" :: Nil => test3
          case _ => error( "This is a library that cannot be executed directly" )
-      }
+      }}})
 //       EventQueue.invokeLater( this )
     }
 
@@ -108,16 +111,17 @@ object TemporalObjects {
       val v5 = currentVersion
 //      println( "c1 #" + c1.numRegions + "; root #" + rootContainer.numRegions + "; sz " + rootContainer.iterator.size )
       m.useVariant( v3 )
-//      println( "c1 #" + c1.numRegions + "; sz " + rootContainer.iterator.size )
+//      println( "c1 #" + c1.numRegions + "; sz " + rootContainer.iterator.size + " ; c1.ival " + c1.interval.fixed )
 //      val f1 = r1.interval.fixed
 //      val f2 = r2.interval.fixed
 //      val test = c1.iterator.toList.map(_.interval.fixed)
 
       r5.interval.fixed // result: 9.secs :< 4.secs
-      println( "CURRENT = " + currentVersion + " ; #" + c1.iterator.toList.size )
+//      println( "CURRENT = " + currentVersion + " ; #" + c1.iterator.toList.size )
+//      println( "VERSUS #" + rootContainer.iterator.next.asInstanceOf[ContainerLike].iterator.toList.size )
       kView
       m.useVariant( v4 )
-//      println( "c1 #" + c1.numRegions + "; root #" + rootContainer.numRegions + "; sz " + rootContainer.iterator.size )
+//      println( "c1 #" + c1.numRegions + "; sz " + rootContainer.iterator.size + " ; c1.ival " + c1.interval.fixed )
       r5.interval.fixed // result: 8.5.secs :< 4.secs
       kView
    }

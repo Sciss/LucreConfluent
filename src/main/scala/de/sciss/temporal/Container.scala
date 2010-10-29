@@ -166,8 +166,8 @@ extends ContainerLike with NodeID[ Container ] {
    }
 
    // ---- Iterable ----
-//   def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
-   def iterator: Iterator[ RegionLike ] = get( data.regions, readPath ).iterator
+   def iterator: Iterator[ RegionLike ] = new ListIterator( readPath )
+//   def iterator: Iterator[ RegionLike ] = get( data.regions, readPath ).iterator
    def numRegions = get( data.numRegions, readPath )
    override def size = numRegions
 
@@ -183,4 +183,17 @@ extends ContainerLike with NodeID[ Container ] {
 //
 //      def hasNext: Boolean = getO( nextF, p ).isDefined
 //   }
+
+   private class ListIterator( p: Path )
+   extends Iterator[ RegionLike ] {
+      private val iter = get( data.regions, readPath ).iterator
+
+      def next: RegionLike = {
+         val x = iter.next // get( nextF, p )
+//         nextF = x.next
+         resolve( p, writePath, x )
+      }
+
+      def hasNext: Boolean = iter.hasNext // getO( nextF, p ).isDefined
+   }
 }

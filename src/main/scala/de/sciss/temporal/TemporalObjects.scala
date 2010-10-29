@@ -101,14 +101,23 @@ object TemporalObjects {
           (region("r3", 0.secs :< 2.5.secs),
            region("r4", 3.5.secs :< 3.secs)) }
       val v4 = m.lastVariant
+//      println( "c1 #" + c1.numRegions + "; root #" + rootContainer.numRegions + "; sz " + rootContainer.iterator.size )
       rootContainer.use
       val r5 = t { region("r5", (c1.interval.stop +
           2.secs) :< 4.secs) }
       val v5 = currentVersion
+//      println( "c1 #" + c1.numRegions + "; root #" + rootContainer.numRegions + "; sz " + rootContainer.iterator.size )
       m.useVariant( v3 )
+//      println( "c1 #" + c1.numRegions + "; sz " + rootContainer.iterator.size )
+//      val f1 = r1.interval.fixed
+//      val f2 = r2.interval.fixed
+//      val test = c1.iterator.toList.map(_.interval.fixed)
+
       r5.interval.fixed // result: 9.secs :< 4.secs
+      println( "CURRENT = " + currentVersion + " ; #" + c1.iterator.toList.size )
       kView
       m.useVariant( v4 )
+//      println( "c1 #" + c1.numRegions + "; root #" + rootContainer.numRegions + "; sz " + rootContainer.iterator.size )
       r5.interval.fixed // result: 8.5.secs :< 4.secs
       kView
    }

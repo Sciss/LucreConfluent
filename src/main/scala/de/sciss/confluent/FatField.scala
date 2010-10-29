@@ -37,14 +37,18 @@ class FatValue[ @specialized V ] private( lexi: LexiTrie[ OracleMap[ V ]]) {
 
    def assign( version: Path, value: V ) : FatValue[ V ] = {
       val idx        = version.dropRight( 1 )
-      val newEntry   = (version.last -> value)
+      val last       = version.last
+      val newEntry   = (last -> value)
       new FatValue( lexi.map( idx, _ + newEntry, {
          // create a new oracle with new entry and
          // tree-entrance-entry (if found),
          // then insert oracle into the lexi
-         access( version ).map( lastValue => {
-            OracleMap( idx.last -> lastValue, newEntry )
-         }) getOrElse OracleMap( newEntry )
+         val idxLast = idx.last
+         if( idxLast != last ) {
+            access( version ).map( lastValue =>
+               OracleMap.singleton( idx.last -> lastValue ) + newEntry
+            ) getOrElse OracleMap.singleton( newEntry )
+         } else OracleMap.singleton( newEntry ) 
       }))
    }
 

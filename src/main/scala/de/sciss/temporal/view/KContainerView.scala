@@ -34,7 +34,7 @@ import java.awt.image.ImageObserver
 import java.io.File
 import javax.swing.{ AbstractAction, Box, JButton, JComponent, JFrame, JPanel }
 import de.sciss.confluent.VersionPath
-import de.sciss.temporal.{ /* AudioFileRegion, */ ContainerLike }
+import de.sciss.temporal.{RegionLike, ContainerLike}
 //import de.sciss.sonogram.SonogramPaintController
 
 /**
@@ -109,7 +109,7 @@ extends JPanel /* with SonogramPaintController */ {
 
       private def paintContainer( g2: Graphics2D, c: ContainerLike, x: Int, y: Int, w: Int,
                                   expanded: Boolean, colrBg: Option[ Color ]) : Int = {
-         var cnt = 0
+//         var cnt = 0
          var ry = y
          version.read {
             val (start, stop) = {
@@ -117,42 +117,52 @@ extends JPanel /* with SonogramPaintController */ {
                (i.start.inf.sec, i.stop.sup.sec)
             }
             val dur = stop - start
-            if( dur == 0.0 ) return y
+            if( dur == 0.0 ) {
+               return y
+            }
             val hScale = w / dur
-            c.foreach( r => {
-//println( "#" + (cnt+1) + " - " + region )
-               val i             = r.interval
-               val startInf      = i.start.inf.sec
-               val startSup      = i.start.sup.sec
-               val stopInf       = i.stop.inf.sec
-               val stopSup       = i.stop.sup.sec
-               val stableStart   = startInf == startSup
-               val stableStop    = stopInf == stopSup
+println( "PAINING " + c + " ; #" + c.iterator.toList.size + " ; " + version )
+            c.foreach( r => ry = paintRegion( g2, hScale, x, ry, w, colrBg, r ))
+         }
+         ry
+      }
 
-               val rx = (hScale * startInf).toInt + x
-               val rw = (hScale * stopSup).toInt + x - rx
-               colrBg.foreach( colr => {
-                  g2.setColor( colr )
-                  g2.fillRect( x, ry, w, 18 )
-               })
-               g2.setColor( Color.black )
-               g2.fillRect( rx, ry, rw, 17 )
+      private def paintRegion( g2: Graphics2D, hScale: Double, x: Int, ry0: Int, w: Int,
+                               colrBg: Option[ Color ], r: RegionLike ) : Int = {
+println( "#" + r )
+         val i             = r.interval
+         val startInf      = i.start.inf.sec
+         val startSup      = i.start.sup.sec
+         val stopInf       = i.stop.inf.sec
+         val stopSup       = i.stop.sup.sec
+         val stableStart   = startInf == startSup
+         val stableStop    = stopInf == stopSup
 
-               if( !stableStart ) {
-                  // XXX
-               }
-               if( !stableStop ) {
-                  // XXX
-               }
-               g2.setColor( Color.white )
-               val clipOrig = g2.getClip
-               g2.clipRect( rx, ry, rw, 17 )
-               g2.drawString( r.name, rx + 4, ry + 13 )
-               g2.setClip( clipOrig )
+         val rx = (hScale * startInf).toInt + x
+         val rw = (hScale * stopSup).toInt + x - rx
+         var ry = ry0
+         colrBg.foreach( colr => {
+            g2.setColor( colr )
+            g2.fillRect( x, ry, w, 18 )
+         })
+         g2.setColor( Color.black )
+         g2.fillRect( rx, ry, rw, 17 )
 
-               ry += 18
-               if( stableStart ) {
-                  ry = r match {
+         if( !stableStart ) {
+            // XXX
+         }
+         if( !stableStop ) {
+            // XXX
+         }
+         g2.setColor( Color.white )
+         val clipOrig = g2.getClip
+         g2.clipRect( rx, ry, rw, 17 )
+         g2.drawString( r.name, rx + 4, ry + 13 )
+         g2.setClip( clipOrig )
+
+         ry += 18
+         if( stableStart ) {
+            ry = r match {
 //                     case ar: AudioFileRegion if( expanded ) => {
 //                        colrBg.foreach( colr => {
 //                           g2.setColor( colr )
@@ -176,26 +186,24 @@ extends JPanel /* with SonogramPaintController */ {
 //                        }
 //                        ry + 52
 //                     }
-                     case cSub: ContainerLike => {
-                        g2.clipRect( rx + 2, ry + 2, rw - 4, 0xFFFF )
-                        val yres = paintContainer( g2, cSub, rx + 1, ry + 1, rw - 2, false, Some( Color.lightGray )) + 2
-                        g2.setClip( clipOrig )
-                        g2.setColor( Color.black )
-                        g2.drawRect( rx, ry, rw, yres - ry )
-                        colrBg.foreach( colr => {
-                           g2.setColor( colr )
-                           g2.fillRect( x, ry, rx - x, yres - ry )
-                           g2.fillRect( rx + rw, ry, w - (rx + rw), yres - ry )
-                        })
-                        yres
-                     }
-                     case _ => ry
-                  }
+               case cSub: ContainerLike => {
+                  g2.clipRect( rx + 2, ry + 2, rw - 4, 0xFFFF )
+                  val yres = paintContainer( g2, cSub, rx + 1, ry + 1, rw - 2, false, Some( Color.lightGray )) + 2
+                  g2.setClip( clipOrig )
+                  g2.setColor( Color.black )
+                  g2.drawRect( rx, ry, rw, yres - ry )
+                  colrBg.foreach( colr => {
+                     g2.setColor( colr )
+                     g2.fillRect( x, ry, rx - x, yres - ry )
+                     g2.fillRect( rx + rw, ry, w - (rx + rw), yres - ry )
+                  })
+                  yres
                }
-
-               cnt += 1
-            })
+               case _ => ry
+            }
          }
+
+//         cnt += 1
          ry
       }
    }

@@ -75,11 +75,14 @@ class OracleMap[ V ] private ( private var tree: BinaryTreeMap[ Version, V ]) {
 object OracleMap {
 //   def empty[ V ]: OracleMap[ V ] = new OracleMap( BinaryTreeMap.empty( Version.AncestorOrdering ))
 
-   def apply[ V ]( entries: Tuple2[ Version, V ]* ): OracleMap[ V ] = {
-      val map = new OracleMap[ V ]( entries.toList )
-//      entries.foreach( map += _ )
-      map
-   }
+//   def apply[ V ]( entries: Tuple2[ Version, V ]* ): OracleMap[ V ] = {
+//      val map = new OracleMap[ V ]( entries.reverse.toList )
+////      entries.foreach( map += _ )
+//      map
+//   }
+
+   def empty[ V ] = new OracleMap[ V ]( Nil )
+   def singleton[ V ]( entry: Tuple2[ Version, V ]) = new OracleMap[ V ]( entry :: Nil )
 }
 
 class OracleMap[ V ] private (entries: List[ Tuple2[ Version, V ]]) {
@@ -93,6 +96,9 @@ class OracleMap[ V ] private (entries: List[ Tuple2[ Version, V ]]) {
 //      }
 //   }
 
+   /**
+    * Adds a newer entry (gets cons'ed to the front!)
+    */
    def +( entry: Tuple2[ Version, V ]) : OracleMap[ V ] = {
       new OracleMap( if( entries.isEmpty || (entries.head._1 != entry._1) ) {
          entry :: entries

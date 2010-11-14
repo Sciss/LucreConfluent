@@ -29,11 +29,13 @@
 package de.sciss.confluent
 
 /**
- *    @version 0.12, 28-Oct-10
+ *    @version 0.16, 13-Nov-10
  */
 class FatValue[ @specialized V ] private( lexi: LexiTrie[ OracleMap[ V ]]) {
 //   protected val lexi = new FatFieldMap[ V ]
 //   protected val lexi = LexiTrie.empty[ OracleMap[ V ]] // ()( Version.IdOrdering )
+
+   def trie = lexi
 
    def assign( version: Path, value: V ) : FatValue[ V ] = {
       val idx        = version.dropRight( 1 )
@@ -70,37 +72,6 @@ class FatValue[ @specialized V ] private( lexi: LexiTrie[ OracleMap[ V ]]) {
 object FatValue {
    def empty[ V ] = new FatValue( LexiTrie.empty[ OracleMap[ V ]])
 }
-
-///**
-// * 	@version	   0.13, 22-Mar-09
-// *    @todo       use Vector.last once it is properly implemented
-// *    @todo       Vector.++ is inefficient i guess, should use a catenable Deque instead!
-// */
-//class FatValue[ V ] extends FatField[ V ] {
-//	def access( version: Path ) : Option[ V ] = accessPlain( version )
-//
-//   override def toString = "FVal#" + hashCode
-//}
-
-//class FatRef[ V ] extends FatField[ V ] {
-//   def access( version: Path ) : Option[ V ] = accessPlain( version )
-//
-//   override def toString = "FRef#" + hashCode
-//}
-
-///**
-// *    @warning    not maintained
-// */
-//class FatPointer[ V ] extends FatField[ FatIdentifier[ V ]] {
-//   type I = FatIdentifier[ V ]
-//
-//	def access( version: Path ) : Option[ I ] = {
-//      val (idOption, off) = lexi.multiFindMaxPrefix( version )
-//      idOption.map( _.query( version.last ).map( _.substitute( version, off ))) getOrElse None
-//	}
-//
-//   override def toString = "FPtr#" + hashCode
-//}
 
 case class FatIdentifier[ @specialized V ]( path: Path, value: V ) {
    type I = FatIdentifier[ V ] 

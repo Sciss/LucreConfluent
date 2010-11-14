@@ -38,8 +38,8 @@ import collection.immutable.{ Vector }
  */
 trait VersionTree {
    val level: Int
-   val preOrder:  PreOrder[ Version ]
-   val postOrder: PostOrder[ Version ]
+   val preOrder:  PreOrder[ Version ]  // XXX atomic
+   val postOrder: PostOrder[ Version ] // XXX atomic
 
    def insertRoot( version: Version ) : VersionVertex
    def insertChild( parent: Version )( child: Version ) : VersionVertex
@@ -57,7 +57,7 @@ trait VersionTree {
 trait Version {
    val id:           Int
    val vertex:       VersionVertex
-   val tree:         VersionTree
+   val tree:         VersionTree      // might be able to get rid of this!
 
    def level: Int = tree.level
    
@@ -207,10 +207,10 @@ trait VersionPath {
    def newMultiBranch : Multiplicity
    def tail: Path = path.takeRight( 2 )
 
-   def use: VersionPath = { VersionManagement.use( this ); this }
-
-   def read[ T ]( thunk: => T ) =
-      VersionManagement.read( this )( thunk )
+//   def use: VersionPath = { VersionManagement.use( this ); this }
+//
+//   def read[ T ]( thunk: => T ) =
+//      VersionManagement.read( this )( thunk )
 
 //   protected[ confluent ] def useVariant( nv: Version, vv: Version, vvs: Set[ Version ]) : VersionPath
    protected[ confluent ] def updateVersion( idx: Int, v: Version ) : VersionPath
@@ -219,9 +219,9 @@ trait VersionPath {
 trait Multiplicity {
    def lastVariant : Version
    def currentVariant : Version
-   def useVariant( v: Version ) : Multiplicity
-   def useNeutral : Multiplicity
-   def variant[ T ]( thunk: => T ) : T
+//   def useVariant( v: Version ) : Multiplicity
+//   def useNeutral : Multiplicity
+//   def variant[ T ]( thunk: => T ) : T
    def neutralVersion: VersionPath
 }
 
@@ -230,6 +230,8 @@ object VersionPath {
       val vinit = Version.init 
       new VersionPathImpl( vinit, Vector( vinit, vinit ))
    }
+
+   def wrap( path: Path ) : VersionPath = VersionPathImpl( path.last, path )
 
    private case class VersionPathImpl( version: Version, path: Path )
    extends VersionPath {
@@ -295,29 +297,29 @@ object VersionPath {
          new VersionPathImpl( tailVersion, newPath )
       }
 
-      private var currentVariantVar = neutralVersionPath.version
-      private var lastVariantVar = neutralVersionPath.version
-      private var variantVersions = Set.empty[ Version ]
+      private var currentVariantVar = neutralVersionPath.version  // XXX atomic
+      private var lastVariantVar = neutralVersionPath.version     // XXX atomic
+      private var variantVersions = Set.empty[ Version         ]  // XXX atomic
 
       def currentVariant = currentVariantVar
       def lastVariant = lastVariantVar
       def neutralVersion = neutralVersionPath 
 
-      def useVariant( v: Version ) : Multiplicity = {
-         import VersionManagement._
-
-         val npz = neutralVersionPath.path.size
-         val vp = // if( (npz & 1) == 0 ) {
-            currentVersion.updateVersion( npz - 1, v )
-//         } else {
+//      def useVariant( v: Version ) : Multiplicity = {
+//         import VersionManagement._
+//
+//         val npz = neutralVersionPath.path.size
+//         val vp = // if( (npz & 1) == 0 ) {
 //            currentVersion.updateVersion( npz - 1, v )
-//         }
-         currentVariantVar = v
-         vp.use
-         this
-      }
-
-      def useNeutral : Multiplicity = useVariant( neutralVersionPath.version )
+////         } else {
+////            currentVersion.updateVersion( npz - 1, v )
+////         }
+//         currentVariantVar = v
+//         vp.use
+//         this
+//      }
+//
+//      def useNeutral : Multiplicity = useVariant( neutralVersionPath.version )
 
       private def createVariantPath : VersionPath = {
          val tailVersion = Version.newMultiVariant( neutralVersionPath.version )
@@ -325,19 +327,19 @@ object VersionPath {
          new VersionPathImpl( tailVersion, newPath )
       }
 
-      def variant[ T ]( thunk: => T ) : T = {
-         import VersionManagement._
-
-         val write = createVariantPath
-         variantVersions += write.version
-         makeRead( neutralVersionPath )
-         makeWrite( write )
-         try {
-            thunk
-         } finally {
-            lastVariantVar = write.version
-            neutralVersionPath.use
-         }
-      }
+//      def variant[ T ]( thunk: => T ) : T = {
+//         import VersionManagement._
+//
+//         val write = createVariantPath
+//         variantVersions += write.version
+//         makeRead( neutralVersionPath )
+//         makeWrite( write )
+//         try {
+//            thunk
+//         } finally {
+//            lastVariantVar = write.version
+//            neutralVersionPath.use
+//         }
+//      }
    }
 }

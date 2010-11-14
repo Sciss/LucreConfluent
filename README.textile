@@ -1,8 +1,8 @@
-h2. TemporalObjects ==<small>-- version 0.15 (built 28-oct-10) --</small>==
+h2. TemporalObjects ==<small>-- version 0.16 --</small>==
 
 h3. statement
 
-TemporalObjects is (C)opyright 2010 Hanns Holger. It is released under the "GNU General Public License":http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt .
+TemporalObjects is (C)opyright 2010 Hanns Holger Rutz. It is released under the "GNU General Public License":http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt .
 
 h3. requirements / installation
 

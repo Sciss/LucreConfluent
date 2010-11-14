@@ -38,9 +38,9 @@ import collection.immutable.IntMap
  * It uses path-copying which might not be the most efficient approach,
  * and performance needs to undergo testing!
  *
- * @version 0.10, 28-Oct-10
+ * @version 0.10, 13-Nov-10
  */
-case class LexiTrie[ @specialized V ]( val value: Option[ V ], protected val sub: IntMap[ LexiTrie[ V ]]) {
+case class LexiTrie[ @specialized V ]( val value: Option[ V ], val sub: IntMap[ LexiTrie[ V ]]) {
    def +( entry: (Path, V) ) : LexiTrie[ V ] = {
       val (key, v) = entry
       key.headOption match {

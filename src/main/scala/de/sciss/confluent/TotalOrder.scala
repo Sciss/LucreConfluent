@@ -39,6 +39,9 @@ import math.Ordering.{ Long => LongOrd }
  *    claimed by DSST. to fix this, we add a special stop-marker record in the pre-order
  *    version that allows us to jump to the end of a parent's children list in O(1)
  *
+ * XXX THIS IS MUTABLE AND SHOULD NOT BE. NOTE THAT WE ONLY USE INSERTION, SO WE MIGHT
+ * GET AWAY JUST WITH ATOMIC ENCAPSULATION...
+ *
  *    @version 0.13, 11-Apr-10
  */
 object TotalOrder {
@@ -71,7 +74,7 @@ extends Ordering[ Rec ] {
    def insertRetroChild( parent: Rec, child: T ) : Rec
 
    protected def createRecord( elem: T, vch: Tag, pred: Rec, succ: Rec ) : Rec
-   protected val base: Rec
+   val base: Rec
 
    /**
     *    Implementation of the Ordering trait
@@ -96,6 +99,8 @@ extends Ordering[ Rec ] {
       require( n == 1 )
       insertAfter( base, base.v, root )
    }
+
+   def root : Rec = base.succ // XXX ok?
 
    /**
     *    Inserts a child element
@@ -205,7 +210,7 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
       rec
    }
 
-   protected val base = Base
+   val base = Base
 
    protected object Base extends Rec {
       var v: Tag = 0 // arbitrary
@@ -271,7 +276,7 @@ class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
       rec
    }
 
-   protected val base = Base
+   val base = Base
 
    protected object Base extends Rec {
       var v: Tag = 0 // arbitrary

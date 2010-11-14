@@ -29,39 +29,6 @@
 package de.sciss.confluent
 
 /**
- *    This is a tiny mutable holder of a BinaryTreeMap, to store
- *    L(c~) as required by the compressed-path method. We use this
- *    wrapper as BinaryTreeMap itself is immutable and we save
- *    an extra traveral in the lexicographical map, omitting a re-insert.
- */
-/*
-object OracleMap {
-//   def empty[ V ]: OracleMap[ V ] = new OracleMap( BinaryTreeMap.empty( Version.AncestorOrdering ))
-
-   def apply[ V ]( entries: Tuple2[ Version, V ]* ): OracleMap[ V ] =
-      new OracleMap( BinaryTreeMap( entries: _* )( Version.AncestorOrdering ))
-}
-
-class OracleMap[ V ] private ( private var tree: BinaryTreeMap[ Version, V ]) {
-   private val queryFilter = (a: Version, b: Version) => {
-      a.tree.postOrder.compare( a.postRec, b.postRec ) > 0
-   }
-
-   def +=( entry: Tuple2[ Version, V ]) {
-      tree += entry
-   }
-
-//   def query( t: Version ) : Option[ V ] = tree.getClosestLessOrEqualTo( t )
-
-   def query( t: Version ) : Option[ V ] = tree.getClosestLessOrEqualTo( t, queryFilter )
-
-   override def toString = tree.toString
-
-   def inspect = tree.inspect
-}
-*/
-
-/**
  *    Note: this is a simple O(n) implementation.
  *    We didn't bother to optimize it, as the approach with
  *    TotalOrder would in any case require a two dimensional search.
@@ -85,17 +52,7 @@ object OracleMap {
    def singleton[ V ]( entry: Tuple2[ Version, V ]) = new OracleMap[ V ]( entry :: Nil )
 }
 
-class OracleMap[ V ] private (entries: List[ Tuple2[ Version, V ]]) {
-//   private var entries: List[ Tuple2[ Version, V ]] = Nil
-
-//   def +=( entry: Tuple2[ Version, V ]) {
-//      entries = if( entries.isEmpty || (entries.head._1 != entry._1) ) {
-//         entry :: entries
-//      } else {
-//         entry :: entries.tail
-//      }
-//   }
-
+class OracleMap[ V ] private (val entries: List[ Tuple2[ Version, V ]]) {
    /**
     * Adds a newer entry (gets cons'ed to the front!)
     */

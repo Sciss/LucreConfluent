@@ -46,45 +46,30 @@ object Hashing {
       bitsInByte( n >>> 24 )
    }
 
+   def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
+
    def buildSet( ss: IntSeq* ) : IntSeqSet = LongMap( ss.map( s => (s.sum, s) ): _* )
 
-   def prefix( n: Int, j: Int ) : Int = prefix( n, j, bitCount( n ))
+   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))
 
-   def prefix( n: Int, j: Int, m: Int ) : Int = {
-//      n & (0xFFFFFFFF << (m - j))
-      var zero = m - j
-      var b0   = n & 0xFF
-      val b0c  = bitsInByte( b0 )
-      if( b0c >= zero ) {
-         while( zero > 0 ) { b0 &= eraseMSBMask( b0 ); zero -= 1 }
-         n & 0xFFFFFF00 | b0
-      } else {
-         zero -= b0c
-         var b1   = (n >> 8) & 0xFF
-         val b1c  = bitsInByte( b1 )
-         if( b1c >= zero ) {
-            while( zero > 0 ) { b1 &= eraseMSBMask( b1 ); zero -= 1 }
-            n & 0xFFFF0000 | (b1 << 8)
-         } else {
-            zero -= b1c
-            var b2   = (n >> 16) & 0xFF
-            val b2c  = bitsInByte( b2 )
-            if( b1c >= zero ) {
-               while( zero > 0 ) { b2 &= eraseMSBMask( b2 ); zero -= 1 }
-               n & 0xFF000000 | (b1 << 16)
-            } else {
-               zero -= b2c
-               var b3   = (n >> 24) & 0xFF
-               val b3c  = bitsInByte( b3 )
-               if( b3c >= zero ) {
-                  while( zero > 0 ) { b3 &= eraseMSBMask( b3 ); zero -= 1 }
-                  b3 << 24
-               } else {
-                  throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
-               }
-            }
+   def prefix( n: Long, j: Int, m: Int ) : Long = {
+      var zero    = m - j
+      var shifted = n
+      var shift   = 0
+      var mask    = 0xFFFFFFFFFFFFFF00L
+      while( shifted != 0 ) {
+         var b       = (shifted & 0xFF).toInt
+         val bc      = bitsInByte( b )
+         if( bc >= zero ) {
+            while( zero > 0 ) { b &= eraseMSBMask( b ); zero -= 1 }
+//            return( n & mask | b.toLong << shift )
+            return( n & mask | (b.toLong << shift) )
          }
+         shift     += 8
+         shifted >>>= 8
+         mask     <<= 8
       }
+      throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
    }
 
 //   def test( n: Int ) { val m = bitCount( n ); for( i <- 0 to m ) println( (prefix( n, i, m ) | 0x100).toBinaryString.substring( 1 ))}
@@ -92,14 +77,14 @@ object Hashing {
    /**
     * Performs ceil(log2(bitCount(sum))+1 prefix calculations and lookups.
     */
-   def maxPrefix( sum: Int, set: LongMap[ _ ]) : Int = {
+   def maxPrefix( sum: Long, set: LongMap[ _ ]) : Long = {
       val m       = bitCount( sum )
       var step    = (m + 1) >> 1
       var k       = m - step
-      var found   = 0
+      var found   = 0L
       do {
          val pre  = prefix( sum, k, m )
-         if( set.contains( pre ) {
+         if( set.contains( pre )) {
             if( step == 0 ) return pre
             found = pre
             k    += step

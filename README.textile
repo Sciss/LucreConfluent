@@ -1,12 +1,12 @@
-h2. TemporalObjects ==<small>-- version 0.16 --</small>==
+h2. TemporalObjects
 
 h3. statement
 
-TemporalObjects is (C)opyright 2010 Hanns Holger Rutz. It is released under the "GNU General Public License":http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt .
+TemporalObjects is (C)opyright 2009-2011 Hanns Holger Rutz. It is released under the "GNU General Public License":http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt .
 
 h3. requirements / installation
 
-Compiles against Scala 2.8.0 and Java 1.6. The repository contains a project file for Intellij IDEA 9 CE, and project files for sbt. Targets for sbt:
+Compiles against Scala 2.8.1 and Java 1.6. The repository contains a project file for Intellij IDEA 10 CE, and project files for sbt. Targets for sbt:
 
 * @clean@
 * @compile@

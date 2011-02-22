@@ -86,5 +86,5 @@ case class FatIdentifier[ @specialized V ]( path: Path, value: V ) {
 	  	FatIdentifier( sub, value )
 	}
 
-   override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
+//   override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
 }

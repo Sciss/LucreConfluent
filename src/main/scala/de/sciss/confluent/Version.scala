@@ -28,7 +28,7 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{ Vector }
+import collection.immutable.{IntMap, Vector}
 
 /**
  *    Note: this is a sub-_tree_,
@@ -56,8 +56,9 @@ trait VersionTree {
 
 trait Version {
    val id:           Int
+   val rid:          Int               // randomized ID
    val vertex:       VersionVertex
-   val tree:         VersionTree      // might be able to get rid of this!
+   val tree:         VersionTree       // might be able to get rid of this!
 
    def level: Int = tree.level
    
@@ -69,7 +70,10 @@ trait Version {
 case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
 
 object Version {
+   private val idSync = new AnyRef
    private var idValCnt = 0
+   private val idRnd = new util.Random()
+//   private val idRndSet = IntMap.empty[ Unit ]
 
    val init: Version = {
       val tree = new VersionTreeImpl( 0 )
@@ -125,12 +129,23 @@ object Version {
       new VersionImpl( tree, tree.insertRetroChild( parent ))
    }
 
-   private def nextID = { val idVal = idValCnt; idValCnt += 1; idVal }
+   private def nextID: (Int, Int) = idSync.synchronized {
+      val id         = idValCnt
+      idValCnt      += 1
+      var rid: Int   = 0
+//      var failed    = false
+//      do {
+         rid  = idRnd.nextInt( 0x7FFFFFFF )
+         // XXX check unique sum condition
+         // failed = ...
+//      } while( failed )
+      (id, rid)
+   }
 
    private abstract class AbstractVersionImpl( val tree: VersionTree, insertionFun: (Version) => VersionVertex )
    extends Version {
-      val id: Int    = nextID
-      val vertex     = insertionFun( this )
+      val (id: Int, rid: Int) = nextID
+      val vertex = insertionFun( this )
 
       override def toString = "v" + id
    }
@@ -228,7 +243,7 @@ trait Multiplicity {
 object VersionPath {
    val init: VersionPath = {
       val vinit = Version.init 
-      new VersionPathImpl( vinit, Vector( vinit, vinit ))
+      new VersionPathImpl( vinit, Path( vinit, vinit ))
    }
 
    def wrap( path: Path ) : VersionPath = VersionPathImpl( path.last, path )
@@ -278,7 +293,7 @@ object VersionPath {
          VersionPathImpl( newPath( newPath.size - 1 ), newPath )
       }
 
-      override def toString = path.mkString( "<", ", ", ">" )
+//      override def toString = path.mkString( "<", ", ", ">" )
    }
 
    // [FIXED] TO-DO : parent should not be an argument, as

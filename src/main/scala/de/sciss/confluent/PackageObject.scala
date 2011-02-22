@@ -29,10 +29,15 @@
 package de.sciss
 
 import collection.immutable.{ Vector }
+import fingertree.FingerTree
 
 /**
  *    @version 0.11, 11-Apr-10
  */
 package object confluent {
-   type Path  = Vector[ Version ]
+//   type Path  = Vector[ confluent.Version ]
+   type Path = FingerTree.IndexedSummed[ confluent.Version, Long ]
+
+   def Path( vs: confluent.Version* ) : Path =
+      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
 }

@@ -33,18 +33,16 @@ import collection.immutable.{IntMap, Vector}
 /**
  *    Note: this is a sub-_tree_,
  *    not the whole DAG
- *
- *    @version 0.12, 11-Apr-10
  */
 trait VersionTree {
-   val level: Int
-   val preOrder:  PreOrder[ Version ]  // XXX atomic
-   val postOrder: PostOrder[ Version ] // XXX atomic
+   def level: Int
+   def preOrder:  PreOrder[ Version ]  // XXX atomic
+   def postOrder: PostOrder[ Version ] // XXX atomic
 
-   def insertRoot( version: Version ) : VersionVertex
-   def insertChild( parent: Version )( child: Version ) : VersionVertex
-   def insertRetroParent( child: Version )( parent: Version ) : VersionVertex
-   def insertRetroChild( parent: Version )( child: Version ) : VersionVertex
+   def insertRoot( version: Version ) : VersionTreeOrder
+   def insertChild( parent: Version )( child: Version ) : VersionTreeOrder
+   def insertRetroParent( child: Version )( parent: Version ) : VersionTreeOrder
+   def insertRetroChild( parent: Version )( child: Version ) : VersionTreeOrder
 
    def inspect {
       println( "--PRE--")
@@ -55,10 +53,12 @@ trait VersionTree {
 }
 
 trait Version {
-   val id:           Int
-   val rid:          Int               // randomized ID
-   val vertex:       VersionVertex
-   val tree:         VersionTree       // might be able to get rid of this!
+   def id:           Int
+   def rid:          Int               // randomized ID
+//   def vertex:       VersionVertex
+   def tree:         VersionTree       // might be able to get rid of this!
+   def preRec: PreOrder.Record[ Version ]
+   def postRec: PostOrder.Record[ Version ]
 
    def level: Int = tree.level
    
@@ -67,7 +67,7 @@ trait Version {
    def fallBack:     Version
 }
 
-case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
+//case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
 
 object Version {
    private val idSync = new AnyRef
@@ -96,7 +96,7 @@ object Version {
       new MultiVariantVersionImpl( v, tree, tree.insertChild( v ))
    }
 
-   private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionVertex ] = {
+   private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionTreeOrder ] = {
 
       // the new version's level is the maximum of the levels of
       // the ancestor versions, unless there is more than one
@@ -142,27 +142,27 @@ object Version {
       (id, rid)
    }
 
-   private abstract class AbstractVersionImpl( val tree: VersionTree, insertionFun: (Version) => VersionVertex )
+   private abstract class AbstractVersionImpl( val tree: VersionTree, insertionFun: (Version) => VersionTreeOrder )
    extends Version {
       val (id: Int, rid: Int) = nextID
-      val vertex = insertionFun( this )
+      val (preRec, postRec)   = insertionFun( this )
 
       override def toString = "v" + id
    }
 
-   private class VersionImpl( t: VersionTree, insFun: (Version) => VersionVertex )
+   private class VersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
    extends AbstractVersionImpl( t, insFun ) {
       def appendLevel = level
       def fallBack = this
    }
 
-   private class MultiNeutralVersionImpl( t: VersionTree, insFun: (Version) => VersionVertex )
+   private class MultiNeutralVersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
    extends AbstractVersionImpl( t, insFun ) {
       def appendLevel = level + 1
       def fallBack = this
    }
 
-   private class MultiVariantVersionImpl( n: Version, t: VersionTree, insFun: (Version) => VersionVertex )
+   private class MultiVariantVersionImpl( n: Version, t: VersionTree, insFun: (Version) => VersionTreeOrder )
    extends AbstractVersionImpl( t, insFun ) {
       def appendLevel = level + 1
       def fallBack = n
@@ -173,28 +173,28 @@ object Version {
       val preOrder   = new PreOrder[ Version ]
       val postOrder  = new PostOrder[ Version ]
 
-      def insertRoot( version: Version ) : VersionVertex = {
+      def insertRoot( version: Version ) : VersionTreeOrder = {
          val preRec  = preOrder.insertRoot( version )
          val postRec = postOrder.insertRoot( version )
-         VersionVertex( preRec, postRec )
+         (preRec, postRec)
       }
 
-      def insertChild( parent: Version )( child: Version ) : VersionVertex = {
-         val preRec  = preOrder.insertChild( parent.vertex.preRec, child )
-         val postRec = postOrder.insertChild( parent.vertex.postRec, child )
-         VersionVertex( preRec, postRec )
+      def insertChild( parent: Version )( child: Version ) : VersionTreeOrder = {
+         val preRec  = preOrder.insertChild( parent.preRec, child )
+         val postRec = postOrder.insertChild( parent.postRec, child )
+         (preRec, postRec)
       }
 
-      def insertRetroParent( child: Version )( parent: Version ) : VersionVertex = {
-         val preRec  = preOrder.insertRetroParent( child.vertex.preRec, parent )
-         val postRec = postOrder.insertRetroParent( child.vertex.postRec, parent )
-         VersionVertex( preRec, postRec )
+      def insertRetroParent( child: Version )( parent: Version ) : VersionTreeOrder = {
+         val preRec  = preOrder.insertRetroParent( child.preRec, parent )
+         val postRec = postOrder.insertRetroParent( child.postRec, parent )
+         (preRec, postRec)
       }
 
-      def insertRetroChild( parent: Version )( child: Version ) : VersionVertex = {
-         val preRec  = preOrder.insertRetroChild( parent.vertex.preRec, child )
-         val postRec = postOrder.insertRetroChild( parent.vertex.postRec, child )
-         VersionVertex( preRec, postRec )
+      def insertRetroChild( parent: Version )( child: Version ) : VersionTreeOrder = {
+         val preRec  = preOrder.insertRetroChild( parent.preRec, child )
+         val postRec = postOrder.insertRetroChild( parent.postRec, child )
+         (preRec, postRec)
       }
    }
 

@@ -35,9 +35,11 @@ import fingertree.FingerTree
  *    @version 0.11, 11-Apr-10
  */
 package object confluent {
-//   type Path  = Vector[ confluent.Version ]
-   type Path = FingerTree.IndexedSummed[ confluent.Version, Long ]
+//   type Path  = Vector[ Version ]
+   type Path = FingerTree.IndexedSummed[ Version, Long ]
 
-   def Path( vs: confluent.Version* ) : Path =
+   def Path( vs: Version* ) : Path =
       FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
+
+   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
 }

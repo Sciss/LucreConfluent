@@ -72,12 +72,12 @@ class OracleMap[ V ] private (val entries: List[ Tuple2[ Version, V ]]) {
          if( key.id < t.id ) {
             // ---- filter ----
             require( key.tree == t.tree )
-            val isLeftPre   = key.tree.preOrder.compare(  key.vertex.preRec,  t.vertex.preRec ) < 0
-            val isRightPost = key.tree.postOrder.compare( key.vertex.postRec, t.vertex.postRec ) > 0
+            val isLeftPre   = key.tree.preOrder.compare(  key.preRec,  t.preRec ) < 0
+            val isRightPost = key.tree.postOrder.compare( key.postRec, t.postRec ) > 0
             // ---- maxItem ----
             if( isLeftPre && isRightPost ) { // isAncestor ?
                bestO.map( best => {
-                  val isRightPre = key.tree.preOrder.compare( key.vertex.preRec, best._1.vertex.preRec ) > 0
+                  val isRightPre = key.tree.preOrder.compare( key.preRec, best._1.preRec ) > 0
                   if( isRightPre ) {  // isNearestAncestor ?
                      entry
                   } else {

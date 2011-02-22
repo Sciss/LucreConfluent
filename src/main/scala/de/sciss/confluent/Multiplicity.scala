@@ -1,5 +1,5 @@
 /*
- *  PackageObject.scala
+ *  Multiplicity.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -14,8 +14,8 @@
  *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  *	 General Public License for more details.
  *
- *	 You should have received a copy of the GNU General Public
- *	 License (gpl.txt) along with this software; if not, write to the Free Software
+ *  You should have received a copy of the GNU General Public
+ *  License (gpl.txt) along with this software; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  *
@@ -26,20 +26,14 @@
  *  Changelog:
  */
 
-package de.sciss
+package de.sciss.confluent
 
-import collection.immutable.{ Vector }
-import fingertree.FingerTree
 
-/**
- *    @version 0.11, 11-Apr-10
- */
-package object confluent {
-//   type Path  = Vector[ Version ]
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
-
-   def Path( vs: Version* ) : Path =
-      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
-
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
+trait Multiplicity {
+   def lastVariant : Version
+   def currentVariant : Version
+//   def useVariant( v: Version ) : Multiplicity
+//   def useNeutral : Multiplicity
+//   def variant[ T ]( thunk: => T ) : T
+   def neutralVersion: VersionPath
 }

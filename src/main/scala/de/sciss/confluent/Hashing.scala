@@ -31,6 +31,28 @@ package de.sciss.confluent
 import de.sciss.fingertree.FingerTree
 import collection.immutable.LongMap
 
+/*
+
+scala> import de.sciss.confluent.Hashing._
+import de.sciss.confluent.Hashing._
+
+scala> val s = collection.immutable.LongMap( 2L -> (), 55L -> (), 127L -> () )
+s: scala.collection.immutable.LongMap[Unit] = LongMap((2,()), (55,()), (127,()))
+
+scala> maxPrefix( 55L, s )
+floor = 0, ceil = 5, k = 3
+   7 -> no
+floor = 3, ceil = 5, k = 1
+   1 -> no
+floor = 1, ceil = 5, k = 2
+   3 -> no
+floor = 2, ceil = 5, k = 1
+   1 -> no
+res0: Long = 0
+
+// --> TODO : buildSet must include the prefixes (here: all prefixes of 2, 55, 127) !
+
+ */
 object Hashing {
    type IntSeq    = FingerTree.IndexedSummed[ Int, Long ]
    type IntSeqSet = LongMap[ IntSeq ]
@@ -79,23 +101,27 @@ object Hashing {
     */
    def maxPrefix( sum: Long, set: LongMap[ _ ]) : Long = {
       val m       = bitCount( sum )
-      var step    = (m + 1) >> 1
-      var k       = m - step
+      var k       = (m + 1) >> 1
       var found   = 0L
+      var ceil    = m
+      var floor   = 0
+      var kp      = 0
       do {
+println( "floor = " + floor + ", ceil = " + ceil + ", k = " + k )
          val pre  = prefix( sum, k, m )
+         kp       = k
          if( set.contains( pre )) {
-            if( step == 0 ) return pre
-            found = pre
-            k    += step
-            step  = if( step > 1 ) (step + 1) >> 1 else 0
+println( "   " + pre + " -> found" )
+            found    = pre
+            k        = (ceil + k) >> 1
+            ceil     = kp
          } else {
-            if( step == 0 ) return found
-            k    -= step
-            step  = if( step > 1 ) (step + 1) >> 1 else 0
+println( "   " + pre + " -> no" )
+            k        = (floor + k) >> 1
+            floor    = kp
          }
-      } while( true )
-      error( "Never here" )
+      } while( kp != k )
+      found
    }
 
 //   def test( m: Int, hit: Int ) : (Int, Int) = {
@@ -140,7 +166,7 @@ object Hashing {
    // For a list of algorithms see:
    // http://gurmeet.net/puzzles/fast-bit-counting-routines/
    // If we figure that this is a bottleneck somehow, we can still do an 11- or 16-bit version...
-   private val bitsInByte = Array.tabulate[ Byte ]( 256 )( i => {
+   val bitsInByte = Array.tabulate[ Byte ]( 256 )( i => {
       var cnt = 0
       var n   = i
       while( n > 0 ) {
@@ -150,7 +176,7 @@ object Hashing {
       cnt.toByte
    })
 
-   private val eraseMSBMask = Array.tabulate[ Byte ]( 256 )( i => {
+   val eraseMSBMask = Array.tabulate[ Byte ]( 256 )( i => {
       var bit = -1
       var n   = i
       while( n > 0 ) {

@@ -124,28 +124,31 @@ object Hashing {
       var b0      = n & 0xFF
       val b0c     = bitsInByte( b0 )
       if( b0c >= zero ) {
-         while( zero > 0 ) { b0 &= eraseMSBMask( b0 ); zero -= 1 }
+         while( zero > 0 ) { b0 &= eraseLSBMask( b0 ); zero -= 1 }
          (n & 0xFFFFFF00) | b0
       } else {
+         zero       -= b0c
          var b1      = (n >> 8) & 0xFF
          val b1c     = bitsInByte( b1 )
          if( b1c >= zero ) {
-            while( zero > 0 ) { b1 &= eraseMSBMask( b1 ); zero -= 1 }
+            while( zero > 0 ) { b1 &= eraseLSBMask( b1 ); zero -= 1 }
             n & 0xFFFF0000 | (b1 << 8)
          } else {
+            zero       -= b1c
             var b2      = (n >> 16) & 0xFF
             val b2c     = bitsInByte( b2 )
             if( b2c >= zero ) {
-               while( zero > 0 ) { b2 &= eraseMSBMask( b2 ); zero -= 1 }
+               while( zero > 0 ) { b2 &= eraseLSBMask( b2 ); zero -= 1 }
                n & 0xFF000000 | (b2 << 16)
             } else {
+               zero       -= b2c
                var b3      = (n >> 24) & 0xFF
                val b3c     = bitsInByte( b3 )
                if( b3c >= zero ) {
-                  while( zero > 0 ) { b3 &= eraseMSBMask( b3 ); zero -= 1 }
+                  while( zero > 0 ) { b3 &= eraseLSBMask( b3 ); zero -= 1 }
                   b3 << 24
                } else {
-                  throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
+                  throw new IndexOutOfBoundsException( n.toString + ", " + j.toString + ", " + m.toString )
                }
             }
          }
@@ -236,13 +239,25 @@ println( "   " + presz + " -> no" )
       cnt.toByte
    })
 
-   val eraseMSBMask = Array.tabulate[ Byte ]( 256 )( i => {
-      var bit = -1
-      var n   = i
-      while( n > 0 ) {
-         n  >>= 1
-         bit += 1
+//   val eraseMSBMask = Array.tabulate[ Byte ]( 256 )( i => {
+//      var bit = -1
+//      var n   = i
+//      while( n > 0 ) {
+//         n  >>= 1
+//         bit += 1
+//      }
+//      (~(1 << bit)).toByte
+//   })
+
+   val eraseLSBMask = Array.tabulate[ Byte ]( 256 )( i => {
+      if( i == 0 ) 0xFF.toByte else {
+         var bit = 0
+         var n   = i
+         while( (n & 1) == 0 ) {
+            n  >>= 1
+            bit += 1
+         }
+         (~(1 << bit)).toByte
       }
-      (~(1 << bit)).toByte
    })
 }

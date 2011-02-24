@@ -29,13 +29,14 @@
 package de.sciss.confluent
 
 import de.sciss.fingertree.FingerTree
+import collection.breakOut
 import collection.immutable.{IntMap, LongMap}
 import collection.mutable.{Set => MSet}
 import util.Random
 
 object Hashing {
    type IntSeq    = FingerTree.IndexedSummed[ Int, Long ]
-   type IntSeqSet = LongMap[ IntSeq ]
+   type IntSeqMap = LongMap[ IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
    val emptyIntSeq = IntSeq()
 
@@ -77,7 +78,18 @@ object Hashing {
 
 //   def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
 
-   def buildSet( ss: IntSeq* ) : IntSeqSet = LongMap( ss.flatMap( buildPrefixes( _ ).map( s => s.sum -> s )): _* )
+   def buildFullSeqMap( ss: IntSeq* ) : IntSeqMap  = ss.map( s => s.sum -> s )( breakOut )
+   def buildPreSeqMap( ss: IntSeq* ) : IntSeqMap   = ss.flatMap( buildPrefixes( _ ).map( s => s.sum -> s ))( breakOut )
+
+   def buildHashTable( ss: IntSeq* ) : IntSeqMap = {
+      val fullSeqMap = buildFullSeqMap( ss: _* )
+      val preSeqMap  = buildPreSeqMap( ss: _* )
+      buildHashTable( fullSeqMap, preSeqMap )
+   }
+
+   def buildHashTable( fullSeqMap: IntSeqMap, preSeqMap: IntSeqMap ) : IntSeqMap =
+      preSeqMap.view.map( entry => entry._1 -> maxPrefix( entry._2, fullSeqMap )).filter( _._2.nonEmpty )
+         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
    def buildPrefixes( s: IntSeq ) : Seq[ IntSeq ] = {
       val sz   = s.size
@@ -86,12 +98,12 @@ object Hashing {
       (1 until m).map( j => s.take( prefix( sz, j, m ))) :+ s
    }
 
-   def example : (Seq[ IntSeq ], IntSeqSet) = {
+   def example : (Seq[ IntSeq ], IntSeqMap) = {
       val p    = genSeq( 298 )
       val q    = genSeq( 17 )
       val k    = p.take( 272 )
       val seq  = List( p, q, k )
-      val set  = buildSet( seq: _* )
+      val set  = buildHashTable( seq: _* )
       seq -> set
    }
 
@@ -157,6 +169,13 @@ object Hashing {
 
 //   def test( n: Int ) { val m = bitCount( n ); for( i <- 0 to m ) println( (prefix( n, i, m ) | 0x100).toBinaryString.substring( 1 ))}
 
+   def test {
+      val (Seq( p, q, k ), set) = example
+      val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+      assert( set == set2, "assertion 1" )
+      assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
+   }
+
    /**
     * Performs ceil(log2(bitCount(sum))+1 prefix calculations and lookups.
     */
@@ -218,7 +237,7 @@ println( "   " + presz + " -> no" )
 //      }
 //   }
 
-//   def maxPrefix( s: IntSeq, set: IntSeqSet ) : IntSeq = {
+//   def maxPrefix( s: IntSeq, set: IntSeqMap ) : IntSeq = {
 //      val ssum = s.sum
 //      if( set.contains( ssum )) s else {
 //         val m = bitCount( ssum )

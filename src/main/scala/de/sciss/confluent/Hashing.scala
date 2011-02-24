@@ -103,8 +103,10 @@ object Hashing {
       val q    = genSeq( 17 )
       val k    = p.take( 272 )
       val seq  = List( p, q, k )
-      val set  = buildHashTable( seq: _* )
-      seq -> set
+//      val hash = buildHashTable( seq: _* )
+println( "Warning: buildHashTable not yet working" )
+val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+      seq -> hash
    }
 
 //   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))
@@ -169,6 +171,12 @@ object Hashing {
 
 //   def test( n: Int ) { val m = bitCount( n ); for( i <- 0 to m ) println( (prefix( n, i, m ) | 0x100).toBinaryString.substring( 1 ))}
 
+   def test2 {
+      val (Seq( p, q, k ), hash) = example
+      val res = maxPrefix( p, hash ).size
+      println( res )
+   }
+
    def test {
       val (Seq( p, q, k ), set) = example
       val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
@@ -176,10 +184,41 @@ object Hashing {
       assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
    }
 
+   def maxPrefix( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+      val sz      = s.size
+      val m       = bitCount( sz )
+      // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
+      val is      = Array.tabulate( m )( i => i -> prefix( sz, i + 1, m ))
+
+println( "is : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
+
+      val noPres  = is.filter( tup => !hash.contains( s.take( tup._2 ).sum ))
+println( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
+
+      // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
+      if( noPres.isEmpty ) return s
+      val (j, ij) = noPres.min      // j - 1 actually
+
+      val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
+      val twopk   = ij - ijm
+println( "j = " + (j + 1 ) + ", i_j = " + ij + ", i_j-1 = " + ijm + ", 2^k = " + twopk )
+      var d       = twopk >> 1
+      var twoprho = d
+println( "d = " + d + ", 2^rho = " + twoprho )
+      while( twoprho >= 2 ) {
+         twoprho >>= 1
+         val pre  = s.take( ijm + d )
+         d = if( hash.contains( pre.sum )) d + twoprho else d - twoprho
+println( "d = " + d + ", 2^rho = " + twoprho )
+      }
+      val pre1 = s.take( ijm + d )
+      if( hash.contains( pre1.sum )) pre1 else pre1.dropRight( 1 )
+   }
+
    /**
     * Performs ceil(log2(bitCount(sum))+1 prefix calculations and lookups.
     */
-   def maxPrefix( s: IntSeq, set: LongMap[ _ ]) : IntSeq = {
+   def maxPrefixXXX( s: IntSeq, set: LongMap[ _ ]) : IntSeq = {
       val sz      = s.size
       val m       = bitCount( sz )
       var k       = (m + 1) >> 1

@@ -61,6 +61,10 @@ object Hashing {
       error( "Never here" )
    }
 
+   def appendn( s: IntSeq, n: Int ) : IntSeq = (0 until n).foldLeft( s )( (s1, _ ) => append( s1 ))
+
+   def genSeq( n: Int ) : IntSeq = appendn( emptyIntSeq, n )
+
    /**
     * Counts the 1 bits in an integer.
     */
@@ -71,30 +75,24 @@ object Hashing {
       bitsInByte( n >>> 24 )
    }
 
-   def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
+//   def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
 
-   def buildSet( ss: IntSeq* ) : IntSeqSet = {
-      LongMap( ss.flatMap { s =>
-//         val sum  = s.sum
-//         val m    = bitCount( sum )
-//         (1 to m).map( j => prefix( sum, j, m ))
+   def buildSet( ss: IntSeq* ) : IntSeqSet = LongMap( ss.flatMap( buildPrefixes( _ ).map( s => s.sum -> s )): _* )
 
-         val sz   = s.size
-         val m    = bitCount( sz )
-         (s.sum -> s) +: (1 until m).map( j => {
-            val pre  = s.take( prefix( sz, j, m ))
-            pre.sum -> pre
-         })
+   def buildPrefixes( s: IntSeq ) : Seq[ IntSeq ] = {
+      val sz   = s.size
+      val m    = bitCount( sz )
+//      (1 to m).map( j => s.take( prefix( sz, j, m )))
+      (1 until m).map( j => s.take( prefix( sz, j, m ))) :+ s
+   }
 
-//         (1 to s.size).flatMap { sz =>
-//            val m    = bitCount( sz )
-//            val sub  = s.take( sz )
-//            (1 to m).map( j => {
-//               val pre  = sub.take( prefix( sz, j, m ))
-//               pre.sum -> pre
-//            })
-//         }
-      } :_* )
+   def example : (Seq[ IntSeq ], IntSeqSet) = {
+      val p    = genSeq( 298 )
+      val q    = genSeq( 17 )
+      val k    = p.take( 272 )
+      val seq  = List( p, q, k )
+      val set  = buildSet( seq: _* )
+      seq -> set
    }
 
 //   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))

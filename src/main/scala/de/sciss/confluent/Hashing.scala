@@ -29,34 +29,37 @@
 package de.sciss.confluent
 
 import de.sciss.fingertree.FingerTree
-import collection.immutable.LongMap
+import collection.immutable.{IntMap, LongMap}
+import collection.mutable.{Set => MSet}
+import util.Random
 
-/*
-
-scala> import de.sciss.confluent.Hashing._
-import de.sciss.confluent.Hashing._
-
-scala> val s = collection.immutable.LongMap( 2L -> (), 55L -> (), 127L -> () )
-s: scala.collection.immutable.LongMap[Unit] = LongMap((2,()), (55,()), (127,()))
-
-scala> maxPrefix( 55L, s )
-floor = 0, ceil = 5, k = 3
-   7 -> no
-floor = 3, ceil = 5, k = 1
-   1 -> no
-floor = 1, ceil = 5, k = 2
-   3 -> no
-floor = 2, ceil = 5, k = 1
-   1 -> no
-res0: Long = 0
-
-// --> TODO : buildSet must include the prefixes (here: all prefixes of 2, 55, 127) !
-
- */
 object Hashing {
    type IntSeq    = FingerTree.IndexedSummed[ Int, Long ]
    type IntSeqSet = LongMap[ IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
+   val emptyIntSeq = IntSeq()
+
+   private val rndTaken    = MSet( 0 ) // .empty[ Int ]
+   private val sumsTaken   = MSet.empty[ Long ]
+   private val rnd         = new Random()
+
+   /**
+    * Test function to create a new version vertex
+    * and append it to a given path. Warning: Not synchronized.
+    */
+   def append( s: IntSeq ) : IntSeq = {
+      while( true ) {
+         val r = rnd.nextInt() & 0x7FFFFFFF
+         if( !rndTaken.contains( r )) {   // unique vertices
+            val res = s :+ r
+            if( sumsTaken.add( res.sum )) {  // unique sums
+               rndTaken.add( r )
+               return res
+            }
+         }
+      }
+      error( "Never here" )
+   }
 
    /**
     * Counts the 1 bits in an integer.
@@ -70,28 +73,85 @@ object Hashing {
 
    def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
 
-   def buildSet( ss: IntSeq* ) : IntSeqSet = LongMap( ss.map( s => (s.sum, s) ): _* )
+   def buildSet( ss: IntSeq* ) : IntSeqSet = {
+      LongMap( ss.flatMap { s =>
+//         val sum  = s.sum
+//         val m    = bitCount( sum )
+//         (1 to m).map( j => prefix( sum, j, m ))
 
-   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))
+         val sz   = s.size
+         val m    = bitCount( sz )
+         (s.sum -> s) +: (1 until m).map( j => {
+            val pre  = s.take( prefix( sz, j, m ))
+            pre.sum -> pre
+         })
 
-   def prefix( n: Long, j: Int, m: Int ) : Long = {
+//         (1 to s.size).flatMap { sz =>
+//            val m    = bitCount( sz )
+//            val sub  = s.take( sz )
+//            (1 to m).map( j => {
+//               val pre  = sub.take( prefix( sz, j, m ))
+//               pre.sum -> pre
+//            })
+//         }
+      } :_* )
+   }
+
+//   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))
+//
+//   def prefix( n: Long, j: Int, m: Int ) : Long = {
+//      var zero    = m - j
+//      var shifted = n
+//      var shift   = 0
+//      var mask    = 0xFFFFFFFFFFFFFF00L
+//      while( shifted != 0 ) {
+//         var b       = (shifted & 0xFF).toInt
+//         val bc      = bitsInByte( b )
+//         if( bc >= zero ) {
+//            while( zero > 0 ) { b &= eraseMSBMask( b ); zero -= 1 }
+////            return( n & mask | b.toLong << shift )
+//            return( n & mask | (b.toLong << shift) )
+//         }
+//         shift     += 8
+//         shifted >>>= 8
+//         mask     <<= 8
+//      }
+//      throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
+//   }
+
+   def prefix( n: Int, j: Int ) : Int = prefix( n, j, bitCount( n ))
+
+   def prefix( n: Int, j: Int, m: Int ) : Int = {
       var zero    = m - j
-      var shifted = n
-      var shift   = 0
-      var mask    = 0xFFFFFFFFFFFFFF00L
-      while( shifted != 0 ) {
-         var b       = (shifted & 0xFF).toInt
-         val bc      = bitsInByte( b )
-         if( bc >= zero ) {
-            while( zero > 0 ) { b &= eraseMSBMask( b ); zero -= 1 }
-//            return( n & mask | b.toLong << shift )
-            return( n & mask | (b.toLong << shift) )
+      var b0      = n & 0xFF
+      val b0c     = bitsInByte( b0 )
+      if( b0c >= zero ) {
+         while( zero > 0 ) { b0 &= eraseMSBMask( b0 ); zero -= 1 }
+         (n & 0xFFFFFF00) | b0
+      } else {
+         var b1      = (n >> 8) & 0xFF
+         val b1c     = bitsInByte( b1 )
+         if( b1c >= zero ) {
+            while( zero > 0 ) { b1 &= eraseMSBMask( b1 ); zero -= 1 }
+            n & 0xFFFF0000 | (b1 << 8)
+         } else {
+            var b2      = (n >> 16) & 0xFF
+            val b2c     = bitsInByte( b2 )
+            if( b2c >= zero ) {
+               while( zero > 0 ) { b2 &= eraseMSBMask( b2 ); zero -= 1 }
+               n & 0xFF000000 | (b2 << 16)
+            } else {
+               var b3      = (n >> 24) & 0xFF
+               val b3c     = bitsInByte( b3 )
+               if( b3c >= zero ) {
+                  while( zero > 0 ) { b3 &= eraseMSBMask( b3 ); zero -= 1 }
+                  b3 << 24
+               } else {
+                  throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
+               }
+            }
          }
-         shift     += 8
-         shifted >>>= 8
-         mask     <<= 8
       }
-      throw new IndexOutOfBoundsException( j.toString + ", " + m.toString )
    }
 
 //   def test( n: Int ) { val m = bitCount( n ); for( i <- 0 to m ) println( (prefix( n, i, m ) | 0x100).toBinaryString.substring( 1 ))}
@@ -99,24 +159,26 @@ object Hashing {
    /**
     * Performs ceil(log2(bitCount(sum))+1 prefix calculations and lookups.
     */
-   def maxPrefix( sum: Long, set: LongMap[ _ ]) : Long = {
-      val m       = bitCount( sum )
+   def maxPrefix( s: IntSeq, set: LongMap[ _ ]) : IntSeq = {
+      val sz      = s.size
+      val m       = bitCount( sz )
       var k       = (m + 1) >> 1
-      var found   = 0L
+      var found   = emptyIntSeq
       var ceil    = m
       var floor   = 0
       var kp      = 0
       do {
 println( "floor = " + floor + ", ceil = " + ceil + ", k = " + k )
-         val pre  = prefix( sum, k, m )
-         kp       = k
-         if( set.contains( pre )) {
-println( "   " + pre + " -> found" )
+         val presz   = prefix( sz, k, m )
+         kp          = k
+         val pre     = s.take( presz )
+         if( set.contains( pre.sum )) {
+println( "   " + presz + " -> found" )
             found    = pre
-            k        = (ceil + k) >> 1
+            k        = (ceil + 1 + k) >> 1
             ceil     = kp
          } else {
-println( "   " + pre + " -> no" )
+println( "   " + presz + " -> no" )
             k        = (floor + k) >> 1
             floor    = kp
          }

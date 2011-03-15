@@ -98,6 +98,14 @@ object Hashing {
       (1 until m).map( j => s.take( prefix( sz, j, m ))) :+ s
    }
 
+   def main( args: Array[ String ]) {
+      val (seq, hash) = example
+      val Seq( p, q, k ) = seq
+//      println( "Assert maxPrefix( q :+ _ ) == q         ?  " + (maxPrefix( append( q ), hash ).toList      == q.toList) )
+//      println( "Assert maxPrefix( p ) == p              ?  " + (maxPrefix( p, hash ).toList                == p.toList) )
+      println( "Assert maxPrefix( p.dropRight(1) ) == k ?  " + (maxPrefix( p.dropRight( 1 ), hash ).toList == k.toList) )
+   }
+
    def example : (Seq[ IntSeq ], IntSeqMap) = {
       val p    = genSeq( 298 )
       val q    = genSeq( 17 )
@@ -105,7 +113,8 @@ object Hashing {
       val seq  = List( p, q, k )
 //      val hash = buildHashTable( seq: _* )
 println( "Warning: buildHashTable not yet working" )
-val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+//      val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
       seq -> hash
    }
 
@@ -179,7 +188,7 @@ val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -
 
    def test {
       val (Seq( p, q, k ), set) = example
-      val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+      val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
       assert( set == set2, "assertion 1" )
       assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
    }
@@ -187,19 +196,24 @@ val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -
    def maxPrefix( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
       val sz      = s.size
       val m       = bitCount( sz )
-      // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
-      val is      = Array.tabulate( m )( i => i -> prefix( sz, i + 1, m ))
+// Oki, here's my guess how it should work. forget about the next nine lines
+//      // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
+//      val is      = Array.tabulate( m )( i => i -> prefix( sz, i + 1, m ))
+//      println( "is : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
+//      val noPres  = is.filter( tup => !hash.contains( s.take( tup._2 ).sum ))
+//      println( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
+//      // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
+//      if( noPres.isEmpty ) return s
+//      val (j, ij) = noPres.min      // j - 1 actually
+//      val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
+// ...and instead determine j this way:
+      val is      = Array.tabulate( m )( i => prefix( sz, i + 1, m ))
+println( "is : " + is.zipWithIndex.map( tup => (tup._2 + 1).toString + " -> " + tup._1 + " (= " + tup._1.toBinaryString + "b)" ).mkString( ", " ))
+      val j       = is.lastIndexWhere( i => hash.contains( s.take( i ).sum )) + 1
+      if( j == m ) return s
+      val ij      = is( j )
+      val ijm     = if( j == 0 ) 0 else is( j - 1 )
 
-println( "is : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
-
-      val noPres  = is.filter( tup => !hash.contains( s.take( tup._2 ).sum ))
-println( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2.toBinaryString ).mkString( ", " ))
-
-      // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
-      if( noPres.isEmpty ) return s
-      val (j, ij) = noPres.min      // j - 1 actually
-
-      val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
       val twopk   = ij - ijm
 println( "j = " + (j + 1 ) + ", i_j = " + ij + ", i_j-1 = " + ijm + ", 2^k = " + twopk )
       var d       = twopk >> 1

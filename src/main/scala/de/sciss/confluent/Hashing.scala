@@ -38,7 +38,8 @@ object Hashing {
    type IntSeq    = FingerTree.IndexedSummed[ Int, Long ]
    type IntSeqMap = LongMap[ IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
-   val emptyIntSeq = IntSeq()
+   val emptyIntSeq   = IntSeq()
+   val emptyHash     = LongMap.empty[ IntSeq ]
 
    private val rndTaken    = MSet( 0 ) // .empty[ Int ]
    private val sumsTaken   = MSet.empty[ Long ]
@@ -78,18 +79,40 @@ object Hashing {
 
 //   def bitCount( n: Long ) : Int = bitCount( n.toInt ) + bitCount( (n >> 32).toInt )
 
-   def buildFullSeqMap( ss: IntSeq* ) : IntSeqMap  = ss.map( s => s.sum -> s )( breakOut )
-   def buildPreSeqMap( ss: IntSeq* ) : IntSeqMap   = ss.flatMap( buildPrefixes( _ ).map( s => s.sum -> s ))( breakOut )
+//   def buildFullSeqMap( ss: IntSeq* ) : IntSeqMap  = ss.map( s => s.sum -> s )( breakOut )
+//   def buildPreSeqMap( ss: IntSeq* ) : IntSeqMap   = ss.flatMap( buildPrefixes( _ ).map( s => s.sum -> s ))( breakOut )
+//
+//   def buildHashTable( ss: IntSeq* ) : IntSeqMap = {
+//      val fullSeqMap = buildFullSeqMap( ss: _* )
+//      val preSeqMap  = buildPreSeqMap( ss: _* )
+//      buildHashTable( fullSeqMap, preSeqMap )
+//   }
+//
+//   def buildHashTable( fullSeqMap: IntSeqMap, preSeqMap: IntSeqMap ) : IntSeqMap =
+//      preSeqMap.view.map( entry => entry._1 -> maxPrefix( entry._2, fullSeqMap )).filter( _._2.nonEmpty )
+//         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
-   def buildHashTable( ss: IntSeq* ) : IntSeqMap = {
-      val fullSeqMap = buildFullSeqMap( ss: _* )
-      val preSeqMap  = buildPreSeqMap( ss: _* )
-      buildHashTable( fullSeqMap, preSeqMap )
+   def add( s: IntSeq, hash: IntSeqMap ) : IntSeqMap = {
+      println( "add.... " + (s.size) )
+      val sz   = s.size
+      val m    = bitCount( sz )
+      var j    = 1
+      var res  = hash
+//      var pre  = emptyIntSeq
+      while( j < m ) {
+         val i    = prefix( sz, j, m )
+         val sp   = s.take( i )
+         val sps  = sp.sum                         // "... we insert the values sum(\tau') ... to the table H"
+         if( !hash.contains( sps )) {              // ", if they are not already there."
+            println( "....checkin for prefix i = " + i )
+            val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in 'Pi"
+            println( "....-> " + pre.size )
+            if( pre.nonEmpty ) res += sps -> pre   // ", and store a pointer to a representation of this sequence."
+         }
+      j += 1 }
+      println( "....done" )
+      res + (s.sum -> s)
    }
-
-   def buildHashTable( fullSeqMap: IntSeqMap, preSeqMap: IntSeqMap ) : IntSeqMap =
-      preSeqMap.view.map( entry => entry._1 -> maxPrefix( entry._2, fullSeqMap )).filter( _._2.nonEmpty )
-         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
    def buildPrefixes( s: IntSeq ) : Seq[ IntSeq ] = {
       val sz   = s.size
@@ -99,24 +122,38 @@ object Hashing {
    }
 
    def main( args: Array[ String ]) {
-      val (seq, hash) = example
-      val Seq( p, q, k ) = seq
-//      println( "Assert maxPrefix( q :+ _ ) == q         ?  " + (maxPrefix( append( q ), hash ).toList      == q.toList) )
-//      println( "Assert maxPrefix( p ) == p              ?  " + (maxPrefix( p, hash ).toList                == p.toList) )
-      println( "Assert maxPrefix( p.dropRight(1) ) == k ?  " + (maxPrefix( p.dropRight( 1 ), hash ).toList == k.toList) )
+      example1
    }
 
-   def example : (Seq[ IntSeq ], IntSeqMap) = {
+   def test3 {
+      val (seq, hash) = example1
+      val Seq( p, q, k ) = seq
+      println( "Assert maxPrefix( q :+ _ ) == q         ?  " + (maxPrefixValue( append( q ), hash ).toList      == q.toList) )
+      println( "Assert maxPrefix( p ) == p              ?  " + (maxPrefixValue( p, hash ).toList                == p.toList) )
+      println( "Assert maxPrefix( p.dropRight(1) ) == k ?  " + (maxPrefixValue( p.dropRight( 1 ), hash ).toList == k.toList) )
+   }
+
+   def example1 : (Seq[ IntSeq ], IntSeqMap) = {
       val p    = genSeq( 298 )
       val q    = genSeq( 17 )
       val k    = p.take( 272 )
       val seq  = List( p, q, k )
 //      val hash = buildHashTable( seq: _* )
-println( "Warning: buildHashTable not yet working" )
-//      val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
-val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
+//println( "Warning: buildHashTable not yet working" )
+////      val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
+//val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
+      val hash = add( q, add( p, add( k, emptyHash )))
       seq -> hash
    }
+
+   def example2 : (Seq[ IntSeq ], IntSeqMap) = {
+      val a       = genSeq(1)
+      val hash0   = add( a, LongMap.empty )
+      val b       = appendn( a, 5 )
+      val hash1   = add( b, hash0 )
+      List( a, b ) -> hash1
+   }
+
 
 //   def prefix( n: Long, j: Int ) : Long = prefix( n, j, bitCount( n ))
 //
@@ -180,20 +217,61 @@ val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -
 
 //   def test( n: Int ) { val m = bitCount( n ); for( i <- 0 to m ) println( (prefix( n, i, m ) | 0x100).toBinaryString.substring( 1 ))}
 
-   def test2 {
-      val (Seq( p, q, k ), hash) = example
-      val res = maxPrefix( p, hash ).size
-      println( res )
+//   def test2 {
+//      val (Seq( p, q, k ), hash) = example1
+//      val res = maxPrefix( p, hash ).size
+//      println( res )
+//   }
+
+//   def test {
+//      val (Seq( p, q, k ), set) = example
+//      val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
+//      assert( set == set2, "assertion 1" )
+//      assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
+//   }
+
+   def maxPrefixKey( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+      val pre1 = maxPrefix1( s, hash )
+      val res = if( hash.contains( pre1.sum )) pre1 else pre1.dropRight( 1 )
+      println( "res.size = " + res.size )
+      res
    }
 
-   def test {
-      val (Seq( p, q, k ), set) = example
-      val set2 = LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
-      assert( set == set2, "assertion 1" )
-      assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
+   private def maxPrefix1( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+      val sz      = s.size
+      val m       = bitCount( sz )
+      // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
+      val is      = Array.tabulate( m )( i => i -> prefix( sz, i + 1, m ))
+      println( "is     : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
+      val noPres  = is.filter( tup => !hash.contains( s.take( tup._2 ).sum ))
+      println( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
+      // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
+      if( noPres.isEmpty ) return s
+      val (j, ij) = noPres.min      // j - 1 actually
+      val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
+
+      val twopk   = ij - ijm
+println( "j = " + (j + 1 ) + ", i_j = " + ij + ", i_j-1 = " + ijm + ", 2^k = " + twopk )
+      var d       = twopk >> 1
+      var twoprho = d
+println( "d = " + d + ", 2^rho = " + twoprho )
+      while( twoprho >= 2 ) {
+         twoprho >>= 1
+         val pre  = s.take( ijm + d )
+         d = if( hash.contains( pre.sum )) d + twoprho else d - twoprho
+println( "d = " + d + ", 2^rho = " + twoprho )
+      }
+      s.take( ijm + d )
    }
 
-   def maxPrefix( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+   def maxPrefixValue( s: IntSeq, hash: LongMap[ IntSeq ]) : IntSeq = {
+      val pre1 = maxPrefix1( s, hash )
+      val res  = hash.getOrElse( pre1.sum, hash.getOrElse( pre1.dropRight( 1 ).sum, emptyIntSeq ))
+      println( "res.size = " + res.size )
+      res
+   }
+
+   def maxPrefixZZZ( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
       val sz      = s.size
       val m       = bitCount( sz )
 // Oki, here's my guess how it should work. forget about the next nine lines

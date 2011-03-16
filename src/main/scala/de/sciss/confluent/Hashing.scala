@@ -107,7 +107,7 @@ object Hashing {
             println( "....checkin for prefix i = " + i )
             val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in 'Pi"
             println( "....-> " + pre.size )
-            if( pre.nonEmpty ) res += sps -> pre   // ", and store a pointer to a representation of this sequence."
+            /* if( pre.nonEmpty ) */ res += sps -> pre   // ", and store a pointer to a representation of this sequence."
          }
       j += 1 }
       println( "....done" )

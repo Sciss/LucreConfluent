@@ -58,7 +58,7 @@ object Version {
    private val idRnd       = new util.Random()  // XXX is this thread-safe?
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
-   private val idRef = Ref( IDGen( 0, ISet( 0 ), ISet.empty ))
+   private val idRef = Ref( IDGen( 1 /* 0 */, ISet( 0 ), ISet.empty ))
 
    val init: Version = {
       val tree       = VersionTree.empty( 0 )

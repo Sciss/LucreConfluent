@@ -55,7 +55,8 @@ trait VersionPath {
 object VersionPath {
    val init: VersionPath = {
       val vinit = Version.init
-      new VersionPathImpl( vinit, Path( vinit, vinit ))
+//      new VersionPathImpl( vinit, Path( vinit, vinit ))
+      new VersionPathImpl( vinit, Path( vinit )) // XXX full path
    }
 
    def wrap( path: Path ) : VersionPath = VersionPathImpl( path.last, path )

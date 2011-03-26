@@ -1,5 +1,5 @@
 /*
- *  PackageObject.scala
+ *  Var.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -26,23 +26,19 @@
  *  Changelog:
  */
 
-package de.sciss
+package de.sciss.confluent
 
-import collection.immutable.{ Vector }
-import fingertree.FingerTree
-
-/**
- *    @version 0.11, 11-Apr-10
- */
-package object confluent {
-//   type Path  = Vector[ Version ]
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
-
-   def Path( vs: Version* ) : Path =
-      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
-
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
-
-   type Ct = CtxLike
-   type Vr[ C, T ] = EVar[ C, T ]
+trait EVar[ C, T ] {
+   def get( implicit c: C ) : T
+   def set( v: T )( implicit c: C ) : Unit
 }
+
+trait KVar[ C, T ] extends EVar[ C, T ]  {
+   def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
+}
+
+//trait PVar[ C, T ] extends EVar[ C, T ]  {
+//   def pRange( r: Interval )( implicit c: CtxLike ) : Traversable[ (Period, T) ]
+//}
+//
+//trait BVar[ C, T ] extends KVar[ C, T ] with PVar[ C, T ]

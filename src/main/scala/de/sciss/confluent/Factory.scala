@@ -1,5 +1,5 @@
 /*
- *  PackageObject.scala
+ *  Factory.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -26,23 +26,21 @@
  *  Changelog:
  */
 
-package de.sciss
+package de.sciss.confluent
 
-import collection.immutable.{ Vector }
-import fingertree.FingerTree
+import impl._
 
-/**
- *    @version 0.11, 11-Apr-10
- */
-package object confluent {
-//   type Path  = Vector[ Version ]
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
+object Factory {
+//   def proc[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]]( name: String )( implicit sys: System[ C, V ], c: C ) : Proc[ C, V ] =
+//      ProcImpl[ C, V ]( name )
+//
+//   def group[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]]( name: String )( implicit sys: System[ C, V ], c: C ) : ProcGroup[ C, V ] =
+//      ProcGroupImpl[ C, V ]( name )
 
-   def Path( vs: Version* ) : Path =
-      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
+   private val hsf = new HashedStoreFactory[ Version ]
 
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
-
-   type Ct = CtxLike
-   type Vr[ C, T ] = EVar[ C, T ]
+   def esystem : ESystem = ESystemImpl
+   def ksystem : KSystem = KSystemImpl( hsf )
+//   def psystem : PSystem = error( "NOT YET IMPLEMENTED" ) // PSystemImpl()
+//   def bsystem : BSystem = error( "NOT YET IMPLEMENTED" ) // BSystemImpl()
 }

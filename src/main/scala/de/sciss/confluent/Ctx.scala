@@ -1,5 +1,5 @@
 /*
- *  PackageObject.scala
+ *  Ctx.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -26,23 +26,30 @@
  *  Changelog:
  */
 
-package de.sciss
+package de.sciss.confluent
 
-import collection.immutable.{ Vector }
-import fingertree.FingerTree
+import concurrent.stm.InTxn
 
-/**
- *    @version 0.11, 11-Apr-10
- */
-package object confluent {
-//   type Path  = Vector[ Version ]
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
-
-   def Path( vs: Version* ) : Path =
-      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
-
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
-
-   type Ct = CtxLike
-   type Vr[ C, T ] = EVar[ C, T ]
+trait CtxLike {
+   def txn: InTxn
+   def eph : ECtx
 }
+
+trait ECtx extends CtxLike
+
+trait KCtxLike extends CtxLike {
+   def path : VersionPath
+   private[confluent] def writePath : VersionPath
+}
+
+trait KCtx extends KCtxLike
+
+//trait PCtxLike extends CtxLike {
+//   def period : Period
+//   def interval : Interval
+//   private[proc] def interval_=( i: Interval ) : Unit
+//}
+//
+//trait PCtx extends PCtxLike
+//
+//trait BCtx extends KCtxLike with PCtxLike

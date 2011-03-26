@@ -1,5 +1,5 @@
 /*
- *  PackageObject.scala
+ *  ModelImpl.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -26,23 +26,26 @@
  *  Changelog:
  */
 
-package de.sciss
+package de.sciss.confluent
+package impl
 
-import collection.immutable.{ Vector }
-import fingertree.FingerTree
+import collection.immutable.{Queue => IQueue}
+import concurrent.stm.Ref
 
-/**
- *    @version 0.11, 11-Apr-10
- */
-package object confluent {
-//   type Path  = Vector[ Version ]
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
+trait ModelImpl[ C <: CtxLike, T ] extends Model[ C, T ] {
+   import Model._
 
-   def Path( vs: Version* ) : Path =
-      FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )
+   private val listeners = Ref( IQueue.empty[ L ])
 
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
+   def addListener( l: L )( implicit c: CtxLike ) {
+      listeners.transform( _ enqueue l )( c.txn )
+   }
 
-   type Ct = CtxLike
-   type Vr[ C, T ] = EVar[ C, T ]
+   def removeListener( l: L )( implicit c: CtxLike ) {
+      listeners.transform( _.filter( _ != l ))( c.txn )
+   }
+
+   /* protected */ def fireUpdate( u: T )( implicit c: C ) {
+      listeners.get( c.txn ).foreach( _.updated( u )( c ))
+   }
 }

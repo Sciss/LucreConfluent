@@ -37,7 +37,7 @@ import util.Random
 object Hashing {
    type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
    type IntSeq          = FingerTree.IndexedSummed[ Int, Long ]
-   type IntSeqMap       = LongMap[ IntSeq ]
+   type IntSeqMap       = Map[ Long, IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
    val emptyIntSeq   = IntSeq()
    val emptyHash     = LongMap.empty[ IntSeq ]
@@ -93,7 +93,7 @@ object Hashing {
 //      preSeqMap.view.map( entry => entry._1 -> maxPrefix( entry._2, fullSeqMap )).filter( _._2.nonEmpty )
 //         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
-   def add( s: IntSeq, hash: IntSeqMap ) : IntSeqMap = {
+   def add[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, V ], v: UniqueSeq[ K ] => V ) : Map[ Long, V ] = {
       println( "add.... " + (s.size) )
       val sz   = s.size
       val m    = bitCount( sz )
@@ -108,11 +108,11 @@ object Hashing {
             println( "....checkin for prefix i = " + i )
             val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in 'Pi"
             println( "....-> " + pre.size )
-            /* if( pre.nonEmpty ) */ res += sps -> pre   // ", and store a pointer to a representation of this sequence."
+            /* if( pre.nonEmpty ) */ res += (sps -> v( pre )) // ", and store a pointer to a representation of this sequence."
          }
       j += 1 }
       println( "....done" )
-      res + (s.sum -> s)
+      res + (s.sum -> v( s ))
    }
 
    def buildPrefixes( s: IntSeq ) : Seq[ IntSeq ] = {
@@ -143,15 +143,17 @@ object Hashing {
 //println( "Warning: buildHashTable not yet working" )
 ////      val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q )
 //val hash = collection.immutable.LongMap( p.take(288).sum -> k, p.take(296).sum -> k, k.sum -> k, p.sum -> p, q.sum -> q, q.take(16).sum -> q )
-      val hash = add( q, add( p, add( k, emptyHash )))
+      val fun  = (x: IntSeq) => x
+      val hash = add( q, add( p, add( k, emptyHash, fun ), fun ), fun )
       seq -> hash
    }
 
    def example2 : (Seq[ IntSeq ], IntSeqMap) = {
       val a       = genSeq(1)
-      val hash0   = add( a, LongMap.empty )
+      val fun     = (x: IntSeq) => x
+      val hash0   = add( a, LongMap.empty, fun )
       val b       = appendn( a, 5 )
-      val hash1   = add( b, hash0 )
+      val hash1   = add( b, hash0, fun )
       List( a, b ) -> hash1
    }
 
@@ -231,7 +233,7 @@ object Hashing {
 //      assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
 //   }
 
-   def maxPrefixKey( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+   def maxPrefixKey[ T ]( s: UniqueSeq[ T ], hash: Map[ Long, _ ]) : UniqueSeq[ T ] = {
       val pre1 = maxPrefix1( s, hash )
       val res = if( hash.contains( pre1.sum )) pre1 else pre1.dropRight( 1 )
       println( "res.size = " + res.size )

@@ -35,8 +35,9 @@ import collection.mutable.{Set => MSet}
 import util.Random
 
 object Hashing {
-   type IntSeq    = FingerTree.IndexedSummed[ Int, Long ]
-   type IntSeqMap = LongMap[ IntSeq ]
+   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
+   type IntSeq          = FingerTree.IndexedSummed[ Int, Long ]
+   type IntSeqMap       = LongMap[ IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
    val emptyIntSeq   = IntSeq()
    val emptyHash     = LongMap.empty[ IntSeq ]
@@ -237,7 +238,7 @@ object Hashing {
       res
    }
 
-   private def maxPrefix1( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {
+   private def maxPrefix1[ T ]( s: UniqueSeq[ T ], hash: Map[ Long, _ ]) : UniqueSeq[ T ] = {
       val sz      = s.size
       val m       = bitCount( sz )
       // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
@@ -264,11 +265,16 @@ println( "d = " + d + ", 2^rho = " + twoprho )
       s.take( ijm + d )
    }
 
-   def maxPrefixValue( s: IntSeq, hash: LongMap[ IntSeq ]) : IntSeq = {
+//   def maxPrefixValue( s: IntSeq, hash: LongMap[ IntSeq ]) : IntSeq = {
+//      val pre1 = maxPrefix1( s, hash )
+//      val res  = hash.getOrElse( pre1.sum, hash.getOrElse( pre1.dropRight( 1 ).sum, emptyIntSeq ))
+//      println( "res.size = " + res.size )
+//      res
+//   }
+
+   def maxPrefixValue[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ V ] = {
       val pre1 = maxPrefix1( s, hash )
-      val res  = hash.getOrElse( pre1.sum, hash.getOrElse( pre1.dropRight( 1 ).sum, emptyIntSeq ))
-      println( "res.size = " + res.size )
-      res
+      hash.get( pre1.sum ).orElse( hash.get( pre1.dropRight( 1 ).sum ))
    }
 
    def maxPrefixZZZ( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {

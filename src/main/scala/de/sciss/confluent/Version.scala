@@ -28,7 +28,8 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{IntMap, Vector}
+import collection.immutable.{IntMap, Set => ISet}
+import concurrent.stm.{InTxn, Ref}
 
 trait Version {
    def id: Int               // we don't really need this anymore, but it might be nice for inspection
@@ -47,31 +48,45 @@ trait Version {
 //case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
 
 object Version {
-   private val idSync = new AnyRef
-   private var idValCnt = 0
-   private val idRnd = new util.Random()
-//   private val idRndSet = IntMap.empty[ Unit ]
+//   private val idSync = new AnyRef
+//   private var idValCnt = 0
+////   private val idRnd = new util.Random()
+////   private val idRndSet = IntMap.empty[ Unit ]
+//
+//   private val idsTaken    = MSet( 0 ) // .empty[ Int ]
+//   private val sumsTaken   = MSet.empty[ Long ]
+   private val idRnd       = new util.Random()  // XXX is this thread-safe?
+
+   private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
+   private val idRef = Ref( IDGen( 0, ISet( 0 ), ISet.empty ))
 
    val init: Version = {
-      val tree = VersionTree.empty( 0 )
-      new VersionImpl( tree, tree.insertRoot )
+      val tree       = VersionTree.empty( 0 )
+//      val (id, rid)  = nextID( 0L )
+      new VersionImpl( 0, 0, tree, tree.insertRoot )
    }
 
-   def newFrom( v: Version, vs: Version* ) : Version = {
-      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
-      new VersionImpl( tree, insFun )
+//   def newFrom( v: Version, vs: Version* ) : Version = {
+   def newFrom( parent: VersionPath )( implicit txn: InTxn ) : Version = {
+//      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
+      val pv      = parent.version
+      val tree    = pv.tree
+      val insFun  = tree.insertChild( pv ) _
+
+      val (id, rid) = nextID( parent.path.sum )( txn )
+      new VersionImpl( id, rid, tree, insFun )
    }
 
-   def newMultiFrom( v: Version, vs: Version* ) : Version = {
-      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
-      new MultiNeutralVersionImpl( tree, insFun )
-   }
-
-   def newMultiVariant( v: Version ) : Version = {
-//      require( v.isMulti )
-      val tree = v.tree
-      new MultiVariantVersionImpl( v, tree, tree.insertChild( v ))
-   }
+//   def newMultiFrom( v: Version, vs: Version* ) : Version = {
+//      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
+//      new MultiNeutralVersionImpl( tree, insFun )
+//   }
+//
+//   def newMultiVariant( v: Version ) : Version = {
+////      require( v.isMulti )
+//      val tree = v.tree
+//      new MultiVariantVersionImpl( v, tree, tree.insertChild( v ))
+//   }
 
    private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionTreeOrder ] = {
 
@@ -96,54 +111,70 @@ object Version {
       }
    }
 
-   def newRetroParent( child: Version ) : Version = {
-      val tree = child.tree
-      new VersionImpl( tree, tree.insertRetroParent( child ))
+//   def newRetroParent( child: Version ) : Version = {
+//      val tree = child.tree
+//      new VersionImpl( tree, tree.insertRetroParent( child ))
+//   }
+//
+//   def newRetroChild( parent: Version ) : Version = {
+//      val tree = parent.tree
+//      new VersionImpl( tree, tree.insertRetroChild( parent ))
+//   }
+
+//   private def nextID: (Int, Int) = idSync.synchronized {
+//      val id         = idValCnt
+//      idValCnt      += 1
+//      var rid: Int   = 0
+////      var failed    = false
+////      do {
+//         rid  = idRnd.nextInt( 0x7FFFFFFF )
+//         // XXX check unique sum condition
+//         // failed = ...
+////      } while( failed )
+//      (id, rid)
+//   }
+
+   private def nextID( from: Long )( implicit txn: InTxn ) : (Int, Int) = {
+      val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
+      while( true ) {
+         val rid = idRnd.nextInt() & 0x7FFFFFFF
+         if( !idsTaken.contains( rid )) {   // unique vertices
+//            val res = s :+ rid
+            val sum = from + rid
+            if( !sumsTaken.contains( sum )) {  // unique sums
+               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken + sum ))( txn )
+               return (cnt, rid)
+            }
+         }
+      }
+      error( "Never here" )
    }
 
-   def newRetroChild( parent: Version ) : Version = {
-      val tree = parent.tree
-      new VersionImpl( tree, tree.insertRetroChild( parent ))
-   }
-
-   private def nextID: (Int, Int) = idSync.synchronized {
-      val id         = idValCnt
-      idValCnt      += 1
-      var rid: Int   = 0
-//      var failed    = false
-//      do {
-         rid  = idRnd.nextInt( 0x7FFFFFFF )
-         // XXX check unique sum condition
-         // failed = ...
-//      } while( failed )
-      (id, rid)
-   }
-
-   private abstract class AbstractVersionImpl( val tree: VersionTree, insertionFun: (Version) => VersionTreeOrder )
+   private abstract class AbstractVersionImpl( val id: Int, val rid: Int, val tree: VersionTree, insertionFun: (Version) => VersionTreeOrder )
    extends Version {
-      val (id: Int, rid: Int) = nextID
+//      val (id: Int, rid: Int) = nextID( parentSum )
       val (preRec, postRec)   = insertionFun( this )
 
       override def toString = "v" + id
    }
 
-   private class VersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
-   extends AbstractVersionImpl( t, insFun ) {
+   private class VersionImpl( id: Int, rid: Int, t: VersionTree, insFun: (Version) => VersionTreeOrder )
+   extends AbstractVersionImpl( id, rid, t, insFun ) {
       def appendLevel = level
       def fallBack = this
    }
 
-   private class MultiNeutralVersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
-   extends AbstractVersionImpl( t, insFun ) {
-      def appendLevel = level + 1
-      def fallBack = this
-   }
-
-   private class MultiVariantVersionImpl( n: Version, t: VersionTree, insFun: (Version) => VersionTreeOrder )
-   extends AbstractVersionImpl( t, insFun ) {
-      def appendLevel = level + 1
-      def fallBack = n
-   }
+//   private class MultiNeutralVersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
+//   extends AbstractVersionImpl( t, insFun ) {
+//      def appendLevel = level + 1
+//      def fallBack = this
+//   }
+//
+//   private class MultiVariantVersionImpl( n: Version, t: VersionTree, insFun: (Version) => VersionTreeOrder )
+//   extends AbstractVersionImpl( t, insFun ) {
+//      def appendLevel = level + 1
+//      def fallBack = n
+//   }
 
 //   // not used any more
 //   object AncestorOrdering extends Ordering[ Version ] {

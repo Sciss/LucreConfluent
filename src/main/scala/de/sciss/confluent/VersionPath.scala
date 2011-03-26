@@ -28,15 +28,17 @@
 
 package de.sciss.confluent
 
+import concurrent.stm.InTxn
+
 trait VersionPath {
    val version: Version
    def path: Path
 
-   def newBranch : VersionPath
-   def meldWith( v: Version ) : VersionPath
-   def newRetroParent : VersionPath
-   def newRetroChild : VersionPath
-   def newMultiBranch : Multiplicity
+   def newBranch( implicit txn: InTxn ) : VersionPath
+//   def meldWith( v: Version ) : VersionPath
+//   def newRetroParent : VersionPath
+//   def newRetroChild : VersionPath
+//   def newMultiBranch : Multiplicity
    def tail: Path = path.takeRight( 2 )
 
 //   def use: VersionPath = { VersionManagement.use( this ); this }
@@ -58,20 +60,21 @@ object VersionPath {
 
    private case class VersionPathImpl( version: Version, path: Path )
    extends VersionPath {
-      def newBranch : VersionPath =
-         newTail( Version.newFrom( version ))
+      def newBranch( implicit txn: InTxn ) : VersionPath =
+//         newTail( Version.newFrom( version ))
+         newTail( Version.newFrom( this ))
 
-      def meldWith( v: Version ) : VersionPath = {
-         newTail( Version.newFrom( version, v ))
-      }
+//      def meldWith( v: Version ) : VersionPath = {
+//         newTail( Version.newFrom( version, v ))
+//      }
 
-      def newRetroParent : VersionPath =
-         newTail( Version.newRetroParent( version ))
-
-      def newRetroChild : VersionPath =
-         newTail( Version.newRetroChild( version ))
-
-      def newMultiBranch : Multiplicity = new MultiplicityImpl( this )
+//      def newRetroParent : VersionPath =
+//         newTail( Version.newRetroParent( version ))
+//
+//      def newRetroChild : VersionPath =
+//         newTail( Version.newRetroChild( version ))
+//
+//      def newMultiBranch : Multiplicity = new MultiplicityImpl( this )
 
       protected def newTail( tailVersion: Version ) : VersionPath = {
          val newPath = if( tailVersion.level == version.level ) {
@@ -104,65 +107,65 @@ object VersionPath {
 //      override def toString = path.mkString( "<", ", ", ">" )
    }
 
-   // [FIXED] TO-DO : parent should not be an argument, as
-   // it might change with a retroc command. instead
-   // we should introduce edges and query the parent from the tree.
-   // --> FIX : parent is only used to create the neutral path. so no problems with later
-   // changes of parent
-   private class MultiplicityImpl( parent: VersionPath ) extends Multiplicity {
-      private val neutralVersionPath = {
-         val tailVersion = Version.newMultiFrom( parent.version )
-         val newPath = if( tailVersion.level == parent.version.level ) {
-            parent.path.dropRight( 1 ) :+ tailVersion
-         } else {
-            parent.path :+ tailVersion :+ tailVersion
-         }
-         new VersionPathImpl( tailVersion, newPath )
-      }
-
-      private var currentVariantVar = neutralVersionPath.version  // XXX atomic
-      private var lastVariantVar = neutralVersionPath.version     // XXX atomic
-      private var variantVersions = Set.empty[ Version         ]  // XXX atomic
-
-      def currentVariant = currentVariantVar
-      def lastVariant = lastVariantVar
-      def neutralVersion = neutralVersionPath
-
-//      def useVariant( v: Version ) : Multiplicity = {
-//         import VersionManagement._
-//
-//         val npz = neutralVersionPath.path.size
-//         val vp = // if( (npz & 1) == 0 ) {
-//            currentVersion.updateVersion( npz - 1, v )
-////         } else {
-////            currentVersion.updateVersion( npz - 1, v )
-////         }
-//         currentVariantVar = v
-//         vp.use
-//         this
-//      }
-//
-//      def useNeutral : Multiplicity = useVariant( neutralVersionPath.version )
-
-      private def createVariantPath : VersionPath = {
-         val tailVersion = Version.newMultiVariant( neutralVersionPath.version )
-         val newPath = neutralVersionPath.path.dropRight( 1 ) :+ tailVersion
-         new VersionPathImpl( tailVersion, newPath )
-      }
-
-//      def variant[ T ]( thunk: => T ) : T = {
-//         import VersionManagement._
-//
-//         val write = createVariantPath
-//         variantVersions += write.version
-//         makeRead( neutralVersionPath )
-//         makeWrite( write )
-//         try {
-//            thunk
-//         } finally {
-//            lastVariantVar = write.version
-//            neutralVersionPath.use
+//   // [FIXED] TO-DO : parent should not be an argument, as
+//   // it might change with a retroc command. instead
+//   // we should introduce edges and query the parent from the tree.
+//   // --> FIX : parent is only used to create the neutral path. so no problems with later
+//   // changes of parent
+//   private class MultiplicityImpl( parent: VersionPath ) extends Multiplicity {
+//      private val neutralVersionPath = {
+//         val tailVersion = Version.newMultiFrom( parent.version )
+//         val newPath = if( tailVersion.level == parent.version.level ) {
+//            parent.path.dropRight( 1 ) :+ tailVersion
+//         } else {
+//            parent.path :+ tailVersion :+ tailVersion
 //         }
+//         new VersionPathImpl( tailVersion, newPath )
 //      }
-   }
+//
+//      private var currentVariantVar = neutralVersionPath.version  // XXX atomic
+//      private var lastVariantVar = neutralVersionPath.version     // XXX atomic
+//      private var variantVersions = Set.empty[ Version         ]  // XXX atomic
+//
+//      def currentVariant = currentVariantVar
+//      def lastVariant = lastVariantVar
+//      def neutralVersion = neutralVersionPath
+//
+////      def useVariant( v: Version ) : Multiplicity = {
+////         import VersionManagement._
+////
+////         val npz = neutralVersionPath.path.size
+////         val vp = // if( (npz & 1) == 0 ) {
+////            currentVersion.updateVersion( npz - 1, v )
+//////         } else {
+//////            currentVersion.updateVersion( npz - 1, v )
+//////         }
+////         currentVariantVar = v
+////         vp.use
+////         this
+////      }
+////
+////      def useNeutral : Multiplicity = useVariant( neutralVersionPath.version )
+//
+//      private def createVariantPath : VersionPath = {
+//         val tailVersion = Version.newMultiVariant( neutralVersionPath.version )
+//         val newPath = neutralVersionPath.path.dropRight( 1 ) :+ tailVersion
+//         new VersionPathImpl( tailVersion, newPath )
+//      }
+//
+////      def variant[ T ]( thunk: => T ) : T = {
+////         import VersionManagement._
+////
+////         val write = createVariantPath
+////         variantVersions += write.version
+////         makeRead( neutralVersionPath )
+////         makeWrite( write )
+////         try {
+////            thunk
+////         } finally {
+////            lastVariantVar = write.version
+////            neutralVersionPath.use
+////         }
+////      }
+//   }
 }

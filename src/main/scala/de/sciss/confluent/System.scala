@@ -69,6 +69,7 @@ extends System[ C, V ] with Model[ ECtx, KSystemLike.Update ] {
 
    def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath
 //   def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]]
+   def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ]
 
 //   def addKCursor( implicit c: C ) : KCursor[ C, V ]
 //   def removeKCursor( cursor: KCursor[ C, V ])( implicit c: C ) : Unit

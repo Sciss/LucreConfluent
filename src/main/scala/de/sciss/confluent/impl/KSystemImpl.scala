@@ -74,13 +74,15 @@ object KSystemImpl {
       }
 
       def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath = {
-         val pw = v.newBranch
-         dagRef.transform( _.put( pw.path, pw ))( c.txn )
+         val txn  = c.txn
+         val pw   = v.newBranch( txn )
+         dagRef.transform( _.put( pw.path, pw ))( txn )
          fireUpdate( KSystemLike.NewBranch( v, pw ))
          pw
       }
 
 //      def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]] = dagRef.get( c.txn ).trie
+      def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ] = dagRef.get( c.txn ) //.trie
 
       def kProjector    = KEProjImpl
       def keProjector   = KEProjImpl

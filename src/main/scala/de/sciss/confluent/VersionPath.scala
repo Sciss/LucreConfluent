@@ -39,7 +39,8 @@ trait VersionPath {
 //   def newRetroParent : VersionPath
 //   def newRetroChild : VersionPath
 //   def newMultiBranch : Multiplicity
-   def tail: Path = path.takeRight( 2 )
+
+//   def tail: Path = path.takeRight( 2 )
 
 //   def use: VersionPath = { VersionManagement.use( this ); this }
 //
@@ -47,7 +48,8 @@ trait VersionPath {
 //      VersionManagement.read( this )( thunk )
 
 //   protected[ confluent ] def useVariant( nv: Version, vv: Version, vvs: Set[ Version ]) : VersionPath
-   protected[ confluent ] def updateVersion( idx: Int, v: Version ) : VersionPath
+
+//   protected[ confluent ] def updateVersion( idx: Int, v: Version ) : VersionPath
 }
 
 object VersionPath {
@@ -76,14 +78,17 @@ object VersionPath {
 //
 //      def newMultiBranch : Multiplicity = new MultiplicityImpl( this )
 
-      protected def newTail( tailVersion: Version ) : VersionPath = {
-         val newPath = if( tailVersion.level == version.level ) {
-            path.dropRight( 1 ) :+ tailVersion
-         } else {
-            path :+ tailVersion :+ tailVersion
-         }
-         VersionPathImpl( tailVersion, newPath )
-      }
+      // simply full path for now XXX
+      protected def newTail( tailVersion: Version ) : VersionPath = VersionPathImpl( tailVersion, path :+ tailVersion )
+
+//      protected def newTail( tailVersion: Version ) : VersionPath = {
+//         val newPath = if( tailVersion.level == version.level ) {
+//            path.dropRight( 1 ) :+ tailVersion
+//         } else {
+//            path :+ tailVersion :+ tailVersion
+//         }
+//         VersionPathImpl( tailVersion, newPath )
+//      }
 
 //      protected[ confluent ] def useVariant( nv: Version, vv: Version, vvs: Set[ Version ]) : VersionPath = {
 //         // XXX scala 2.8 beta 1 : indexOf is broken for last element!!!
@@ -99,10 +104,10 @@ object VersionPath {
 //         VersionPathImpl( newVersion, newPath )
 //      }
 
-      protected[ confluent ] def updateVersion( idx: Int, v: Version ) : VersionPath = {
-         val newPath = path.updated( idx, v )
-         VersionPathImpl( newPath( newPath.size - 1 ), newPath )
-      }
+//      protected[ confluent ] def updateVersion( idx: Int, v: Version ) : VersionPath = {
+//         val newPath = path.updated( idx, v )
+//         VersionPathImpl( newPath( newPath.size - 1 ), newPath )
+//      }
 
 //      override def toString = path.mkString( "<", ", ", ">" )
    }

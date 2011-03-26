@@ -33,6 +33,7 @@ import collection.breakOut
 import collection.immutable.{IntMap, LongMap}
 import collection.mutable.{Set => MSet}
 import util.Random
+import annotation.elidable
 
 object Hashing {
    type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
@@ -45,6 +46,12 @@ object Hashing {
    private val rndTaken    = MSet( 0 ) // .empty[ Int ]
    private val sumsTaken   = MSet.empty[ Long ]
    private val rnd         = new Random()
+
+   var verbose = true
+
+   @elidable( elidable.CONFIG ) def debug( what: => String ) {
+      if( verbose ) println( what )
+   }
 
    /**
     * Test function to create a new version vertex
@@ -94,7 +101,7 @@ object Hashing {
 //         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
    def add[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, V ], v: UniqueSeq[ K ] => V ) : Map[ Long, V ] = {
-      println( "add.... " + (s.size) )
+debug( "add.... " + (s.size) )
       val sz   = s.size
       val m    = bitCount( sz )
       var j    = 1
@@ -105,13 +112,13 @@ object Hashing {
          val sp   = s.take( i )
          val sps  = sp.sum                         // "... we insert the values sum(\tau') ... to the table H"
          if( !hash.contains( sps )) {              // ", if they are not already there."
-            println( "....checkin for prefix i = " + i )
-            val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in 'Pi"
-            println( "....-> " + pre.size )
+debug( "....checkin for prefix i = " + i )
+            val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in \Pi"
+debug( "....-> " + pre.size )
             /* if( pre.nonEmpty ) */ res += (sps -> v( pre )) // ", and store a pointer to a representation of this sequence."
          }
       j += 1 }
-      println( "....done" )
+debug( "....done" )
       res + (s.sum -> v( s ))
    }
 
@@ -236,7 +243,7 @@ object Hashing {
    def maxPrefixKey[ T ]( s: UniqueSeq[ T ], hash: Map[ Long, _ ]) : UniqueSeq[ T ] = {
       val pre1 = maxPrefix1( s, hash )
       val res = if( hash.contains( pre1.sum )) pre1 else pre1.dropRight( 1 )
-      println( "res.size = " + res.size )
+debug( "res.size = " + res.size )
       res
    }
 
@@ -245,24 +252,24 @@ object Hashing {
       val m       = bitCount( sz )
       // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
       val is      = Array.tabulate( m )( i => i -> prefix( sz, i + 1, m ))
-      println( "is     : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
+debug( "is     : " + is.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
       val noPres  = is.filter( tup => !hash.contains( s.take( tup._2 ).sum ))
-      println( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
+debug( "noPres : " + noPres.map( tup => (tup._1 + 1).toString + " -> " + tup._2 + " (binary " + tup._2.toBinaryString + ")" ).mkString( ", " ))
       // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
       if( noPres.isEmpty ) return s
       val (j, ij) = noPres.min      // j - 1 actually
       val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
 
       val twopk   = ij - ijm
-println( "j = " + (j + 1 ) + ", i_j = " + ij + ", i_j-1 = " + ijm + ", 2^k = " + twopk )
+debug( "j = " + (j + 1 ) + ", i_j = " + ij + ", i_j-1 = " + ijm + ", 2^k = " + twopk )
       var d       = twopk >> 1
       var twoprho = d
-println( "d = " + d + ", 2^rho = " + twoprho )
+debug( "d = " + d + ", 2^rho = " + twoprho )
       while( twoprho >= 2 ) {
          twoprho >>= 1
          val pre  = s.take( ijm + d )
          d = if( hash.contains( pre.sum )) d + twoprho else d - twoprho
-println( "d = " + d + ", 2^rho = " + twoprho )
+debug( "d = " + d + ", 2^rho = " + twoprho )
       }
       s.take( ijm + d )
    }
@@ -277,6 +284,15 @@ println( "d = " + d + ", 2^rho = " + twoprho )
    def maxPrefixValue[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ V ] = {
       val pre1 = maxPrefix1( s, hash )
       hash.get( pre1.sum ).orElse( hash.get( pre1.dropRight( 1 ).sum ))
+   }
+
+   def getWithPrefix[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Int) ] = {
+      val pre1    = maxPrefix1( s, hash )
+      val pre1Sz  = pre1.size
+      if( pre1Sz == 0 ) None else hash.get( pre1.sum ) match {
+         case Some( v ) => Some( v -> pre1Sz )
+         case None => if( pre1Sz == 1 ) None else hash.get( pre1.init.sum ).map( v => v -> (pre1Sz - 1) )
+      }
    }
 
    def maxPrefixZZZ( s: IntSeq, hash: LongMap[ _ ]) : IntSeq = {

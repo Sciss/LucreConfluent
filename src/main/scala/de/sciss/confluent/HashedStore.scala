@@ -33,29 +33,63 @@ import collection.immutable.LongMap
 object HashedStoreFactory {
    // XXX no specialization thanks to scalac 2.8.1 crashing
    private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ K, V ] {
-      def inspect = { println( "HashedStore.inspect -- nothin here" )}
+      def inspect = {
+//         println( "HashedStore.inspect -- nothin here" )
+         println( "INSPECT" )
+         println( "  " + map )
+      }
 
       /**
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Path ) : Option[ V ] = Hashing.maxPrefixValue( key, map ).map {
-         case ValueHolder( v )   => v
-         case ValueProxy( h )    => map( h ).asInstanceOf[ ValueHolder[ V ]].v
+      def get( key: Path ) : Option[ V ] = Hashing.maxPrefixValue( key, map ).flatMap {
+         case ValueFull( v )        => Some( v )
+         case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
+         case ValueNone             => None // : Option[ V ]
+      }
+
+      def getWithPrefix( key: Path ) : Option[ (V, Int) ] = {
+         Hashing.getWithPrefix( key, map ).flatMap {
+            case (ValueFull( v ), sz)        => Some( v -> sz )
+            case (ValuePre( len, hash ), _)  => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
+            case (ValueNone, _)              => None // : Option[ V ]
+         }
+
+//         val pre1    = maxPrefix1( key, map )
+//         val pre1Sz  = pre1.size
+//
+//         def done( v: Value[ V ], fullSz: Int ) : Option[ (V, Int) ] = v match {
+//            case ValueFull( v )        => Some( v -> fullSz )
+//            case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
+//            case ValueNone             => None // : Option[ V ]
+//         }
+//
+//         map.get( pre1 ) match {
+//            case Some( v ) => done( pre1Sz )
+//            case None      => map.get( pre1.init.sum ).flatMap( v => done( v, pre1Sz - 1 ))
+//         }
+
+//         Hashing.maxPrefixValue( key, map ).flatMap {
+//            case ValueFull( v )        => Some( v -> key.size )
+//            case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
+//            case ValueNone             => None // : Option[ V ]
+//         }
       }
 
       def put( key: Path, value: V ) : Store[ K, V ] = {
          val hash       = key.sum
-         lazy val proxy = ValueProxy( hash )
+//         lazy val proxy = ValueProxy( hash )
          new HashedStore( Hashing.add( key, map, { s: Path =>
-            if( s.sum == hash ) ValueHolder( value ) else proxy
+            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( s.size, hash )
          }))
       }
    }
 
    private sealed trait Value[ +V ]
-   private case class ValueProxy( hash: Long ) extends Value[ Nothing ]
-   private case class ValueHolder[ V ]( v:  V ) extends Value[ V ]
+   private case object ValueNone extends Value[ Nothing ]
+   private case class ValuePre( len: Int, hash: Long ) extends Value[ Nothing ]
+   private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 }
 
 class HashedStoreFactory[ K ] extends StoreFactory[ K ] {

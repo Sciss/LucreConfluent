@@ -34,6 +34,7 @@ trait StoreLike[ K, @specialized V, Repr ] {
    type Path = FingerTree.IndexedSummed[ K, Long ]
 
    def put( key: Path, value: V ) : Repr
+   def get( key: Path ) : Option[ V ]
 
    /**
     *    Finds the value which is the nearest
@@ -47,7 +48,7 @@ trait StoreLike[ K, @specialized V, Repr ] {
     *    Like findMaxPrefixOffset, but with support
     *    for multiplicities
     */
-   def get( key: Path ) : Option[ V ]
+   def getWithPrefix( key: Path ) : Option[ (V, Int) ]
 
    def inspect : Unit
 }

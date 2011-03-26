@@ -42,6 +42,14 @@ object LexiTrieStoreFactory extends StoreFactory[ Version ] {
          oracleO.map( _.query( key( idx ))) getOrElse None
       }
 
+      def getWithPrefix( key: Path ) : Option[ (V, Int) ] = {
+         val (oracleO, off) = lexi.multiFindMaxPrefix( key )
+         // map the not-found-offset to the last-in-oracle-index
+         // ; e.g. 1 -> 1, 2 -> 1, 3 -> 3, 4 -> 3, 5 -> 5 etc.
+         val idx = off - 1 + (off & 1)
+         oracleO.map( _.query( key( idx )).map( v => v -> off /* ??? XXX */ )) getOrElse None
+      }
+
       def put( key: Path, value: V) : Store[ Version, V ] = {
          val idx        = key.dropRight( 1 )
          val last       = key.last

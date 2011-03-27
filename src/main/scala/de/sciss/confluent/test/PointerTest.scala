@@ -46,27 +46,41 @@ class PointerTest {
    val w2   = new W( "w2" )
    w2.elem  = w2.elem.put( v2b, 4 /* 1 */) // 4 easier to distinguish
 //   w2.next  = w2.next.put( v2i, None )
-   appendTail( v2, (v2b, w2) )
+   appendTail( v2, Some( v2b -> w2 ))
 
 //   val v23  =
    val v3i  = mappend( v1, v2, v2b )
    val v23  = v2 :+ v3i
-   val v13  = v1 :+ v3i
+   val v3   = v1 :+ v3i
 
-println( "w1.elem:" ); w1.elem.inspect
-//verbose = true
+//println( "w1.elem:" ); w1.elem.inspect
+////verbose = true
    addToAll( v23, 2 )
-//verbose = false
-println( "w1.elem:" ); w1.elem.inspect
+////verbose = false
+//println( "w1.elem:" ); w1.elem.inspect
+   appendTail( v3, getAndSubstitute( access, v23 ))
 
+//   catSelf( v3, v23 )
 
-//   catSelf( v13, v23 )
+//   println( "w0.next:" ); w0.next.inspect
+//   println( "w0.next: " + {
+//      val Some( (p1, w1) ) = getAndSubstitute( access, v3 )
+//      val Some( (p2, w2) ) = getAndSubstitute( w1.next, p1 )
+//      w2.next.get( p2 ).get.get._1.toList.toString + " / " + p2.toList.toString
+//   })
+
+   val v4i  = mappend( v3, v2 )
+   val v4   = v3 :+ v4i
+   val v24  = v2 :+ v4i
+   appendTail( v4, getAndSubstitute( access, v24 ))
 
    println( "vn:" ); inspect( vn )
    println( "v0:" ); inspect( v0 )
    println( "v1:" ); inspect( v1 )
    println( "v2:" ); inspect( v2 )
-   println( "v23:" ); inspect( v23 )
+//   println( "v23:" ); inspect( v23 )
+   println( "v3:" ); inspect( v3 )
+   println( "v4:" ); inspect( v4 )
 //   println( "Access:" ); access.inspect
 
 //   println( "w0.next:" ); w0.next.inspect
@@ -76,7 +90,10 @@ println( "w1.elem:" ); w1.elem.inspect
    assert( toList( v0 ) == (("w0" -> 2) :: ("w1" -> 1) :: Nil), "v0" )
    assert( toList( v1 ) == (("w1" -> 1) :: ("w0" -> 2) :: Nil), "v1" )
    assert( toList( v2 ) == (("w1" -> 1) :: ("w2" -> 4) :: Nil), "v2" )
-   assert( toList( v23 ) == (("w1" -> 3) :: ("w2" -> 6) :: Nil), "v23" )
+//   assert( toList( v23 ) == (("w1" -> 3) :: ("w2" -> 6) :: Nil), "v23" )
+   assert( toList( v3 ) == (("w1" -> 1) :: ("w0" -> 2) :: ("w1" -> 3) :: ("w2" -> 6) :: Nil), "v3" )
+   assert( toList( v4 ) == (("w1" -> 1) :: ("w0" -> 2) :: ("w1" -> 3) :: ("w2" -> 6) :: ("w1" -> 1) :: ("w2" -> 4) :: Nil), "v4" )
+
    println( "Tests succeeded." )
 
    class W( val name: String ) {
@@ -86,16 +103,16 @@ println( "w1.elem:" ); w1.elem.inspect
       override def toString = name
    }
 
-   def catSelf( pw: Path, pm: Path ) {
-
-   }
+//   def cat( pw: Path, pm: Path ) {
+//
+//   }
 
    def addToAll( pw: Path, inc: Int ) {
       @tailrec def iter( nextOption: Option[ (Path, W) ]) : Unit = nextOption match {
          case None =>
          case Some( (p1, w) ) =>
             val old = w.elem.get( p1 ).get
-println( "addToAll : " + w.name + " : from " + old + " to " + (old+inc) + " in " +  p1.toList )
+//println( "addToAll : " + w.name + " : from " + old + " to " + (old+inc) + " in " +  p1.toList )
             w.elem = w.elem.put( p1, old + inc )
             iter( getAndSubstitute( w.next, p1 ))
       }
@@ -112,14 +129,14 @@ println( "addToAll : " + w.name + " : from " + old + " to " + (old+inc) + " in "
       }
    }
 
-   def appendTail( pw: Path, node: (Path, W) ) {
+   def appendTail( pw: Path, node: Option[ (Path, W) ]) {
       var tail = (pw, access, (v: Store[ Int, Option[ (Path, W) ]]) => access = v) // Option.empty[ (Path, W) ]
 //println( "appendTail..." )
       @tailrec def iter( nextOption: Option[ (Path, W) ]) : Unit = nextOption match {
          case None =>
             val (ptail, stail, fun) = tail
 //println( "appendTail " + pw.toList + "; ptail = " + ptail.toList + "; node = " + node )
-            fun( stail.put( ptail, Some( node )))
+            fun( stail.put( ptail, node ))
          case Some( (p1, w) ) =>
             tail  = (p1, w.next, (v: Store[ Int, Option[ (Path, W) ]]) => w.next = v)
             iter( getAndSubstitute( w.next, p1 ))

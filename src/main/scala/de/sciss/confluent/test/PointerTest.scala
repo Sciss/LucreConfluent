@@ -20,10 +20,10 @@ class PointerTest {
 
    val vn   = FingerTree.IndexedSummed.emptyWithView[ Int, Long ]
    val v0   = append( vn ) // genSeq( 1 )
-   val w0   = new W
-   val w1   = new W
+   val w0   = new W( "w0" )
+   val w1   = new W( "w1" )
    w1.elem  = w1.elem.put( v0, 1 )
-   w1.next  = w1.next.put( v0, None )
+//   w1.next  = w1.next.put( v0, None )
    w0.elem  = w0.elem.put( v0, 2 )
    w0.next  = w0.next.put( v0, Some( v0 -> w1 ))
    access   = access.put( v0, Some( v0 -> w0 ))
@@ -32,21 +32,62 @@ class PointerTest {
    reverse( v1 )
 //   val a1   = reverse( a0.copy( _1 = v1 ), v1 )
 
+   val v2   = append( v0 )
+   val v2i  = v2.takeRight( 1 )
+   dropHead( v2 )
+//println( "after dropHead : " + getAndSubstitute( access, v2 ).map( tup => tup._1.toList.toString + " - " + tup._2.name ))
+//println( "access:" ); access.inspect
+
+   val w2   = new W( "w2" )
+   w2.elem  = w2.elem.put( v2i, 4 /* 1 */) // 4 easier to distinguish
+//   w2.next  = w2.next.put( v2i, None )
+   appendTail( v2, (v2i, w2) )
+
    println( "vn:" ); inspect( vn )
    println( "v0:" ); inspect( v0 )
    println( "v1:" ); inspect( v1 )
+   println( "v2:" ); inspect( v2 )
 //   println( "Access:" ); access.inspect
 
 //   println( "w0.next:" ); w0.next.inspect
+//   println( "w1.next:" ); w1.next.inspect
 
    assert( toList( vn ) == Nil, "vn" )
-   assert( toList( v0 ) == (2 :: 1 :: Nil), "v0" )
-   assert( toList( v1 ) == (1 :: 2 :: Nil), "v1" )
-   println( "Tests succeeded.")
+   assert( toList( v0 ) == (("w0" -> 2) :: ("w1" -> 1) :: Nil), "v0" )
+   assert( toList( v1 ) == (("w1" -> 1) :: ("w0" -> 2) :: Nil), "v1" )
+   assert( toList( v2 ) == (("w1" -> 1) :: ("w2" -> 4) :: Nil), "v2" )
+   println( "Tests succeeded." )
 
-   class W {
+   class W( val name: String ) {
       var elem = f.empty[ Int ]
       var next = f.empty[ Option[ (Path, W) ]]
+
+      override def toString = name
+   }
+
+   def dropHead( pw: Path ) {
+      getAndSubstitute( access, pw ).foreach {
+         case (p1, w) =>
+//            val headOption = w.next.getOrElse( p1, None )
+            val headOption = getAndSubstitute( w.next, p1 )
+//println( "dropHead. pw = " + pw.toList + "; p1 = " + p1.toList + "; h = " + headOption )
+            access = access.put( pw, headOption )
+      }
+   }
+
+   def appendTail( pw: Path, node: (Path, W) ) {
+      var tail = (pw, access, (v: Store[ Int, Option[ (Path, W) ]]) => access = v) // Option.empty[ (Path, W) ]
+//println( "appendTail..." )
+      @tailrec def iter( nextOption: Option[ (Path, W) ]) : Unit = nextOption match {
+         case None =>
+            val (ptail, stail, fun) = tail
+//println( "appendTail " + pw.toList + "; ptail = " + ptail.toList + "; node = " + node )
+            fun( stail.put( ptail, Some( node )))
+         case Some( (p1, w) ) =>
+            tail  = (p1, w.next, (v: Store[ Int, Option[ (Path, W) ]]) => w.next = v)
+            iter( getAndSubstitute( w.next, p1 ))
+      }
+      iter( getAndSubstitute( access, pw ))
    }
 
    def reverse( pw: Path ) {
@@ -84,12 +125,12 @@ class PointerTest {
 //      }
    }
 
-   def toList( p: Path ) : List[ Int ] = {
-      val b = List.newBuilder[ Int ]
+   def toList( p: Path ) : List[ (String, Int) ] = {
+      val b = List.newBuilder[ (String, Int) ]
       @tailrec def iter( nextOption: Option[ (Path, W )]) : Unit = nextOption match {
          case None => // println( "Nil" )
          case Some( (p1, w) ) =>
-            b += w.elem.get( p1 ).get
+            b += w.name -> w.elem.get( p1 ).get
             iter( getAndSubstitute( w.next, p1 ))
       }
       iter( getAndSubstitute( access, p ))
@@ -102,7 +143,7 @@ class PointerTest {
       @tailrec def iter( nextOption: Option[ (Path, W )]) : Unit = nextOption match {
          case None => println( "Nil" )
          case Some( (p1, w) ) =>
-            print( w.elem.get( p1 ).map( _.toString ).getOrElse( "?" ) + " :: " )
+            print( "(" + w.name + " -> " + w.elem.get( p1 ).map( _.toString ).getOrElse( "?" ) + ") :: " )
             iter( getAndSubstitute( w.next, p1 ))
 
       }

@@ -35,6 +35,7 @@ trait StoreLike[ K, @specialized V, Repr ] {
 
    def put( key: Path, value: V ) : Repr
    def get( key: Path ) : Option[ V ]
+   def getOrElse( key: Path, default: => V ) : V = get( key ).getOrElse( default )
 
    /**
     *    Finds the value which is the nearest

@@ -45,7 +45,7 @@ object Hashing {
 
    private val rndTaken    = MSet( 0 ) // .empty[ Int ]
    private val sumsTaken   = MSet.empty[ Long ]
-   private val rnd         = new Random()
+   private val rnd         = new Random( 0L ) // new Random()
 
    var verbose = true
 

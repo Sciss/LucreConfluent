@@ -6,6 +6,8 @@ import annotation.tailrec
 
 object PointerTest {
    def main( args: Array[ String ]) { new PointerTest }
+
+//   def printPath( p: FingerTree.IndexedSummed[ Int, Long ]) = p.toList.toString
 }
 
 class PointerTest {
@@ -32,21 +34,39 @@ class PointerTest {
    reverse( v1 )
 //   val a1   = reverse( a0.copy( _1 = v1 ), v1 )
 
-   val v2   = append( v0 )
-   val v2i  = v2.takeRight( 1 )
+//   val v2   = append( v0 )
+//   val v2i  = v2.takeRight( 1 )
+   val v2i  = mappend( vn, v0 )
+   val v2   = v0 :+ v2i
+   val v2b  = vn :+ v2i
    dropHead( v2 )
 //println( "after dropHead : " + getAndSubstitute( access, v2 ).map( tup => tup._1.toList.toString + " - " + tup._2.name ))
 //println( "access:" ); access.inspect
 
    val w2   = new W( "w2" )
-   w2.elem  = w2.elem.put( v2i, 4 /* 1 */) // 4 easier to distinguish
+   w2.elem  = w2.elem.put( v2b, 4 /* 1 */) // 4 easier to distinguish
 //   w2.next  = w2.next.put( v2i, None )
-   appendTail( v2, (v2i, w2) )
+   appendTail( v2, (v2b, w2) )
+
+//   val v23  =
+   val v3i  = mappend( v1, v2, v2b )
+   val v23  = v2 :+ v3i
+   val v13  = v1 :+ v3i
+
+println( "w1.elem:" ); w1.elem.inspect
+//verbose = true
+   addToAll( v23, 2 )
+//verbose = false
+println( "w1.elem:" ); w1.elem.inspect
+
+
+//   catSelf( v13, v23 )
 
    println( "vn:" ); inspect( vn )
    println( "v0:" ); inspect( v0 )
    println( "v1:" ); inspect( v1 )
    println( "v2:" ); inspect( v2 )
+   println( "v23:" ); inspect( v23 )
 //   println( "Access:" ); access.inspect
 
 //   println( "w0.next:" ); w0.next.inspect
@@ -56,6 +76,7 @@ class PointerTest {
    assert( toList( v0 ) == (("w0" -> 2) :: ("w1" -> 1) :: Nil), "v0" )
    assert( toList( v1 ) == (("w1" -> 1) :: ("w0" -> 2) :: Nil), "v1" )
    assert( toList( v2 ) == (("w1" -> 1) :: ("w2" -> 4) :: Nil), "v2" )
+   assert( toList( v23 ) == (("w1" -> 3) :: ("w2" -> 6) :: Nil), "v23" )
    println( "Tests succeeded." )
 
    class W( val name: String ) {
@@ -63,6 +84,22 @@ class PointerTest {
       var next = f.empty[ Option[ (Path, W) ]]
 
       override def toString = name
+   }
+
+   def catSelf( pw: Path, pm: Path ) {
+
+   }
+
+   def addToAll( pw: Path, inc: Int ) {
+      @tailrec def iter( nextOption: Option[ (Path, W) ]) : Unit = nextOption match {
+         case None =>
+         case Some( (p1, w) ) =>
+            val old = w.elem.get( p1 ).get
+println( "addToAll : " + w.name + " : from " + old + " to " + (old+inc) + " in " +  p1.toList )
+            w.elem = w.elem.put( p1, old + inc )
+            iter( getAndSubstitute( w.next, p1 ))
+      }
+      iter( getAndSubstitute( access, pw ))
    }
 
    def dropHead( pw: Path ) {
@@ -130,7 +167,9 @@ class PointerTest {
       @tailrec def iter( nextOption: Option[ (Path, W )]) : Unit = nextOption match {
          case None => // println( "Nil" )
          case Some( (p1, w) ) =>
-            b += w.name -> w.elem.get( p1 ).get
+val test = p1.toList
+            val elem = w.elem.get( p1 ).get
+            b += w.name -> elem
             iter( getAndSubstitute( w.next, p1 ))
       }
       iter( getAndSubstitute( access, p ))

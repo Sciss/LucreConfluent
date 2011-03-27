@@ -49,7 +49,7 @@ object Hashing {
 
    var verbose = true
 
-   @elidable( elidable.CONFIG ) def debug( what: => String ) {
+   @elidable( elidable.ASSERTION ) def debug( what: => String ) {
       if( verbose ) println( what )
    }
 
@@ -65,6 +65,22 @@ object Hashing {
             if( sumsTaken.add( res.sum )) {  // unique sums
                rndTaken.add( r )
                return res
+            }
+         }
+      }
+      error( "Never here" )
+   }
+
+   def mappend( s: IntSeq* ) : Int = {
+      val preSums = s.map( _.sum )
+      while( true ) {
+         val r = rnd.nextInt() & 0x7FFFFFFF
+         if( !rndTaken.contains( r )) {   // unique vertices
+            val sums = preSums.map( _ + r )
+            if( sums.forall( !sumsTaken.contains( _ ))) {
+               sumsTaken.++=( sums )
+               rndTaken.+=( r )
+               return r
             }
          }
       }

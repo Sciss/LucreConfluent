@@ -32,7 +32,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.1/compile/scala-stm_2.8.1-0.3-SNAPSHOT.jar!/" />
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.1/compile/scala-stm_2.8.1-0.3.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

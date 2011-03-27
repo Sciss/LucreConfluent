@@ -45,14 +45,17 @@ object HashedStoreFactory {
        */
       def get( key: Path ) : Option[ V ] = Hashing.maxPrefixValue( key, map ).flatMap {
          case ValueFull( v )        => Some( v )
-         case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
+         case ValuePre( /* len, */ hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
          case ValueNone             => None // : Option[ V ]
       }
 
       def getWithPrefix( key: Path ) : Option[ (V, Int) ] = {
          Hashing.getWithPrefix( key, map ).flatMap {
             case (ValueFull( v ), sz)        => Some( v -> sz )
-            case (ValuePre( len, hash ), _)  => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
+            case (ValuePre( /* len, */ hash ), sz) => {
+//               assert( sz == len )
+               Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> sz /* len */)
+            }
             case (ValueNone, _)              => None // : Option[ V ]
          }
 
@@ -81,14 +84,15 @@ object HashedStoreFactory {
          val hash       = key.sum
 //         lazy val proxy = ValueProxy( hash )
          new HashedStore( Hashing.add( key, map, { s: Path =>
-            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( s.size, hash )
+//            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( s.size, hash )
+            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
          }))
       }
    }
 
    private sealed trait Value[ +V ]
    private case object ValueNone extends Value[ Nothing ]
-   private case class ValuePre( len: Int, hash: Long ) extends Value[ Nothing ]
+   private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 }
 

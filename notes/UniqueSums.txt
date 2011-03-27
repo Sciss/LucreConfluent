@@ -1,0 +1,16 @@
+27-mar-11
+
+looking at figure 4 (the table of the fat nodes with the assignments listed), creating v3 clearly results in assignment pedigrees
+
+<v0, v2, v3> (for w0') and <v2, v3> (for w0'') and <v0, v1, v3> (for w0' as well as for the access pointer)
+
+the approach until now was, when a version step is performed, to check the unique-sums condition for the access pointer and draw new (pseudo) random numbers until the condition is fulfilled.
+
+now this is probably a mistake, because obviously r(v3) must be chosen so that the unique-sums condition holds for all new sums produced in that version step, i.e.
+
+sum( r(v0), r(v2), r(v3) ) notElementOf existingSums
+sum( r(v2), r(v3) )        notElementOf existingSums
+sum( r(v0), r(v1), r(v3) ) notElementOf existingSums
+
+which in turn means the more elements are updated per version, the greater (in general) the number of checks needed for the newly drawn random number. and moreover, logistically, if updates are performed within a transaction such that the framework cannot foresee the elements that receive new assignments, that a placeholder for r(v3) must be used until the transaction is committing, as only at this point the unique-sums condition can be verified...
+

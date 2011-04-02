@@ -42,3 +42,10 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 //}
 //
 //trait BVar[ C, T ] extends KVar[ C, T ] with PVar[ C, T ]
+
+//trait ERefVar[ C, T ] {
+//   def get( implicit c: C ) : T
+//   def set( v: T )( implicit c: C ) : Unit
+//}
+//
+//trait Ref[ C, T ]

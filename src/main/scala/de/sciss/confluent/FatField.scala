@@ -72,19 +72,19 @@ package de.sciss.confluent
 //object FatValue {
 //   def empty[ V ]( implicit f: StoreFactory ) = new FatValue( f.empty[ OracleMap[ V ]])
 //}
-
-case class FatIdentifier[ @specialized V ]( path: Path, value: V ) {
-   type I = FatIdentifier[ V ] 
-
-	def setValue( v: V ) : I = FatIdentifier( path, v )
-
-	def substitute( accessPath: Path, off: Int ) : I = {
-	  	// ++ XXX inefficient, should use a catenable Deque instead!
-      // i suspect that the code should be
-      // path.dropRight( 1 ) ++ accessPath.drop( off )
-	  	val sub = path.dropRight( 1 ) ++ accessPath.drop( off )
-	  	FatIdentifier( sub, value )
-	}
-
-//   override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
-}
+//
+//case class FatIdentifier[ @specialized V ]( path: Path, value: V ) {
+//   type I = FatIdentifier[ V ]
+//
+//	def setValue( v: V ) : I = FatIdentifier( path, v )
+//
+//	def substitute( accessPath: Path, off: Int ) : I = {
+//	  	// ++ XXX inefficient, should use a catenable Deque instead!
+//      // i suspect that the code should be
+//      // path.dropRight( 1 ) ++ accessPath.drop( off )
+//	  	val sub = path.dropRight( 1 ) ++ accessPath.drop( off )
+//	  	FatIdentifier( sub, value )
+//	}
+//
+////   override def toString = path.mkString( "FId( <", ",", ">, " + value + " )" )
+//}

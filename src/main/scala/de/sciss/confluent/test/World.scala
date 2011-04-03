@@ -9,8 +9,8 @@ object World {
 trait World[ V <: VersionPath ] {
 //   def head( implicit c: KCtx ) : CList
    // KSystem.Var[ Option[ CList[ KSystem.Ctx, KSystem.Var, Int ]]] // = None
-   def list( implicit c: KCtx[ V ]) : CList[ V, Int ]
-   def list_=( l: CList[ V, Int ])( implicit c: KCtx[ V ]) : Unit
+   def list[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : CList[ C1, Int ]
+   def list_=[ C1 <: KSystem.Ctx ]( l: CList[ C1, Int ])( implicit c: C1 ) : Unit
 }
 
 //object WorldUtil {
@@ -25,60 +25,57 @@ trait World[ V <: VersionPath ] {
 //}
 
 object CList {
-   def empty[ V <: VersionPath, A ]( implicit c: KCtx[ V ]) : CList[ V, A ] = new CNilImpl[ V ]()
-   def apply[ V <: VersionPath, A ]( elems: A* )( implicit c: KCtx[ V ], sys: KSystem ) : CList[ V, A ] = {
+//   def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1 ]()
+   def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem ) : CList[ C1, A ] = {
 //      elems.reverseIterator.foldRight( new CNilImpl[ V ])( (a, tail) => {
 //         new CConsImpl[ V, A ]( c.path, sys.v( a ), sys.v( StoreFactory. )
 //      })
       error( "No functiona" )
    }
 
-   private class CNilImpl[ V <: VersionPath ] extends CNil[ V ]
+//   private class CNilImpl[ C1 <: KSystem.Ctx ] extends CNil[ C1 ] {
+//      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, Nothing ] = new CNilImpl[ C ]
+//   }
 
-   private class CConsImpl[ V <: VersionPath, A ]( val path: VersionPath, val headRef: KSystem.Var[ A ], val tailRef: KSystem.Var[ Store[ Version, CList[ _, A ]]])
-   extends CCons[ V, A ] {
-      def head( implicit c: KCtx[ V ]) : A = headRef.get( c )
-      def head_=( a: A )( implicit c: KCtx[ V ]) : Unit = headRef.set( a )
-      def tail( implicit c: KCtx[ V ]) : CList[ V, A ] = {
-         val store   = tailRef.get
-         val p       = path.path
-         store.getWithPrefix( p ) match {
-            case Some( (vu: CConsImpl[ _, _ ], pre) ) =>
-               val v    = vu.asInstanceOf[ CConsImpl[ _, A ]]
-               val ap   = v.path.path
-               new CConsImpl[ V, A ]( VersionPath.wrap( ap.++( p.drop( pre ))), v.headRef, v.tailRef )
-            case _ => new CNilImpl[ V ]
-         }
-      }
-      def tail_=( l: CList[ V, A ])( implicit c: KCtx[ V ]) : Unit = {
-         tailRef.transform( _.put( c.path.path, l.asInstanceOf[ CList[ VersionPath, A ]]))
-      }
-
-//      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
-//         val spath =
-//         CConsImpl( spath, headRef, tailRef )
+//   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
+//
+//   private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: VersionPath, val headRef: KSystem.Var[ A ], val tailRef: KSystem.RefVar[ ListHolder ])
+//   extends CCons[ C1, A ] {
+//      def head( implicit c: C1 ) : A = headRef.get( c )
+//      def head_=( a: A )( implicit c: C1 ) : Unit = headRef.set( a )
+//      def tail( implicit c: C1 ) : CList[ C1, A ] = tailRef.get[ C1 ]
+//      def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit = {
+////         tailRef.transform[ C1 ]( r => r.put( c.path.path, l.asInstanceOf[ CList[ VersionPath, A ]]))
+//         tailRef.set( l )
 //      }
-   }
+//
+////      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
+////         val spath =
+////         CConsImpl( spath, headRef, tailRef )
+////      }
+//   }
+
+   type Apply[ A ] = CList[ _ <: KSystem.Ctx, A ]
 }
 
-sealed trait CList[ V <: VersionPath, +A ] {
+sealed trait CList[ C1 <: KSystem.Ctx, +A ] extends Access[ Path, CList.Apply ] {
 }
-trait CNil[ V <: VersionPath ] extends CList[ V, Nothing ] {
+trait CNil[ C1 <: KSystem.Ctx ] extends CList[ C1, Nothing ] {
 }
-trait CCons[ V <: VersionPath, A ] extends CList[ V, A ] {
+trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]
 
-   def head( implicit c: KCtx[ V ]) : A
-   def head_=( a: A )( implicit c: KCtx[ V ]) : Unit
-   def tail( implicit c: KCtx[ V ]) : CList[ V, A ]
-   def tail_=( l: CList[ V, A ])( implicit c: KCtx[ V ]) : Unit
+   def head( implicit c: C1 ) : A
+   def head_=( a: A )( implicit c: C1 ) : Unit
+   def tail( implicit c: C1 ) : CList[ C1, A ]
+   def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit
 }
 
 class WorldTest {
    val sys  = Factory.ksystem
    val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
    csr.t { implicit c =>
-      val l0 = CList.empty
+//      val l0 = CList.empty
 
    }
 

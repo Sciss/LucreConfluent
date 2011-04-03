@@ -176,9 +176,8 @@ object KSystemImpl {
       }
 
       def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
-         error( "TODO" )
-//         ref.transform( _.put( c.writePath.path, v ))( c.txn )
-//         fireUpdate( v )
+         ref.transform( _.put( c.writePath.path, v ))( c.txn )
+         fireUpdate( v )
       }
 
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit

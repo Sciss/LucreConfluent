@@ -61,7 +61,7 @@ trait Access[ Up, V, Res[ _ <: Up ]] {
    def access[ C <: Up ]( post: V ) : Res[ C ]
 }
 
-trait ERefVar[ V, C, T[ _ ] <: Access[ C, V, T ]] {
+trait ERefVar[ V, C, T[ _ <: C ] <: Access[ C, V, T ]] {
    def get[ C1 <: C ]( implicit c: C1 ) : T[ C1 ]
    def set[ C1 <: C ]( v: T[ C1 ])( implicit c: C1 ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit

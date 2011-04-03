@@ -38,22 +38,27 @@ object CList {
    }
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
-//
-//   private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: VersionPath, val headRef: KSystem.Var[ A ], val tailRef: KSystem.RefVar[ ListHolder ])
-//   extends CCons[ C1, A ] {
-//      def head( implicit c: C1 ) : A = headRef.get( c )
-//      def head_=( a: A )( implicit c: C1 ) : Unit = headRef.set( a )
-//      def tail( implicit c: C1 ) : CList[ C1, A ] = tailRef.get[ C1 ]
-//      def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit = {
-////         tailRef.transform[ C1 ]( r => r.put( c.path.path, l.asInstanceOf[ CList[ VersionPath, A ]]))
-//         tailRef.set( l )
+
+   private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: VersionPath, val headRef: KSystem.Var[ A ],
+                                                    val tailRef: KSystem.RefVar[ Partial2U[ KSystem.Ctx, CList, A ]#Apply ])
+   extends CCons[ C1, A ] {
+      def head( implicit c: C1 ) : A = headRef.get( c )
+      def head_=( a: A )( implicit c: C1 ) : Unit = headRef.set( a )
+      def tail( implicit c: C1 ) : CList[ C1, A ] = tailRef.get[ C1 ]
+      def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit = {
+//         tailRef.transform[ C1 ]( r => r.put( c.path.path, l.asInstanceOf[ CList[ VersionPath, A ]]))
+         tailRef.set( l )
+      }
+
+      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
+         error( "TODO" )
+      }
+
+//      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
+//         val spath =
+//         CConsImpl( spath, headRef, tailRef )
 //      }
-//
-////      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
-////         val spath =
-////         CConsImpl( spath, headRef, tailRef )
-////      }
-//   }
+   }
 }
 
 sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, Partial2U[ KSystem.Ctx, CList, A ]#Apply ] {

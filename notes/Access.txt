@@ -1,0 +1,25 @@
+write path ....
+
+@txn class Gagaism {
+	var lulu: Int = 33
+	var next = Option.empty[ Gagaism ]
+}
+
+---compiler plug-in rewrite---
+
+class Gagaism extends Access... {
+	private val luluRef = ref...
+	def lulu( implicit ... ) ...
+	def lulu_=( ... )( implict ... ) ...
+	etc.
+}
+
+System needs World -- sad but true
+
+System[ World ] {
+    atomic { w => }
+}
+
+World extends Access {
+    
+}

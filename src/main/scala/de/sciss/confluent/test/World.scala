@@ -26,14 +26,12 @@ trait World[ V <: VersionPath ] {
 
 object CList {
    def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1, A ]()
-   def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem ) : CList[ C1, A ] = {
-// XXX TODO : sys.v( a ) is obviously wrong -- that is sys.v needs to get another path (the seminal path)
-
-//      val seminal = c.path.seminalPath  // XXX should be in the lib
-//      elems.reverseIterator.foldRight( new CNilImpl[ C1, A ])( (a, tail) => {
-//         new CConsImpl[ V, A ]( seminal, sys.v( a ), sys.v( StoreFactory. )
-//      })
-      error( "No functiona" )
+   def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem, mf: ClassManifest[ A ]) : CList[ C1, A ] = {
+      val p = c.writePath.seminalPath
+      elems.reverseIterator.foldRight[ CList[ C1, A ]]( new CNilImpl[ C1, A ])( (a, tail) => {
+         new CConsImpl[ C1, A ]( p, sys.v( a ), sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( tail ))
+      })
+//      error( "No functiona" )
    }
 
    private class CNilImpl[ C1 <: KSystem.Ctx, A ] extends CNil[ C1, A ] {
@@ -43,7 +41,7 @@ object CList {
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
    private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: Path, val headRef: KSystem.Var[ A ],
-                                                    val tailRef: KSystem.RefVar[ Partial2U[ KSystem.Ctx, CList, A ]#Apply ])
+                                                    val tailRef: KSystem.RefVar[ ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ])
    extends CCons[ C1, A ] {
       def head( implicit c: C1 ) : A = headRef.get( c )
       def head_=( a: A )( implicit c: C1 ) : Unit = headRef.set( a )
@@ -60,8 +58,8 @@ object CList {
 //      }
    }
 }
-
-sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, Partial2U[ KSystem.Ctx, CList, A ]#Apply ] {
+// Partial2U[ KSystem.Ctx, CList, A ]#Apply
+sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ] {
 }
 trait CNil[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 }

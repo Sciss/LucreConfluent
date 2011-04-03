@@ -48,5 +48,5 @@ package object confluent {
    type RVr[ A, C, T[ _ <: C ] <: Access[ C, A, T ]]  = ERefVar[ A, C, T ]
 
    // http://stackoverflow.com/questions/5527684/problem-partially-applying-type-parameters/5527759
-   type Partial2U[ Up, T[ _ <: Up, _ ], Second ] = { type Apply[ First <: Up ] = T[ First, Second ]}
+//   type Partial2U[ Up, T[ _ <: Up, _ ], Second ] = { type Apply[ First <: Up ] = T[ First, Second ]}
 }

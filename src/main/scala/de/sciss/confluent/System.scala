@@ -34,7 +34,7 @@ import Double.{PositiveInfinity => dinf}
 trait System[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], A, RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]] {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
    def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
-   def refVar[ C1 <: C, T[ _ ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: C ) : RV[ T ]
+   def refVar[ C1 <: C, T[ _ <: C ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: C ) : RV[ T ]
    def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
    def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
 }

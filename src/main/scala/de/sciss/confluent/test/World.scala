@@ -55,10 +55,10 @@ object CList {
 ////      }
 //   }
 
-   type Apply[ A ] = CList[ _ <: KSystem.Ctx, A ]
+//   type Apply[ A ] = CList[ _ <: KSystem.Ctx, A ]
 }
 
-sealed trait CList[ C1 <: KSystem.Ctx, +A ] extends Access[ Path, CList.Apply ] {
+sealed trait CList[ C1 <: KSystem.Ctx, +A ] extends Access[ Path, CList[ _, A ]] {
 }
 trait CNil[ C1 <: KSystem.Ctx ] extends CList[ C1, Nothing ] {
 }

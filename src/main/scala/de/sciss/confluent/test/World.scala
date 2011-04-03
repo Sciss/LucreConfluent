@@ -60,8 +60,12 @@ object CList {
 }
 // Partial2U[ KSystem.Ctx, CList, A ]#Apply
 sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ] {
+   def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]]
+   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]]
 }
 trait CNil[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
+   def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = None
+   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = None
 }
 trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]
@@ -70,15 +74,29 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    def head_=( a: A )( implicit c: C1 ) : Unit
    def tail( implicit c: C1 ) : CList[ C1, A ]
    def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit
+
+   def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = Some( this )
+   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = {
+      var res        = this
+      var keepGoin   = true
+      while( keepGoin ) {
+         res.tail match {
+            case cns: CCons[ C1, A ] => res = cns
+            case _ => keepGoin = false
+         }
+      }
+      Some( res )
+   }
 }
 
 class WorldTest {
-   val sys  = Factory.ksystem
+   implicit val sys  = Factory.ksystem
    val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
-   csr.t { implicit c =>
-//      val l0 = CList.empty
-
-   }
+//   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
+   val l1   = csr.t( implicit c => CList.apply( "A", "B", "C" ))
+//   csr.t( implicit c => (l1.headOption, l1.tailOption) match {
+//      case (Some( head ), Some( tail )) => tail.tail = head
+//   })
 
 //   class MutVar[ V <: VersionPath ]( val v: KSystem.Var[ String ])
 //   class MutTest extends KMutVar[ KCtx, MutVar ] {

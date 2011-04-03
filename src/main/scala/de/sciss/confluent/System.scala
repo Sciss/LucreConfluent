@@ -31,17 +31,18 @@ package de.sciss.confluent
 import collection.immutable.{Set => ISet}
 import Double.{PositiveInfinity => dinf}
 
-trait System[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], A, RV[ ~[ _ ] <: Access[ A ]] <: RVr[ A, C, ~ ]] {
+trait System[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], A, RV[ ~[ _ ] <: Access[ A, ~ ]] <: RVr[ A, C, ~ ]] {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
    def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
-   def refVar[ C1 <: C, T[ _ ] <: Access[ A ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: C ) : RV[ T ]
+   def refVar[ C1 <: C, T[ _ ] <: Access[ A, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: C ) : RV[ T ]
    def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
    def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
 }
 
 object ESystem {
-   type Var[ ~ ]                          = EVar[ ECtx, ~ ]
-   type RefVar[ ~[ _ ] <: Access[ Unit ]] = ERefVar[ Unit, ECtx, ~ ]
+   type Var[ ~ ]
+   = EVar[ ECtx, ~ ]
+   type RefVar[ ~[ _ ] <: Access[ Unit, ~ ]] = ERefVar[ Unit, ECtx, ~ ]
 }
 trait ESystem extends System[ ECtx, ESystem.Var, Unit, ESystem.RefVar ]
 /* with Cursor[ ESystem, ECtx, ESystem.Var ] with CursorProvider[ ESystem ] */ {
@@ -62,7 +63,8 @@ object KSystemLike {
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
-trait KSystemLike[ C <: Ct, V[ ~ ] <: KVar[ C, ~ ], RV[ ~[ _ ] <: Access[ Path ]] <: ERefVar[ Path, C, ~ ], Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
+trait KSystemLike[ C <: Ct, V[ ~ ] <: KVar[ C, ~ ], RV[ ~[ _ ] <: Access[ Path, ~ ]] <: ERefVar[ Path, C, ~ ],
+                   Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
 extends System[ C, V, Path, RV ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R
 
@@ -79,12 +81,12 @@ extends System[ C, V, Path, RV ] with Model[ ECtx, KSystemLike.Update ] {
 }
 
 object KSystem {
-   type Ctx                               = KCtx[ _ <: VersionPath ]
-   type Var[ ~ ]                          = KVar[ Ctx, ~ ]
-   type RefVar[ ~[ _ ] <: Access[ Path ]] = ERefVar[ Path, Ctx, ~ ]
+   type Ctx                                  = KCtx[ _ <: VersionPath ]
+   type Var[ ~ ]                             = KVar[ Ctx, ~ ]
+   type RefVar[ ~[ _ ] <: Access[ Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
 
-   type Projection                        = EProjection[ Ctx ] with KProjection[ Ctx ]
-   type Cursor                            = ECursor[ Ctx ] with KProjection[ Ctx ]
+   type Projection                           = EProjection[ Ctx ] with KProjection[ Ctx ]
+   type Cursor                               = ECursor[ Ctx ] with KProjection[ Ctx ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 

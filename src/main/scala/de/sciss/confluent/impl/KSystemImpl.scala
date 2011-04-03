@@ -33,8 +33,8 @@ import collection.immutable.{Set => ISet}
 import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref}
 
 object KSystemImpl {
-   private type Holder[ T ]         = Ref[ Store[ Version, T ]]
-   private type RefHolder[ T[ _ ]]  = Ref[ Store[ Version, (Path, T[ _ ])]]
+   private type Holder[ T ]                              = Ref[ Store[ Version, T ]]
+   private type RefHolder[ T[ _ ] <: Access[ Path, T ]]  = Ref[ Store[ Version, T[ _ ]]]
 
    def apply( implicit f: StoreFactory[ Version ]) : KSystem = new Sys( f )
 
@@ -57,7 +57,7 @@ object KSystemImpl {
          new Var( ref, name )
       }
 
-      def refVar[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
+      def refVar[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
          val (ref, name) = prepRef[ C1, T ]( init )
          val res = new RefVar[ T ]( ref, name )
          res
@@ -73,13 +73,12 @@ object KSystemImpl {
          new UserVar( ref, name, user )
       }
 
-      private def prepRef[ C1 <: KSystem.Ctx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
-         error( "TODO" )
-//         val fat0 = f.empty[ (Path, T[ _ ])]
-//         val vp   = c.writePath
-//         val p    = vp.path
-//         val fat1 = fat0.put( vp.path, init )
-//         Ref( fat1 ) -> m.toString
+      private def prepRef[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
+         val fat0 = f.empty[ T[ _ ]]
+         val vp   = c.writePath
+         val p    = vp.path
+         val fat1 = fat0.put( vp.path, init )
+         Ref( fat1 ) -> m.toString
       }
 
       private def prep[ T ]( init: T )( implicit m: ClassManifest[ T ], c: KSystem.Ctx ) : (Holder[ T ], String) = {
@@ -160,7 +159,7 @@ object KSystemImpl {
       }
    }
 
-   private trait AbstractRefVar[ T[ _ ] <: Access[ Path ]]
+   private trait AbstractRefVar[ T[ _ ] <: Access[ Path, T ]]
    extends ERefVar[ Path, KSystem.Ctx, T ] {
       protected val ref: RefHolder[ T ]
       protected val typeName : String
@@ -168,10 +167,12 @@ object KSystemImpl {
       override def toString = "KRefVar[" + typeName + "]"
 
       def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
-         error( "TODO" )
-//         val vp   = c.path // readPath
-//         ref.get( c.txn ).get( vp.path )
-//            .getOrElse( error( "No assignment for path " + vp ))
+         val vp         = c.path // readPath
+         val p          = vp.path
+         val (raw, pre) = ref.get( c.txn ).getWithPrefix( p )
+            .getOrElse( error( "No assignment for path " + vp ))
+//         raw.substitute( raw.accessPath ++ p.drop( pre ))
+         raw.access[ C1 ]( p.drop( pre ))
       }
 
       def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
@@ -183,7 +184,7 @@ object KSystemImpl {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
    }
 
-   private class RefVar[ T[ _ ] <: Access[ Path ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+   private class RefVar[ T[ _ ] <: Access[ Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
    }
 

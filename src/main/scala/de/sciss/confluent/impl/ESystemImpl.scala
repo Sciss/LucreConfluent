@@ -39,7 +39,7 @@ object ESystemImpl extends ESystem {
    def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
       new Var( Ref( init ), m.toString )
 
-   def refVar[ C1 <: ECtx, T[ _ ] <: Access[ Unit ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
+   def refVar[ C1 <: ECtx, T[ _ ] <: Access[ Unit, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
       error( "TODO" )
 
    def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] with Model[ ECtx, T ] =

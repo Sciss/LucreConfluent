@@ -31,10 +31,11 @@ package de.sciss.confluent
 import concurrent.stm.InTxn
 
 trait VersionPath {
+   type Child <: VersionPath
    val version: Version
    def path: Path
 
-   def newBranch( implicit txn: InTxn ) : VersionPath
+   def newBranch( implicit txn: InTxn ) : Child // VersionPath
 //   def meldWith( v: Version ) : VersionPath
 //   def newRetroParent : VersionPath
 //   def newRetroChild : VersionPath
@@ -63,7 +64,9 @@ object VersionPath {
 
    private case class VersionPathImpl( version: Version, path: Path )
    extends VersionPath {
-      def newBranch( implicit txn: InTxn ) : VersionPath =
+      type Child = VersionPathImpl
+
+      def newBranch( implicit txn: InTxn ) : Child =
 //         newTail( Version.newFrom( version ))
          newTail( Version.newFrom( this ))
 
@@ -80,7 +83,7 @@ object VersionPath {
 //      def newMultiBranch : Multiplicity = new MultiplicityImpl( this )
 
       // simply full path for now XXX
-      protected def newTail( tailVersion: Version ) : VersionPath = VersionPathImpl( tailVersion, path :+ tailVersion )
+      protected def newTail( tailVersion: Version ) : Child = VersionPathImpl( tailVersion, path :+ tailVersion )
 
 //      protected def newTail( tailVersion: Version ) : VersionPath = {
 //         val newPath = if( tailVersion.level == version.level ) {

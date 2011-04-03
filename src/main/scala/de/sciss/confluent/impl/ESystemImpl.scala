@@ -65,6 +65,7 @@ object ESystemImpl extends ESystem {
          ref.set( v )( c.txn )
          fireUpdate( v )
       }
+      def transform( f: T => T )( implicit c: ECtx ) { ref.transform( f )( c.txn )}
    }
 
    private class Var[ T ]( val ref: Ref[ T ], val typeName: String ) extends AbstractVar[ T ] {

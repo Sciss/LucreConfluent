@@ -77,13 +77,14 @@ extends System[ C, V ] with Model[ ECtx, KSystemLike.Update ] {
 }
 
 object KSystem {
-   type Var[ ~ ]     = KVar[ KCtx, ~ ]
-   type Projection   = EProjection[ KCtx ] with KProjection[ KCtx ]
-   type Cursor       = ECursor[ KCtx ] with KProjection[ KCtx ]
+   type Ctx          = KCtx[ _ <: VersionPath ]
+   type Var[ ~ ]     = KVar[ Ctx, ~ ]
+   type Projection   = EProjection[ Ctx ] with KProjection[ Ctx ]
+   type Cursor       = ECursor[ Ctx ] with KProjection[ Ctx ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 
-trait KSystem extends KSystemLike[ KCtx, KSystem.Var, KSystem.Projection, KSystem.Cursor ] {
+trait KSystem extends KSystemLike[ KSystem.Ctx, KSystem.Var, KSystem.Projection, KSystem.Cursor ] {
 //   def kProjector : KEProjector[ KCtx, KSystem.Var ]
 }
 // with KEProjector[ KCtx, KSystem.Var ]

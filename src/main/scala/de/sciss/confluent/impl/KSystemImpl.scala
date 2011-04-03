@@ -57,7 +57,7 @@ object KSystemImpl {
          new Var( ref, name )
       }
 
-      def refVar[ C1 <: KSystem.Ctx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
+      def refVar[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
          val (ref, name) = prepRef[ C1, T ]( init )
          val res = new RefVar[ T ]( ref, name )
          res
@@ -74,11 +74,12 @@ object KSystemImpl {
       }
 
       private def prepRef[ C1 <: KSystem.Ctx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
-//         val fat0 = f.empty[ T ]
+         error( "TODO" )
+//         val fat0 = f.empty[ (Path, T[ _ ])]
 //         val vp   = c.writePath
+//         val p    = vp.path
 //         val fat1 = fat0.put( vp.path, init )
 //         Ref( fat1 ) -> m.toString
-         error( "TODO" )
       }
 
       private def prep[ T ]( init: T )( implicit m: ClassManifest[ T ], c: KSystem.Ctx ) : (Holder[ T ], String) = {
@@ -159,8 +160,8 @@ object KSystemImpl {
       }
    }
 
-   private trait AbstractRefVar[ T[ _ ]]
-   extends ERefVar[ KSystem.Ctx, T ] {
+   private trait AbstractRefVar[ T[ _ ] <: Access[ Path ]]
+   extends ERefVar[ Path, KSystem.Ctx, T ] {
       protected val ref: RefHolder[ T ]
       protected val typeName : String
 
@@ -182,7 +183,7 @@ object KSystemImpl {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
    }
 
-   private class RefVar[ T[ _ ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+   private class RefVar[ T[ _ ] <: Access[ Path ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
    }
 

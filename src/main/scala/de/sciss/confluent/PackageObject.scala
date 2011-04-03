@@ -46,4 +46,7 @@ package object confluent {
    type Ct                                   = CtxLike
    type Vr[ C, T ]                           = EVar[ C, T ]
    type RVr[ A, C, T[ _ ] <: Access[ A, T ]] = ERefVar[ A, C, T ]
+
+   // http://stackoverflow.com/questions/5527684/problem-partially-applying-type-parameters/5527759
+   type Partial2[ T[ _, _ ], B ] = { type Apply[ A ] = T[ A, B ]}
 }

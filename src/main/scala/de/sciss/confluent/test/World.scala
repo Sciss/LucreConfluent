@@ -54,11 +54,9 @@ object CList {
 ////         CConsImpl( spath, headRef, tailRef )
 ////      }
 //   }
-
-//   type Apply[ A ] = CList[ _ <: KSystem.Ctx, A ]
 }
 
-sealed trait CList[ C1 <: KSystem.Ctx, +A ] extends Access[ Path, CList[ _, A ]] {
+sealed trait CList[ C1, A ] extends Access[ Path, Partial2[ CList, A ]#Apply ] {
 }
 trait CNil[ C1 <: KSystem.Ctx ] extends CList[ C1, Nothing ] {
 }

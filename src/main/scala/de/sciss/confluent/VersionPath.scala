@@ -34,6 +34,7 @@ trait VersionPath {
    type Child <: VersionPath
    val version: Version
    def path: Path
+   def seminalPath : Path = path.takeRight( 1 )
 
    def newBranch( implicit txn: InTxn ) : Child // VersionPath
 //   def meldWith( v: Version ) : VersionPath

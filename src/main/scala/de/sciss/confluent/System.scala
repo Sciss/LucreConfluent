@@ -84,8 +84,8 @@ object KSystem {
    type Var[ ~ ]                                         = KVar[ Ctx, ~ ]
    type RefVar[ ~[ _ <: Ctx ] <: Access[ Ctx, Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
 
-   type Projection                                 = EProjection[ Ctx ] with KProjection[ Ctx ]
-   type Cursor                                     = ECursor[ Ctx ] with KProjection[ Ctx ]
+   type Projection                                       = EProjection[ Ctx ] with KProjection[ Ctx ]
+   type Cursor                                           = ECursor[ Ctx ] with KProjection[ Ctx ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 

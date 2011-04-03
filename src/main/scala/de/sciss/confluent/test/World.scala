@@ -27,8 +27,11 @@ trait World[ V <: VersionPath ] {
 object CList {
    def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1, A ]()
    def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem ) : CList[ C1, A ] = {
-//      elems.reverseIterator.foldRight( new CNilImpl[ V ])( (a, tail) => {
-//         new CConsImpl[ V, A ]( c.path, sys.v( a ), sys.v( StoreFactory. )
+// XXX TODO : sys.v( a ) is obviously wrong -- that is sys.v needs to get another path (the seminal path)
+
+//      val seminal = c.path.seminalPath  // XXX should be in the lib
+//      elems.reverseIterator.foldRight( new CNilImpl[ C1, A ])( (a, tail) => {
+//         new CConsImpl[ V, A ]( seminal, sys.v( a ), sys.v( StoreFactory. )
 //      })
       error( "No functiona" )
    }
@@ -39,19 +42,16 @@ object CList {
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: VersionPath, val headRef: KSystem.Var[ A ],
+   private class CConsImpl[ C1 <: KSystem.Ctx, A ]( val path: Path, val headRef: KSystem.Var[ A ],
                                                     val tailRef: KSystem.RefVar[ Partial2U[ KSystem.Ctx, CList, A ]#Apply ])
    extends CCons[ C1, A ] {
       def head( implicit c: C1 ) : A = headRef.get( c )
       def head_=( a: A )( implicit c: C1 ) : Unit = headRef.set( a )
       def tail( implicit c: C1 ) : CList[ C1, A ] = tailRef.get[ C1 ]
-      def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit = {
-//         tailRef.transform[ C1 ]( r => r.put( c.path.path, l.asInstanceOf[ CList[ VersionPath, A ]]))
-         tailRef.set( l )
-      }
+      def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit = tailRef.set( l )
 
       def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
-         error( "TODO" )
+         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
       }
 
 //      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {

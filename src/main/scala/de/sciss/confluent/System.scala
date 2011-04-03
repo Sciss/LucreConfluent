@@ -31,17 +31,19 @@ package de.sciss.confluent
 import collection.immutable.{Set => ISet}
 import Double.{PositiveInfinity => dinf}
 
-trait System[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]] {
+trait System[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], RV[ ~[ _ ]] <: RVr[ C, ~ ]] {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
    def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
+   def refVar[ C1 <: C, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: C ) : RV[ T ]
    def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
    def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: ClassManifest[ T ], c: C ) : V[ T ]
 }
 
 object ESystem {
-   type Var[ ~ ] = EVar[ ECtx, ~ ]
+   type Var[ ~ ]        = EVar[ ECtx, ~ ]
+   type RefVar[ ~[ _ ]] = ERefVar[ ECtx, ~ ]
 }
-trait ESystem extends System[ ECtx, ESystem.Var ]
+trait ESystem extends System[ ECtx, ESystem.Var, ESystem.RefVar ]
 /* with Cursor[ ESystem, ECtx, ESystem.Var ] with CursorProvider[ ESystem ] */ {
 //   type Var[ T ] = EVar[ Ctx, T ]
 //   type Ctx = ECtx
@@ -60,8 +62,8 @@ object KSystemLike {
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
-trait KSystemLike[ C <: Ct, V[ ~ ] <: KVar[ C, ~ ], Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
-extends System[ C, V ] with Model[ ECtx, KSystemLike.Update ] {
+trait KSystemLike[ C <: Ct, V[ ~ ] <: KVar[ C, ~ ], RV[ ~[ _ ]] <: ERefVar[ C, ~ ], Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
+extends System[ C, V, RV ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R
 
    def kProjector : KProjector[ C, Proj, Csr ]
@@ -77,14 +79,16 @@ extends System[ C, V ] with Model[ ECtx, KSystemLike.Update ] {
 }
 
 object KSystem {
-   type Ctx          = KCtx[ _ <: VersionPath ]
-   type Var[ ~ ]     = KVar[ Ctx, ~ ]
-   type Projection   = EProjection[ Ctx ] with KProjection[ Ctx ]
-   type Cursor       = ECursor[ Ctx ] with KProjection[ Ctx ]
+   type Ctx             = KCtx[ _ <: VersionPath ]
+   type Var[ ~ ]        = KVar[ Ctx, ~ ]
+   type RefVar[ ~[ _ ]] = ERefVar[ Ctx, ~ ]
+
+   type Projection      = EProjection[ Ctx ] with KProjection[ Ctx ]
+   type Cursor          = ECursor[ Ctx ] with KProjection[ Ctx ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 
-trait KSystem extends KSystemLike[ KSystem.Ctx, KSystem.Var, KSystem.Projection, KSystem.Cursor ] {
+trait KSystem extends KSystemLike[ KSystem.Ctx, KSystem.Var, KSystem.RefVar, KSystem.Projection, KSystem.Cursor ] {
 //   def kProjector : KEProjector[ KCtx, KSystem.Var ]
 }
 // with KEProjector[ KCtx, KSystem.Var ]

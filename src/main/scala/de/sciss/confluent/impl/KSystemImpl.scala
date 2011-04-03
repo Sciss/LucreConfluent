@@ -33,7 +33,8 @@ import collection.immutable.{Set => ISet}
 import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref}
 
 object KSystemImpl {
-   private type Holder[ T ] = Ref[ Store[ Version, T ]]
+   private type Holder[ T ]         = Ref[ Store[ Version, T ]]
+   private type RefHolder[ T[ _ ]]  = Ref[ Store[ Version, (Path, T[ _ ])]]
 
    def apply( implicit f: StoreFactory[ Version ]) : KSystem = new Sys( f )
 
@@ -56,6 +57,12 @@ object KSystemImpl {
          new Var( ref, name )
       }
 
+      def refVar[ C1 <: KSystem.Ctx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
+         val (ref, name) = prepRef[ C1, T ]( init )
+         val res = new RefVar[ T ]( ref, name )
+         res
+      }
+
       def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] with Model[ KSystem.Ctx, T ] = {
          val (ref, name) = prep( init )
          new ModelVar( ref, name )
@@ -64,6 +71,14 @@ object KSystemImpl {
       def userVar[ T ]( init: T )( user: (KSystem.Ctx, T) => Unit )( implicit m: ClassManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] = {
          val (ref, name) = prep( init )
          new UserVar( ref, name, user )
+      }
+
+      private def prepRef[ C1 <: KSystem.Ctx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
+//         val fat0 = f.empty[ T ]
+//         val vp   = c.writePath
+//         val fat1 = fat0.put( vp.path, init )
+//         Ref( fat1 ) -> m.toString
+         error( "TODO" )
       }
 
       private def prep[ T ]( init: T )( implicit m: ClassManifest[ T ], c: KSystem.Ctx ) : (Holder[ T ], String) = {
@@ -142,6 +157,33 @@ object KSystemImpl {
             pw
          } else p
       }
+   }
+
+   private trait AbstractRefVar[ T[ _ ]]
+   extends ERefVar[ KSystem.Ctx, T ] {
+      protected val ref: RefHolder[ T ]
+      protected val typeName : String
+
+      override def toString = "KRefVar[" + typeName + "]"
+
+      def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
+         error( "TODO" )
+//         val vp   = c.path // readPath
+//         ref.get( c.txn ).get( vp.path )
+//            .getOrElse( error( "No assignment for path " + vp ))
+      }
+
+      def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
+         error( "TODO" )
+//         ref.transform( _.put( c.writePath.path, v ))( c.txn )
+//         fireUpdate( v )
+      }
+
+      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
+   }
+
+   private class RefVar[ T[ _ ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
    }
 
    private trait AbstractVar[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )

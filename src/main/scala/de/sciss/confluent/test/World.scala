@@ -81,6 +81,12 @@ class WorldTest {
       val l0 = CList.empty
 
    }
+
+//   class MutVar[ V <: VersionPath ]( val v: KSystem.Var[ String ])
+//   class MutTest extends KMutVar[ KCtx, MutVar ] {
+//      def get[ V <: VersionPath ]( implicit c: KCtx[ V ]) : MutVar[ V ] = error( "NO" )
+//      def set[ V <: VersionPath ]( v: MutVar[ V ])( implicit c: KCtx[ V ]) : Unit = error( "NO" )
+//   }
 }
 
 //final class CList[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], A ]( val elem: V[ Int ], val next: V[ Option[ CList[ C, V, A ]]]) {

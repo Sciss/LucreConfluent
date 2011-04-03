@@ -50,3 +50,9 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 //}
 //
 //trait Ref[ C, T ]
+
+trait ERefVar[ C, T[ _ <: C ]] {
+   def get[ C1 <: C ]( implicit c: C1 ) : T[ C1 ]
+   def set[ C1 <: C ]( v: T[ C1 ])( implicit c: C1 ) : Unit
+//   def transform[ V <: C ]( f: T => T )(implicit c: C[ V ]) : Unit
+}

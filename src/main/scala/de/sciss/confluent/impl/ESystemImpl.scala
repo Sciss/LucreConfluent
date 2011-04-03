@@ -36,13 +36,16 @@ object ESystemImpl extends ESystem {
 
    def t[ T ]( fun: ECtx => T ) : T = TxnExecutor.defaultAtomic( tx => fun( new Ctx( tx )))
 
-   def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : EVar[ ECtx, T ] =
+   def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
       new Var( Ref( init ), m.toString )
 
-   def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : EVar[ ECtx, T ] with Model[ ECtx, T ] =
+   def refVar[ C1 <: ECtx, T[ _ ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
+      error( "TODO" )
+
+   def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] with Model[ ECtx, T ] =
       new ModelVar( Ref( init ), m.toString )
 
-   def userVar[ T ]( init: T )( user: (ECtx, T) => Unit )( implicit m: ClassManifest[ T ], c: ECtx ) : EVar[ ECtx, T ] =
+   def userVar[ T ]( init: T )( user: (ECtx, T) => Unit )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
       new UserVar( Ref( init ), m.toString, user )
 
    def join( txn: InTxn ) : ECtx = new Ctx( txn )
@@ -52,7 +55,7 @@ object ESystemImpl extends ESystem {
       def eph : ECtx = this
    }
 
-   private trait AbstractVar[ T ] extends EVar[ ECtx, T ] {
+   private trait AbstractVar[ T ] extends ESystem.Var[ T ] {
       protected val ref: Ref[ T ]
       protected val typeName: String
 

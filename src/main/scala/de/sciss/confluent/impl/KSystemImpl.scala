@@ -33,8 +33,8 @@ import collection.immutable.{Set => ISet}
 import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref}
 
 object KSystemImpl {
-   private type Holder[ T ]                              = Ref[ Store[ Version, T ]]
-   private type RefHolder[ T[ _ ] <: Access[ Path, T ]]  = Ref[ Store[ Version, T[ _ ]]]
+   private type Holder[ T ]                                          = Ref[ Store[ Version, T ]]
+   private type RefHolder[ T[ _ ] <: Access[ KSystem.Ctx, Path, T ]] = Ref[ Store[ Version, T[ _ ]]]
 
    def apply( implicit f: StoreFactory[ Version ]) : KSystem = new Sys( f )
 
@@ -57,7 +57,7 @@ object KSystemImpl {
          new Var( ref, name )
       }
 
-      def refVar[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
+      def refVar[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
          val (ref, name) = prepRef[ C1, T ]( init )
          val res = new RefVar[ T ]( ref, name )
          res
@@ -73,7 +73,7 @@ object KSystemImpl {
          new UserVar( ref, name, user )
       }
 
-      private def prepRef[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
+      private def prepRef[ C1 <: KSystem.Ctx, T[ _ ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
          val fat0 = f.empty[ T[ _ ]]
          val vp   = c.writePath
          val p    = vp.path
@@ -159,7 +159,7 @@ object KSystemImpl {
       }
    }
 
-   private trait AbstractRefVar[ T[ _ ] <: Access[ Path, T ]]
+   private trait AbstractRefVar[ T[ _ ] <: Access[ KSystem.Ctx, Path, T ]]
    extends ERefVar[ Path, KSystem.Ctx, T ] {
       protected val ref: RefHolder[ T ]
       protected val typeName : String
@@ -183,7 +183,7 @@ object KSystemImpl {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
    }
 
-   private class RefVar[ T[ _ ] <: Access[ Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+   private class RefVar[ T[ _ ] <: Access[ KSystem.Ctx, Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
       protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
    }
 

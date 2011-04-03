@@ -25,7 +25,7 @@ trait World[ V <: VersionPath ] {
 //}
 
 object CList {
-//   def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1 ]()
+   def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1, A ]()
    def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem ) : CList[ C1, A ] = {
 //      elems.reverseIterator.foldRight( new CNilImpl[ V ])( (a, tail) => {
 //         new CConsImpl[ V, A ]( c.path, sys.v( a ), sys.v( StoreFactory. )
@@ -33,9 +33,9 @@ object CList {
       error( "No functiona" )
    }
 
-//   private class CNilImpl[ C1 <: KSystem.Ctx ] extends CNil[ C1 ] {
-//      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, Nothing ] = new CNilImpl[ C ]
-//   }
+   private class CNilImpl[ C1 <: KSystem.Ctx, A ] extends CNil[ C1, A ] {
+      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
+   }
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 //
@@ -56,9 +56,9 @@ object CList {
 //   }
 }
 
-sealed trait CList[ C1, A ] extends Access[ Path, Partial2[ CList, A ]#Apply ] {
+sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, Partial2U[ KSystem.Ctx, CList, A ]#Apply ] {
 }
-trait CNil[ C1 <: KSystem.Ctx ] extends CList[ C1, Nothing ] {
+trait CNil[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 }
 trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]

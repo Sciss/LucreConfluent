@@ -478,37 +478,45 @@ object WorldAccess11 {
    trait System[ W <: World[ W ]] {
       def makeState[ W1 <: W ]( implicit w: W1 ) : State[ W1 ]
       def makeRef[   W1 <: W ]( implicit w: W1 ) : Ref[ W1 ]
-      def t[ W1 <: W, T ]( pred: W1 )( fun: W1#Next => T ) : T
+      def t[ W1 <: W ]( implicit pred: W1 ) : Applicator[ W1 ]
+   }
+
+   trait Applicator[ W <: World[ _ ]] {
+      def apply[ T ]( fun: W#Next => T ) : T
    }
 
    def test[ W <: World[ W ]]( sys: System[ W ], w0: W ) {
-      val (s1, w1) = sys.t( w0 ) { implicit w1 =>
+      var pred: W = w0 // null.asInstanceOf[ W ]
+      implicit def gimme: W = pred
+
+      val (s1, r1, w1) = sys.t.apply { implicit w1 =>
          val s1 = sys.makeState
          val r1 = sys.makeRef
          r1.set( s1 )   // ok
-         (s1, w1)
+         (s1, r1, w1)
       }
+      pred = w1
 
-      val w2 = sys.t( w1 ) { implicit w2 =>
+      pred = sys.t.apply { implicit w2 =>
          val s2 = sys.makeState
          val r2 = sys.makeRef
          r2.set( s2 )   // ok
-//         r1.set( s2 ) // yes, forbidden!
-//         r2.set( s1 ) // yes, forbidden!
+         r1.set( s2 ) // yes, forbidden!
+         r2.set( s1 ) // yes, forbidden!
          w2
       }
 
-      val w3 = sys.t( w2 ) { w3 =>
-         val s3 = sys.makeState( w3 )  // ok
-         val r3 = sys.makeRef( w3 )    // ok
-         r3.set( s3 )
-//         r3.set( s1 )   // still forbidden :)
-         w3
-      }
-
-      sys.t( w3 ) { w4 =>
-         val r4 = sys.makeRef( w4 )
-//         r4.set( s1 )   // ok, it's forbidden!
-      }
+//      val w3 = sys.t( w2 ) { w3 =>
+//         val s3 = sys.makeState( w3 )  // ok
+//         val r3 = sys.makeRef( w3 )    // ok
+//         r3.set( s3 )
+////         r3.set( s1 )   // still forbidden :)
+//         w3
+//      }
+//
+//      sys.t( w3 ) { w4 =>
+//         val r4 = sys.makeRef( w4 )
+////         r4.set( s1 )   // ok, it's forbidden!
+//      }
    }
 }

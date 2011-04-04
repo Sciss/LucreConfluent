@@ -2,15 +2,21 @@ package de.sciss.confluent
 package test
 
 object World {
-//   def apply[ V1 <: VersionPath ]( implicit c: KCtx[ V1 ], sys: KSystem ) : World = new Impl( sys.v( Option.empty ))
-//
-//   private class Impl( var head: KSystem.Var[ Option[ CList[ KSystem.Ctx, KSystem.Var, Int ]]]) extends World
+   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
+      new Impl( sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( CList.empty[ C1, A ]))
+
+   private class Impl[ C1 <: KSystem.Ctx, A ]( listRef: KSystem.RefVar[ ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]) extends World[ C1, A ] {
+      def list[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : CList[ C1, A ] = listRef.get
+      def list_=[ C1 <: KSystem.Ctx ]( l: CList[ C1, A ])( implicit c: C1 ) : Unit = listRef.set( l )
+
+      def access[ C <: KSystem.Ctx ]( post: Path ) : World[ C, A ] = new Impl[ C, A ]( listRef )
+   }
 }
-trait World[ V <: VersionPath ] {
+trait World[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = World[ α, A ]})#λ ] {
 //   def head( implicit c: KCtx ) : CList
    // KSystem.Var[ Option[ CList[ KSystem.Ctx, KSystem.Var, Int ]]] // = None
-   def list[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : CList[ C1, Int ]
-   def list_=[ C1 <: KSystem.Ctx ]( l: CList[ C1, Int ])( implicit c: C1 ) : Unit
+   def list[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : CList[ C1, A ]
+   def list_=[ C1 <: KSystem.Ctx ]( l: CList[ C1, A ])( implicit c: C1 ) : Unit
 }
 
 //object WorldUtil {
@@ -89,11 +95,49 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    }
 }
 
+object WorldTest {
+   def main( args: Array[ String ]) { new WorldTest }
+}
+
 class WorldTest {
    implicit val sys  = Factory.ksystem
    val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
 //   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
-   val l1   = csr.t( implicit c => CList.apply( "A", "B", "C" ))
+
+   def a1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val world = World.apply[ C1, String ]
+      world.list_=( CList.apply( "A", "B", "C" ))
+      world
+   }
+
+   val w1 = csr.t( a1( _ ))
+
+   def a2[ C1 <: KSystem.Ctx ]( w1: World[ _, String ] )( implicit c: C1 ) = {
+      val world   = w1.access( c.path.seminalPath )
+      val l1      = world.list
+      (l1.headOption, l1.tailOption) match {
+         case (Some( head ), Some( tail )) => tail.tail = head
+         case _ =>
+      }
+      world
+   }
+
+   val w2 = csr.t( implicit c => a2( w1 ))
+
+   def a3[ C1 <: KSystem.Ctx ]( w2: World[ _, String ] )( implicit c: C1 ) = {
+      val world   = w2.access( c.path.seminalPath )
+      val l2      = world.list
+      var lo      = l2.headOption
+// infinite loop... ouch!
+//      while( lo.isDefined ) {
+//         val le   = lo.get
+//         println( le.head )
+//         lo       = le.tailOption
+//      }
+   }
+
+   csr.t( implicit c => a3( w2 ))
+
 //   csr.t( implicit c => (l1.headOption, l1.tailOption) match {
 //      case (Some( head ), Some( tail )) => tail.tail = head
 //   })

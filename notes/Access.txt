@@ -23,3 +23,19 @@ System[ World ] {
 World extends Access {
     
 }
+
+/////
+
+indeed we could restrict creation of Access based (mutable ref) objects by requiring an implicit argument in their construction which is merely supplied by sys.refVar, such that
+
+def refVar[ T ]( init: Magic => T )
+
+that way we wouldn't create (potentially) orphaned objects which are wrongly persisted to harddisk
+
+that is, Magic must also be provided by refVar's set, like
+
+def setNew( v: Magic => T )
+
+?
+
+another possibility is to track assignments within the txn and at the commit see if the ref object was assigned or not (disadvantage: sideeffects might not be undone)

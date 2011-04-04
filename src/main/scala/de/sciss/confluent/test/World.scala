@@ -1,6 +1,8 @@
 package de.sciss.confluent
 package test
 
+import de.sciss.fingertree.FingerTree
+
 object World {
    def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
       new Impl( sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( CList.empty[ C1, A ]))
@@ -34,7 +36,7 @@ object CList {
    def empty[ C1 <: KSystem.Ctx, A ]( implicit c: C1 ) : CList[ C1, A ] = new CNilImpl[ C1, A ]()
    def apply[ C1 <: KSystem.Ctx, A ]( elems: A* )( implicit c: C1, sys: KSystem, mf: ClassManifest[ A ]) : CList[ C1, A ] = {
       val p = c.writePath.seminalPath
-      elems.reverseIterator.foldRight[ CList[ C1, A ]]( new CNilImpl[ C1, A ])( (a, tail) => {
+      elems.iterator.foldRight[ CList[ C1, A ]]( new CNilImpl[ C1, A ])( (a, tail) => {
          new CConsImpl[ C1, A ]( p, sys.v( a ), sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( tail ))
       })
 //      error( "No functiona" )
@@ -67,11 +69,17 @@ object CList {
 // Partial2U[ KSystem.Ctx, CList, A ]#Apply
 sealed trait CList[ C1 <: KSystem.Ctx, A ] extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ] {
    def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]]
-   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]]
+   def lastOption( implicit c: C1 ) : Option[ CCons[ C1, A ]]
+   def drop( n: Int )( implicit c: C1 ) : CList[ C1, A ]
+   def reverse( implicit c: C1 ) : CList[ C1, A ]
+   def toList( implicit c: C1 ) : List[ A ]
 }
 trait CNil[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = None
-   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = None
+   def lastOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = None
+   def drop( n: Int )( implicit c: C1 ) : CList[ C1, A ] = this
+   def reverse( implicit c: C1 ) : CList[ C1, A ] = this
+   def toList( implicit c: C1 ) : List[ A ] = Nil
 }
 trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]
@@ -82,7 +90,7 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit
 
    def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = Some( this )
-   def tailOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = {
+   def lastOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = {
       var res        = this
       var keepGoin   = true
       while( keepGoin ) {
@@ -93,6 +101,37 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
       }
       Some( res )
    }
+
+   def drop( n: Int )( implicit c: C1 ) : CList[ C1, A ] = {
+      var res        = this
+      var keepGoin   = n
+      while( keepGoin > 0 ) {
+         keepGoin -= 1
+         res.tail match {
+            case cns: CCons[ C1, A ] => res = cns
+            case nil: CNil[ C1, A ]  => return nil
+         }
+      }
+      res
+   }
+
+   def reverse( implicit c: C1 ) : CList[ C1, A ] = {
+      error( "TODO" )
+   }
+
+   def toList( implicit c: C1 ) : List[ A ] = {
+      val b          = List.newBuilder[ A ]
+      var res        = this
+      var keepGoin   = true
+      while( keepGoin ) {
+         b += res.head
+         res.tail.headOption match {
+            case Some( head ) => res = head
+            case None => keepGoin = false
+         }
+      }
+      b.result
+   }
 }
 
 object WorldTest {
@@ -100,6 +139,57 @@ object WorldTest {
 }
 
 class WorldTest {
+   implicit val sys  = Factory.ksystem
+   val proj = sys.kProjector
+   val csr  = sys.t( proj.cursorIn( VersionPath.init )( _ ))
+   Hashing.verbose = false
+
+   def p0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val a    = World[ C1, Int ]
+      a.list_=( CList( 2, 1 ))
+      (a, c.path)
+   }
+   val (a0, v0) = csr.t( p0( _ ))
+
+//   def p1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+//      val a    = a0.access( c.path.seminalPath )
+//      a.list_=( a.list.reverse )
+//      (a, c.path)
+//   }
+//   val (a1, v1) = csr.t( p1( _ ))
+
+   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
+
+   def p2[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val a    = a0.access( c.path.seminalPath )
+      a.list_=( a.list.drop( 1 ))
+      a.list.lastOption.foreach( _.tail = CList( 4 ))
+      (a, c.path)
+   }
+   val (a2, v2) = csr.t( p2( _ ))
+
+   sys.t( csr2.dispose( _ ))
+
+   val emptyPath = Path()
+
+   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+// hmmm... this would have been nice
+//      println( "v0 : " + a0.list.toList )
+      val l = a0.access( emptyPath ).list.toList
+      println( "v0 : " + l )
+      assert( l == List( 2, 1 ))
+   }
+   proj.projectIn( v0 ).t( t0( _ ))
+
+   def t2[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val l = a2.access( emptyPath ).list.toList
+      println( "v2 : " + l )
+      assert( l == List( 1, 4 ))
+   }
+   proj.projectIn( v2 ).t( t2( _ ))
+}
+
+class WorldTest1 {
    implicit val sys  = Factory.ksystem
    val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
 //   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
@@ -115,7 +205,7 @@ class WorldTest {
    def a2[ C1 <: KSystem.Ctx ]( w1: World[ _, String ] )( implicit c: C1 ) = {
       val world   = w1.access( c.path.seminalPath )
       val l1      = world.list
-      (l1.headOption, l1.tailOption) match {
+      (l1.headOption, l1.lastOption) match {
          case (Some( head ), Some( tail )) => tail.tail = head
          case _ =>
       }

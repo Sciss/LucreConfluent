@@ -30,23 +30,10 @@ package de.sciss.confluent
 package impl
 
 import concurrent.stm.{TxnExecutor, InTxn, Ref}
+import reflect.OptManifest
 
-object ESystemImpl extends ESystem {
-   override def toString = "ESystem"
-
-   def t[ T ]( fun: ECtx => T ) : T = TxnExecutor.defaultAtomic( tx => fun( new Ctx( tx )))
-
-   def v[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
-      new Var( Ref( init ), m.toString )
-
-   def refVar[ C1 <: ECtx, T[ _  <: ECtx ] <: Access[ ECtx, Unit, T ]]( init: T[ C1 ])( implicit m: ClassManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
-      error( "TODO" )
-
-   def modelVar[ T ]( init: T )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] with Model[ ECtx, T ] =
-      new ModelVar( Ref( init ), m.toString )
-
-   def userVar[ T ]( init: T )( user: (ECtx, T) => Unit )( implicit m: ClassManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
-      new UserVar( Ref( init ), m.toString, user )
+object ESystemImpl {
+   def apply[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ] ]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : ESystem[ W ] = new Sys[ W ]( Ref[ W[ _ ]]( init ))
 
    def join( txn: InTxn ) : ECtx = new Ctx( txn )
 
@@ -55,31 +42,51 @@ object ESystemImpl extends ESystem {
       def eph : ECtx = this
    }
 
-   private trait AbstractVar[ T ] extends ESystem.Var[ T ] {
-      protected val ref: Ref[ T ]
-      protected val typeName: String
+   private class Sys[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]]( w: Ref[ W[ _ ]]) extends ESystem[ W ] {
+      override def toString = "ESystem"
 
-      protected def fireUpdate( v: T )( implicit c: ECtx ) : Unit
+      def t[ T ]( fun: ECtx => T ) : T = TxnExecutor.defaultAtomic( tx => fun( new Ctx( tx )))
 
-      override def toString = "EVar[" + typeName + "]"
+      def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
+         new Var( Ref( init ), m.toString )
 
-      def get( implicit c: ECtx ) : T = ref.get( c.txn )
-      def set( v: T )( implicit c: ECtx ) {
-         ref.set( v )( c.txn )
-         fireUpdate( v )
+      def refVar[ C1 <: ECtx, T[ _  <: ECtx ] <: Access[ ECtx, Unit, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
+         error( "TODO" )
+
+      def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: ECtx ) : ESystem.Var[ T ] with Model[ ECtx, T ] =
+         new ModelVar( Ref( init ), m.toString )
+
+      def userVar[ T ]( init: T )( user: (ECtx, T) => Unit )( implicit m: OptManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
+         new UserVar( Ref( init ), m.toString, user )
+
+//      def join( txn: InTxn ) : ECtx = new Ctx( txn )
+
+      private trait AbstractVar[ T ] extends ESystem.Var[ T ] {
+         protected val ref: Ref[ T ]
+         protected val typeName: String
+
+         protected def fireUpdate( v: T )( implicit c: ECtx ) : Unit
+
+         override def toString = "EVar[" + typeName + "]"
+
+         def get( implicit c: ECtx ) : T = ref.get( c.txn )
+         def set( v: T )( implicit c: ECtx ) {
+            ref.set( v )( c.txn )
+            fireUpdate( v )
+         }
+         def transform( f: T => T )( implicit c: ECtx ) { ref.transform( f )( c.txn )}
       }
-      def transform( f: T => T )( implicit c: ECtx ) { ref.transform( f )( c.txn )}
-   }
 
-   private class Var[ T ]( val ref: Ref[ T ], val typeName: String ) extends AbstractVar[ T ] {
-      protected def fireUpdate( v: T )( implicit c: ECtx ) {}
-   }
+      private class Var[ T ]( val ref: Ref[ T ], val typeName: String ) extends AbstractVar[ T ] {
+         protected def fireUpdate( v: T )( implicit c: ECtx ) {}
+      }
 
-   private class ModelVar[ T ]( val ref: Ref[ T ], val typeName: String )
-   extends AbstractVar[ T ] with ModelImpl[ ECtx, T ]
+      private class ModelVar[ T ]( val ref: Ref[ T ], val typeName: String )
+      extends AbstractVar[ T ] with ModelImpl[ ECtx, T ]
 
-   private class UserVar[ T ]( val ref: Ref[ T ], val typeName: String, user: (ECtx, T) => Unit )
-   extends AbstractVar[ T ] {
-      protected def fireUpdate( v: T )( implicit c: ECtx ) { user( c, v )}
+      private class UserVar[ T ]( val ref: Ref[ T ], val typeName: String, user: (ECtx, T) => Unit )
+      extends AbstractVar[ T ] {
+         protected def fireUpdate( v: T )( implicit c: ECtx ) { user( c, v )}
+      }
    }
 }

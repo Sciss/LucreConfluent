@@ -29,6 +29,7 @@
 package de.sciss.confluent
 
 import impl._
+import reflect.OptManifest
 
 object Factory {
 //   def proc[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]]( name: String )( implicit sys: System[ C, V ], c: C ) : Proc[ C, V ] =
@@ -39,8 +40,12 @@ object Factory {
 
    private val hsf = new HashedStoreFactory[ Version ]
 
-   def esystem : ESystem = ESystemImpl
-   def ksystem : KSystem = KSystemImpl( hsf )
+   def esystem[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : ESystem[ W ] =
+      ESystemImpl[ W ]( init )
+
+   def ksystem[ W[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx , Path, W ]]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : KSystem[ W ] =
+      KSystemImpl[ W ]( init )( hsf )
+
 //   def psystem : PSystem = error( "NOT YET IMPLEMENTED" ) // PSystemImpl()
 //   def bsystem : BSystem = error( "NOT YET IMPLEMENTED" ) // BSystemImpl()
 }

@@ -78,7 +78,7 @@ object KSystemImpl {
          val vp   = c.writePath
 //         val p    = vp.path
          val p    = vp.seminalPath
-         val fat1 = fat0.put( vp.path, init )
+         val fat1 = fat0.put( p, init )
          Ref( fat1 ) -> m.toString
       }
 
@@ -170,7 +170,8 @@ object KSystemImpl {
       override def toString = "KRefVar[" + typeName + "]"
 
       def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
-         val vp         = c.path // readPath
+//         val vp         = c.path // readPath
+         val vp         = c.writePath
          val p          = vp.path
 
          val tup = ref.get( c.txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + vp ))

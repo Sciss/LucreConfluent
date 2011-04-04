@@ -90,7 +90,9 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    def tail_=( l: CList[ C1, A ])( implicit c: C1 ) : Unit
 
    def headOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = Some( this )
-   def lastOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = {
+   def lastOption( implicit c: C1 ) : Option[ CCons[ C1, A ]] = Some( last )
+
+   def last( implicit c: C1 ) : CCons[ C1, A ] = {
       var res        = this
       var keepGoin   = true
       while( keepGoin ) {
@@ -99,7 +101,7 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
             case _ => keepGoin = false
          }
       }
-      Some( res )
+      res
    }
 
    def drop( n: Int )( implicit c: C1 ) : CList[ C1, A ] = {
@@ -116,7 +118,20 @@ trait CCons[ C1 <: KSystem.Ctx, A ] extends CList[ C1, A ] {
    }
 
    def reverse( implicit c: C1 ) : CList[ C1, A ] = {
-      error( "TODO" )
+      var succ       = CList.empty[ C1, A ]
+      var keepGoin   = true
+      var pred       = this
+      while( keepGoin ) {
+         val next       = pred.tail
+         pred.tail      = succ
+         next match {
+            case cns: CCons[ C1, A ] =>
+               succ  = pred
+               pred  = cns
+            case _ => keepGoin = false
+         }
+      }
+      pred
    }
 
    def toList( implicit c: C1 ) : List[ A ] = {
@@ -139,10 +154,12 @@ object WorldTest {
 }
 
 class WorldTest {
+   Hashing.verbose               = false
+   FingerTree.TOSTRING_RESOLVE   = true
+
    implicit val sys  = Factory.ksystem
    val proj = sys.kProjector
    val csr  = sys.t( proj.cursorIn( VersionPath.init )( _ ))
-   Hashing.verbose = false
 
    def p0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
       val a    = World[ C1, Int ]
@@ -151,12 +168,12 @@ class WorldTest {
    }
    val (a0, v0) = csr.t( p0( _ ))
 
-//   def p1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
-//      val a    = a0.access( c.path.seminalPath )
-//      a.list_=( a.list.reverse )
-//      (a, c.path)
-//   }
-//   val (a1, v1) = csr.t( p1( _ ))
+   def p1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val a    = a0.access( c.path.seminalPath )
+      a.list_=( a.list.reverse )
+      (a, c.path)
+   }
+   val (a1, v1) = csr.t( p1( _ ))
 
    val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
 
@@ -166,7 +183,8 @@ class WorldTest {
       a.list.lastOption.foreach( _.tail = CList( 4 ))
       (a, c.path)
    }
-   val (a2, v2) = csr.t( p2( _ ))
+   val (a2, v2) = csr2.t( p2( _ ))
+// println( "jo chuck " + v0.path.toList + " : " + v1.path.toList + " : " + v2.path.toList )
 
    sys.t( csr2.dispose( _ ))
 
@@ -180,6 +198,13 @@ class WorldTest {
       assert( l == List( 2, 1 ))
    }
    proj.projectIn( v0 ).t( t0( _ ))
+
+   def t1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
+      val l = a1.access( emptyPath ).list.toList
+      println( "v1 : " + l )
+      assert( l == List( 1, 2 ))
+   }
+   proj.projectIn( v1 ).t( t1( _ ))
 
    def t2[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
       val l = a2.access( emptyPath ).list.toList
@@ -238,37 +263,3 @@ class WorldTest1 {
 //      def set[ V <: VersionPath ]( v: MutVar[ V ])( implicit c: KCtx[ V ]) : Unit = error( "NO" )
 //   }
 }
-
-//final class CList[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ], A ]( val elem: V[ Int ], val next: V[ Option[ CList[ C, V, A ]]]) {
-//   private type This = CList[ C, V, A ]
-//
-////   var elem: A = _
-////   var next: This = _
-////
-////   def isEmpty : Boolean = next eq this
-//
-////   def length: Int = if (isEmpty) 0 else next.length + 1
-////
-////   def head: A = elem
-////
-////   def tail: This = {
-////      require( nonEmpty, "tail of empty list" )
-////      next
-////   }
-////
-////   def nonEmpty : Boolean = !isEmpty
-//}
-
-// class GroupView[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]]( sys: System[ C, V ], g: ProcGroup[ C, V ], csr: ECursor[ C ])
-
-//case object CNil extends CList[ Nothing ] {
-//   def head: Nothing = throw new NoSuchElementException( "head of empty list" )
-//   def tail: CList[ Nothing ] = throw new UnsupportedOperationException( "tail of empty list" )
-//   def isEmpty : Boolean = true
-//}
-//final case class CCons[ A ] {
-//
-//   def head : A = hd
-//   def tail : CList[ A ] = tl
-//   def isEmpty : Boolean = false
-//}

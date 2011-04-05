@@ -9,13 +9,13 @@ object Path {
 }
 trait Path
 
-trait Ref[ A, Repr[ _ ]] {
+trait Ref[ -A, Repr[ -_ ]] {
    def sub[ B ]( b: B ) : Repr[ B ]
 }
 
 trait Access[ Repr ] {
    def path : Path
-   def meld[ R[ _ ]]( p: Path )( fun: Repr => Ref[ _, R ]) : R[ this.type ]
+   def meld[ R[ -_ ]]( p: Path )( fun: Repr => Ref[ _, R ]) : R[ this.type ]
 }
 
 //trait AccessFactory[ A ] {
@@ -46,10 +46,39 @@ trait KSystemImpl[ A ] extends KSystem[ A ] {
 }
 
 object Test {
-   trait MyAccess
+   trait MyAccess <: Access[ MyAccess ] {
+      def head : CLinkOption[ this.type, Int ]
+      def head_=( r: CLinkOption[ this.type, Int ] ) : Unit
+   }
 
-   val sys = new KSystemImpl[ MyAccess ] {
-      type Vertex = Int
-      val storeFactory = new HashedStoreFactory[ Vertex ]
+   object CLinkOption {
+      def empty[ A <: Access[ _ ], V ]( implicit a: A ) : CLinkOption[ A, V ] = error( "TODO" )
+   }
+   trait Funk[ -A ]
+   sealed trait CLinkOption[ -A, V ] extends Ref[ A, ({type λ[-α] = CLinkOption[ α, V ]})#λ ] {
+      def lift: Option[ CLink[ A, V ]]
+   }
+   trait CLink[ -A, V ] extends CLinkOption[ A, V ] {
+      def lift: Option[ CLink[ A, V ]] = Some( this )
+   }
+   trait CNoLink[ -A, V ] extends CLinkOption[ A, V ] {
+      def lift: Option[ CLink[ A, V ]] = None
+   }
+
+   def run {
+      val sys = new KSystemImpl[ MyAccess ] {
+         type Vertex       = Int
+         val storeFactory  = new HashedStoreFactory[ Vertex ]
+      }
+
+      val l1 = sys.in( Path.init ) { implicit a =>
+         a.head = CLinkOption.empty
+         a.head = CLinkOption.empty[ a.type, Int ]( a ) // works, too
+         a.head
+      }
+
+      sys.in( Path.init ) { implicit a =>
+//         a.head = l1 // forbidden
+      }
    }
 }

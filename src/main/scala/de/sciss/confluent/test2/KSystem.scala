@@ -15,7 +15,7 @@ trait Ref[ A, Repr[ _ ]] {
 
 trait Access[ Repr ] {
    def path : Path
-   def meld[ R[ _ ]]( p: Path )( fun: Repr => Ref[ _, R ]) : R[ this.type ]
+   def meld[ R[ _ ]]( p: Path )( fun: Repr => Ref[ _, R ]) : R[ Repr ]
 }
 
 //trait AccessFactory[ A ] {
@@ -47,8 +47,8 @@ trait KSystemImpl[ A ] extends KSystem[ A ] {
 
 object Test {
    trait MyAccess <: Access[ MyAccess ] {
-      def head : CLinkOption[ this.type, Int ]
-      def head_=( r: CLinkOption[ this.type, Int ] ) : Unit
+      def head : CLinkOption[ MyAccess, Int ]
+      def head_=( r: CLinkOption[ MyAccess, Int ] ) : Unit
    }
 
    object CLinkOption {
@@ -77,8 +77,8 @@ object Test {
       }
 
       val v1 = sys.in( Path.init ) { implicit a =>
-         val w0   = CLinkOption.single[ a.type, Int ]( 2 )( a )
-         val w1   = CLinkOption.single[ a.type, Int ]( 1 )( a )
+         val w0   = CLinkOption.single( 2 )
+         val w1   = CLinkOption.single( 1 )
          w0.next  = w1
          a.head   = w0 // CLinkOption.empty
 //         a.head   = CLinkOption.empty[ a.type, Int ]( a ) // works, too

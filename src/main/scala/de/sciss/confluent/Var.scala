@@ -51,18 +51,23 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 //
 //trait Ref[ C, T ]
 
-//trait Access[ V, Res[ _ ]] {
-////   def accessPath: V
-//   def access[ C ]( post: V ) : Res[ C ]
-//}
-
-trait Access[ Up, V, Res[ _ <: Up ]] {
+trait Access[ V, Res[ _ ]] {
 //   def accessPath: V
-   def access[ C <: Up ]( post: V ) : Res[ C ]
+   def access[ C ]( post: V ) : Res[ C ]
 }
 
-trait ERefVar[ V, C, T[ _ <: C ] <: Access[ C, V, T ]] {
-   def get[ C1 <: C ]( implicit c: C1 ) : T[ C1 ]
-   def set[ C1 <: C ]( v: T[ C1 ])( implicit c: C1 ) : Unit
-//   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+//trait Access[ Up, V, Res[ _ <: Up ]] {
+////   def accessPath: V
+//   def access[ C <: Up ]( post: V ) : Res[ C ]
+//}
+
+//trait ERefVar[ V, C, T[ _ <: C ] <: Access[ C, V, T ]] {
+//   def get[ C1 <: C ]( implicit c: C1 ) : T[ C1 ]
+//   def set[ C1 <: C ]( v: T[ C1 ])( implicit c: C1 ) : Unit
+////   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+//}
+
+trait AccessProvider[ A, Path, S <: System[ Path, _, _ ]] {
+   def init( sys: S, p: Path ) : A
+   def access( a: A ) : A
 }

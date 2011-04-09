@@ -39,6 +39,11 @@ trait KSystem[ A /* <: Access[ _ ] */ ] {
    def in[ T ]( v: Path )( fun: A => T ) : T
 }
 
+//trait AccessPrepare[ A <: AnyRef ] {
+//   val a: A
+//   def apply[ T ]( fun: a.type => T ) : T
+//}
+
 trait KSystemImpl[ A ] extends KSystem[ A ] {
    def in[ T ]( v: Path )( fun: A => T ) : T = {
       error( "TODO" )
@@ -54,10 +59,12 @@ object Test {
    object CLinkOption {
       def empty[ A <: Access[ _ ], V ]( implicit a: A ) : CNoLink[ A, V ] = error( "TODO" )
       def single[ A <: Access[ _ ], V ]( init: V )( implicit a: A ) : CLink[ A, V ] = error( "TODO" )
+//      def single[ A, V ]( init: V )( implicit a: A /*, ev: A <:< Access[ _ ]*/) : CLink[ A, V ] = error( "TODO" )
    }
    trait Funk[ A ]
    sealed trait CLinkOption[ A, V ] extends Ref[ A, ({type λ[α] = CLinkOption[ α, V ]})#λ ] {
       def lift: Option[ CLink[ A, V ]]
+      def reverse: CLinkOption[ A, V ]
    }
    trait CLink[ A, V ] extends CLinkOption[ A, V ] {
       def value: V
@@ -76,7 +83,8 @@ object Test {
          val storeFactory  = new HashedStoreFactory[ Vertex ]
       }
 
-      val v1 = sys.in( Path.init ) { implicit a =>
+      val v0 = sys.in( Path.init ) { implicit a =>
+//         implicit val fuckyou: a.type = a
          val w0   = CLinkOption.single( 2 )
          val w1   = CLinkOption.single( 1 )
          w0.next  = w1
@@ -86,8 +94,9 @@ object Test {
          a.path
       }
 
-      sys.in( Path.init ) { implicit a =>
-//         a.head = l1 // forbidden
+      val v1 = sys.in( v0 ) { implicit a =>
+         a.head   = a.head.reverse
+         a.path
       }
    }
 }

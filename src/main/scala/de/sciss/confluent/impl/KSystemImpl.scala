@@ -35,102 +35,104 @@ import reflect.OptManifest
 
 object KSystemImpl {
    private type Holder[ T ]                                                         = Ref[ Store[ Version, T ]]
-   private type RefHolder[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]] = Ref[ Store[ Version, T[ _ ]]]
+//   private type RefHolder[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]] = Ref[ Store[ Version, T[ _ ]]]
 
-   def apply[ W[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, W ]]( init: W[ _ ])( implicit f: StoreFactory[ Version ]) : KSystem[ W ] =
-      new Sys[ W ]( Ref( init ), f )
+   def apply[ A ]( ap: AccessProvider[ A, Path, KSystem[ A ]]) : KSystem[ A ] =
+      new Sys[ A ]( ap )
 
-   private class Sys[ W[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, W ]]( w: Ref[ W[ _ ]],
-      f: StoreFactory[ Version ]) extends KSystem[ W ] with ModelImpl[ ECtx, KSystemLike.Update ] {
-
+   private class Sys[ A ]( ap: AccessProvider[ A, Path, KSystem[ A ]])
+   extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
+
+      val a = ap.init( sys, VersionPath.init.path )
 
       override def toString = "KSystem"
 
-      val dagRef = {
-         val fat0 = f.empty[ VersionPath ]
-         val vp   = VersionPath.init
-         val fat1 = fat0.put( vp.path, vp )
-         Ref( fat1 )
-      }
+//      val dagRef = {
+//         val fat0 = f.empty[ VersionPath ]
+//         val vp   = VersionPath.init
+//         val fat1 = fat0.put( vp.path, vp )
+//         Ref( fat1 )
+//      }
 
       def t[ R ]( fun: ECtx => R ) : R = error( "CURRENTLY DISABLED" ) // Factory.esystem.t( fun )
 
-      def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] = {
-         val (ref, name) = prep( init )
-         new Var( ref, name )
-      }
+//      def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] = {
+//         val (ref, name) = prep( init )
+//         new Var( ref, name )
+//      }
 
-      def refVar[ C1 <: KSystem.Ctx, T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
-         val (ref, name) = prepRef[ C1, T ]( init )
-         val res = new RefVar[ T ]( ref, name )
-         res
-      }
+//      def refVar[ C1 <: KSystem.Ctx, T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: KSystem.Ctx ) : KSystem.RefVar[ T ] = {
+//         val (ref, name) = prepRef[ C1, T ]( init )
+//         val res = new RefVar[ T ]( ref, name )
+//         res
+//      }
 
-      def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] with Model[ KSystem.Ctx, T ] = {
-         val (ref, name) = prep( init )
-         new ModelVar( ref, name )
-      }
+//      def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] with Model[ KSystem.Ctx, T ] = {
+//         val (ref, name) = prep( init )
+//         new ModelVar( ref, name )
+//      }
+//
+//      def userVar[ T ]( init: T )( user: (KSystem.Ctx, T) => Unit )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] = {
+//         val (ref, name) = prep( init )
+//         new UserVar( ref, name, user )
+//      }
 
-      def userVar[ T ]( init: T )( user: (KSystem.Ctx, T) => Unit )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : KVar[ KSystem.Ctx, T ] = {
-         val (ref, name) = prep( init )
-         new UserVar( ref, name, user )
-      }
+//      private def prepRef[ C1 <: KSystem.Ctx, T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
+//         val fat0 = f.empty[ T[ _ ]]
+//         val vp   = c.writePath
+////         val p    = vp.path
+//         val p    = vp.seminalPath
+//         val fat1 = fat0.put( p, init )
+//         Ref( fat1 ) -> m.toString
+//      }
 
-      private def prepRef[ C1 <: KSystem.Ctx, T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: KSystem.Ctx ) : (RefHolder[ T ], String) = {
-         val fat0 = f.empty[ T[ _ ]]
-         val vp   = c.writePath
-//         val p    = vp.path
-         val p    = vp.seminalPath
-         val fat1 = fat0.put( p, init )
-         Ref( fat1 ) -> m.toString
-      }
-
-      private def prep[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : (Holder[ T ], String) = {
-         val fat0 = f.empty[ T ]
-         val vp   = c.writePath
-//         val p    = vp.path
-         val p    = vp.seminalPath
-         val fat1 = fat0.put( p, init )
-         Ref( fat1 ) -> m.toString
-      }
+//      private def prep[ T ]( init: T )( implicit m: OptManifest[ T ], c: KSystem.Ctx ) : (Holder[ T ], String) = {
+//         val fat0 = f.empty[ T ]
+//         val vp   = c.writePath
+////         val p    = vp.path
+//         val p    = vp.seminalPath
+//         val fat1 = fat0.put( p, init )
+//         Ref( fat1 ) -> m.toString
+//      }
 
       def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath = {
          val txn  = c.txn
          val pw   = v.newBranch( txn )
-         dagRef.transform( _.put( pw.path, pw ))( txn )
+//         dagRef.transform( _.put( pw.path, pw ))( txn )
          fireUpdate( KSystemLike.NewBranch( v, pw ))
          pw
       }
 
 //      def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]] = dagRef.get( c.txn ).trie
-      def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ] = dagRef.get( c.txn ) //.trie
+//      def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ] = dagRef.get( c.txn ) //.trie
 
-      def kProjector : KProjector[ KSystem.Ctx, KSystem.Projection, KSystem.Cursor ]   = KEProjImpl
-      def keProjector : KEProjector[ KSystem.Ctx, KSystem.Var ]                        = KEProjImpl
+      def kProjector : KProjector[ A, KSystem.Projection[ A ], KSystem.Cursor[ A ]] = KEProjImpl
+      def keProjector : KEProjector[ A ] = KEProjImpl
 
-      private object KEProjImpl extends KEProjector[ KSystem.Ctx, KSystem.Var ]
-      with ModelImpl[ ECtx, Projector.Update[ KSystem.Ctx, KSystem.Cursor ]] {
+      private object KEProjImpl extends KEProjector[ A ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
+      with ModelImpl[ ECtx, Projector.Update[ A, KSystem.Cursor[ A ]]] {
 
-         val cursorsRef = Ref( ISet.empty[ KSystem.Cursor ])
-         def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor ] = cursorsRef.get( c.txn )
+         val cursorsRef = Ref( ISet.empty[ KSystem.Cursor[ A ]])
+         def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor[ A ]] = cursorsRef.get( c.txn )
 
-         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
+//         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
 
-         def cursorIn( vp: VersionPath )( implicit c: ECtx ) : KSystem.Cursor = {
+         def cursorIn( vp: VersionPath )( implicit c: ECtx ) : KSystem.Cursor[ A ] = {
             val csr = new CursorImpl( /* sys, */ vp )
             cursorsRef.transform( _ + csr )( c.txn )
-            fireUpdate( Projector.CursorAdded[ KSystem.Ctx, KSystem.Cursor ]( csr ))
+            fireUpdate( Projector.CursorAdded[ A, KSystem.Cursor[ A ]]( csr ))
             csr
          }
 
-         def removeKCursor( cursor: KSystem.Cursor )( implicit c: ECtx ) {
+         def removeKCursor( cursor: KSystem.Cursor[ A ])( implicit c: ECtx ) {
             cursorsRef.transform( _ - cursor )( c.txn )
-            fireUpdate( Projector.CursorRemoved[ KSystem.Ctx, KSystem.Cursor ]( cursor ))
+            fireUpdate( Projector.CursorRemoved[ A, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in[ R ]( version: VersionPath )( fun: KSystem.Ctx => R ) : R = TxnExecutor.defaultAtomic { tx =>
-            fun( new Ctx( /* sys, */ tx, version ))
+         def in[ R ]( version: VersionPath )( fun: A => R ) : R = TxnExecutor.defaultAtomic { tx =>
+            error( "NO FUNCTIONA" )
+//            fun( new Ctx( /* sys, */ tx, version ))
          }
 
          def range[ T ]( vr: KSystem.Var[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
@@ -138,39 +140,40 @@ object KSystemImpl {
       }
 
       private class CursorImpl( initialPath: VersionPath )
-      extends ECursor[ KSystem.Ctx ] with KProjection[ KSystem.Ctx ] with ModelImpl[ ECtx, Cursor.Update ] {
+      extends ECursor[ A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
          csr =>
 
          private val vRef = Ref( initialPath )
 
-         private val txnInitiator = TxnLocal[ Boolean ]( false )
-
-         def isApplicable( implicit c: KSystem.Ctx ) = txnInitiator.get( c.txn )
+//         private val txnInitiator = TxnLocal[ Boolean ]( false )
+//
+//         def isApplicable( implicit c: KSystem.Ctx ) = txnInitiator.get( c.txn )
          def path( implicit c: CtxLike ) : VersionPath = vRef.get( c.txn )
 
          def dispose( implicit c: ECtx ) {
 //            sys.kProjector.removeKCursor( csr )
-            KEProjImpl.removeKCursor( csr )
+//            KEProjImpl.removeKCursor( csr )
          }
 
-         def t[ R ]( fun: KSystem.Ctx => R ) : R = {
+         def t[ R ]( fun: A => R ) : R = {
             // XXX todo: should add t to KTemporalSystemLike and pass txn to in
             // variant so we don't call atomic twice
             // (although that is ok and the existing transaction is joined)
             // ; like BitemporalSystem.inRef( vRef.getTxn( _ )) { ... } ?
             TxnExecutor.defaultAtomic { t =>
-               val oldPath = vRef.get( t )
-               txnInitiator.set( true )( t )
-               KEProjImpl.in( oldPath ) { implicit c =>
-                  val res     = fun( c )
-                  val newPath = c.path
-                  if( newPath != oldPath ) {
-                     vRef.set( newPath )( c.txn )
-                     fireUpdate( Cursor.Moved )( c.eph )
-                  }
-                  txnInitiator.set( false )( t )
-                  res
-               }
+               error( "NO FUNCTIONA" )
+//               val oldPath = vRef.get( t )
+//               txnInitiator.set( true )( t )
+//               KEProjImpl.in( oldPath ) { implicit c =>
+//                  val res     = fun( c )
+//                  val newPath = c.path
+//                  if( newPath != oldPath ) {
+//                     vRef.set( newPath )( c.txn )
+//                     fireUpdate( Cursor.Moved )( c.eph )
+//                  }
+//                  txnInitiator.set( false )( t )
+//                  res
+//               }
             }
          }
       }
@@ -204,43 +207,43 @@ object KSystemImpl {
       }
    }
 
-   private trait AbstractRefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]
-   extends ERefVar[ Path, KSystem.Ctx, T ] {
-      protected val ref: RefHolder[ T ]
-      protected val typeName : String
+//   private trait AbstractRefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]
+//   extends ERefVar[ Path, KSystem.Ctx, T ] {
+//      protected val ref: RefHolder[ T ]
+//      protected val typeName : String
+//
+//      override def toString = "KRefVar[" + typeName + "]"
+//
+//      def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
+////         val vp         = c.path // readPath
+//         val vp         = c.writePath
+//         val p          = vp.path
+//
+//         val tup = ref.get( c.txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + vp ))
+//
+//// what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
+//val raw = tup._1
+//val pre = tup._2
+//
+//
+////         val (raw, pre) = ref.get( c.txn ).getWithPrefix( p )
+////            .getOrElse( error( "No assignment for path " + vp ))
+//
+////         raw.substitute( raw.accessPath ++ p.drop( pre ))
+//         raw.access[ C1 ]( p.drop( pre ))
+//      }
+//
+//      def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
+//         ref.transform( _.put( c.writePath.path, v ))( c.txn )
+//         fireUpdate( v )
+//      }
+//
+//      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
+//   }
 
-      override def toString = "KRefVar[" + typeName + "]"
-
-      def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
-//         val vp         = c.path // readPath
-         val vp         = c.writePath
-         val p          = vp.path
-
-         val tup = ref.get( c.txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + vp ))
-
-// what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
-val raw = tup._1
-val pre = tup._2
-
-
-//         val (raw, pre) = ref.get( c.txn ).getWithPrefix( p )
-//            .getOrElse( error( "No assignment for path " + vp ))
-
-//         raw.substitute( raw.accessPath ++ p.drop( pre ))
-         raw.access[ C1 ]( p.drop( pre ))
-      }
-
-      def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
-         ref.transform( _.put( c.writePath.path, v ))( c.txn )
-         fireUpdate( v )
-      }
-
-      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
-   }
-
-   private class RefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
-      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
-   }
+//   private class RefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+//      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
+//   }
 
    private trait AbstractVar[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
    extends KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {

@@ -33,7 +33,7 @@ import concurrent.stm.{TxnExecutor, InTxn, Ref}
 import reflect.OptManifest
 
 object ESystemImpl {
-   def apply[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ] ]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : ESystem[ W ] = new Sys[ W ]( Ref[ W[ _ ]]( init ))
+   def apply[ A ]( ap: AccessProvider[ A, Unit, _ <: System[ Unit, _, _ ]]) : ESystem[ A ] = new Sys[ A ]( ap )
 
    def join( txn: InTxn ) : ECtx = new Ctx( txn )
 
@@ -42,7 +42,7 @@ object ESystemImpl {
       def eph : ECtx = this
    }
 
-   private class Sys[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]]( w: Ref[ W[ _ ]]) extends ESystem[ W ] {
+   private class Sys[ A ]( ap: AccessProvider[ A, Unit, _ <: System[ Unit, _, _ ]]) extends ESystem[ A ] {
       override def toString = "ESystem"
 
       def t[ T ]( fun: ECtx => T ) : T = TxnExecutor.defaultAtomic( tx => fun( new Ctx( tx )))
@@ -50,8 +50,8 @@ object ESystemImpl {
       def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: ECtx ) : ESystem.Var[ T ] =
          new Var( Ref( init ), m.toString )
 
-      def refVar[ C1 <: ECtx, T[ _  <: ECtx ] <: Access[ ECtx, Unit, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
-         error( "TODO" )
+//      def refVar[ C1 <: ECtx, T[ _  <: ECtx ] <: Access[ ECtx, Unit, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: ECtx ) : ESystem.RefVar[ T ] =
+//         error( "TODO" )
 
       def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: ECtx ) : ESystem.Var[ T ] with Model[ ECtx, T ] =
          new ModelVar( Ref( init ), m.toString )

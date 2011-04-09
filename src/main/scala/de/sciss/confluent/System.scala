@@ -32,24 +32,25 @@ import collection.immutable.{Set => ISet}
 import Double.{PositiveInfinity => dinf}
 import reflect.OptManifest
 
-trait System[ A,  // access path type
+trait System[ Path,  // access path type
               C <: Ct,  // context
-              W[ _ <: C ] <: Access[ C, A, W ], // world
-              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
-              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]] // variable to mutable (reference) value
+              A // access
+//              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
+//              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]
+] // variable to mutable (reference) value
 {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
-   def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
-   def refVar[ C1 <: C, T[ _ <: C ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: C ) : RV[ T ]
-   def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
-   def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
+//   def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
+//   def refVar[ C1 <: C, T[ _ <: C ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: C ) : RV[ T ]
+//   def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
+//   def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
 }
 
 object ESystem {
    type Var[ ~ ]                                            = EVar[ ECtx, ~ ]
-   type RefVar[ ~[ _ <: ECtx ] <: Access[ ECtx, Unit, ~ ]]  = ERefVar[ Unit, ECtx, ~ ]
+//   type RefVar[ ~[ _ <: ECtx ] <: Access[ ECtx, Unit, ~ ]]  = ERefVar[ Unit, ECtx, ~ ]
 }
-trait ESystem[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]] extends System[ Unit, ECtx, W, ESystem.Var, ESystem.RefVar ]
+trait ESystem[ A ] extends System[ Unit, ECtx, A ]
 /* with Cursor[ ESystem, ECtx, ESystem.Var ] with CursorProvider[ ESystem ] */ {
 //   type Var[ T ] = EVar[ Ctx, T ]
 //   type Ctx = ECtx
@@ -68,18 +69,17 @@ object KSystemLike {
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
-trait KSystemLike[ C <: Ct, W[ _ <: C ] <: Access[ C, Path, W ],
-                   V[ ~ ] <: KVar[ C, ~ ], RV[ ~[ _ <: C ] <: Access[ C, Path, ~ ]] <: ERefVar[ Path, C, ~ ],
-                   Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
-extends System[ Path, C, W, V, RV ] with Model[ ECtx, KSystemLike.Update ] {
+trait KSystemLike[ C <: Ct, A,
+                   Proj <: KProjection[ A ], Csr <: KProjection[ A ] with Cursor[ A ]]
+extends System[ Path, C, A ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R
 
-   def kProjector : KProjector[ C, Proj, Csr ]
-   def keProjector : KEProjector[ C, V ]
+   def kProjector : KProjector[ A, Proj, Csr ]
+   def keProjector : KEProjector[ A ]
 
-   def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath
+//   def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath
 //   def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]]
-   def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ]
+//   def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ]
 
 //   def addKCursor( implicit c: C ) : KCursor[ C, V ]
 //   def removeKCursor( cursor: KCursor[ C, V ])( implicit c: C ) : Unit
@@ -89,16 +89,17 @@ extends System[ Path, C, W, V, RV ] with Model[ ECtx, KSystemLike.Update ] {
 object KSystem {
    type Ctx                                              = KCtx[ _ <: VersionPath ]
    type Var[ ~ ]                                         = KVar[ Ctx, ~ ]
-   type RefVar[ ~[ _ <: Ctx ] <: Access[ Ctx, Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
+//   type RefVar[ ~[ _ <: Ctx ] <: Access[ Ctx, Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
 
-   type Projection                                       = EProjection[ Ctx ] with KProjection[ Ctx ]
-   type Cursor                                           = ECursor[ Ctx ] with KProjection[ Ctx ]
+   type Projection[ A ]                                  = EProjection[ A ] with KProjection[ A ]
+//   type Cursor                                           = ECursor[ Ctx ] with KProjection[ Ctx ]
+   type Cursor[ A ] = ECursor[ A ] with KProjection[ A ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 
-trait KSystem[ W[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, W ]]
-extends KSystemLike[ KSystem.Ctx, W, KSystem.Var, KSystem.RefVar, KSystem.Projection, KSystem.Cursor ] {
-//   def kProjector : KEProjector[ KCtx, KSystem.Var ]
+trait KSystem[ A ]
+extends KSystemLike[ KSystem.Ctx, A, KSystem.Projection[ A ], KSystem.Cursor[ A ]] {
+//   def kProjector : KEProjector[ A ]
 }
 // with KEProjector[ KCtx, KSystem.Var ]
 

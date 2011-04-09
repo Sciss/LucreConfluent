@@ -125,8 +125,8 @@ object KSystemImpl {
 
 //         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
 
-         def cursorIn( vp: VersionPath )( implicit c: ECtx ) : KSystem.Cursor[ A ] = {
-            val csr = new CursorImpl( /* sys, */ vp )
+         def cursorIn( path: Path )( implicit c: ECtx ) : KSystem.Cursor[ A ] = {
+            val csr = new CursorImpl( /* sys, */ path )
             cursorsRef.transform( _ + csr )( c.txn )
             fireUpdate( Projector.CursorAdded[ A, KSystem.Cursor[ A ]]( csr ))
             csr
@@ -137,16 +137,16 @@ object KSystemImpl {
             fireUpdate( Projector.CursorRemoved[ A, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in[ R ]( version: VersionPath )( fun: A => R ) : R = TxnExecutor.defaultAtomic { tx =>
+         def in[ R ]( version: Path )( fun: A => R ) : R = TxnExecutor.defaultAtomic { tx =>
             error( "NO FUNCTIONA" )
 //            fun( new Ctx( /* sys, */ tx, version ))
          }
 
-         def range[ T ]( vr: KSystem.Var[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
-            error( "NOT YET IMPLEMENTED" )
+//         def range[ T ]( vr: KSystem.Var[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
+//            error( "NOT YET IMPLEMENTED" )
       }
 
-      private class CursorImpl( initialPath: VersionPath )
+      private class CursorImpl( initialPath: Path )
       extends ECursor[ A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
          csr =>
 
@@ -155,7 +155,7 @@ object KSystemImpl {
 //         private val txnInitiator = TxnLocal[ Boolean ]( false )
 //
 //         def isApplicable( implicit c: KSystem.Ctx ) = txnInitiator.get( c.txn )
-         def path( implicit c: CtxLike ) : VersionPath = vRef.get( c.txn )
+         def path( implicit c: CtxLike ) : Path = vRef.get( c.txn )
 
          def dispose( implicit c: ECtx ) {
 //            sys.kProjector.removeKCursor( csr )

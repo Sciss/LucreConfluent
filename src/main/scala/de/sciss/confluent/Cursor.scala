@@ -71,13 +71,13 @@ trait Projector[ A, +Csr <: Cursor[ A ]] /* extends Model[ ECtx, Projector.Updat
  * A K projector manages cursors, and can create them from a k-time access path
  */
 trait KProjector[ A, +Proj, +Csr <: Cursor[ A ]] extends Projector[ A, Csr ] {
-   def cursorIn( v: VersionPath )( implicit c: ECtx ) : Csr
+   def cursorIn( v: Path )( implicit c: ECtx ) : Csr
 //   def projectIn( v: VersionPath ) : Proj
 //   def kCursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
 }
 
 trait KProjection[ A ] extends Projection[ A ] {
-   def path( implicit c: CtxLike ) : VersionPath
+   def path( implicit c: CtxLike ) : Path // VersionPath
 }
 
 /**
@@ -85,7 +85,7 @@ trait KProjection[ A ] extends Projection[ A ] {
  */
 trait KEProjector[ A ]
 extends KProjector[ A, EProjection[ A ] with KProjection[ A ], ECursor[ A ] with KProjection[ A ]] {
-   def in[ R ]( v: VersionPath )( fun: A => R ) : R
+   def in[ R ]( v: Path )( fun: A => R ) : R
 //   def range[ T ]( vr: V[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
 }
 

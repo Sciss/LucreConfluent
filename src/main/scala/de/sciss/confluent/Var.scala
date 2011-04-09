@@ -51,7 +51,9 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 //
 //trait Ref[ C, T ]
 
-trait Mutable[ A, Repr ] {
+// trait Acc
+
+trait Mutable[ A, Repr ] /* extends Acc */ {
 //   def accessPath: V
    def path : A
    def substitute( path: A ) : Repr

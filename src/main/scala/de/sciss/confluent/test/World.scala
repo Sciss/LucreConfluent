@@ -2,6 +2,7 @@ package de.sciss.confluent
 package test
 
 import de.sciss.fingertree.FingerTree
+import concurrent.stm.TxnExecutor
 
 object World {
 //   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
@@ -185,23 +186,26 @@ class WorldTest {
 //   }
 
    val proj = sys.kProjector
-   val csr  = sys.t( proj.cursorIn( VersionPath.init )( _ ))
+   val csr  = sys.t( proj.cursorIn( VersionPath.init.path )( _ ))
 
-//   def p0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
-//      val a    = World // [ C1, Int ]
-//      a.list_=( CList( 2, 1 ))
-//      (a, c.path)
-//   }
-//   val (a0, v0) = csr.t( p0( _ ))
+   val v0 = csr.t { implicit w =>
+      w.list = CList( 2, 1 )
+      w.path
+   }
 
-//   def p1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
-//      val a    = a0.access( c.path.seminalPath )
-//      a.list_=( a.list.reverse )
-//      (a, c.path)
-//   }
-//   val (a1, v1) = csr.t( p1( _ ))
-//
+   csr.t { implicit w =>
+      w.list = w.list.reverse
+   }
+
 //   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
+
+   val v2 = sys.keProjector.in( v0 ) { implicit w =>
+      w.list = w.list.drop( 1 )
+//      a.list.lastOption.foreach( _.tail = CList( 4 ))
+      w.path
+   }
+                                 }
+
 //
 //   def p2[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
 //      val a    = a0.access( c.path.seminalPath )

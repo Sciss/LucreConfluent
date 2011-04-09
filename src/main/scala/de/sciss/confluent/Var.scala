@@ -51,9 +51,10 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 //
 //trait Ref[ C, T ]
 
-trait Access[ V, Res[ _ ]] {
+trait Mutable[ P, Repr ] {
 //   def accessPath: V
-   def access[ C ]( post: V ) : Res[ C ]
+   def path : P
+   def substitute( path: P ) : Repr
 }
 
 //trait Access[ Up, V, Res[ _ <: Up ]] {
@@ -67,7 +68,29 @@ trait Access[ V, Res[ _ ]] {
 ////   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
 //}
 
-trait AccessProvider[ A, Path, S <: System[ Path, _, _ ]] {
-   def init( sys: S, p: Path ) : A
-   def access( a: A ) : A
+trait AccessProvider[ P, A ] {
+   def init( f: RefFactory[ P ] with ValFactory[ P ], path: P ) : A
+//   def access( a: A, p: P ) : A
+}
+
+trait Ref[ Path, T <: Mutable[ Path, T ]] {
+   def get : T
+   def set( v: T ) : Unit
+//   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+}
+
+trait RefFactory[ Path ] {
+   def emptyRef[ T <: Mutable[ Path, T ]] : Ref[ Path, T ]
+//   def apply[ V ]( v: V ) : RefVar[ A, V ]
+}
+
+trait Val[ T ] {
+   def get : T
+   def set( v: T ) : Unit
+//   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+}
+
+trait ValFactory[ Path ] {
+   def emptyVal[ T ] : Val[ T ]
+//   def apply[ V ]( v: V ) : RefVar[ A, V ]
 }

@@ -30,21 +30,28 @@ package de.sciss.confluent
 package impl
 
 import collection.immutable.{Set => ISet}
-import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref}
+import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import reflect.OptManifest
 
 object KSystemImpl {
-   private type Holder[ T ]                                                         = Ref[ Store[ Version, T ]]
-//   private type RefHolder[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]] = Ref[ Store[ Version, T[ _ ]]]
+   private type Holder[ T ] = STMRef[ Store[ Version, T ]]
+//   private type RefHolder[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]] = STMRef[ Store[ Version, T[ _ ]]]
 
-   def apply[ A ]( ap: AccessProvider[ A, Path, KSystem[ A ]]) : KSystem[ A ] =
+   def apply[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ]) : KSystem[ A ] =
       new Sys[ A ]( ap )
 
-   private class Sys[ A ]( ap: AccessProvider[ A, Path, KSystem[ A ]])
+   private class Sys[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      val a = ap.init( sys, VersionPath.init.path )
+      val aInit = ap.init( new RefValFactory, VersionPath.init.path )
+
+//      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
+      def newMutable( implicit access: A ) : A = {
+         // XXX seminalPath should go somewhere else
+         val p = access.path
+         if( p.size == 1 ) access else access.substitute( p.takeRight( 1 ))
+      }
 
       override def toString = "KSystem"
 
@@ -113,7 +120,7 @@ object KSystemImpl {
       private object KEProjImpl extends KEProjector[ A ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
       with ModelImpl[ ECtx, Projector.Update[ A, KSystem.Cursor[ A ]]] {
 
-         val cursorsRef = Ref( ISet.empty[ KSystem.Cursor[ A ]])
+         val cursorsRef = STMRef( ISet.empty[ KSystem.Cursor[ A ]])
          def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor[ A ]] = cursorsRef.get( c.txn )
 
 //         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
@@ -143,7 +150,7 @@ object KSystemImpl {
       extends ECursor[ A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
          csr =>
 
-         private val vRef = Ref( initialPath )
+         private val vRef = STMRef( initialPath )
 
 //         private val txnInitiator = TxnLocal[ Boolean ]( false )
 //
@@ -178,6 +185,11 @@ object KSystemImpl {
          }
       }
 
+      private class RefValFactory extends RefFactory[ Path ] with ValFactory[ Path ] {
+         def emptyRef[ T <: Mutable[ Path, T ]] : Ref[ Path, T ] = error( "NO FUNCTIONA" )
+         def emptyVal[ T ] : Val[ T ] = error( "NO FUNCTIONA" )
+      }
+
       private class Ctx[ V <: VersionPath ]( val txn: InTxn, initPath: V )
       extends KCtx[ V ] {
          ctx =>
@@ -190,7 +202,7 @@ object KSystemImpl {
 
          def path : VersionPath = pathRef.get( txn )
 
-         def eph : ECtx = ESystemImpl.join( txn )
+         def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
 
       //   private[proc] def readPath : VersionPath = pathRef.get( txn )
 

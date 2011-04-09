@@ -32,7 +32,7 @@ import collection.immutable.{Set => ISet}
 import Double.{PositiveInfinity => dinf}
 import reflect.OptManifest
 
-trait System[ Path,  // access path type
+trait System[ P,  // access path type
               C <: Ct,  // context
               A // access
 //              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
@@ -44,6 +44,9 @@ trait System[ Path,  // access path type
 //   def refVar[ C1 <: C, T[ _ <: C ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: C ) : RV[ T ]
 //   def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
 //   def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
+
+//   def newMutable( implicit access: A ) : P
+   def newMutable( implicit access: A ) : A
 }
 
 object ESystem {

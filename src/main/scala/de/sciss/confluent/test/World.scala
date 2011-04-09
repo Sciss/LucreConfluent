@@ -14,11 +14,11 @@ object World {
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : World[ C, A ] = new Impl[ C, A ]( listRef )
 //   }
 }
-trait World extends {
+trait World[ P ] extends Mutable[ P, World[ P ]] {
 //   def head( implicit c: KCtx ) : CList
    // KSystem.Var[ Option[ CList[ KSystem.Ctx, KSystem.Var, Int ]]] // = None
-   def list : CList[ Int ]
-   def list_=( l: CList[ Int ]) : Unit
+   def list : CList[ P, Int ]
+   def list_=( l: CList[ P, Int ]) : Unit
 }
 
 //object WorldUtil {
@@ -32,9 +32,11 @@ trait World extends {
 //   }
 //}
 
+//trait Access[ P ] { def seminalPath: P }
+
 object CList {
-   def empty[ A ]( implicit w: World ) : CList[ A ] = new CNilImpl[ A ]()
-   def apply[ A ]( elems: A* )( implicit w: World, mf: ClassManifest[ A ]) : CList[ A ] = {
+   def empty[ P, A <: Mutable[ P, A ], T ]( implicit a: A, sys: System[ P, _, A ]) : CList[ P, T ] = new CNilImpl[ P, T ]( sys.newMutable.path )
+   def apply[ P, A <: Mutable[ P, A ]]( elems: A* )( implicit w: World[ P ], mf: ClassManifest[ A ]) : CList[ P, A ] = {
 //      val p = c.writePath.seminalPath
 //      elems.iterator.foldRight[ CList[ A ]]( new CNilImpl[ A ])( (a, tail) => {
 //         new CConsImpl[ A ]( p, sys.v( a ), sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( tail ))
@@ -42,37 +44,38 @@ object CList {
       error( "No functiona" )
    }
 
-   private class CNilImpl[ A ] extends CNil[ A ] {
+   private class CNilImpl[ P, A <: Mutable[ P, A ]]( a: A ) extends CNil[ P, A ] {
+      def substitute( path: P ) = new CNilImpl[ P, A ]( path )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
    }
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ A ]( w: World, val path: Path, val headRef: KSystem.Var[ A ])
-   extends CCons[ A ] {
-      def head : A = error( "NO FUNCTIONA" ) // headRef.get( c )
-      def head_=( a: A ) : Unit = error( "NO FUNCTIONA" ) // headRef.set( a )
-      def tail : CList[ A ] = error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
-      def tail_=( l: CList[ A ]) : Unit = error( "NO FUNCTIONA" ) // tailRef.set( l )
+   private class CConsImpl[ P, A, T ]( a: A, sys: System[ P, _, A ], val headRef: KSystem.Var[ T ])
+   extends CCons[ P, T ] {
+      def head : T = error( "NO FUNCTIONA" ) // headRef.get( c )
+      def head_=( a: T ) : Unit = error( "NO FUNCTIONA" ) // headRef.set( a )
+      def tail : CList[ P, T ] = error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
+      def tail_=( l: CList[ P, T ]) : Unit = error( "NO FUNCTIONA" ) // tailRef.set( l )
 
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
 //      }
 
-//      def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
-//         val spath =
-//         CConsImpl( spath, headRef, tailRef )
-//      }
+      def substitute( path: P ) : CCons[ P, T ] = new CConsImpl( a, sys[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
+         val spath =
+         CConsImpl( spath, headRef, tailRef )
+      }
 
-      def reverse : CList[ A ] = {
-         var succ       = CList.empty[ A ]( w )
+      def reverse : CList[ P, T ] = {
+         var succ       = CList.empty[ P, A, T ]( a, sys )
          var keepGoin   = true
-         var pred: CCons[ A ] = this
+         var pred: CCons[ P, T ] = this
          while( keepGoin ) {
             val next       = pred.tail
             pred.tail      = succ
             next match {
-               case cns: CCons[ A ] =>
+               case cns: CCons[ P, T ] =>
                   succ  = pred
                   pred  = cns
                case _ => keepGoin = false
@@ -84,57 +87,57 @@ object CList {
 }
 // Partial2U[ KSystem.Ctx, CList, A ]#Apply
 //extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]
-sealed trait CList[ A ]  {
-   def headOption : Option[ CCons[ A ]]
-   def lastOption : Option[ CCons[ A ]]
-   def drop( n: Int ) : CList[ A ]
-   def reverse : CList[ A ]
+sealed trait CList[ P, A ] extends Mutable[ P, CList[ P, A ]] {
+   def headOption : Option[ CCons[ P, A ]]
+   def lastOption : Option[ CCons[ P, A ]]
+   def drop( n: Int ) : CList[ P, A ]
+   def reverse : CList[ P, A ]
    def toList : List[ A ]
 }
-trait CNil[ A ] extends CList[ A ] {
-   def headOption : Option[ CCons[ A ]] = None
-   def lastOption : Option[ CCons[ A ]] = None
-   def drop( n: Int ) : CList[ A ] = this
-   def reverse : CList[ A ] = this
+trait CNil[ P, A ] extends CList[ P, A ] {
+   def headOption : Option[ CCons[ P, A ]] = None
+   def lastOption : Option[ CCons[ P, A ]] = None
+   def drop( n: Int ) : CList[ P, A ] = this
+   def reverse : CList[ P, A ] = this
    def toList : List[ A ] = Nil
 }
-trait CCons[ A ] extends CList[ A ] {
+trait CCons[ P, A ] extends CList[ P, A ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]
 
    def head : A
    def head_=( a: A ) : Unit
-   def tail : CList[ A ]
-   def tail_=( l: CList[ A ]) : Unit
+   def tail : CList[ P, A ]
+   def tail_=( l: CList[ P, A ]) : Unit
 
-   def headOption : Option[ CCons[ A ]] = Some( this )
-   def lastOption : Option[ CCons[ A ]] = Some( last )
+   def headOption : Option[ CCons[ P, A ]] = Some( this )
+   def lastOption : Option[ CCons[ P, A ]] = Some( last )
 
-   def last : CCons[ A ] = {
+   def last : CCons[ P, A ] = {
       var res        = this
       var keepGoin   = true
       while( keepGoin ) {
          res.tail match {
-            case cns: CCons[ A ] => res = cns
+            case cns: CCons[ P, A ] => res = cns
             case _ => keepGoin = false
          }
       }
       res
    }
 
-   def drop( n: Int ) : CList[ A ] = {
+   def drop( n: Int ) : CList[ P, A ] = {
       var res        = this
       var keepGoin   = n
       while( keepGoin > 0 ) {
          keepGoin -= 1
          res.tail match {
-            case cns: CCons[ A ] => res = cns
-            case nil: CNil[ A ]  => return nil
+            case cns: CCons[ P, A ] => res = cns
+            case nil: CNil[ P, A ]  => return nil
          }
       }
       res
    }
 
-   def reverse : CList[ A ]
+   def reverse : CList[ P, A ]
 
    def toList : List[ A ] = {
       val b          = List.newBuilder[ A ]
@@ -155,16 +158,22 @@ object WorldTest {
    def main( args: Array[ String ]) { new WorldTest }
 }
 
-object WorldFactory extends AccessProvider[ World, Path, KSystem[ World ]] {
-   def init( sys: KSystem[ World ], p: Path ) : World = error( "NO FUNCTIONA" )
-   def access( w: World ) : World = error( "NO FUNCTIONA" )
+object WorldFactory { def apply[ P ] = new WorldFactory[ P ]}
+class WorldFactory[ P ] extends AccessProvider[ P, World[ P ]] {
+   def init( f: RefFactory[ P ] with ValFactory[ P ], p: P ) : World[ P ] = new WorldImpl( f.emptyRef[ CList[ P, Int ]])
+   def access( w: World[ P ]) : World[ P ] = error( "NO FUNCTIONA" )
+
+   private class WorldImpl[ P ]( listRef: Ref[ P, CList[ P, Int ]]) extends World[ P ] {
+      def list : CList[ P, Int ] = error( "NO FUNCTIONA" )
+      def list_=( l: CList[ P, Int ]) : Unit = error( "NO FUNCTIONA" )
+   }
 }
 
 class WorldTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
 
-   implicit val sys  = Factory.ksystem( WorldFactory )
+   implicit val sys = Factory.ksystem( WorldFactory[ Path ])
 
 //   val proj = sys.keProjector
 //   proj.in( VersionPath.init ) { implicit w =>
@@ -228,7 +237,7 @@ class WorldTest {
 }
 
 class WorldTest1 {
-   val sys  = Factory.ksystem( WorldFactory )
+   val sys  = Factory.ksystem( WorldFactory[ Path ])
 //   val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
 ////   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
 //

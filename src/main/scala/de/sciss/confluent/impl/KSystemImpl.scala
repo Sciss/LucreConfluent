@@ -44,7 +44,7 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      val aInit = ap.init( new RefValFactory, VersionPath.init.path )
+      val aInit = ap.init( RefFact, VersionPath.init.path )
 
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
       def newMutable( implicit access: A ) : A = {
@@ -185,11 +185,6 @@ object KSystemImpl {
          }
       }
 
-      private class RefValFactory extends RefFactory[ Path ] with ValFactory[ Path ] {
-         def emptyRef[ T <: Mutable[ Path, T ]] : Ref[ Path, T ] = error( "NO FUNCTIONA" )
-         def emptyVal[ T ] : Val[ T ] = error( "NO FUNCTIONA" )
-      }
-
       private class Ctx[ V <: VersionPath ]( val txn: InTxn, initPath: V )
       extends KCtx[ V ] {
          ctx =>
@@ -216,6 +211,11 @@ object KSystemImpl {
                pw
             } else p
          }
+      }
+
+      object RefFact extends RefFactory[ A ] {
+         def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = error( "NO FUNCTIONA" )
+         def emptyVal[ T ] : Val[ T ] = error( "NO FUNCTIONA" )
       }
    }
 

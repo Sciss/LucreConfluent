@@ -39,10 +39,12 @@ object CList {
    def empty[ A, T ]( implicit a: A, sys: System[ _, _, A ]) : CList[ A, T ] = new CNilImpl[ A, T ]( sys.newMutable )
    def apply[ A, T ]( elems: T* )( implicit a: A, sys: System[ _, _, A ], mf: ClassManifest[ T ]) : CList[ A, T ] = {
 //      val p = c.writePath.seminalPath
-//      elems.iterator.foldRight[ CList[ A ]]( new CNilImpl[ A ])( (a, tail) => {
-//         new CConsImpl[ A ]( p, sys.v( a ), sys.refVar[ C1, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]( tail ))
-//      })
-      error( "No functiona" )
+      elems.iterator.foldRight[ CList[ A, T ]]( new CNilImpl[ A, T ]( a ))( (v, tail) => {
+         val headRef = sys.emptyVal[ T ]
+         headRef.set( v )
+         new CConsImpl[ A, T ]( a, sys, headRef )
+      })
+//      error( "No functiona" )
    }
 
    private class CNilImpl[ A, T ]( val path: A ) extends CNil[ A, T ] {
@@ -52,7 +54,7 @@ object CList {
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ A, T ]( val path: A, sys: System[ _, _, A ], val headRef: KSystem.Var[ T ])
+   private class CConsImpl[ A, T ]( val path: A, sys: System[ _, _, A ], val headRef: Val[ A, T ] /* KSystem.Var[ T ] */)
    extends CCons[ A, T ] {
       def head : T = error( "NO FUNCTIONA" ) // headRef.get( c )
       def head_=( a: T ) : Unit = error( "NO FUNCTIONA" ) // headRef.set( a )
@@ -167,12 +169,16 @@ object WorldTest {
 
 object WorldFactory { def apply[ P ] = new WorldFactory[ P ]}
 class WorldFactory[ P ] extends AccessProvider[ P, World[ P ]] {
-   def init( f: RefFactory[ World[ P ]], path: P ) : World[ P ] = new WorldImpl( path, f.emptyRef[ CList[ World[ P ], Int ]])
+   def init( f: RefFactory[ World[ P ]], path: P ) : World[ P ] = {
+      val listRef = f.emptyRef[ CList[ World[ P ], Int ]]
+//      listRef.set
+      new WorldImpl( path, listRef )
+   }
    def access( w: World[ P ]) : World[ P ] = error( "NO FUNCTIONA" )
 
    private class WorldImpl[ P ]( val path: P, listRef: Ref[ World[ P ], CList[ World[ P ], Int ]]) extends World[ P ] {
-      def list : CList[ World[ P ], Int ] = error( "NO FUNCTIONA" )
-      def list_=( l: CList[ World[ P ], Int ]) : Unit = error( "NO FUNCTIONA" )
+      def list : CList[ World[ P ], Int ] = listRef.get( this )
+      def list_=( l: CList[ World[ P ], Int ]) : Unit = listRef.set( l )( this )
 
       def substitute( path: P ) : World[ P ] = new WorldImpl[ P ]( path, listRef )
    }
@@ -193,9 +199,13 @@ class WorldTest {
    val keproj  = sys.keProjector
    val csr  = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
 
+//   csr.t { implicit w =>
+//
+//   }
+
    val v0 = csr.t { implicit w =>
       w.list = CList( 2, 1 )
-      w.path.path
+      w.path.path // XXX CONTINUE HERE -- OBVIOUSLY WE NEED A POST-COMMIT HOOK TO GRAB THE NEW CURSOR POSITION
    }
 
    val v1 = csr.t { implicit w =>

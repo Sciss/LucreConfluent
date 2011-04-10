@@ -37,13 +37,17 @@ trait System[ P,  // access path type
               A // access
 //              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
 //              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]
-] // variable to mutable (reference) value
+] extends RefFactory[ A ] // variable to mutable (reference) value
 {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
 //   def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
 //   def refVar[ C1 <: C, T[ _ <: C ] <: Access[ C, A, T ]]( init: T[ C1 ])( implicit m: OptManifest[ T[ _ ]], c: C ) : RV[ T ]
 //   def modelVar[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ] with Model[ C, T ]
 //   def userVar[ T ]( init: T )( user: (C, T) => Unit )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
+
+//   def refFactory( implicit a: A ) : RefFactory[ A ]
+
+//   def storeFactory : StoreFactory[ ]
 
 //   def newMutable( implicit access: A ) : P
    def newMutable( implicit access: A ) : A

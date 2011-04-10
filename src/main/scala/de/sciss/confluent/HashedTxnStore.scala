@@ -29,14 +29,14 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
-import concurrent.stm.{InTxn, Ref => STMRef}
+import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
 
 object HashedTxnStoreFactory {
    private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
 
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class HashedTxnStore[ K, V ]( cRef: STMRef[ Compound[ V ]])
-   extends TxnStore[ K, V ] with TxnStoreCommitter {
+   private class StoreImpl[ K, V ]( cRef: STMRef[ Compound[ V ]])
+   extends TxnStore[ K, V ] /* with TxnStoreCommitter */ {
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT" )
          val c = cRef.get
@@ -71,11 +71,11 @@ object HashedTxnStoreFactory {
          get( c.temp ).orElse( get( c.perm ))
       }
 
-      def put( key: Path, value: V )( implicit txn: InTxn, rec: TxnDirtyRecorder ) {
+      def put( key: Path, value: V )( implicit txn: InTxn ) {
          val hash = key.sum
          cRef.transform { c =>
             val map = c.temp
-            if( map.isEmpty ) rec.addDirty( hash, this )
+            if( map.isEmpty ) Rec.addDirty( hash, this )
             c.copy( temp = Hashing.add( key, map, { s: Path =>
                if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
             }))
@@ -90,6 +90,21 @@ object HashedTxnStoreFactory {
       }
    }
 
+   private object Rec {
+      private val storeSet = TxnLocal( Set.empty[ StoreImpl[ _, _ ]], beforeCommit = persistAll( _ ))
+      private val hashSet  = TxnLocal( Set.empty[ Long ])
+
+      def addDirty( hash: Long, store: StoreImpl[ _, _ ])( implicit txn: InTxn ) {
+         storeSet.transform( _ + store )
+         hashSet.transform(  _ + hash )
+      }
+
+      private def persistAll( implicit txn: InTxn ) {
+         val suffix = Hashing.nextUnique( hashSet.get )
+         storeSet.get.foreach( _.commit( txn, suffix ))
+      }
+   }
+
    private sealed trait Value[ +V ]
    private case object ValueNone extends Value[ Nothing ]
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
@@ -98,8 +113,9 @@ object HashedTxnStoreFactory {
 
 class HashedTxnStoreFactory[ K ] extends TxnStoreFactory[ K ] {
    import HashedTxnStoreFactory._
+
    def empty[ V ] : TxnStore[ K, V ] = {
       val mapE = LongMap.empty[ Value[ V ]]
-      new HashedTxnStore[ K, V ]( STMRef( Compound( mapE, mapE )))
+      new StoreImpl[ K, V ]( STMRef( Compound( mapE, mapE )))
    }
 }

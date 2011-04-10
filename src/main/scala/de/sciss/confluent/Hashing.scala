@@ -40,8 +40,8 @@ object Hashing {
    type IntSeq          = FingerTree.IndexedSummed[ Int, Long ]
    type IntSeqMap       = Map[ Long, IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
-   val emptyIntSeq   = IntSeq()
-   val emptyHash     = LongMap.empty[ IntSeq ]
+   val emptyIntSeq      = IntSeq()
+   val emptyHash        = LongMap.empty[ IntSeq ]
 
    private val rndTaken    = MSet( 0 ) // .empty[ Int ]
    private val sumsTaken   = MSet.empty[ Long ]
@@ -71,15 +71,18 @@ object Hashing {
       error( "Never here" )
    }
 
-   def mappend( s: IntSeq* ) : Int = {
-      val preSums = s.map( _.sum )
+   def mappend( s: IntSeq* ) : Int = nextUnique( s.map( _.sum ))
+
+   def nextUnique( preSums: Traversable[ Long ]) : Int = {
+      // XXX need to test which is faster for avg size preSums
+      val view = preSums // .view
       while( true ) {
          val r = rnd.nextInt() & 0x7FFFFFFF
          if( !rndTaken.contains( r )) {   // unique vertices
-            val sums = preSums.map( _ + r )
+            val sums = view.map( _ + r )
             if( sums.forall( !sumsTaken.contains( _ ))) {
-               sumsTaken.++=( sums )
-               rndTaken.+=( r )
+               sumsTaken ++= sums
+               rndTaken   += r
                return r
             }
          }

@@ -34,7 +34,7 @@ import concurrent.stm.InTxn
 trait TxnStoreLike[ K, @specialized V, Repr ] {
    type Path = TxnStore.Path[ K ]
 
-   def put( key: Path, value: V )( implicit txn: InTxn, rec: TxnDirtyRecorder ) : Unit
+   def put( key: Path, value: V )( implicit txn: InTxn ) : Unit
    def get( key: Path )( implicit txn: InTxn ) : Option[ V ]
    def getOrElse( key: Path, default: => V )( implicit txn: InTxn ) : V = get( key ).getOrElse( default )
 
@@ -65,14 +65,18 @@ trait TxnStoreFactory[ K ] {
    def empty[ V ]: TxnStore[ K, V ]
 }
 
-trait TxnStoreCommitter {
-   def commit( txn: InTxn, suffix: Int ) : Unit
-}
+//trait TxnStoreCommitter {
+//   def commit( txn: InTxn, suffix: Int ) : Unit
+//}
 
 //trait KeyTransformer[ K ] {
 //   def transform( key: TxnStore.Path[ K ]) : Path
 //}
 
-trait TxnDirtyRecorder {
-   def addDirty( hash: Long, com: TxnStoreCommitter )
-}
+//trait TxnDirtyRecorder {
+//   /**
+//    * XXX hash needs to be exchanged for path probably
+//    * when system moves from full path to compressed path
+//    */
+//   def addDirty( hash: Long, com: TxnStoreCommitter )
+//}

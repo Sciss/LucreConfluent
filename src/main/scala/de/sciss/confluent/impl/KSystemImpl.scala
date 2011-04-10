@@ -34,20 +34,20 @@ import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import reflect.OptManifest
 
 object KSystemImpl {
-   private type Holder[ T ] = STMRef[ Store[ Version, T ]]
+   private type Holder[ T ] = TxnStore[ Version, T ]
 
-   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])( implicit sf: StoreFactory[ Version ]) : KSystem[ A ] =
+   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])( implicit sf: TxnStoreFactory[ Version ]) : KSystem[ A ] =
       new Sys[ A ]( ap, sf )
 
-   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ], sf: StoreFactory[ Version ])
+   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ], sf: TxnStoreFactory[ Version ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      type RefHolder[ T <: Mutable[ A, T ]] = STMRef[ Store[ Version, T ]]
+      type RefHolder[ T <: Mutable[ A, T ]] = TxnStore[ Version, T ]
 
       val atomic = TxnExecutor.defaultAtomic
 
-      val aInit = atomic( txn => ap.init( RefFact, Ctx( txn, VersionPath.init.path )))
+      val aInit = atomic( txn => ap.init( sys, Ctx( txn, VersionPath.init.path )))
 
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
       def newMutable( implicit access: A ) : A = {
@@ -173,8 +173,11 @@ object KSystemImpl {
             // variant so we don't call atomic twice
             // (although that is ok and the existing transaction is joined)
             // ; like BitemporalSystem.inRef( vRef.getTxn( _ )) { ... } ?
-            atomic { t =>
-               error( "NO FUNCTIONA" )
+            atomic { txn =>
+//               error( "NO FUNCTIONA" )
+               val c = Ctx( txn, vRef.get( txn ))
+               val a = aInit.substitute( c )
+               fun( a )
 //               val oldPath = vRef.get( t )
 //               txnInitiator.set( true )( t )
 //               KEProjImpl.in( oldPath ) { implicit c =>
@@ -227,19 +230,16 @@ object KSystemImpl {
 //         }
       }
 
-      object RefFact extends RefFactory[ A ] {
-         def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
-            val fat0 = sf.empty[ T ]
-//            val vp   = c.writePath
-////         val p    = vp.path
-//            val p    = vp.seminalPath
-////            val fat1 = fat0.put( p, init )
-            new RefVar[ T ]( STMRef( fat0 ), "ref" )
-         }
-         def emptyVal[ T ] : Val[ T ] = error( "NO FUNCTIONA" )
+      // ---- RefFactory ----
+
+      def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
+         new RefImpl[ T ]( sf.empty[ T ], "ref" )
+      }
+      def emptyVal[ T ] : Val[ A, T ] = {
+         new ValImpl[ T ]( sf.empty[ T ], "val" )
       }
 
-      private trait AbstractRefVar[ T <: Mutable[ A, T ]]
+      private trait AbstractRef[ T <: Mutable[ A, T ]]
       extends Ref[ A, T ] {
          protected val ref: RefHolder[ T ]
          protected val typeName : String
@@ -251,7 +251,7 @@ object KSystemImpl {
             val txn  = ctx.txn
             val p    = ctx.path
 
-            val tup = ref.get( txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
+            val tup = ref.getWithPrefix( p )( txn ).getOrElse( error( "No assignment for path " + p ))
             // what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
             val raw = tup._1
             val pre = tup._2
@@ -271,61 +271,66 @@ object KSystemImpl {
             val ctx  = access.path
             val txn  = ctx.txn
             val p    = ctx.path
-            ref.transform( _.put( p, v ))( txn )
+            ref.put( p, v )( txn )
+//            ref.transform( _.put( p, v ))( txn )
 //            fireUpdate( v )( txn )
          }
 
 //         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
       }
 
-      private class RefVar[ T <: Mutable[ A, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+      private class RefImpl[ T <: Mutable[ A, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
+         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
+      }
+
+      private trait AbstractVal[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
+      extends Val[ A, T ] { // KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {
+//      protected def txn( c: C ) = c.repr.txn
+         protected val ref: Holder[ T ] // Ref[ FatValue[ T ]]
+         protected val typeName : String
+
+         override def toString = "KVar[" + typeName + "]"
+
+         def get( implicit access: A ) : T = {
+            val ctx  = access.path
+            val txn  = ctx.txn
+            val p    = ctx.path
+
+            ref.get( p )( txn ).getOrElse( error( "No assignment for path " + p ))
+         }
+
+         def set( v: T )( implicit access: A ) {
+            val ctx  = access.path
+            val txn  = ctx.txn
+            val p    = ctx.path
+            ref.put( p, v )( txn )
+//            fireUpdate( v )
+         }
+
+//         def transform( f: T => T )( implicit c: KSystem.Ctx ) {
+//            implicit val txn  = c.txn
+//            val h    = ref.get
+//            val v1   = h.get( c.path.path ).get
+//            val v2   = f( v1 )
+//            ref.set( h.put( c.writePath.path, v2 ))
+//            fireUpdate( v2 )
+//         }
+//
+//         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
+
+//         def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
+//            error( "NOT YET IMPLEMENTED" )
+
+//      def transform( f: T => T )( implicit c: C ) {
+//         ref.transform( _.assign( c.repr.writePath.path, v ))( txn( c ))
+//         fireUpdate( v, c )
+//      }
+      }
+
+      private class ValImpl[ T ]( val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
       }
    }
-
-//   private trait AbstractVar[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
-//   extends KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {
-////      protected def txn( c: C ) = c.repr.txn
-//      protected val ref: Holder[ T ] // Ref[ FatValue[ T ]]
-//      protected val typeName : String
-//
-//      override def toString = "KVar[" + typeName + "]"
-//
-//      def get( implicit c: KSystem.Ctx ) : T = {
-//         val vp   = c.path // readPath
-//         ref.get( c.txn ).get( vp.path )
-//            .getOrElse( error( "No assignment for path " + vp ))
-//      }
-//
-//      def set( v: T )( implicit c: KSystem.Ctx ) {
-//         ref.transform( _.put( c.writePath.path, v ))( c.txn )
-//         fireUpdate( v )
-//      }
-//
-//      def transform( f: T => T )( implicit c: KSystem.Ctx ) {
-//         implicit val txn  = c.txn
-//         val h    = ref.get
-//         val v1   = h.get( c.path.path ).get
-//         val v2   = f( v1 )
-//         ref.set( h.put( c.writePath.path, v2 ))
-//         fireUpdate( v2 )
-//      }
-//
-//      protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
-//
-//      def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
-//         error( "NOT YET IMPLEMENTED" )
-//
-////      def transform( f: T => T )( implicit c: C ) {
-////         ref.transform( _.assign( c.repr.writePath.path, v ))( txn( c ))
-////         fireUpdate( v, c )
-////      }
-//   }
-//
-//   private class Var[ T ]( val ref: Holder[ T ], val typeName: String ) extends AbstractVar[ T ] {
-//      protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
-//   }
-//
 //   private class ModelVar[ T ]( val ref: Holder[ T ], val typeName: String )
 //   extends AbstractVar[ T ] with ModelImpl[ KSystem.Ctx, T ]
 //

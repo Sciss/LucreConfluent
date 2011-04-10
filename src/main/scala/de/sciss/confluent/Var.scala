@@ -83,13 +83,13 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
 
 trait RefFactory[ A ] {
    def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ]
-   def emptyVal[ T ] : Val[ T ]
+   def emptyVal[ T ] : Val[ A, T ]
 //   def apply[ V ]( v: V ) : RefVar[ A, V ]
 }
 
-trait Val[ T ] {
-   def get : T
-   def set( v: T ) : Unit
+trait Val[ A, T ] {
+   def get( implicit access: A ) : T
+   def set( v: T )( implicit access: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
 }
 

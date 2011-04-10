@@ -85,8 +85,8 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
 }
 
 trait RefFactory[ A ] {
-   def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ]
    def emptyVal[ T ] : Val[ A, T ]
+   def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ]
 //   def apply[ V ]( v: V ) : RefVar[ A, V ]
 }
 

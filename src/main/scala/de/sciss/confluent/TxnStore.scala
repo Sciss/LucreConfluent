@@ -31,10 +31,10 @@ package de.sciss.confluent
 import de.sciss.fingertree.FingerTree
 import concurrent.stm.InTxn
 
-trait TxnStoreLike[ K, @specialized V, Rec, Repr ] {
+trait TxnStoreLike[ K, @specialized V, Repr ] {
 //   type Path = TxnStore.Path[ K ]
 
-   def put( key: K, value: V )( implicit txn: InTxn, rec: Rec ) : Unit
+   def put( key: K, value: V )( implicit txn: InTxn ) : Unit
    def get( key: K )( implicit txn: InTxn ) : Option[ V ]
    def getOrElse( key: K, default: => V )( implicit txn: InTxn ) : V = get( key ).getOrElse( default )
 
@@ -55,15 +55,39 @@ trait TxnStoreLike[ K, @specialized V, Rec, Repr ] {
    def inspect( implicit txn: InTxn ) : Unit
 }
 
-trait TxnStore[ K, V, Rec ] extends TxnStoreLike[ K, V, Rec, TxnStore[ K, Rec, V ]]
+//trait TxnCachedStore[ K, V ] {
+//   def flush
+//}
+
+trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
+//   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
+}
+
+//trait TxnCacheLike {
+//   def flush( implicit txn: InTxn ) : Unit
+//}
+//
+//trait TxnStoreCache[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] with TxnCacheLike
 
 //object TxnStore {
 //   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
 //}
 
-trait TxnStoreFactory[ K, Rec ] {
-   def empty[ V ]: TxnStore[ K, V, Rec ]
+trait TxnStoreFactory[ K, Ref ] {
+//   def empty[ V ]: TxnStore[ K, V ]
+   def emptyVal[ V ]: TxnStore[ K, V ]
+   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
+
+//trait TxnStoreCacheFactory[ K ] {
+//   def empty[ V ]( store: => TxnStore[ K, V ]): TxnStoreCache[ K, V ]
+////   def emptyVal[ V ]: TxnStore[ K, V ]
+////   def emptyRef[ V ]: TxnStore[ K, V ]
+//}
+//
+//trait TxnCacheGroup extends TxnCacheLike {
+//   def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit
+//}
 
 //trait TxnStoreCommitter[ K ] {
 //   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit

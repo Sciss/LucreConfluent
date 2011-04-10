@@ -34,15 +34,17 @@ import reflect.OptManifest
 import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 
 object KSystemImpl {
-   private type Holder[ T ]   = TxnStore[ Path, T, HashedTxnStore.Recorder ]
-   private type StoreFactory  = TxnStoreFactory[ Path, HashedTxnStore.Recorder ]
+   private type Holder[ T ]   = TxnStore[ Path, T ]
+   private type StoreFactory  = TxnStoreFactory[ Path ]
 
-   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])( implicit sf: StoreFactory ) : KSystem[ A ] =
-      new Sys[ A ]( ap, sf )
+   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
 
-   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ], sf: StoreFactory )
+   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
+
+      val sf = HashedTxnStore.factory[ Version ]() // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -286,10 +288,10 @@ object KSystemImpl {
       // ---- RefFactory ----
 
       def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
-         new RefImpl[ T ]( sf.empty[ T ], "ref" )
+         new RefImpl[ T ]( sf.emptyRef[ T ], "ref" )
       }
       def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( sf.empty[ T ], "val" )
+         new ValImpl[ T ]( sf.emptyVal[ T ], "val" )
       }
 
       private trait AbstractRef[ T <: Mutable[ A, T ]]

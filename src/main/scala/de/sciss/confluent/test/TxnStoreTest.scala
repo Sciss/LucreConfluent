@@ -61,3 +61,37 @@ object TxnStoreTest {
       }
    }
 }
+
+object TxnStoreTest2 {
+   trait MyRefLike[ K, V ] {
+      def get( k: K )( implicit txn: InTxn ) : Option[ V ]
+      def put( k: K, v: V )( implicit txn: InTxn ) : Unit
+   }
+
+   trait MyPersistableRef[ K, V ] extends MyRefLike[ K, V ] {
+      def putAllNoCache( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
+   }
+
+   trait MyRef[ K, V ] extends MyPersistableRef[ K, V ] {
+      def cache : MyRefLike[ K, V ]
+      private val r = Ref.make[ Map[ K, V ]]
+      def get( k: K )( implicit txn: InTxn ) : Option[ V ] = cache.get( k ).orElse( r.get.get( k ))
+      def put( k: K, v: V )( implicit txn: InTxn ) : Unit = {
+         cache.put( k, v )
+//         r.touchWrite  // !
+      }
+      def putAllNoCache( pairs: (K, V)* )( implicit txn: InTxn ) {
+         r.transform( _ ++ pairs )
+      }
+   }
+
+   trait MyCache[ K, V ] extends MyRefLike[ K, V ] {
+      private val r = TxnLocal[ Map[ K, V ]]()
+      def get( k: K )( implicit txn: InTxn ) : Option[ V ] = r.get.get( k )
+      def put( k: K, v: V )( implicit txn: InTxn ) : Unit = r.transform( _ + (k ->v) )
+      def flush( store: MyPersistableRef[ K, V ])( implicit txn: InTxn ) {
+         val map = r.swap( Map.empty )
+         store.putAllNoCache( map.toSeq: _* )
+      }
+   }
+}

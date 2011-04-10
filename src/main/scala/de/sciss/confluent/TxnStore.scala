@@ -73,8 +73,8 @@ trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
 //   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
 //}
 
-trait TxnStoreFactory[ K ] {
-   def empty[ V ]: TxnStore[ K, V ]
+trait TxnStoreFactory[ K, Up ] {
+   def empty[ V <: Up ]: TxnStore[ K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }

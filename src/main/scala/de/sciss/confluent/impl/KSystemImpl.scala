@@ -35,7 +35,7 @@ import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 
 object KSystemImpl {
    private type Holder[ T ]   = TxnStore[ Path, T ]
-   private type StoreFactory  = TxnStoreFactory[ Path ]
+//   private type StoreFactory  = TxnStoreFactory[ Path ]
 
    def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
 
@@ -43,8 +43,8 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      val sf = HashedTxnStore.factory[ Version ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
-
+      val valFactory = HashedTxnStore.factory[ Version, Any ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+      val refFactory = valFactory // XXX
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -288,10 +288,10 @@ object KSystemImpl {
       // ---- RefFactory ----
 
       def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
-         new RefImpl[ T ]( sf.empty[ T ], "ref" )
+         new RefImpl[ T ]( valFactory.empty[ T ], "ref" )
       }
       def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( sf.empty[ T ], "val" )
+         new ValImpl[ T ]( refFactory.empty[ T ], "val" )
       }
 
       private trait AbstractRef[ T <: Mutable[ A, T ]]

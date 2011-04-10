@@ -111,7 +111,9 @@ object HashedTxnStore {
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 
-   def factory[ X ] : TxnStoreFactory[ Path[ X ]] = new FactoryImpl[ X ]
+   def factory[ X, Up ] : TxnStoreFactory[ Path[ X ], Up ] = new FactoryImpl[ X, Up ]
+
+//   def cache[ X, Up ] : TxnStoreFactory[ Path[ X ]] = new FactoryImpl[ X ]
 
 //   def cache[ X ] : Cache[ Path[ X ]] = new CacheMgrImpl[ X ]
 
@@ -145,7 +147,7 @@ object HashedTxnStore {
 ////      }
 //   }
 
-   private class FactoryImpl[ X ] extends TxnStoreFactory[ Path[ X ]] {
-      def empty[ V ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+   private class FactoryImpl[ X, Up ] extends TxnStoreFactory[ Path[ X ], Up ] {
+      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
    }
 }

@@ -1,0 +1,15 @@
+sys.t { csr.path }
+
+// disadvantage: one may be tempted to call this inside the txn
+
+( first of all, csr.t should check
+ require( Txn.findCurrent.isEmpty, "..." )
+)
+
+because that way we can guarantee that a successive sys.t can read the new path?
+
+so better: csr.t returns the path and not the result of fun which is anyway a bad idea
+
+////////////////////////////
+
+the main problem now is in HashedTxnStore.put : we call Hashing.add here but key does _not_ contain the write suffix yet. thus we need to maintain another map [Pth, V] so that Hashing.add is actually called in commit

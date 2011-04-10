@@ -39,7 +39,7 @@ object Factory {
 //      ProcGroupImpl[ C, V ]( name )
 
 //   private val hsf = new HashedStoreFactory[ Version ]
-   private val hsf = new HashedTxnStoreFactory[ Version ]
+   private val hsf = HashedTxnStore.factory[ Version ]
 
 //   def esystem[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : ESystem[ W ] =
 //      ESystemImpl[ W ]( init )

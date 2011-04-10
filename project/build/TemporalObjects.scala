@@ -6,4 +6,6 @@ class TemporalObjectsProject( info: ProjectInfo ) extends DefaultProject( info )
    val scalaSTM   = "org.scala-tools" %% "scala-stm" % "0.3"
 
 //   val scalaToolsSnapshots = "Scala-Tools Snapshot Repository" at "http://scala-tools.org/repo-snapshots"
+
+   override def compileOptions = super.compileOptions ++ Seq(Unchecked)
 }

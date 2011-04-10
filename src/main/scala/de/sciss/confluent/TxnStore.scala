@@ -31,10 +31,10 @@ package de.sciss.confluent
 import de.sciss.fingertree.FingerTree
 import concurrent.stm.InTxn
 
-trait TxnStoreLike[ K, @specialized V, Repr ] {
+trait TxnStoreLike[ K, @specialized V, Rec, Repr ] {
 //   type Path = TxnStore.Path[ K ]
 
-   def put( key: K, value: V )( implicit txn: InTxn, rec: TxnDirtyRecorder[ K ]) : Unit
+   def put( key: K, value: V )( implicit txn: InTxn, rec: Rec ) : Unit
    def get( key: K )( implicit txn: InTxn ) : Option[ V ]
    def getOrElse( key: K, default: => V )( implicit txn: InTxn ) : V = get( key ).getOrElse( default )
 
@@ -55,24 +55,24 @@ trait TxnStoreLike[ K, @specialized V, Repr ] {
    def inspect( implicit txn: InTxn ) : Unit
 }
 
-trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]]
+trait TxnStore[ K, V, Rec ] extends TxnStoreLike[ K, V, Rec, TxnStore[ K, Rec, V ]]
 
 //object TxnStore {
 //   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
 //}
 
-trait TxnStoreFactory[ K ] {
-   def empty[ V ]: TxnStore[ K, V ]
+trait TxnStoreFactory[ K, Rec ] {
+   def empty[ V ]: TxnStore[ K, V, Rec ]
 }
 
-trait TxnStoreCommitter[ K ] {
-   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit
-}
-
-trait KeyTransformer[ K ] {
-   def transform( key: K ) : K
-}
-
-trait TxnDirtyRecorder[ K ] {
-   def addDirty( key: K, com: TxnStoreCommitter[ K ])
-}
+//trait TxnStoreCommitter[ K ] {
+//   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit
+//}
+//
+//trait KeyTransformer[ K ] {
+//   def transform( key: K ) : K
+//}
+//
+//trait TxnDirtyRecorder[ K ] {
+//   def addDirty( key: K, com: TxnStoreCommitter[ K ])
+//}

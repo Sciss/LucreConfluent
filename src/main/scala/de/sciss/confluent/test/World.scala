@@ -42,7 +42,9 @@ object CList {
       elems.iterator.foldRight[ CList[ A, T ]]( new CNilImpl[ A, T ]( a ))( (v, tail) => {
          val headRef = sys.emptyVal[ T ]
          headRef.set( v )
-         new CConsImpl[ A, T ]( a, sys, headRef )
+         val tailRef = sys.emptyRef[ CList[ A, T ]]
+         tailRef.set( tail )
+         new CConsImpl[ A, T ]( a, sys, headRef, tailRef )
       })
 //      error( "No functiona" )
    }
@@ -54,18 +56,18 @@ object CList {
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ A, T ]( val path: A, sys: System[ _, _, A ], val headRef: Val[ A, T ] /* KSystem.Var[ T ] */)
+   private class CConsImpl[ A, T ]( val path: A, sys: System[ _, _, A ], val headRef: Val[ A, T ], tailRef: Ref[ A, CList[ A, T ]])
    extends CCons[ A, T ] {
-      def head : T = error( "NO FUNCTIONA" ) // headRef.get( c )
-      def head_=( a: T ) : Unit = error( "NO FUNCTIONA" ) // headRef.set( a )
-      def tail : CList[ A, T ] = error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
+      def head : T = headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
+      def head_=( a: T ) : Unit = headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
+      def tail : CList[ A, T ] = tailRef.get( path ) // error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
       def tail_=( l: CList[ A, T ]) : Unit = error( "NO FUNCTIONA" ) // tailRef.set( l )
 
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
 //      }
 
-      def substitute( path: A ) = new CConsImpl[ A, T ]( path, sys, headRef )
+      def substitute( path: A ) = new CConsImpl[ A, T ]( path, sys, headRef, tailRef )
 
 //      def substitute( path: P ) : CCons[ P, T ] = new CConsImpl( a, sys[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
 //         val spath =
@@ -204,11 +206,14 @@ class WorldTest {
 //   }
 
    val v0 = csr.t { implicit w =>
+//      println( "AQUI- : " + w.list.toList )
       w.list = CList( 2, 1 )
-      w.path.path // XXX CONTINUE HERE -- OBVIOUSLY WE NEED A POST-COMMIT HOOK TO GRAB THE NEW CURSOR POSITION
+//      w.path.path // XXX CONTINUE HERE -- OBVIOUSLY WE NEED A POST-COMMIT HOOK TO GRAB THE NEW CURSOR POSITION
+      println( "AQUI0 : " + w.list.toList )
    }
 
    val v1 = csr.t { implicit w =>
+      println( "AQUI1 : " + w.list.toList )
       w.list = w.list.reverse
 //      w.path.path
    }

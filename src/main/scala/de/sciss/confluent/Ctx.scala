@@ -30,7 +30,7 @@ package de.sciss.confluent
 
 import concurrent.stm.InTxn
 
-trait CtxLike[ K ] extends TxnDirtyRecorder[ K ] {
+trait CtxLike[ K ] /* extends TxnDirtyRecorder[ K ] */ {
    def txn: InTxn
    def eph : ECtx
 }

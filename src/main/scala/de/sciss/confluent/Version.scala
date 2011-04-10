@@ -66,6 +66,15 @@ object Version {
       new VersionImpl( 0, 0, tree, tree.insertRoot )
    }
 
+   def testWrapXXX( suffix: Int ) : Version = {
+      val pv      = init // parent.version
+      val tree    = pv.tree
+      val insFun  = tree.insertChild( pv ) _
+
+      val (id, rid) = (0, suffix) // nextID( parent.path.sum )( txn )
+      new VersionImpl( id, rid, tree, insFun )
+   }
+
 //   def newFrom( v: Version, vs: Version* ) : Version = {
    def newFrom( parent: VersionPath )( implicit txn: InTxn ) : Version = {
 //      val (tree, insFun) = prepareNewFrom( v, vs: _ * )

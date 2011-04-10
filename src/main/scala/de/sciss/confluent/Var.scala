@@ -35,7 +35,7 @@ trait EVar[ C, T ] {
 }
 
 trait KVar[ C, T ] extends EVar[ C, T ]  {
-   def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
+   def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike[ _ ]) : Traversable[ (VersionPath, T) ]
 }
 
 //trait PVar[ C, T ] extends EVar[ C, T ]  {

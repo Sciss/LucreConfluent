@@ -210,36 +210,36 @@ class WorldTest {
 
    val v1 = csr.t { implicit w =>
       w.list = w.list.reverse
-      w.path.path
+//      w.path.path
    }
 
 //   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
 
-   val v2 = keproj.in( v0 ) { implicit w =>
+   val v2 = keproj.in( v0 ).t { implicit w =>
       w.list = w.list.drop( 1 )
       w.list.lastOption.foreach( _.tail = CList( 4 ))
-      w.path.path
+//      w.path.path
    }
 
    val v3 = csr.t { implicit w =>
-      val ro = keproj.in( v2 )( _.list.headOption )
+      val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
       r.iterator.foreach( _.head +=  2 )
       w.list.headOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-      w.path.path
+//      w.path.path
    }
 
    val v4 = csr.t { implicit w =>
-      val ro = keproj.in( v2 )( _.list.headOption )
+      val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
       w.list.headOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-      w.path.path
+//      w.path.path
    }
 
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {

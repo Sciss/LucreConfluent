@@ -45,14 +45,16 @@ trait Cursor[ A ] extends Projection[ A ] with Model[ ECtx, Cursor.Update ] {
 /**
  * A projection onto the ephemeral, basic transactional, level
  */
-trait EProjection[ A ] extends Projection[ A ] {
-   def t[ R ]( fun: A => R ) : R
+trait EProjection[ Res, A ] extends Projection[ A ] {
+//   def t[ R ]( fun: A => R ) : R
+   def t( fun: A => Unit ) : Res
+   def meld[ R ]( fun: A => R )( implicit main: A ) : R
 }
 
 /**
  * A projection onto the ephemeral along with cursor (model) functionality.
  */
-trait ECursor[ A ] extends EProjection[ A ] with Cursor[ A ]
+trait ECursor[ Res, A ] extends EProjection[ Res, A ] with Cursor[ A ]
 
 object Projector {
    sealed trait Update[ A, +Csr <: Cursor[ A ]]
@@ -64,7 +66,7 @@ object Projector {
  * A projector manages cursors
  */
 trait Projector[ A, +Csr <: Cursor[ A ]] /* extends Model[ ECtx, Projector.Update[ A, Csr ]] */ {
-   def cursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
+//   def cursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
 }
 
 /**
@@ -72,20 +74,20 @@ trait Projector[ A, +Csr <: Cursor[ A ]] /* extends Model[ ECtx, Projector.Updat
  */
 trait KProjector[ A, +Proj, +Csr <: Cursor[ A ]] extends Projector[ A, Csr ] {
    def cursorIn( v: Path )( implicit c: ECtx ) : Csr
-//   def projectIn( v: VersionPath ) : Proj
+   def in( v: Path ) : Proj
 //   def kCursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
 }
 
 trait KProjection[ A ] extends Projection[ A ] {
-   def path( implicit c: CtxLike ) : Path // VersionPath
+//   def path( implicit c: CtxLike ) : Path // VersionPath
 }
 
 /**
  * A KE projector is a K projector that projects onto the ephemeral level
  */
 trait KEProjector[ A ]
-extends KProjector[ A, EProjection[ A ] with KProjection[ A ], ECursor[ A ] with KProjection[ A ]] {
-   def in[ R ]( v: Path )( fun: A => R ) : R
+extends KProjector[ A, EProjection[ Path, A ] with KProjection[ A ], ECursor[ Path, A ] with KProjection[ A ]] {
+//   def in[ R ]( v: Path )( fun: A => R ) : R
 //   def range[ T ]( vr: V[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
 }
 

@@ -30,13 +30,19 @@ package de.sciss.confluent
 
 import collection.immutable.LongMap
 import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
+import de.sciss.fingertree.FingerTree
 
 object HashedTxnStoreFactory {
-   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
+   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
+
+//   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
+   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, (Path[ V ], Value[ V ])])
 
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class StoreImpl[ K, V ]( cRef: STMRef[ Compound[ V ]])
-   extends TxnStore[ K, V ] /* with TxnStoreCommitter */ {
+   private class StoreImpl[ X, V ]( cRef: STMRef[ Compound[ V ]])
+   extends TxnStore[ Path[ X ], V ] with TxnStoreCommitter[ Path[ X ]] {
+      type Pth = Path[ X ]
+
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT" )
          val c = cRef.get
@@ -48,17 +54,20 @@ object HashedTxnStoreFactory {
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Path )( implicit txn: InTxn ) : Option[ V ] = {
+      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = {
          def get( map: Map[ Long, Value[ V ]]) = Hashing.maxPrefixValue( key, map ).flatMap {
             case ValueFull( v )        => Some( v )
             case ValuePre( /* len, */ hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
             case ValueNone             => None // : Option[ V ]
          }
          val c = cRef.get
-         get( c.temp ).orElse( get( c.perm ))
+         get( c.temp ) match {
+            case Some( (_, v) )  => Some( v )
+            case None            => get( c.perm )
+         }
       }
 
-      def getWithPrefix( key: Path )( implicit txn: InTxn ) : Option[ (V, Int) ] = {
+      def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] = {
          def get( map: Map[ Long, Value[ V ]]) = Hashing.getWithPrefix( key, map ).flatMap {
             case (ValueFull( v ), sz)        => Some( v -> sz )
             case (ValuePre( /* len, */ hash ), sz) => {
@@ -71,39 +80,39 @@ object HashedTxnStoreFactory {
          get( c.temp ).orElse( get( c.perm ))
       }
 
-      def put( key: Path, value: V )( implicit txn: InTxn ) {
+      def put( key: Pth, value: V )( implicit txn: InTxn, rec: TxnDirtyRecorder[ Pth ]) {
          val hash = key.sum
          cRef.transform { c =>
             val map = c.temp
-            if( map.isEmpty ) Rec.addDirty( hash, this )
-            c.copy( temp = Hashing.add( key, map, { s: Path =>
+            if( map.isEmpty ) rec.addDirty( key, this )
+            c.copy( temp = Hashing.add( key, map, { s: Pth =>
                if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
             }))
          }
       }
 
-      def commit( txn: InTxn, suffix: Int ) {
+      def commit( txn: InTxn, keyTrns: KeyTransformer[ Pth ]) {
          cRef.transform( c => {
             val map = c.temp
-            Compound( c.perm ++ map.map( tup => (tup._1 + suffix, tup._2) ), map.empty )
+            Compound( c.perm ++ map.map( tup => (keyTrns( tup._1 ), tup._2) ), map.empty )
          })( txn )
       }
    }
 
-   private object Rec {
-      private val storeSet = TxnLocal( Set.empty[ StoreImpl[ _, _ ]], beforeCommit = persistAll( _ ))
-      private val hashSet  = TxnLocal( Set.empty[ Long ])
-
-      def addDirty( hash: Long, store: StoreImpl[ _, _ ])( implicit txn: InTxn ) {
-         storeSet.transform( _ + store )
-         hashSet.transform(  _ + hash )
-      }
-
-      private def persistAll( implicit txn: InTxn ) {
-         val suffix = Hashing.nextUnique( hashSet.get )
-         storeSet.get.foreach( _.commit( txn, suffix ))
-      }
-   }
+//   private object Rec {
+//      private val storeSet = TxnLocal( Set.empty[ StoreImpl[ _, _ ]], beforeCommit = persistAll( _ ))
+//      private val hashSet  = TxnLocal( Set.empty[ Long ])
+//
+//      def addDirty( hash: Long, store: StoreImpl[ _, _ ])( implicit txn: InTxn ) {
+//         storeSet.transform( _ + store )
+//         hashSet.transform(  _ + hash )
+//      }
+//
+//      private def persistAll( implicit txn: InTxn ) {
+//         val suffix = Hashing.nextUnique( hashSet.get )
+//         storeSet.get.foreach( _.commit( txn, suffix ))
+//      }
+//   }
 
    private sealed trait Value[ +V ]
    private case object ValueNone extends Value[ Nothing ]
@@ -111,11 +120,11 @@ object HashedTxnStoreFactory {
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 }
 
-class HashedTxnStoreFactory[ K ] extends TxnStoreFactory[ K ] {
+class HashedTxnStoreFactory[ X ] extends TxnStoreFactory[ HashedTxnStoreFactory.Path[ X ]] {
    import HashedTxnStoreFactory._
 
-   def empty[ V ] : TxnStore[ K, V ] = {
+   def empty[ V ] : TxnStore[ Path[ X ], V ] = {
       val mapE = LongMap.empty[ Value[ V ]]
-      new StoreImpl[ K, V ]( STMRef( Compound( mapE, mapE )))
+      new StoreImpl[ X, V ]( STMRef( Compound( mapE, mapE )))
    }
 }

@@ -30,20 +30,20 @@ package de.sciss.confluent
 package impl
 
 import collection.immutable.{Set => ISet}
-import concurrent.stm.{TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import reflect.OptManifest
+import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 
 object KSystemImpl {
-   private type Holder[ T ] = TxnStore[ Version, T ]
+   private type Holder[ T ] = TxnStore[ Path, T ]
 
-   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])( implicit sf: TxnStoreFactory[ Version ]) : KSystem[ A ] =
+   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])( implicit sf: TxnStoreFactory[ Path ]) : KSystem[ A ] =
       new Sys[ A ]( ap, sf )
 
-   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ], sf: TxnStoreFactory[ Version ])
+   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ], sf: TxnStoreFactory[ Path ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      type RefHolder[ T <: Mutable[ A, T ]] = TxnStore[ Version, T ]
+      type RefHolder[ T <: Mutable[ A, T ]] = TxnStore[ Path, T ]
 
       val atomic = TxnExecutor.defaultAtomic
 
@@ -127,7 +127,7 @@ object KSystemImpl {
       with ModelImpl[ ECtx, Projector.Update[ A, KSystem.Cursor[ A ]]] {
 
          val cursorsRef = STMRef( ISet.empty[ KSystem.Cursor[ A ]])
-         def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor[ A ]] = cursorsRef.get( c.txn )
+//         def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor[ A ]] = cursorsRef.get( c.txn )
 
 //         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
 
@@ -143,17 +143,19 @@ object KSystemImpl {
             fireUpdate( Projector.CursorRemoved[ A, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in[ R ]( version: Path )( fun: A => R ) : R = atomic { tx =>
-            error( "NO FUNCTIONA" )
-//            fun( new Ctx( /* sys, */ tx, version ))
-         }
+         def in( version: Path ) : EProjection[ Path, A ] with KProjection[ A ] = error( "NO FUNCTIONA" )
+
+//         def in( version: Path )( fun: A => Unit ) : Path = atomic { tx =>
+//            error( "NO FUNCTIONA" )
+////            fun( new Ctx( /* sys, */ tx, version ))
+//         }
 
 //         def range[ T ]( vr: KSystem.Var[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
 //            error( "NOT YET IMPLEMENTED" )
       }
 
       private class CursorImpl( initialPath: Path )
-      extends ECursor[ A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
+      extends ECursor[ Path, A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
          csr =>
 
          private val vRef = STMRef( initialPath )
@@ -161,14 +163,24 @@ object KSystemImpl {
 //         private val txnInitiator = TxnLocal[ Boolean ]( false )
 //
 //         def isApplicable( implicit c: KSystem.Ctx ) = txnInitiator.get( c.txn )
-         def path( implicit c: CtxLike ) : Path = vRef.get( c.txn )
+//         def path( implicit c: CtxLike ) : Path = vRef.get( c.txn )
 
          def dispose( implicit c: ECtx ) {
 //            sys.kProjector.removeKCursor( csr )
 //            KEProjImpl.removeKCursor( csr )
          }
 
-         def t[ R ]( fun: A => R ) : R = {
+         def meld[ R ]( fun: A => R )( implicit main: A ) : R = {
+            val cMain   = main.path
+            val txn     = cMain.txn
+            val cMeld   = Ctx( txn, vRef.get( txn ))
+            val a       = aInit.substitute( cMeld )
+            fun( a )
+         }
+
+         def t( fun: A => Unit ) : Path = {
+            require( Txn.findCurrent.isEmpty, "Cannot nest transactions" )
+
             // XXX todo: should add t to KTemporalSystemLike and pass txn to in
             // variant so we don't call atomic twice
             // (although that is ok and the existing transaction is joined)
@@ -190,6 +202,8 @@ object KSystemImpl {
 //                  txnInitiator.set( false )( t )
 //                  res
 //               }
+               // ...
+               error( "TODO" )
             }
          }
       }
@@ -228,6 +242,24 @@ object KSystemImpl {
 //               pw
 //            } else p
 //         }
+      }
+
+      // ---- TxnDirtyRecorder ----
+      private val comSet   = TxnLocal( Set.empty[ TxnStoreCommitter[ Path ]], beforeCommit = persistAll( _ ))
+      private val hashSet  = TxnLocal( Set.empty[ Long ])
+
+      def addDirty( key: Path, com: TxnStoreCommitter[ Path ])( implicit txn: InTxn ) {
+         comSet.transform(  _ + com )
+         hashSet.transform( _ + key.sum )
+      }
+
+      private def persistAll( implicit txn: InTxn ) {
+         val suffix  = Hashing.nextUnique( hashSet.get )
+         val v: Version = error( "NO FUNCTIONA" )
+         val trns    = new KeyTransformer[ Path ] {
+            def transform( key: Path ) : Path = key :+ v
+         }
+         comSet.get.foreach( _.commit( txn, trns ))
       }
 
       // ---- RefFactory ----
@@ -271,7 +303,7 @@ object KSystemImpl {
             val ctx  = access.path
             val txn  = ctx.txn
             val p    = ctx.path
-            ref.put( p, v )( txn )
+            ref.put( p, v )( txn, ctx )
 //            ref.transform( _.put( p, v ))( txn )
 //            fireUpdate( v )( txn )
          }
@@ -303,7 +335,7 @@ object KSystemImpl {
             val ctx  = access.path
             val txn  = ctx.txn
             val p    = ctx.path
-            ref.put( p, v )( txn )
+            ref.put( p, v )( txn, ctx )
 //            fireUpdate( v )
          }
 

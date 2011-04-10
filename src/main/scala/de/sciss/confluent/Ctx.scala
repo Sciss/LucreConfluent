@@ -30,14 +30,14 @@ package de.sciss.confluent
 
 import concurrent.stm.InTxn
 
-trait CtxLike {
+trait CtxLike[ K ] extends TxnDirtyRecorder[ K ] {
    def txn: InTxn
    def eph : ECtx
 }
 
-trait ECtx extends CtxLike
+trait ECtx extends CtxLike[ Unit ]
 
-trait KCtxLike extends CtxLike {
+trait KCtxLike extends CtxLike[ Path ] {
 //   def path : VersionPath // V
 //   private[confluent] def writePath : VersionPath
 }

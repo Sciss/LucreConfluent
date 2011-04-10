@@ -37,12 +37,12 @@ trait CtxLike {
 
 trait ECtx extends CtxLike
 
-trait KCtxLike[ V <: VersionPath ] extends CtxLike {
-   def path : VersionPath // V
-   private[confluent] def writePath : VersionPath
+trait KCtxLike extends CtxLike {
+//   def path : VersionPath // V
+//   private[confluent] def writePath : VersionPath
 }
 
-trait KCtx[ V <: VersionPath ] extends KCtxLike[ V ]
+trait KCtx extends Mutable[ Path, KCtx ] with KCtxLike
 
 //trait PCtxLike extends CtxLike {
 //   def period : Period

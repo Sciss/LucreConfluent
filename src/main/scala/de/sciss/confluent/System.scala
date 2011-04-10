@@ -90,7 +90,7 @@ extends System[ Path, C, A ] with Model[ ECtx, KSystemLike.Update ] {
 }
 
 object KSystem {
-   type Ctx                                              = KCtx[ _ <: VersionPath ]
+   type Ctx                                              = KCtx // [ _ <: VersionPath ]
    type Var[ ~ ]                                         = KVar[ Ctx, ~ ]
 //   type RefVar[ ~[ _ <: Ctx ] <: Access[ Ctx, Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
 

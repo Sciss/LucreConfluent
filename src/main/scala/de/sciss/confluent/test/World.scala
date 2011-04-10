@@ -182,7 +182,7 @@ class WorldTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
 
-   implicit val sys = Factory.ksystem( WorldFactory[ Path ])
+   implicit val sys = Factory.ksystem( WorldFactory[ KCtx ])
 
 //   val proj = sys.keProjector
 //   proj.in( VersionPath.init ) { implicit w =>
@@ -195,12 +195,12 @@ class WorldTest {
 
    val v0 = csr.t { implicit w =>
       w.list = CList( 2, 1 )
-      w.path
+      w.path.path
    }
 
    val v1 = csr.t { implicit w =>
       w.list = w.list.reverse
-      w.path
+      w.path.path
    }
 
 //   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
@@ -208,28 +208,28 @@ class WorldTest {
    val v2 = keproj.in( v0 ) { implicit w =>
       w.list = w.list.drop( 1 )
       w.list.lastOption.foreach( _.tail = CList( 4 ))
-      w.path
+      w.path.path
    }
 
    val v3 = csr.t { implicit w =>
       val ro = keproj.in( v2 )( _.list.headOption )
-      val r = ro.getOrElse( CList.empty[ World[ Path ], Int /* FUCKING BITCHES */ ]( w, sys ))
+      val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
       r.iterator.foreach( _.head +=  2 )
       w.list.headOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-      w.path
+      w.path.path
    }
 
    val v4 = csr.t { implicit w =>
       val ro = keproj.in( v2 )( _.list.headOption )
-      val r = ro.getOrElse( CList.empty[ World[ Path ], Int /* FUCKING BITCHES */ ]( w, sys ))
+      val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
       w.list.headOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-      w.path
+      w.path.path
    }
 
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
@@ -257,7 +257,7 @@ class WorldTest {
 }
 
 class WorldTest1 {
-   val sys  = Factory.ksystem( WorldFactory[ Path ])
+   val sys  = Factory.ksystem( WorldFactory[ KCtx ])
 //   val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
 ////   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
 //

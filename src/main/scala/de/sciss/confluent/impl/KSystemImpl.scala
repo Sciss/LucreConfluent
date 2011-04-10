@@ -290,8 +290,12 @@ object KSystemImpl {
          new ValImpl[ T ]( valFactory.empty[ T ], "val" )
       }
       def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
+//         val t: T => T = gimmeTrans[ T ]
          new RefImpl[ T ]( refFactory.empty[ T ], "ref" )
       }
+
+//      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
+//      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )
 
       private trait AbstractRef[ T <: Mutable[ A, T ]]
       extends Ref[ A, T ] {

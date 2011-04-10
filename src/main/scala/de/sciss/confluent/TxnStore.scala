@@ -65,9 +65,14 @@ trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 }
 
-trait TxnCacheLike[ K, V ] {
-   def flush( trns: ((K, V)) => (K, V) )( implicit txn: InTxn ) : Unit
+//trait TxnCacheLike[ K, V ] {
+//   def flush( trns: ((K, V)) => (K, V) )( implicit txn: InTxn ) : Unit
+//}
+
+trait TxnCacheLike[ K ] {
+   def flush( trns: K => K )( implicit txn: InTxn ) : Unit
 }
+
 //
 //trait TxnStoreCache[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] with TxnCacheLike
 
@@ -87,20 +92,30 @@ trait TxnStoreFactory[ K, Up ] {
 ////   def emptyRef[ V ]: TxnStore[ K, V ]
 //}
 //
-trait TxnCacheGroup[ H, K, V ] {
+
+trait TxnCacheGroup[ H, K ] {
 //   def addDirty( cache: TxnCacheLike[ K, V ])( implicit txn: InTxn ) : Unit
-   def addDirty( cache: TxnCacheLike[ K, V ], hash: H )( implicit txn: InTxn ) : Unit
-   def addAllDirty( cache: TxnCacheLike[ K, V ], hashes: Traversable[ H ])( implicit txn: InTxn ) : Unit
+   def addDirty( cache: TxnCacheLike[ K ], hash: H )( implicit txn: InTxn ) : Unit
+   def addAllDirty( cache: TxnCacheLike[ K ], hashes: Traversable[ H ])( implicit txn: InTxn ) : Unit
 }
 
 //trait TxnStoreCommitter[ K ] {
 //   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit
 //}
 //
-//trait KeyTransformer[ K ] {
-//   def transform( key: K ) : K
+
+//trait KeyValueTransformer[ K, Up ] {
+//   def transform[ V <: Up ]( entry: (K, V) ) : (K, V)
 //}
-//
+
+//class TestTrans[ Up <: Mutable[ Int, Up ]] extends KeyValueTransformer[ Int, Up ] {
+//   def transform[ V <: Up ]( entry: (Int, V) ) : (Int, V) = {
+//      val (k, v) = entry
+//      val v2 = v.substitute( 33 )
+//      (k, v2)
+//   }
+//}
+
 //trait TxnDirtyRecorder[ K ] {
 //   def addDirty( key: K, com: TxnStoreCommitter[ K ])
 //}

@@ -35,11 +35,14 @@ import de.sciss.fingertree.FingerTree
 object CachedTxnStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
-   private class CacheImpl[ X, V ]( store: TxnStore[ Path[ X ], V ], group: TxnCacheGroup[ Long, Path[ X ], V ])
-   extends TxnStore[ Path[ X ], V ] with TxnCacheLike[ Path[ X ], V ] {
+   private trait CacheLike[ X, V ] // ( store: TxnStore[ Path[ X ], V ], group: TxnCacheGroup[ Long, Path[ X ], V ])
+   extends TxnStore[ Path[ X ], V ] /* with TxnCacheLike[ Path[ X ], V ] */ {
       type Pth = Path[ X ]
 
-      val ref = TxnLocal( LongMap.empty[ (Pth, V) ])
+      protected val store: TxnStore[ Path[ X ], V ]
+//      val group: TxnCacheGroup[ Long, Path[ X ]]
+
+      protected val ref = TxnLocal( LongMap.empty[ (Pth, V) ])
 
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT CACHE" )
@@ -57,11 +60,14 @@ object CachedTxnStore {
       def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] =
          ref.get.get( key.sum ).map( tup => (tup._2, key.size) ).orElse( store.getWithPrefix( key ))
 
+      protected def addDirty( hash: Long )( implicit txn: InTxn ) : Unit
+      protected def addAllDirty( hashes: Traversable[ Long ])( implicit txn: InTxn ) : Unit
+
       def put( key: Pth, value: V )( implicit txn: InTxn ) {
          ref.transform { map =>
 //            if( map.isEmpty ) rec.addDirty( this )
             val hash = key.sum
-            group.addDirty( this, hash )
+            addDirty( hash ) // group.addDirty( this, hash )
             map + (hash -> (key, value))
          }
       }
@@ -74,18 +80,46 @@ object CachedTxnStore {
             val hashed = elems.map( tup => tup._1.sum )
 //
 //            val hashed = keys.map( _.sum ) // elems.view.map( tup => (tup._1.sum, tup._2) )
-            group.addAllDirty( this, hashed )
+            addAllDirty( hashed ) // group.addAllDirty( this, hashed )
             map ++ hashed.zip(elems)
          }
       }
 
-      def flush( trns: ((Pth, V)) => (Pth, V) )( implicit txn: InTxn ) {
-         store.putAll( ref.get.values.map( trns ))
+//      def flush( trns: ((Pth, V)) => (Pth, V) )( implicit txn: InTxn ) {
+//         store.putAll( ref.get.values.map( trns ))
+//      }
+   }
+
+   private class ValCache[ X, V ]( protected val store: TxnStore[ Path[ X ], V ], group: TxnCacheGroup[ Long, Path[ X ]])
+   extends CacheLike[ X, V ] with TxnCacheLike[ Path[ X ]] {
+      protected def addDirty( hash: Long )( implicit txn: InTxn ) {
+         group.addDirty( this, hash )
+      }
+
+      protected def addAllDirty( hashes: Traversable[ Long ])( implicit txn: InTxn ) {
+         group.addAllDirty( this, hashes )
+      }
+
+      def flush( trns: Pth => Pth )( implicit txn: InTxn ) {
+         store.putAll( ref.get.values.map( tup => (trns( tup._1 ), tup._2) ))
       }
    }
 
-   def factory[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ]) : TxnStoreFactory[ Path[ X ], Up ] =
-      new FactoryImpl[ X, Up ]( storeFactory )
+   def valFactory[ X ]( storeFactory: TxnStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]]) : TxnStoreFactory[ Path[ X ], Any ] =
+      new ValFactoryImpl[ X ]( storeFactory, group )
+
+   def refFactory[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ], group: TxnCacheGroup[ Long, Path[ X ]]) : TxnStoreFactory[ Path[ X ], Up ] =
+      new RefFactoryImpl[ X, Up ]( storeFactory, group )
+
+   private class ValFactoryImpl[ X ]( storeFactory: TxnStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]])
+   extends TxnStoreFactory[ Path[ X ], Any ] {
+      def empty[ V ] : TxnStore[ Path[ X ], V ] = new ValCache[ X, V ]( storeFactory.empty[ V ], group )
+   }
+
+   private class RefFactoryImpl[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ], group: TxnCacheGroup[ Long, Path[ X ]])
+   extends TxnStoreFactory[ Path[ X ], Up ] {
+      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = new ValCache[ X, V ]( storeFactory.empty[ V ], group )
+   }
 
    private class FactoryImpl[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ] /*, group: TxnCacheGroup[ Long, Path[ X ], Up ] */)
    extends TxnStoreFactory[ Path[ X ], Up ] {

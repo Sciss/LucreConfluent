@@ -35,7 +35,7 @@ import de.sciss.fingertree.FingerTree
 object CachedTxnStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
-   private class CacheImpl[ X, V ]( store: TxnStore[ Path[ X ], V ], rec: TxnCacheGroup[ Long, Path[ X ], V ])
+   private class CacheImpl[ X, V ]( store: TxnStore[ Path[ X ], V ], group: TxnCacheGroup[ Long, Path[ X ], V ])
    extends TxnStore[ Path[ X ], V ] with TxnCacheLike[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
@@ -61,7 +61,7 @@ object CachedTxnStore {
          ref.transform { map =>
 //            if( map.isEmpty ) rec.addDirty( this )
             val hash = key.sum
-            rec.addDirty( this, hash )
+            group.addDirty( this, hash )
             map + (hash -> (key, value))
          }
       }
@@ -74,7 +74,7 @@ object CachedTxnStore {
             val hashed = elems.map( tup => tup._1.sum )
 //
 //            val hashed = keys.map( _.sum ) // elems.view.map( tup => (tup._1.sum, tup._2) )
-            rec.addAllDirty( this, hashed )
+            group.addAllDirty( this, hashed )
             map ++ hashed.zip(elems)
          }
       }
@@ -87,8 +87,8 @@ object CachedTxnStore {
    def factory[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ]) : TxnStoreFactory[ Path[ X ], Up ] =
       new FactoryImpl[ X, Up ]( storeFactory )
 
-   private class FactoryImpl[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ])
+   private class FactoryImpl[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ] /*, group: TxnCacheGroup[ Long, Path[ X ], Up ] */)
    extends TxnStoreFactory[ Path[ X ], Up ] {
-      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = error( "TODO" ) // new CacheImpl[ X, V ]( storeFactory.empty[ V ])
+      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = error( "TODO" ) // new CacheImpl[ X, V ]( storeFactory.empty[ V ], group )
    }
 }

@@ -41,7 +41,7 @@ object HashedTxnStore {
    private class StoreImpl[ X, V ] extends TxnStore[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
-      val ref     = STMRef( Map.empty[ Long, Value[ V ]])
+      val ref     = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
 
       def inspect( implicit txn: InTxn ) = {
@@ -86,7 +86,9 @@ object HashedTxnStore {
          }
       }
 
-      def putAll( elems: Traversable[ (Pth, V) ])( implicit txn: InTxn ) {
+      def putAll( elems: Iterable[ (Pth, V) ])( implicit txn: InTxn ) {
+// since we use the cache now, let's just skip this check
+//         if( elems.isEmpty ) return
          ref.transform { map =>
             elems.foldLeft( map ) { case (map, (key, value)) =>
                val hash    = key.sum

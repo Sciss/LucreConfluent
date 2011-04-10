@@ -35,10 +35,11 @@ import de.sciss.fingertree.FingerTree
 object CachedTxnStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
-   private class CacheImpl[ X, V ]( store: TxnStore[ Path[ X ], V ]) extends TxnStore[ Path[ X ], V ] {
+   private class CacheImpl[ X, V ]( store: TxnStore[ Path[ X ], V ], rec: TxnCacheGroup[ Long, Path[ X ], V ])
+   extends TxnStore[ Path[ X ], V ] with TxnCacheLike[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
-      val ref     = TxnLocal( Map.empty[ Long, V ])
+      val ref = TxnLocal( LongMap.empty[ (Pth, V) ])
 
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT CACHE" )
@@ -51,25 +52,35 @@ object CachedTxnStore {
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = ref.get.get( key.sum ).orElse( store.get( key ))
+      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = ref.get.get( key.sum ).map( _._2 ).orElse( store.get( key ))
 
       def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] =
-         ref.get.get( key.sum ).map( v => (v, key.size) ).orElse( store.getWithPrefix( key ))
+         ref.get.get( key.sum ).map( tup => (tup._2, key.size) ).orElse( store.getWithPrefix( key ))
 
       def put( key: Pth, value: V )( implicit txn: InTxn ) {
          ref.transform { map =>
+//            if( map.isEmpty ) rec.addDirty( this )
             val hash = key.sum
-//            if( map.isEmpty ) rec.addDirty( hash, this )
-            map + (hash -> value)
+            rec.addDirty( this, hash )
+            map + (hash -> (key, value))
          }
       }
 
-      def putAll( elems: Traversable[ (Pth, V) ])( implicit txn: InTxn ) {
+      def putAll( elems: Iterable[ (Pth, V) ])( implicit txn: InTxn ) {
+         if( elems.isEmpty ) return
          ref.transform { map =>
-            val hashed = elems.view.map( tup => (tup._1.sum, tup._2) )
-//            if( map.isEmpty ) rec.addDirty( hash, this )
-            map ++ hashed
+//            if( map.isEmpty ) rec.addDirty( this )
+//            val (keys, values) = elems.unzip
+            val hashed = elems.map( tup => tup._1.sum )
+//
+//            val hashed = keys.map( _.sum ) // elems.view.map( tup => (tup._1.sum, tup._2) )
+            rec.addAllDirty( this, hashed )
+            map ++ hashed.zip(elems)
          }
+      }
+
+      def flush( trns: ((Pth, V)) => (Pth, V) )( implicit txn: InTxn ) {
+         store.putAll( ref.get.values.map( trns ))
       }
    }
 
@@ -78,6 +89,6 @@ object CachedTxnStore {
 
    private class FactoryImpl[ X, Up ]( storeFactory: TxnStoreFactory[ Path[ X ], Up ])
    extends TxnStoreFactory[ Path[ X ], Up ] {
-      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = new CacheImpl[ X, V ]( storeFactory.empty[ V ])
+      def empty[ V <: Up ] : TxnStore[ Path[ X ], V ] = error( "TODO" ) // new CacheImpl[ X, V ]( storeFactory.empty[ V ])
    }
 }

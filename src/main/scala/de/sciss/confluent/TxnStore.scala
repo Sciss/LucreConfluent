@@ -54,7 +54,7 @@ trait TxnStoreLike[ K, @specialized V, Repr ] {
 
    def inspect( implicit txn: InTxn ) : Unit
 
-   def putAll( elems: Traversable[ (K, V) ])( implicit txn: InTxn ) : Unit
+   def putAll( elems: Iterable[ (K, V) ])( implicit txn: InTxn ) : Unit
 }
 
 //trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
@@ -65,9 +65,9 @@ trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 }
 
-//trait TxnCacheLike {
-//   def flush( implicit txn: InTxn ) : Unit
-//}
+trait TxnCacheLike[ K, V ] {
+   def flush( trns: ((K, V)) => (K, V) )( implicit txn: InTxn ) : Unit
+}
 //
 //trait TxnStoreCache[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] with TxnCacheLike
 
@@ -87,9 +87,11 @@ trait TxnStoreFactory[ K, Up ] {
 ////   def emptyRef[ V ]: TxnStore[ K, V ]
 //}
 //
-//trait TxnCacheGroup extends TxnCacheLike {
-//   def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit
-//}
+trait TxnCacheGroup[ H, K, V ] {
+//   def addDirty( cache: TxnCacheLike[ K, V ])( implicit txn: InTxn ) : Unit
+   def addDirty( cache: TxnCacheLike[ K, V ], hash: H )( implicit txn: InTxn ) : Unit
+   def addAllDirty( cache: TxnCacheLike[ K, V ], hashes: Traversable[ H ])( implicit txn: InTxn ) : Unit
+}
 
 //trait TxnStoreCommitter[ K ] {
 //   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit

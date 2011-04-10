@@ -41,7 +41,7 @@ object HashedTxnStore {
    private class StoreImpl[ X, V ] extends TxnStore[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
-      val ref     = STMRef.make[ Map[ Long, Value[ V ]]]
+      val ref     = STMRef( Map.empty[ Long, Value[ V ]])
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
 
       def inspect( implicit txn: InTxn ) = {
@@ -86,24 +86,16 @@ object HashedTxnStore {
          }
       }
 
-//      def flush( pairs: Traversable[ (Pth, V) ])( implicit txn: InTxn ) : Unit = {
-//         ref.transform { map =>
-//            pairs.foldLeft( map ) { case (map, (key, value)) =>
-//               val hash    = key.sum
-////               if( map.isEmpty ) rec.addDirty( hash, this )
-//               Hashing.add( key, map, { s: Pth =>
-//                  if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
-//               })
-//            }
-//         }
-//      }
-
-//      def commit( txn: InTxn, suffix: Int ) {
-//         cRef.transform( c => {
-//            val map = c.temp
-//            Compound( c.perm ++ map.map( tup => (tup._1 + suffix, tup._2) ), map.empty )
-//         })( txn )
-//      }
+      def putAll( elems: Traversable[ (Pth, V) ])( implicit txn: InTxn ) {
+         ref.transform { map =>
+            elems.foldLeft( map ) { case (map, (key, value)) =>
+               val hash    = key.sum
+               Hashing.add( key, map, { s: Pth =>
+                  if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
+               })
+            }
+         }
+      }
    }
 
    private sealed trait Value[ +V ]

@@ -30,7 +30,6 @@ package de.sciss.confluent
 package impl
 
 import collection.immutable.{Set => ISet}
-import reflect.OptManifest
 import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 
 object KSystemImpl {
@@ -44,7 +43,7 @@ object KSystemImpl {
       sys =>
 
       val valFactory = HashedTxnStore.factory[ Version, Any ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
-      val refFactory = valFactory // XXX
+      val refFactory = HashedTxnStore.factory[ Version, Mutable[ A, _ ]]
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -287,11 +286,11 @@ object KSystemImpl {
 
       // ---- RefFactory ----
 
-      def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
-         new RefImpl[ T ]( valFactory.empty[ T ], "ref" )
-      }
       def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( refFactory.empty[ T ], "val" )
+         new ValImpl[ T ]( valFactory.empty[ T ], "val" )
+      }
+      def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
+         new RefImpl[ T ]( refFactory.empty[ T ], "ref" )
       }
 
       private trait AbstractRef[ T <: Mutable[ A, T ]]

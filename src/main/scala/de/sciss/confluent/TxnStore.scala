@@ -53,11 +53,13 @@ trait TxnStoreLike[ K, @specialized V, Repr ] {
    def getWithPrefix( key: K )( implicit txn: InTxn ) : Option[ (V, Int) ]
 
    def inspect( implicit txn: InTxn ) : Unit
+
+   def putAll( elems: Traversable[ (K, V) ])( implicit txn: InTxn ) : Unit
 }
 
-trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
-   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
-}
+//trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
+//   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
+//}
 
 trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit

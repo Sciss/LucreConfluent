@@ -96,6 +96,7 @@ sealed trait CList[ A, T] extends Mutable[ A, CList[ A, T ]] {
    def drop( n: Int ) : CList[ A, T ]
    def reverse : CList[ A, T ]
    def toList : List[ T ]
+   def iterator : Iterator[ CCons[ A, T ]]
 }
 trait CNil[ A, T ] extends CList[ A, T ] {
    def headOption : Option[ CCons[ A, T ]] = None
@@ -103,6 +104,7 @@ trait CNil[ A, T ] extends CList[ A, T ] {
    def drop( n: Int ) : CList[ A, T ] = this
    def reverse : CList[ A, T ] = this
    def toList : List[ T ] = Nil
+   def iterator : Iterator[ CCons[ A, T ]] = Iterator.empty
 }
 trait CCons[ A, T ] extends CList[ A, T ] {
 //   def substitute[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ]
@@ -114,6 +116,8 @@ trait CCons[ A, T ] extends CList[ A, T ] {
 
    def headOption : Option[ CCons[ A, T ]] = Some( this )
    def lastOption : Option[ CCons[ A, T ]] = Some( last )
+
+   def iterator : Iterator[ CCons[ A, T ]] = error( "NO FUNCTIONA" )
 
    def last : CCons[ A, T ] = {
       var res        = this
@@ -185,41 +189,49 @@ class WorldTest {
 //      w.list = CList( 2, 1 )
 //   }
 
-   val proj = sys.kProjector
-   val csr  = sys.t( proj.cursorIn( VersionPath.init.path )( _ ))
+   val kproj   = sys.kProjector
+   val keproj  = sys.keProjector
+   val csr  = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
 
    val v0 = csr.t { implicit w =>
       w.list = CList( 2, 1 )
       w.path
    }
 
-   csr.t { implicit w =>
+   val v1 = csr.t { implicit w =>
       w.list = w.list.reverse
+      w.path
    }
 
 //   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
 
-   val v2 = sys.keProjector.in( v0 ) { implicit w =>
+   val v2 = keproj.in( v0 ) { implicit w =>
       w.list = w.list.drop( 1 )
-//      a.list.lastOption.foreach( _.tail = CList( 4 ))
+      w.list.lastOption.foreach( _.tail = CList( 4 ))
       w.path
    }
-                                 }
 
-//
-//   def p2[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
-//      val a    = a0.access( c.path.seminalPath )
-//      a.list_=( a.list.drop( 1 ))
-//      a.list.lastOption.foreach( _.tail = CList( 4 ))
-//      (a, c.path)
-//   }
-//   val (a2, v2) = csr2.t( p2( _ ))
-//// println( "jo chuck " + v0.path.toList + " : " + v1.path.toList + " : " + v2.path.toList )
-//
-//   sys.t( csr2.dispose( _ ))
-//
-//   val emptyPath = Path()
-//
+   val v3 = csr.t { implicit w =>
+      val ro = keproj.in( v2 )( _.list.headOption )
+      val r = ro.getOrElse( CList.empty[ World[ Path ], Int /* FUCKING BITCHES */ ]( w, sys ))
+      r.iterator.foreach( _.head +=  2 )
+      w.list.headOption match {
+         case Some( head ) => head.tail = r
+         case None => w.list = r
+      }
+      w.path
+   }
+
+   val v4 = csr.t { implicit w =>
+      val ro = keproj.in( v2 )( _.list.headOption )
+      val r = ro.getOrElse( CList.empty[ World[ Path ], Int /* FUCKING BITCHES */ ]( w, sys ))
+      w.list.headOption match {
+         case Some( head ) => head.tail = r
+         case None => w.list = r
+      }
+      w.path
+   }
+
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
 //// hmmm... this would have been nice
 ////      println( "v0 : " + a0.list.toList )

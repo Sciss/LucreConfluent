@@ -66,13 +66,16 @@ object Version {
       new VersionImpl( 0, 0, tree, tree.insertRoot )
    }
 
-   def testWrapXXX( suffix: Int ) : Version = {
+   def testWrapXXX( suffix: Int )( implicit txn: InTxn ) : Version = {
       val pv      = init // parent.version
       val tree    = pv.tree
       val insFun  = tree.insertChild( pv ) _
 
-      val (id, rid) = (0, suffix) // nextID( parent.path.sum )( txn )
-      new VersionImpl( id, rid, tree, insFun )
+      val id = idRef.get
+      idRef.set( id.copy( cnt = id.cnt + 1 ))
+
+//      val (id, rid) = (0, suffix) // nextID( parent.path.sum )( txn )
+      new VersionImpl( id.cnt, suffix, tree, insFun )
    }
 
 //   def newFrom( v: Version, vs: Version* ) : Version = {

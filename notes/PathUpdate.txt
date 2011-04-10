@@ -1,4 +1,4 @@
-sys.t { csr.path }
+sys.t { csr.path } 
 
 // disadvantage: one may be tempted to call this inside the txn
 
@@ -13,3 +13,26 @@ so better: csr.t returns the path and not the result of fun which is anyway a ba
 ////////////////////////////
 
 the main problem now is in HashedTxnStore.put : we call Hashing.add here but key does _not_ contain the write suffix yet. thus we need to maintain another map [Pth, V] so that Hashing.add is actually called in commit
+
+; does the following assumption hold:
+- we do not need to fully hash the values in temp, it is sufficient to map key.sum -> value because we cannot meld from the same (write) version.
+  i.e. in the default example, creation of version v3 :
+     f(w0) : next : <v0, v1, ?> --> (<v0, v2, ?>, f(w1)) (!)
+     f(w1) : x    : <v0, v2, ?) --> 3
+     f(w2) : x    : <v2, ?> --> 3
+     access       : (<v0, v1, ?>, f(w1)) (!)
+
+  the two references to f(w1) are unique
+
+; this would require though to distinguish as well in the store between vals, and refs ..., because
+  the refs (as a stored value) need also update in the commit
+
+how about melding without a side branch ; e.g. in v3 meld v2 and v0 ?
+--> in compressed path, it would mean:
+ <v0, v1, v3, v3> and <v0, v2, v3, v3>
+; thus it would be allowed
+
+   f(w0) : next : <v0, v1, ?> --> (<v0, ?>, f(w1))
+
+which is still distinguished from <v0, v1, ?> ...
+

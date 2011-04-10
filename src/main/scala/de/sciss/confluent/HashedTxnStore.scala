@@ -73,6 +73,7 @@ object HashedTxnStore {
             case (ValueNone, _)              => None // : Option[ V ]
          }
          val c = cRef.get
+//this.inspect
          get( c.temp ).orElse( get( c.perm ))
       }
 

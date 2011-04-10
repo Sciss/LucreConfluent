@@ -28,6 +28,8 @@
 
 package de.sciss.confluent
 
+import concurrent.stm.InTxn
+
 trait EVar[ C, T ] {
    def get( implicit c: C ) : T
    def set( v: T )( implicit c: C ) : Unit
@@ -79,6 +81,7 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
    def get( implicit access: A ) : T
    def set( v: T )( implicit access: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+   def inspect( implicit txn: InTxn ) : Unit
 }
 
 trait RefFactory[ A ] {
@@ -91,6 +94,7 @@ trait Val[ A, T ] {
    def get( implicit access: A ) : T
    def set( v: T )( implicit access: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+   def inspect( implicit txn: InTxn ) : Unit
 }
 
 //trait ValFactory[ P ] {

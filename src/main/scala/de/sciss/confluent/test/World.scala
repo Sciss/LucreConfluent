@@ -2,7 +2,7 @@ package de.sciss.confluent
 package test
 
 import de.sciss.fingertree.FingerTree
-import concurrent.stm.TxnExecutor
+import concurrent.stm.{InTxn, TxnExecutor}
 
 object World {
 //   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
@@ -36,6 +36,8 @@ trait World[ P ] extends Mutable[ P, World[ P ]] {
 //trait Access[ P ] { def seminalPath: P }
 
 object CList {
+//   var DEBUG_PRINT = true
+
    def empty[ A, T ]( implicit a: A, sys: System[ _, _, A ]) : CList[ A, T ] = new CNilImpl[ A, T ]( sys.newMutable )
    def apply[ A, T ]( elems: T* )( implicit a: A, sys: System[ _, _, A ], mf: ClassManifest[ T ]) : CList[ A, T ] = {
 //      val p = c.writePath.seminalPath
@@ -52,6 +54,7 @@ object CList {
    private class CNilImpl[ A, T ]( val path: A ) extends CNil[ A, T ] {
       def substitute( path: A ) = new CNilImpl[ A, T ]( path )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
+      def inspect( implicit txn: InTxn ) { println( "CNil[ " + path + ", ? ]")}
    }
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
@@ -67,12 +70,22 @@ object CList {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
 //      }
 
+      def inspect( implicit txn: InTxn ) {
+         println( "CCons[ " + path + ", ? ]" )
+         println( "  -head:" )
+         headRef.inspect
+         println( "  -tail:" )
+         tailRef.inspect
+      }
+
       def substitute( path: A ) = new CConsImpl[ A, T ]( path, sys, headRef, tailRef )
 
 //      def substitute( path: P ) : CCons[ P, T ] = new CConsImpl( a, sys[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
 //         val spath =
 //         CConsImpl( spath, headRef, tailRef )
 //      }
+
+//      override def toString : String = if( DEBUG_PRINT )
 
       def reverse : CList[ A, T ] = {
          var succ       = CList.empty[ A, T ]( sys.newMutable( path ), sys )
@@ -101,6 +114,7 @@ sealed trait CList[ A, T] extends Mutable[ A, CList[ A, T ]] {
    def reverse : CList[ A, T ]
    def toList : List[ T ]
    def iterator : Iterator[ CCons[ A, T ]]
+   def inspect( implicit txn: InTxn ) : Unit
 }
 trait CNil[ A, T ] extends CList[ A, T ] {
    def headOption : Option[ CCons[ A, T ]] = None
@@ -209,7 +223,8 @@ class WorldTest {
 //      println( "AQUI- : " + w.list.toList )
       w.list = CList( 2, 1 )
 //      w.path.path // XXX CONTINUE HERE -- OBVIOUSLY WE NEED A POST-COMMIT HOOK TO GRAB THE NEW CURSOR POSITION
-      println( "AQUI0 : " + w.list.toList )
+//      println( "AQUI0 : " + w.list.toList )
+      w.list.inspect( w.path.txn )
    }
 
    val v1 = csr.t { implicit w =>

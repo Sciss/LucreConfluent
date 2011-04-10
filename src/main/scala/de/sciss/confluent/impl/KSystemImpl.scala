@@ -215,7 +215,7 @@ object KSystemImpl {
                // ...
 //               error( "TODO" )
                Recorder.persistAll( txn ).map( suffix => {
-                  val newPath = oldPath :+ Version.testWrapXXX( suffix )
+                  val newPath = oldPath :+ Version.testWrapXXX( suffix )( txn )
                   vRef.set( newPath )( txn )
                   newPath
                }).getOrElse( oldPath )
@@ -330,6 +330,7 @@ object KSystemImpl {
          }
 
 //         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
+         def inspect( implicit txn: InTxn ) : Unit = ref.inspect
       }
 
       private class RefImpl[ T <: Mutable[ A, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
@@ -378,6 +379,8 @@ object KSystemImpl {
 //         ref.transform( _.assign( c.repr.writePath.path, v ))( txn( c ))
 //         fireUpdate( v, c )
 //      }
+
+         def inspect( implicit txn: InTxn ) : Unit = ref.inspect
       }
 
       private class ValImpl[ T ]( val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {

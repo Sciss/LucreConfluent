@@ -35,14 +35,15 @@ import reflect.OptManifest
 
 object KSystemImpl {
    private type Holder[ T ] = STMRef[ Store[ Version, T ]]
-//   private type RefHolder[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]] = STMRef[ Store[ Version, T[ _ ]]]
 
-   def apply[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ]) : KSystem[ A ] =
-      new Sys[ A ]( ap )
+   def apply[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ])( implicit sf: StoreFactory[ Version ]) : KSystem[ A ] =
+      new Sys[ A ]( ap, sf )
 
-   private class Sys[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ])
+   private class Sys[ A <: Mutable[ Path, A ]]( ap: AccessProvider[ Path, A ], sf: StoreFactory[ Version ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
+
+      type RefHolder[ T <: Mutable[ A, T ]] = STMRef[ Store[ Version, T ]]
 
       val aInit = ap.init( RefFact, VersionPath.init.path )
 
@@ -214,48 +215,61 @@ object KSystemImpl {
       }
 
       object RefFact extends RefFactory[ A ] {
-         def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = error( "NO FUNCTIONA" )
+         def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
+            val fat0 = sf.empty[ T ]
+//            val vp   = c.writePath
+////         val p    = vp.path
+//            val p    = vp.seminalPath
+////            val fat1 = fat0.put( p, init )
+            new RefVar[ T ]( STMRef( fat0 ), "ref" )
+         }
          def emptyVal[ T ] : Val[ T ] = error( "NO FUNCTIONA" )
       }
+
+      private trait AbstractRefVar[ T <: Mutable[ A, T ]]
+      extends Ref[ A, T ] {
+         protected val ref: RefHolder[ T ]
+         protected val typeName : String
+
+         override def toString = "KRefVar[" + typeName + "]"
+
+         def get( implicit access: A ) : T = {
+//         val vp         = c.path // readPath
+//            val vp         = c.writePath
+            val p          = access.path
+val txn: InTxn = error( "NO FUNCTIONA" )
+
+            val tup = ref.get( txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
+
+// what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
+   val raw = tup._1
+   val pre = tup._2
+
+
+//         val (raw, pre) = ref.get( c.txn ).getWithPrefix( p )
+//            .getOrElse( error( "No assignment for path " + vp ))
+
+//         raw.substitute( raw.accessPath ++ p.drop( pre ))
+//            aInit.substitute()
+//
+//            raw.substitute( p.drop( pre ))
+            error( "TODO" )
+         }
+
+         def set( v: T )( implicit access: A ) {
+            val p = access.path
+val txn: InTxn = error( "NO FUNCTIONA" )
+            ref.transform( _.put( p, v ))( txn )
+//            fireUpdate( v )( txn )
+         }
+
+//         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
+      }
+
+      private class RefVar[ T <: Mutable[ A, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
+         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
+      }
    }
-
-//   private trait AbstractRefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]
-//   extends ERefVar[ Path, KSystem.Ctx, T ] {
-//      protected val ref: RefHolder[ T ]
-//      protected val typeName : String
-//
-//      override def toString = "KRefVar[" + typeName + "]"
-//
-//      def get[ C1 <: KSystem.Ctx ]( implicit c: C1 ) : T[ C1 ] = {
-////         val vp         = c.path // readPath
-//         val vp         = c.writePath
-//         val p          = vp.path
-//
-//         val tup = ref.get( c.txn ).getWithPrefix( p ).getOrElse( error( "No assignment for path " + vp ))
-//
-//// what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
-//val raw = tup._1
-//val pre = tup._2
-//
-//
-////         val (raw, pre) = ref.get( c.txn ).getWithPrefix( p )
-////            .getOrElse( error( "No assignment for path " + vp ))
-//
-////         raw.substitute( raw.accessPath ++ p.drop( pre ))
-//         raw.access[ C1 ]( p.drop( pre ))
-//      }
-//
-//      def set[ C1 <: KSystem.Ctx ]( v: T[ C1 ])( implicit c: C1 ) {
-//         ref.transform( _.put( c.writePath.path, v ))( c.txn )
-//         fireUpdate( v )
-//      }
-//
-//      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) : Unit
-//   }
-
-//   private class RefVar[ T[ _ <: KSystem.Ctx ] <: Access[ KSystem.Ctx, Path, T ]]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRefVar[ T ] {
-//      protected def fireUpdate( v: T[ _ ])( implicit c: KSystem.Ctx ) {}
-//   }
 
    private trait AbstractVar[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
    extends KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {

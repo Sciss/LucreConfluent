@@ -43,7 +43,7 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      val sf = HashedTxnStore.factory[ Version ]() // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+      val sf = HashedTxnStore.factory[ Version ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
 
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
@@ -52,7 +52,7 @@ object KSystemImpl {
 
       val aInit :A = atomic { txn =>
          val res = ap.init( sys, Ctx( txn, VersionPath.init.path ))
-         assert( Recorder.isEmpty( txn ))
+//         assert( Recorder.isEmpty( txn ))
          res
       }
 
@@ -77,7 +77,7 @@ object KSystemImpl {
 
       def t[ R ]( fun: ECtx => R ) : R = atomic { txn =>
          val res = fun( EphCtx( txn ))
-         assert( Recorder.isEmpty( txn ))
+//         assert( Recorder.isEmpty( txn ))
          res
       }
 
@@ -215,12 +215,12 @@ object KSystemImpl {
 //                  res
 //               }
                // ...
-//               error( "TODO" )
-               Recorder.persistAll( txn ).map( suffix => {
-                  val newPath = oldPath :+ Version.testWrapXXX( suffix )( txn )
-                  vRef.set( newPath )( txn )
-                  newPath
-               }).getOrElse( oldPath )
+               error( "TODO" )
+//               Recorder.persistAll( txn ).map( suffix => {
+//                  val newPath = oldPath :+ Version.testWrapXXX( suffix )( txn )
+//                  vRef.set( newPath )( txn )
+//                  newPath
+//               }).getOrElse( oldPath )
             }
          }
       }
@@ -231,29 +231,29 @@ object KSystemImpl {
          def eph: ECtx = this
       }
 
-      private object Recorder extends HashedTxnStore.Recorder {
-         private val comSet   = TxnLocal( Set.empty[ HashedTxnStore.Committer ] /*, beforeCommit = persistAll( _ ) */ )
-         private val hashSet  = TxnLocal( Set.empty[ Long ])
-
-         def addDirty( hash: Long, com: HashedTxnStore.Committer )( implicit txn: InTxn ) {
-            comSet.transform(  _ + com )
-            hashSet.transform( _ + hash )
-         }
-
-         def persistAll( implicit txn: InTxn ) : Option[ Int ] = {
-            val hashs   = hashSet.get
-            if( hashs.isEmpty ) return None
-            val suffix  = Hashing.nextUnique( hashs )
-   //         val v: Version = error( "NO FUNCTIONA" )
-   //         val trns    = new KeyTransformer[ Path ] {
-   //            def transform( key: Path ) : Path = key :+ v
-   //         }
-            comSet.get.foreach( _.commit( txn, suffix ))
-            Some( suffix )
-         }
-
-         def isEmpty( implicit txn: InTxn ) : Boolean = hashSet.get.isEmpty
-      }
+//      private object Recorder extends HashedTxnStore.Recorder {
+//         private val comSet   = TxnLocal( Set.empty[ HashedTxnStore.Committer ] /*, beforeCommit = persistAll( _ ) */ )
+//         private val hashSet  = TxnLocal( Set.empty[ Long ])
+//
+//         def addDirty( hash: Long, com: HashedTxnStore.Committer )( implicit txn: InTxn ) {
+//            comSet.transform(  _ + com )
+//            hashSet.transform( _ + hash )
+//         }
+//
+//         def persistAll( implicit txn: InTxn ) : Option[ Int ] = {
+//            val hashs   = hashSet.get
+//            if( hashs.isEmpty ) return None
+//            val suffix  = Hashing.nextUnique( hashs )
+//   //         val v: Version = error( "NO FUNCTIONA" )
+//   //         val trns    = new KeyTransformer[ Path ] {
+//   //            def transform( key: Path ) : Path = key :+ v
+//   //         }
+//            comSet.get.foreach( _.commit( txn, suffix ))
+//            Some( suffix )
+//         }
+//
+//         def isEmpty( implicit txn: InTxn ) : Boolean = hashSet.get.isEmpty
+//      }
 
       private case class Ctx( txn: InTxn, path: Path )
       extends KCtx {
@@ -288,10 +288,10 @@ object KSystemImpl {
       // ---- RefFactory ----
 
       def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
-         new RefImpl[ T ]( sf.emptyRef[ T ], "ref" )
+         new RefImpl[ T ]( sf.empty[ T ], "ref" )
       }
       def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( sf.emptyVal[ T ], "val" )
+         new ValImpl[ T ]( sf.empty[ T ], "val" )
       }
 
       private trait AbstractRef[ T <: Mutable[ A, T ]]
@@ -326,7 +326,7 @@ object KSystemImpl {
             val ctx  = access.path
             val txn  = ctx.txn
             val p    = ctx.path
-            ref.put( p, v )( txn, Recorder )
+            ref.put( p, v )( txn )
 //            ref.transform( _.put( p, v ))( txn )
 //            fireUpdate( v )( txn )
          }
@@ -359,7 +359,7 @@ object KSystemImpl {
             val ctx  = access.path
             val txn  = ctx.txn
             val p    = ctx.path
-            ref.put( p, v )( txn, Recorder )
+            ref.put( p, v )( txn )
 //            fireUpdate( v )
          }
 

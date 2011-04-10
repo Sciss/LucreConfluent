@@ -38,24 +38,24 @@ object HashedTxnStore {
 //   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
 
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class StoreImpl[ X, V ]( cacheMgr: Cache[ Path[ X ]])
-   extends TxnStore[ Path[ X ], V ] {
+   private class StoreImpl[ X, V ] extends TxnStore[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
       val ref     = STMRef.make[ Map[ Long, Value[ V ]]]
-      val cache   = TxnLocal( Map.empty[ Long, V ])
+//      val cache   = TxnLocal( Map.empty[ Long, V ])
 
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT" )
-         println( "  perm = " + ref.get )
-         println( "  temp = " + cache.get )
+         println( ref.get )
+//         println( "  perm = " + ref.get )
+//         println( "  temp = " + cache.get )
       }
 
       /**
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = cache.get.get( key.sum ).orElse {
+      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = {
          val map = ref.get
          Hashing.maxPrefixValue( key, map ).flatMap {
             case ValueFull( v )        => Some( v )
@@ -64,23 +64,25 @@ object HashedTxnStore {
          }
       }
 
-      def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] =
-         cache.get.get( key.sum ).map( v => (v, key.size) ).orElse {
-            val map = ref.get
-            Hashing.getWithPrefix( key, map ).flatMap {
-               case (ValueFull( v ), sz)        => Some( v -> sz )
-               case (ValuePre( /* len, */ hash ), sz) => {
-   //               assert( sz == len )
-                  Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> sz /* len */)
-               }
-               case (ValueNone, _)              => None // : Option[ V ]
+      def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] = {
+         val map = ref.get
+         Hashing.getWithPrefix( key, map ).flatMap {
+            case (ValueFull( v ), sz)        => Some( v -> sz )
+            case (ValuePre( /* len, */ hash ), sz) => {
+//               assert( sz == len )
+               Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> sz /* len */)
             }
+            case (ValueNone, _)              => None // : Option[ V ]
          }
+      }
 
       def put( key: Pth, value: V )( implicit txn: InTxn ) {
-         cache.transform { map =>
-            cacheMgr.add( key, this )
-            map + (key.sum, value)
+         ref.transform { map =>
+            val hash    = key.sum
+//               if( map.isEmpty ) rec.addDirty( hash, this )
+            Hashing.add( key, map, { s: Pth =>
+               if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
+            })
          }
       }
 
@@ -109,10 +111,9 @@ object HashedTxnStore {
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 
-   def factory[ X ]( cache: Cache[ Path[ X ]] = HashedTxnStore.cache[ X ]) : TxnStoreFactory[ Path[ X ]] =
-      new FactoryImpl[ X ]( cache )
+   def factory[ X ] : TxnStoreFactory[ Path[ X ]] = new FactoryImpl[ X ]
 
-   def cache[ X ] : Cache[ Path[ X ]] = new CacheMgrImpl[ X ]
+//   def cache[ X ] : Cache[ Path[ X ]] = new CacheMgrImpl[ X ]
 
 //   def cacheGroup : TxnCacheGroup = new CacheGroupImpl
 
@@ -124,31 +125,27 @@ object HashedTxnStore {
 //      def addDirty( hash: Long, com: Committer )( implicit txn: InTxn )
 //   }
 
-   trait Cache[ X ] {
-//      private val cacheSet = TxnLocal( Set.empty[ TxnCacheLike ]) // , beforeCommit = persistAll( _ )
-//      private val hashSet  = TxnLocal( Set.empty[ Long ])
+//   trait Cache[ X ] {
+//      def flush( implicit txn: InTxn ) : Unit
+//      def addVal( key: Path[ X ], store: TxnCachedStore )
+//      def addRef( key: Path[ X ], store: TxnCachedStore )
+//   }
+
+//   private class CacheMgrImpl[ X ] extends Cache[ X ] {
+////      private val cacheSet = TxnLocal( Set.empty[ TxnCacheLike ]) // , beforeCommit = persistAll( _ )
+////      private val hashSet  = TxnLocal( Set.empty[ Long ])
+////
+////      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit = cacheSet.transform( _ + cache )
+////      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit
 //
-//      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit = cacheSet.transform( _ + cache )
-//      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit
+//      def flush( implicit txn: InTxn ) : Unit = error( "TODO" )
+////      def empty[ V ]( store: => TxnStore[ Path[ X ], V ]) : TxnStoreCache[ Path[ X ], V ] = {
+//////         new CacheImpl[ X, V ]( TxnLocal( LongMap.empty[ Value[ V ]]), store, group )
+////         error( "TODO" )
+////      }
+//   }
 
-      private def flush( implicit txn: InTxn ) {
-//         val suffix = Hashing.nextUnique( hashSet.get )
-//         storeSet.get.foreach( _.commit( txn, suffix ))
-         error( "TODO" )
-      }
-   }
-
-   private class CacheMgrImpl[ X ] extends Cache[ X ] {
-      def flush( implicit txn: InTxn ) : Unit = error( "TODO" )
-//      def empty[ V ]( store: => TxnStore[ Path[ X ], V ]) : TxnStoreCache[ Path[ X ], V ] = {
-////         new CacheImpl[ X, V ]( TxnLocal( LongMap.empty[ Value[ V ]]), store, group )
-//         error( "TODO" )
-//      }
-   }
-
-   private class FactoryImpl[ X ]( cache: Cache[ X ]) extends TxnStoreFactory[ Path[ X ]] {
-      def empty[ V ] : TxnStore[ Path[ X ], V ] = {
-         new StoreImpl[ X, V ]( STMRef( LongMap.empty[ Value[ V ]]), cache )
-      }
+   private class FactoryImpl[ X ] extends TxnStoreFactory[ Path[ X ]] {
+      def empty[ V ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
    }
 }

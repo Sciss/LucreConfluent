@@ -64,14 +64,14 @@ object CList {
       def head : T = headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
       def head_=( a: T ) : Unit = headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
       def tail : CList[ A, T ] = tailRef.get( path ) // error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
-      def tail_=( l: CList[ A, T ]) : Unit = error( "NO FUNCTIONA" ) // tailRef.set( l )
+      def tail_=( l: CList[ A, T ]) : Unit = tailRef.set( l )( path ) // error( "NO FUNCTIONA" ) // tailRef.set( l )
 
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
 //      }
 
       def inspect( implicit txn: InTxn ) {
-         println( "CCons[ " + path + ", ? ]" )
+         println( ":::::::: CCons[ " + path + "] ::::::::" )
          println( "  -head:" )
          headRef.inspect
          println( "  -tail:" )
@@ -223,39 +223,47 @@ class WorldTest {
 //   }
 
    val v0 = csr.t { implicit w =>
-//      println( "AQUI- : " + w.list.toList )
       w.list = CList( 2, 1 )
-//      w.path.path // XXX CONTINUE HERE -- OBVIOUSLY WE NEED A POST-COMMIT HOOK TO GRAB THE NEW CURSOR POSITION
-//      println( "AQUI0 : " + w.list.toList )
-      w.list.inspect( w.path.txn )
+
+      val l = w.list.toList
+      assert( l == List( 2, 1 ), l.toString )
    }
 
    val v1 = csr.t { implicit w =>
-      println( "\n------ Everything should be stored now ------\n" )
-      w.list.inspect( w.path.txn )
-
-      println( "AQUI1 : " + w.list.toList )
       w.list = w.list.reverse
-//      w.path.path
-   }
 
-//   val csr2 = sys.t( proj.cursorIn( v0 )( _ ))
+      val l = w.list.toList
+      assert( l == List( 1, 2 ), l.toString )
+   }
 
    val v2 = keproj.in( v0 ).t { implicit w =>
       w.list = w.list.drop( 1 )
       w.list.lastOption.foreach( _.tail = CList( 4 ))
-//      w.path.path
+
+      val l = w.list.toList
+      assert( l == List( 1, 4 ), l.toString )
    }
 
    val v3 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
-      r.iterator.foreach( _.head +=  2 )
-      w.list.headOption match {
+// iterator not yet implemented
+//      r.iterator.foreach( _.head +=  2 )
+      def inc( l: CList[ World[ KCtx ], Int]) : Unit = l match {
+         case cons: CCons[ World[ KCtx ], Int ] => cons.head += 2
+            inc( cons.tail )
+         case _ =>
+      }
+      inc( w.list )
+
+      w.list.lastOption match {
+// XXX this produces a loop !!
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-//      w.path.path
+
+//      val l = w.list.toList
+//      assert( l == List( 1, 2, 3, 6 ), l.toString )
    }
 
    val v4 = csr.t { implicit w =>
@@ -266,6 +274,8 @@ class WorldTest {
          case None => w.list = r
       }
 //      w.path.path
+
+//      val l = w.list.toList
    }
 
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {

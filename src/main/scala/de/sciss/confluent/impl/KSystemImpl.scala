@@ -156,7 +156,7 @@ object KSystemImpl {
             fireUpdate( Projector.CursorRemoved[ A, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in( version: Path ) : EProjection[ Path, A ] with KProjection[ A ] = error( "NO FUNCTIONA" )
+         def in( version: Path ) : EProjection[ Path, A ] with KProjection[ A ] = new EProj( version )
 
 //         def in( version: Path )( fun: A => Unit ) : Path = atomic { tx =>
 //            error( "NO FUNCTIONA" )
@@ -165,6 +165,26 @@ object KSystemImpl {
 
 //         def range[ T ]( vr: KSystem.Var[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ] =
 //            error( "NOT YET IMPLEMENTED" )
+      }
+
+      // XXX TODO: should factor out common stuff with CursorImpl
+      private class EProj( path: Path ) extends EProjection[ Path, A ] with KProjection[ A ] {
+         def meld[ R ]( fun: A => R )( implicit main: A ) : R = {
+            val am = main.substitute( main.path.substitute( path ))
+            fun( am )
+         }
+
+         def t( fun: A => Unit ) : Path = {
+            require( Txn.findCurrent.isEmpty, "Cannot nest transactions" )
+            atomic { txn =>
+               val c = Ctx( txn, path )
+               val a = aInit.substitute( c )
+               fun( a )
+               Cache.flush( txn ).map( suffix => {
+                  path :+ suffix
+               }).getOrElse( path )
+            }
+         }
       }
 
       private class CursorImpl( initialPath: Path )
@@ -375,7 +395,11 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         raw.substitute( raw.accessPath ++ p.drop( pre ))
 //            aInit.substitute()
 //
-            val a2 = access.substitute( ctx.substitute( p.drop( pre )))
+            val a2 = if( pre == p.size ) access else {
+               // XXX ouch... path.path.path -- we'll get back to this as a problem
+               // once the serialization is implemented :-(
+               access.substitute( ctx.substitute( raw.path.path.path ++ p.drop( pre )))
+            }
             raw.substitute( a2 )
          }
 

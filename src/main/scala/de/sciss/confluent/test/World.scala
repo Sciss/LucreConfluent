@@ -86,6 +86,7 @@ object CList {
 //      }
 
 //      override def toString : String = if( DEBUG_PRINT )
+      override def toString = "CCons[" + path + "]"
 
       def reverse : CList[ A, T ] = {
          var succ       = CList.empty[ A, T ]( sys.newMutable( path ), sys )
@@ -197,6 +198,8 @@ class WorldFactory[ P ] extends AccessProvider[ P, World[ P ]] {
       def list_=( l: CList[ World[ P ], Int ]) : Unit = listRef.set( l )( this )
 
       def substitute( path: P ) : World[ P ] = new WorldImpl[ P ]( path, listRef )
+
+      override def toString = "World[" + path + "]"
    }
 }
 
@@ -228,6 +231,9 @@ class WorldTest {
    }
 
    val v1 = csr.t { implicit w =>
+      println( "\n------ Everything should be stored now ------\n" )
+      w.list.inspect( w.path.txn )
+
       println( "AQUI1 : " + w.list.toList )
       w.list = w.list.reverse
 //      w.path.path

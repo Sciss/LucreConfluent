@@ -42,8 +42,11 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
-      val valFactory = HashedTxnStore.factory[ Version, Any ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
-      val refFactory = HashedTxnStore.factory[ Version, ({type λ[α] = Mutable[A,α]})#λ ]
+      val valFactory = CachedTxnStore.valFactory[ Version ](
+         HashedTxnStore.factory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+
+      val refFactory = CachedTxnStore.refFactory[ Version, A ]( // ({type λ[α] = Mutable[A,α]})#λ
+         HashedTxnStore.factory[ Version, Any ], Cache.Ref )
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -51,7 +54,7 @@ object KSystemImpl {
 
       val aInit :A = atomic { txn =>
          val res = ap.init( sys, Ctx( txn, VersionPath.init.path ))
-//         assert( Recorder.isEmpty( txn ))
+         assert( Cache.isEmpty( txn ))
          res
       }
 
@@ -76,7 +79,7 @@ object KSystemImpl {
 
       def t[ R ]( fun: ECtx => R ) : R = atomic { txn =>
          val res = fun( EphCtx( txn ))
-//         assert( Recorder.isEmpty( txn ))
+         assert( Cache.isEmpty( txn ))
          res
       }
 
@@ -214,12 +217,11 @@ object KSystemImpl {
 //                  res
 //               }
                // ...
-               error( "TODO" )
-//               Recorder.persistAll( txn ).map( suffix => {
-//                  val newPath = oldPath :+ Version.testWrapXXX( suffix )( txn )
-//                  vRef.set( newPath )( txn )
-//                  newPath
-//               }).getOrElse( oldPath )
+               Cache.flush( txn ).map( suffix => {
+                  val newPath = oldPath :+ suffix
+                  vRef.set( newPath )( txn )
+                  newPath
+               }).getOrElse( oldPath )
             }
          }
       }
@@ -228,6 +230,57 @@ object KSystemImpl {
       extends ECtx {
          def substitute( newPath: Unit ) : ECtx = this
          def eph: ECtx = this
+      }
+
+      private object Cache {
+         val hashSet = TxnLocal( Set.empty[ Long ])
+
+         trait SubCache[ X ] extends TxnCacheGroup[ Long, X ] {
+            val cacheSet = TxnLocal( Set.empty[ TxnCacheLike[ X ]])
+
+            def addDirty( cache: TxnCacheLike[ X ], hash: Long )( implicit txn: InTxn ) {
+               hashSet.transform( _ + hash )
+               cacheSet.transform( _ + cache )
+            }
+
+            def addAllDirty( cache: TxnCacheLike[ X ], hashes: Traversable[ Long ])( implicit txn: InTxn ) {
+               hashSet.transform( _ ++ hashes )
+               cacheSet.transform( _ + cache )
+            }
+
+            def flush( suffix: Version )( implicit txn: InTxn ) : Unit
+         }
+
+         object Val extends SubCache[ Path ] {
+            def flush( suffix: Version )( implicit txn: InTxn ) {
+//               val rid = suffix.rid
+               cacheSet.get.foreach( _.flush( _ :+ suffix ))
+            }
+         }
+
+         object Ref extends SubCache[ (Path, A) ] {
+            def flush( suffix: Version )( implicit txn: InTxn ) {
+//               val rid = suffix.rid
+               cacheSet.get.foreach( _.flush( tup => {
+                  val ctx  = tup._2.path
+                  val p    = ctx.path
+                  val ctxm = ctx.substitute( p :+ suffix )
+                  (tup._1 :+ suffix, tup._2.substitute( ctxm ))
+               }))
+            }
+         }
+
+         def flush( implicit txn: InTxn ) : Option[ Version ] = {
+            val hashes = hashSet.swap( Set.empty[ Long ])
+            if( hashes.isEmpty ) return None
+            val suffix = Version.newFrom( hashes )
+            Val.flush( suffix )
+            Ref.flush( suffix )
+println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
+            Some( suffix )
+         }
+
+         def isEmpty( implicit txn: InTxn ) : Boolean = hashSet.get.isEmpty
       }
 
 //      private object Recorder extends HashedTxnStore.Recorder {
@@ -262,7 +315,8 @@ object KSystemImpl {
 
 //      type Child = Ctx[ V#Child ]
 
-         override def toString = "KCtx"
+//         override def toString = "KCtx"
+         override def toString = "KCtx[" + path + "]"
 
 //         private val pathRef = TxnLocal[ VersionPath ]( initPath )
 //

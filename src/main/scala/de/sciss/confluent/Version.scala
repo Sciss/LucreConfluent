@@ -55,7 +55,11 @@ object Version {
 //
 //   private val idsTaken    = MSet( 0 ) // .empty[ Int ]
 //   private val sumsTaken   = MSet.empty[ Long ]
-   private val idRnd       = new util.Random()  // XXX is this thread-safe?
+   val FREEZE_SEED = true
+
+   private val idRnd       = {
+      if( FREEZE_SEED ) new util.Random( -1 ) else new util.Random()
+   }
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
    private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 0 ), ISet.empty ))
@@ -66,17 +70,17 @@ object Version {
       new VersionImpl( 0, 0, tree, tree.insertRoot )
    }
 
-   def testWrapXXX( suffix: Int )( implicit txn: InTxn ) : Version = {
-      val pv      = init // parent.version
-      val tree    = pv.tree
-      val insFun  = tree.insertChild( pv ) _
-
-      val id = idRef.get
-      idRef.set( id.copy( cnt = id.cnt + 1 ))
-
-//      val (id, rid) = (0, suffix) // nextID( parent.path.sum )( txn )
-      new VersionImpl( id.cnt, suffix, tree, insFun )
-   }
+//   def testWrapXXX( suffix: Int )( implicit txn: InTxn ) : Version = {
+//      val pv      = init // parent.version
+//      val tree    = pv.tree
+//      val insFun  = tree.insertChild( pv ) _
+//
+//      val id = idRef.get
+//      idRef.set( id.copy( cnt = id.cnt + 1 ))
+//
+////      val (id, rid) = (0, suffix) // nextID( parent.path.sum )( txn )
+//      new VersionImpl( id.cnt, suffix, tree, insFun )
+//   }
 
 //   def newFrom( v: Version, vs: Version* ) : Version = {
    def newFrom( parent: VersionPath )( implicit txn: InTxn ) : Version = {
@@ -85,7 +89,16 @@ object Version {
       val tree    = pv.tree
       val insFun  = tree.insertChild( pv ) _
 
-      val (id, rid) = nextID( parent.path.sum )( txn )
+      val (id, rid) = nextID( parent.path.sum :: Nil )
+      new VersionImpl( id, rid, tree, insFun )
+   }
+
+   def newFrom( preSums: Traversable[ Long ])( implicit txn: InTxn ) : Version = {
+      val pv      = init // parent.version
+      val tree    = pv.tree
+      val insFun  = tree.insertChild( pv ) _
+
+      val (id, rid) = nextID( preSums )
       new VersionImpl( id, rid, tree, insFun )
    }
 
@@ -146,15 +159,31 @@ object Version {
 //      (id, rid)
 //   }
 
-   private def nextID( from: Long )( implicit txn: InTxn ) : (Int, Int) = {
+//   private def nextID( from: Long )( implicit txn: InTxn ) : (Int, Int) = {
+//      val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
+//      while( true ) {
+//         val rid = idRnd.nextInt() & 0x7FFFFFFF
+//         if( !idsTaken.contains( rid )) {   // unique vertices
+////            val res = s :+ rid
+//            val sum = from + rid
+//            if( !sumsTaken.contains( sum )) {  // unique sums
+//               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken + sum ))( txn )
+//               return (cnt, rid)
+//            }
+//         }
+//      }
+//      error( "Never here" )
+//   }
+
+   private def nextID( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Int, Int) = {
       val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
+      val view = preSums // .view
       while( true ) {
          val rid = idRnd.nextInt() & 0x7FFFFFFF
          if( !idsTaken.contains( rid )) {   // unique vertices
-//            val res = s :+ rid
-            val sum = from + rid
-            if( !sumsTaken.contains( sum )) {  // unique sums
-               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken + sum ))( txn )
+            val sums = preSums.map( _ + rid )
+            if( sums.forall( !sumsTaken.contains( _ ))) {
+               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken ++ sums ))( txn )
                return (cnt, rid)
             }
          }

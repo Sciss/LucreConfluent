@@ -45,7 +45,7 @@ object HashedTxnStore {
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
 
       def inspect( implicit txn: InTxn ) = {
-         println( "INSPECT" )
+         println( "INSPECT STORE" )
          println( ref.get )
 //         println( "  perm = " + ref.get )
 //         println( "  temp = " + cache.get )

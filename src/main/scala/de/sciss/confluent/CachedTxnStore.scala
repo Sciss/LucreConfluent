@@ -47,7 +47,6 @@ object CachedTxnStore {
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT CACHE" )
          println( ref.get )
-         println( "INSPECT STORE" )
          store.inspect
       }
 

@@ -80,8 +80,8 @@ trait TxnCacheLike[ K ] {
 //   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
 //}
 
-trait TxnStoreFactory[ K, Up ] {
-   def empty[ V <: Up ]: TxnStore[ K, V ]
+trait TxnStoreFactory[ K, Up[ _ ]] {
+   def empty[ V <: Up[ V ]]: TxnStore[ K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }

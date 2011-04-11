@@ -43,7 +43,7 @@ object KSystemImpl {
       sys =>
 
       val valFactory = HashedTxnStore.factory[ Version, Any ] // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
-      val refFactory = HashedTxnStore.factory[ Version, Mutable[ A, _ ]]
+      val refFactory = HashedTxnStore.factory[ Version, ({type λ[α] = Mutable[A,α]})#λ ]
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 

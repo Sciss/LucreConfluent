@@ -395,12 +395,19 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         raw.substitute( raw.accessPath ++ p.drop( pre ))
 //            aInit.substitute()
 //
-            val a2 = if( pre == p.size ) access else {
+
+//            val a2 = if( pre == p.size ) access else {
+//               // XXX ouch... path.path.path -- we'll get back to this as a problem
+//               // once the serialization is implemented :-(
+//               access.substitute( ctx.substitute( raw.path.path.path ++ p.drop( pre )))
+//            }
+//            raw.substitute( a2 )
+
+            if( pre == p.size ) raw else {
                // XXX ouch... path.path.path -- we'll get back to this as a problem
                // once the serialization is implemented :-(
-               access.substitute( ctx.substitute( raw.path.path.path ++ p.drop( pre )))
+               raw.substitute( access.substitute( ctx.substitute( raw.path.path.path ++ p.drop( pre ))))
             }
-            raw.substitute( a2 )
          }
 
          def set( v: T )( implicit access: A ) {

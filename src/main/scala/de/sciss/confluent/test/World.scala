@@ -244,6 +244,13 @@ class WorldTest {
       assert( l == List( 1, 4 ), l.toString )
    }
 
+//   println( "v1 = " + v1 )
+//   println( "v2 = " + v2 )
+
+   def break {
+      println( "here" )
+   }
+
    val v3 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
@@ -254,28 +261,27 @@ class WorldTest {
             inc( cons.tail )
          case _ =>
       }
-      inc( w.list )
+      inc( r )
 
       w.list.lastOption match {
-// XXX this produces a loop !!
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
 
-//      val l = w.list.toList
-//      assert( l == List( 1, 2, 3, 6 ), l.toString )
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6 ), l.toString )
    }
 
    val v4 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
-      w.list.headOption match {
+      w.list.lastOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r
       }
-//      w.path.path
 
-//      val l = w.list.toList
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
    }
 
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {

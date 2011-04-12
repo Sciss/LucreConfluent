@@ -63,8 +63,11 @@ object KSystemImpl {
          // XXX seminalPath should go somewhere else
          val ctx  = access.path
          val p    = ctx.path
-         if( p.size == 1 ) access else {
-            access.substitute( ctx.substitute( p.takeRight( 1 )))
+//         if( p.size == 1 ) access else {
+//            access.substitute( ctx.substitute( p.takeRight( 1 )))
+//         }
+         if( p.size == 0 ) access else {
+            access.substitute( ctx.substitute( EmptyPath ))
          }
       }
 

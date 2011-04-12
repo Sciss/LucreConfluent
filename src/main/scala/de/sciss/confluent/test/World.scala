@@ -55,6 +55,8 @@ object CList {
       def substitute( path: A ) = new CNilImpl[ A, T ]( path )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
       def inspect( implicit txn: InTxn ) { println( "CNil[ " + path + ", ? ]")}
+
+      override def toString = "CNil[" + path + "]"
    }
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]

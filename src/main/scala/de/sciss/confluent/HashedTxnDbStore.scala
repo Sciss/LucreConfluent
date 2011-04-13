@@ -1,5 +1,5 @@
 /*
- *  HashedTxnDbStore.scala
+ *  HashedTxnDBStore.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -33,7 +33,7 @@ import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
 import de.sciss.fingertree.FingerTree
 import java.lang.ref.{SoftReference => JSoftReference}
 
-object HashedTxnDbStore {
+object HashedTxnDBStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
 //   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])

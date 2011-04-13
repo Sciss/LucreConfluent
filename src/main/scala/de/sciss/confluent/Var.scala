@@ -61,6 +61,10 @@ trait Mutable[ A, Repr ] /* extends Acc */ {
    def substitute( path: A ) : Repr
 }
 
+//trait Node[ A, Repr ]extends Mutable[ A, Repr ] {
+//   def id: Long
+//}
+
 //trait Access[ Up, V, Res[ _ <: Up ]] {
 ////   def accessPath: V
 //   def access[ C <: Up ]( post: V ) : Res[ C ]

@@ -363,12 +363,12 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
       // ---- RefFactory ----
 
-      def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( valFactory.emptyVal[ T ], "val" )
+      def emptyVal[ T ]( implicit access: A ): Val[ A, T ] = {
+         new ValImpl[ T ]( valFactory.emptyVal[ T ]( access.path.txn ), "val" )
       }
-      def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
+      def emptyRef[ T <: Mutable[ A, T ]]( implicit access: A ): Ref[ A, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
-         new RefImpl[ T ]( refFactory.emptyRef[ T ], "ref" )
+         new RefImpl[ T ]( refFactory.emptyRef[ T ]( access.path.txn ), "ref" )
       }
 
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )

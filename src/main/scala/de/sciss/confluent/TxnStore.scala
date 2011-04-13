@@ -81,13 +81,13 @@ trait TxnCacheLike[ K ] {
 //}
 
 trait TxnValStoreFactory[ K, Up ] {
-   def emptyVal[ V <: Up ]: TxnStore[ K, V ]
+   def emptyVal[ V <: Up ]( implicit txn: InTxn ): TxnStore[ K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
 trait TxnRefStoreFactory[ K, Up[ _ ]] {
-   def emptyRef[ V <: Up[ V ]]: TxnStore[ K, V ]
+   def emptyRef[ V <: Up[ V ]]( implicit txn: InTxn ): TxnStore[ K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }

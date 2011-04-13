@@ -108,10 +108,10 @@ object HashedTxnStore {
    def refFactory[ X, Up[ _ ]] : TxnRefStoreFactory[ Path[ X ], Up ] = new RefFactoryImpl[ X, Up ]
 
    private class ValFactoryImpl[ X, Up ] extends TxnValStoreFactory[ Path[ X ], Up ] {
-      def emptyVal[ V <: Up ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+      def emptyVal[ V <: Up ]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
    }
 
    private class RefFactoryImpl[ X, Up[ _ ]] extends TxnRefStoreFactory[ Path[ X ], Up ] {
-      def emptyRef[ V <: Up[ _ ]] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+      def emptyRef[ V <: Up[ _ ]]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
    }
 }

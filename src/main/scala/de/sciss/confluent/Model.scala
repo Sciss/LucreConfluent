@@ -36,10 +36,10 @@ object Model {
       def updated( v: T )( implicit c: C ) : Unit
    }
 
-   def onCommit[ C <: Ct[ _ ], T ]( committed: Traversable[ T ] => Unit ) : Listener[ C, T ] =
+   def onCommit[ C <: Ct, T ]( committed: Traversable[ T ] => Unit ) : Listener[ C, T ] =
       filterOnCommit( (_: T, _: C) => true )( committed )
 
-   def filterOnCommit[ C <: Ct[ _ ], T ]( filter: Function2[ T, C, Boolean ])( committed: Traversable[ T ] => Unit ) =
+   def filterOnCommit[ C <: Ct, T ]( filter: Function2[ T, C, Boolean ])( committed: Traversable[ T ] => Unit ) =
       new Listener[ C, T ] {
          val queueRef = TxnLocal[ IQueue[ T ]]( IQueue.empty )
          def updated( update: T )( implicit c: C ) {
@@ -57,7 +57,7 @@ object Model {
          }
       }
 
-   def reduceOnCommit[ C <: Ct[ _ ], T, U ]( pf: PartialFunction[ (T, C), U ])( committed: U => Unit ) =
+   def reduceOnCommit[ C <: Ct, T, U ]( pf: PartialFunction[ (T, C), U ])( committed: U => Unit ) =
       new Listener[ C, T ] {
          val lifted = pf.lift
          val queueRef = TxnLocal[ U ]( null.asInstanceOf[ U ])
@@ -82,6 +82,6 @@ trait Model[ C, +T ] {
 
    type L = Listener[ C, T ]
 
-   def addListener( l: Listener[ C, T ])( implicit c: CtxLike[ _ ]) : Unit
-   def removeListener( l: Listener[ C, T ])( implicit c: CtxLike[ _ ]) : Unit
+   def addListener( l: Listener[ C, T ])( implicit c: CtxLike ) : Unit
+   def removeListener( l: Listener[ C, T ])( implicit c: CtxLike ) : Unit
 }

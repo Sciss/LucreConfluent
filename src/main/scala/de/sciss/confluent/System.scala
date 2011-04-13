@@ -33,7 +33,7 @@ import Double.{PositiveInfinity => dinf}
 import reflect.OptManifest
 
 trait System[ P,  // access path type
-              C <: Ct[ P ],  // context
+              C <: Ct,  // context
               A // access
 //              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
 //              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]
@@ -76,7 +76,7 @@ object KSystemLike {
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
-trait KSystemLike[ C <: Ct[ Path ], A,
+trait KSystemLike[ C <: Ct, A,
                    Proj <: KProjection[ A ], Csr <: KProjection[ A ] with Cursor[ A ]]
 extends System[ Path, C, A ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R

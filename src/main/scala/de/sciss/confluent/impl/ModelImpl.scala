@@ -32,16 +32,16 @@ package impl
 import collection.immutable.{Queue => IQueue}
 import concurrent.stm.Ref
 
-trait ModelImpl[ C <: Ct[ _ ], T ] extends Model[ C, T ] {
+trait ModelImpl[ C <: Ct, T ] extends Model[ C, T ] {
    import Model._
 
    private val listeners = Ref( IQueue.empty[ L ])
 
-   def addListener( l: L )( implicit c: Ct[ _ ]) {
+   def addListener( l: L )( implicit c: Ct ) {
       listeners.transform( _ enqueue l )( c.txn )
    }
 
-   def removeListener( l: L )( implicit c: Ct[ _ ]) {
+   def removeListener( l: L )( implicit c: Ct ) {
       listeners.transform( _.filter( _ != l ))( c.txn )
    }
 

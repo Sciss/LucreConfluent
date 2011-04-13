@@ -189,7 +189,7 @@ object WorldTest {
 object WorldFactory { def apply[ P ] = new WorldFactory[ P ]}
 class WorldFactory[ P ] extends AccessProvider[ P, World[ P ]] {
    def init( f: RefFactory[ World[ P ]], path: P ) : World[ P ] = {
-      val listRef = f.emptyRef[ CList[ World[ P ], Int ]]
+      val listRef = error( "NO FUNCTIONA" ) // f.emptyRef[ CList[ World[ P ], Int ]]
 //      listRef.set
       new WorldImpl( path, listRef )
    }

@@ -37,7 +37,7 @@ trait EVar[ C, T ] {
 }
 
 trait KVar[ C, T ] extends EVar[ C, T ]  {
-   def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike[ _ ]) : Traversable[ (VersionPath, T) ]
+   def kRange( vStart: VersionPath, vStop: VersionPath )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
 }
 
 //trait PVar[ C, T ] extends EVar[ C, T ]  {
@@ -85,8 +85,8 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
 }
 
 trait RefFactory[ A ] {
-   def emptyVal[ T ] : Val[ A, T ]
-   def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ]
+   def emptyVal[ T ]( implicit access: A ) : Val[ A, T ]
+   def emptyRef[ T <: Mutable[ A, T ]]( implicit access: A ) : Ref[ A, T ]
 //   def apply[ V ]( v: V ) : RefVar[ A, V ]
 }
 

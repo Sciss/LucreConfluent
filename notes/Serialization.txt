@@ -1,0 +1,60 @@
+import java.io._
+
+val baos = new ByteArrayOutputStream()
+val oos = new ObjectOutputStream( baos )
+
+case class Testin( one: Int, two: String )
+
+val t = Testin( 1, "two" )
+
+oos.writeObject(t) // nice!
+oos.close
+
+val arr = baos.toByteArray
+
+val bais = new ByteArrayInputStream( arr )
+val ois = new ObjectInputStream( bais )
+val t2 = ois.readObject.asInstanceOf[ Testin ]
+
+case class Lala( one: Int, two: Thread )
+val baos2 = new ByteArrayOutputStream()
+val oos2 = new ObjectOutputStream( baos2 )
+val l = Lala( 1, Thread.currentThread )
+oos2.writeObject(l) // no
+
+
+case class Gaga( one: Int ) {  @transient var thread: Thread = null }
+val baos3 = new ByteArrayOutputStream()
+val oos3 = new ObjectOutputStream( baos3 )
+val g = Gaga( 1 )
+g.thread = Thread.currentThread
+oos3.writeObject(g) // ok
+oos3.close
+
+val arr2 = baos3.toByteArray
+
+val bais2 = new ByteArrayInputStream( arr2 )
+val ois2 = new ObjectInputStream( bais2 )
+val g2 = ois2.readObject.asInstanceOf[ Gaga ]
+g2.thread // null!
+
+val fun = (i: Int) => i * i + i
+val baos4 = new ByteArrayOutputStream()
+val oos4 = new ObjectOutputStream( baos4 )
+oos4.writeObject(fun)
+val bais4 = new ByteArrayInputStream( baos4.toByteArray )
+val ois4 = new ObjectInputStream( bais4 )
+val f2 = ois4.readObject.asInstanceOf[Function1[Int,Int]]
+f2(3) // funky shit
+
+
+case class Over( one: Int, two: String ) {
+   private def writeObject( out: ObjectOutputStream ) {
+      out.defaultWriteObject()
+      println( "WRITIN..." )
+   }
+}
+
+val baos5 = new ByteArrayOutputStream()
+val oos5 = new ObjectOutputStream( baos5 )
+oos5.writeObject( Over( 1, "two" ))

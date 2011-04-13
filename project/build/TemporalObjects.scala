@@ -7,5 +7,8 @@ class TemporalObjectsProject( info: ProjectInfo ) extends DefaultProject( info )
 
 //   val scalaToolsSnapshots = "Scala-Tools Snapshot Repository" at "http://scala-tools.org/repo-snapshots"
 
+   val bdbje = "com.sleepycat" % "je" % "4.1.7"
+   val oracleRepo = "Oracle Repository" at "http://download.oracle.com/maven"
+
    override def compileOptions = super.compileOptions ++ Seq(Unchecked)
 }

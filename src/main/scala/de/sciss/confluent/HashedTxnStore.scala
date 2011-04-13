@@ -35,20 +35,14 @@ import de.sciss.fingertree.FingerTree
 object HashedTxnStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
-//   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
-
-   // XXX no specialization thanks to scalac 2.8.1 crashing
    private class StoreImpl[ X, V ] extends TxnStore[ Path[ X ], V ] {
       type Pth = Path[ X ]
 
-      val ref     = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
-//      val cache   = TxnLocal( Map.empty[ Long, V ])
+      val ref = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
 
       def inspect( implicit txn: InTxn ) = {
          println( "INSPECT STORE" )
          println( ref.get )
-//         println( "  perm = " + ref.get )
-//         println( "  temp = " + cache.get )
       }
 
       /**
@@ -76,10 +70,15 @@ object HashedTxnStore {
          }
       }
 
+      /**
+       * Note: This store is supposed to be used with a cache in front, thus
+       * we only support bulk writing via `putAll`. This method throws
+       * a runtime exception.
+       */
       def put( key: Pth, value: V )( implicit txn: InTxn ) {
          ref.transform { map =>
             val hash    = key.sum
-//               if( map.isEmpty ) rec.addDirty( hash, this )
+//          if( map.isEmpty ) rec.addDirty( hash, this )
             Hashing.add( key, map, { s: Pth =>
                if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
             })
@@ -105,43 +104,14 @@ object HashedTxnStore {
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 
-   def factory[ X, Up[ _ ]] : TxnStoreFactory[ Path[ X ], Up ] = new FactoryImpl[ X, Up ]
+   def valFactory[ X, Up ] : TxnValStoreFactory[ Path[ X ], Up ] = new ValFactoryImpl[ X, Up ]
+   def refFactory[ X, Up[ _ ]] : TxnRefStoreFactory[ Path[ X ], Up ] = new RefFactoryImpl[ X, Up ]
 
-//   def cache[ X, Up ] : TxnStoreFactory[ Path[ X ]] = new FactoryImpl[ X ]
+   private class ValFactoryImpl[ X, Up ] extends TxnValStoreFactory[ Path[ X ], Up ] {
+      def emptyVal[ V <: Up ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+   }
 
-//   def cache[ X ] : Cache[ Path[ X ]] = new CacheMgrImpl[ X ]
-
-//   def cacheGroup : TxnCacheGroup = new CacheGroupImpl
-
-//   trait Committer {
-//      def commit( txn: InTxn, suffix: Int ) : Unit
-//   }
-//
-//   trait Recorder {
-//      def addDirty( hash: Long, com: Committer )( implicit txn: InTxn )
-//   }
-
-//   trait Cache[ X ] {
-//      def flush( implicit txn: InTxn ) : Unit
-//      def addVal( key: Path[ X ], store: TxnCachedStore )
-//      def addRef( key: Path[ X ], store: TxnCachedStore )
-//   }
-
-//   private class CacheMgrImpl[ X ] extends Cache[ X ] {
-////      private val cacheSet = TxnLocal( Set.empty[ TxnCacheLike ]) // , beforeCommit = persistAll( _ )
-////      private val hashSet  = TxnLocal( Set.empty[ Long ])
-////
-////      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit = cacheSet.transform( _ + cache )
-////      def add( cache: TxnCacheLike )( implicit txn: InTxn ) : Unit
-//
-//      def flush( implicit txn: InTxn ) : Unit = error( "TODO" )
-////      def empty[ V ]( store: => TxnStore[ Path[ X ], V ]) : TxnStoreCache[ Path[ X ], V ] = {
-//////         new CacheImpl[ X, V ]( TxnLocal( LongMap.empty[ Value[ V ]]), store, group )
-////         error( "TODO" )
-////      }
-//   }
-
-   private class FactoryImpl[ X, Up[ _ ]] extends TxnStoreFactory[ Path[ X ], Up ] {
-      def empty[ V <: Up[ _ ]] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+   private class RefFactoryImpl[ X, Up[ _ ]] extends TxnRefStoreFactory[ Path[ X ], Up ] {
+      def emptyRef[ V <: Up[ _ ]] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
    }
 }

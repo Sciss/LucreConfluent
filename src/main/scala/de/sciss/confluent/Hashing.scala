@@ -120,7 +120,7 @@ object Hashing {
 //         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
    def add[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, V ], v: UniqueSeq[ K ] => V ) : Map[ Long, V ] = {
-debug( "add.... " + (s.size) )
+//debug( "add.... " + (s.size) )
       val sz   = s.size
       val m    = bitCount( sz )
       var j    = 1
@@ -131,14 +131,37 @@ debug( "add.... " + (s.size) )
          val sp   = s.take( i )
          val sps  = sp.sum                         // "... we insert the values sum(\tau') ... to the table H"
          if( !hash.contains( sps )) {              // ", if they are not already there."
-debug( "....checkin for prefix i = " + i )
+//debug( "....checkin for prefix i = " + i )
             val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in \Pi"
-debug( "....-> " + pre.size )
+//debug( "....-> " + pre.size )
             /* if( pre.nonEmpty ) */ res += (sps -> v( pre )) // ", and store a pointer to a representation of this sequence."
          }
       j += 1 }
-debug( "....done" )
+//debug( "....done" )
       res + (s.sum -> v( s ))
+   }
+
+   /**
+    * Like `add`, but the results are not appended to the `hash` map directly but instead
+    * collected as a separate result that the caller needs to post-process.
+    *
+    * @param   hash  will only be used for `contains` operations
+    */
+   def collect[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, _ ], v: UniqueSeq[ K ] => V ) : List[ (Long, V) ] = {
+      val sz   = s.size
+      val m    = bitCount( sz )
+      var j    = 1
+      var res  = List.empty[ (Long, V) ] // LongMap.empty[ K ]
+      while( j < m ) {
+         val i    = prefix( sz, j, m )
+         val sp   = s.take( i )
+         val sps  = sp.sum                         // "... we insert the values sum(\tau') ... to the table H"
+         if( !hash.contains( sps )) {              // ", if they are not already there."
+            val pre  = maxPrefixKey( sp, hash )    // "... we compute ... the longest prefix of \tau' in \Pi"
+            res ::= (sps, v( pre )) // ", and store a pointer to a representation of this sequence."
+         }
+      j += 1 }
+      (s.sum, v( s )) :: res
    }
 
    def buildPrefixes( s: IntSeq ) : Seq[ IntSeq ] = {
@@ -311,6 +334,33 @@ debug( "d = " + d + ", 2^rho = " + twoprho )
       if( pre1Sz == 0 ) None else hash.get( pre1.sum ) match {
          case Some( v ) => Some( v -> pre1Sz )
          case None => if( pre1Sz == 1 ) None else hash.get( pre1.init.sum ).map( v => v -> (pre1Sz - 1) )
+      }
+   }
+
+   def getWithHash[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Long) ] = {
+      val pre1    = maxPrefix1( s, hash )
+      val pre1Sz  = pre1.size
+      val pre1Sum = pre1.sum
+      if( pre1Sz == 0 ) None else hash.get( pre1Sum ) match {
+         case Some( v ) => Some( (v, pre1Sum) )
+         case None => if( pre1Sz == 1 ) None else {
+            val pre2Sum = pre1.init.sum
+            hash.get( pre1Sz - 1 ).map( v => (v, pre2Sum) )
+         }
+      }
+   }
+
+   def getWithPrefixAndHash[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Int, Long) ] = {
+      val pre1    = maxPrefix1( s, hash )
+      val pre1Sz  = pre1.size
+      val pre1Sum = pre1.sum
+      if( pre1Sz == 0 ) None else hash.get( pre1Sum ) match {
+         case Some( v ) => Some( (v, pre1Sz, pre1Sum) )
+         case None => if( pre1Sz == 1 ) None else {
+            val pre2Sz  = pre1Sz - 1
+            val pre2Sum = pre1.init.sum
+            hash.get( pre2Sum ).map( v => (v, pre2Sz, pre2Sum) )
+         }
       }
    }
 

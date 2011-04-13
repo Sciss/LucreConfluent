@@ -43,10 +43,10 @@ object KSystemImpl {
       sys =>
 
       val valFactory = CachedTxnStore.valFactory[ Version ](
-         HashedTxnStore.factory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+         HashedTxnStore.valFactory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
 
       val refFactory = CachedTxnStore.refFactory[ Version, A ]( // ({type λ[α] = Mutable[A,α]})#λ
-         HashedTxnStore.factory[ Version, Any ], Cache.Ref )
+         HashedTxnStore.valFactory[ Version, Any ], Cache.Ref )
 
       type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -364,11 +364,11 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
       // ---- RefFactory ----
 
       def emptyVal[ T ] : Val[ A, T ] = {
-         new ValImpl[ T ]( valFactory.empty[ T ], "val" )
+         new ValImpl[ T ]( valFactory.emptyVal[ T ], "val" )
       }
       def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
-         new RefImpl[ T ]( refFactory.empty[ T ], "ref" )
+         new RefImpl[ T ]( refFactory.emptyRef[ T ], "ref" )
       }
 
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )

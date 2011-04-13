@@ -98,9 +98,9 @@ object CList {
             val next       = pred.tail
             pred.tail      = succ
             next match {
-               case cns: CCons[ A, T ] =>
+               case cns: CCons[ _, _ ] =>
                   succ  = pred
-                  pred  = cns
+                  pred  = cns.asInstanceOf[ CCons[ A, T ]]
                case _ => keepGoin = false
             }
          }
@@ -145,7 +145,7 @@ trait CCons[ A, T ] extends CList[ A, T ] {
       var keepGoin   = true
       while( keepGoin ) {
          res.tail match {
-            case cns: CCons[ A, T ] => res = cns
+            case cns: CCons[ _, _ ] => res = cns.asInstanceOf[ CCons[ A, T ]]
             case _ => keepGoin = false
          }
       }
@@ -158,8 +158,8 @@ trait CCons[ A, T ] extends CList[ A, T ] {
       while( keepGoin > 0 ) {
          keepGoin -= 1
          res.tail match {
-            case cns: CCons[ A, T ] => res = cns
-            case nil: CNil[ A, T ]  => return nil
+            case cns: CCons[ _, _ ] => res = cns.asInstanceOf[ CCons[ A, T ]]
+            case nil: CNil[ _, _ ]  => return nil.asInstanceOf[ CNil[ A, T ]]
          }
       }
       res
@@ -249,17 +249,15 @@ class WorldTest {
 //   println( "v1 = " + v1 )
 //   println( "v2 = " + v2 )
 
-   def break {
-      println( "here" )
-   }
-
    val v3 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ World[ KCtx ], Int /* FUCKING BITCHES */ ]( w, sys ))
 // iterator not yet implemented
 //      r.iterator.foreach( _.head +=  2 )
       def inc( l: CList[ World[ KCtx ], Int]) : Unit = l match {
-         case cons: CCons[ World[ KCtx ], Int ] => cons.head += 2
+         case cons0: CCons[ _, _ ] =>
+            val cons = cons0.asInstanceOf[ CCons[ World[ KCtx ], Int ]]
+            cons.head += 2
             inc( cons.tail )
          case _ =>
       }

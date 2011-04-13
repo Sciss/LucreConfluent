@@ -30,19 +30,20 @@ package de.sciss.confluent
 
 import concurrent.stm.InTxn
 
-trait CtxLike /* extends TxnDirtyRecorder[ K ] */ {
+trait CtxLike[ Repr ] extends RefFactory[ Repr ] {
    def txn: InTxn
    def eph : ECtx
+   def seminal: Repr
 }
 
-trait ECtx extends CtxLike // [ Unit ]
+trait ECtx extends CtxLike[ ECtx ] { def seminal = this }
 
-trait KCtxLike extends CtxLike { // [ Path ]
+trait KCtxLike[ Repr ] extends CtxLike[ Repr ] { // [ Path ]
 //   def path : VersionPath // V
 //   private[confluent] def writePath : VersionPath
 }
 
-trait KCtx extends Mutable[ Path, KCtx ] with KCtxLike
+trait KCtx extends Mutable[ Path, KCtx ] with KCtxLike[ KCtx ]
 
 //trait PCtxLike extends CtxLike {
 //   def period : Period

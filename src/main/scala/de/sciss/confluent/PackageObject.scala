@@ -45,7 +45,7 @@ package object confluent {
 
    type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
 
-   type Ct                                       = CtxLike
+   type Ct[ Repr ]                                    = CtxLike[ Repr ]
    type Vr[ C, T ]                                    = EVar[ C, T ]
 //   type RVr[ A, C, T[ _ <: C ] <: Access[ C, A, T ]]  = ERefVar[ A, C, T ]
 

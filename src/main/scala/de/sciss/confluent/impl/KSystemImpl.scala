@@ -53,20 +53,20 @@ object KSystemImpl {
       val atomic = TxnExecutor.defaultAtomic
 
       val aInit : A = atomic { txn =>
-         val res = ap.init( sys )( Ctx( txn, VersionPath.init.path ))
+         val res = ap.init( Ctx( txn, VersionPath.init.path ))
          assert( Cache.isEmpty( txn ))
          res
       }
 
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
-      def newMutable( implicit ctx: KCtx ) : KCtx = {
-         // XXX seminalPath should go somewhere else
-         val p    = ctx.path
-//         if( p.size == 1 ) access else {
-//            access.substitute( ctx.substitute( p.takeRight( 1 )))
-//         }
-         if( p.size == 0 ) ctx else ctx.substitute( EmptyPath )
-      }
+//      def newMutable( implicit ctx: KCtx ) : KCtx = {
+//         // XXX seminalPath should go somewhere else
+//         val p    = ctx.path
+////         if( p.size == 1 ) access else {
+////            access.substitute( ctx.substitute( p.takeRight( 1 )))
+////         }
+//         if( p.size == 0 ) ctx else ctx.substitute( EmptyPath )
+//      }
 
       override def toString = "KSystem"
 
@@ -249,6 +249,14 @@ object KSystemImpl {
       extends ECtx {
          def substitute( newPath: Unit ) : ECtx = this
          def eph: ECtx = this
+
+         def emptyVal[ T ]: Val[ ECtx, T ] = {
+            error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
+         }
+         def emptyRef[ T <: Mutable[ ECtx, T ]]: Ref[ ECtx, T ] = {
+//         val t: T => T = gimmeTrans[ T ]
+            error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
+         }
       }
 
       private object Cache {
@@ -335,6 +343,11 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
 //      type Child = Ctx[ V#Child ]
 
+         def seminal: KCtx = {
+            // XXX seminalPath should go somewhere else
+            if( path.size == 0 ) this else substitute( EmptyPath )
+         }
+
 //         override def toString = "KCtx"
          override def toString = "KCtx[" + path + "]"
 
@@ -343,6 +356,14 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         def path : VersionPath = pathRef.get( txn )
 
          def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
+
+         def emptyVal[ T ]: Val[ KCtx, T ] = {
+            new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
+         }
+         def emptyRef[ T <: Mutable[ KCtx, T ]]: Ref[ KCtx, T ] = {
+//         val t: T => T = gimmeTrans[ T ]
+            new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
+         }
 
       //   private[proc] def readPath : VersionPath = pathRef.get( txn )
 
@@ -360,13 +381,15 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
       // ---- RefFactory ----
 
-      def emptyVal[ T ]( implicit path: KCtx ): Val[ KCtx, T ] = {
-         new ValImpl[ T ]( valFactory.emptyVal[ T ]( path.txn ), "val" )
-      }
-      def emptyRef[ T <: Mutable[ KCtx, T ]]( implicit path: KCtx ): Ref[ KCtx, T ] = {
-//         val t: T => T = gimmeTrans[ T ]
-         new RefImpl[ T ]( refFactory.emptyRef[ T ]( path.txn ), "ref" )
-      }
+//      private trait RefFact extends RefFactory[ KCtx ] {
+//         def emptyVal[ T ]( implicit path: KCtx ): Val[ KCtx, T ] = {
+//            new ValImpl[ T ]( valFactory.emptyVal[ T ]( path.txn ), "val" )
+//         }
+//         def emptyRef[ T <: Mutable[ KCtx, T ]]( implicit path: KCtx ): Ref[ KCtx, T ] = {
+////         val t: T => T = gimmeTrans[ T ]
+//            new RefImpl[ T ]( refFactory.emptyRef[ T ]( path.txn ), "ref" )
+//         }
+//      }
 
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )

@@ -38,15 +38,15 @@ trait World[ P ] extends Mutable[ P, World[ P ]] {
 object CList {
 //   var DEBUG_PRINT = true
 
-   def empty[ C, T ]( implicit ctx: C, sys: System[ _, C, _ ]) : CList[ C, T ] = new CNilImpl[ C, T ]( sys.newMutable )
-   def apply[ C <: Ct, T ]( elems: T* )( implicit path: C, sys: System[ _, C, _ ], mf: ClassManifest[ T ]) : CList[ C, T ] = {
+   def empty[ C <: Ct[ C ], T ]( implicit ctx: C ) : CList[ C, T ] = new CNilImpl[ C, T ]( ctx.seminal )
+   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
       elems.iterator.foldRight[ CList[ C, T ]]( new CNilImpl[ C, T ]( path ))( (v, tail) => {
-         val headRef = sys.emptyVal[ T ]
+         val headRef = path.emptyVal[ T ]
          headRef.set( v )
-         val tailRef = sys.emptyRef[ CList[ C, T ]]
+         val tailRef = path.emptyRef[ CList[ C, T ]]
          tailRef.set( tail )
-         new CConsImpl[ C, T ]( path, sys, headRef, tailRef )
+         new CConsImpl[ C, T ]( path, headRef, tailRef )
       })
 //      error( "No functiona" )
    }
@@ -61,7 +61,7 @@ object CList {
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ C, T ]( val path: C, sys: System[ _, C, _ ], val headRef: Val[ C, T ], tailRef: Ref[ C, CList[ C, T ]])
+   private class CConsImpl[ C <: Ct[ C ], T ]( val path: C, val headRef: Val[ C, T ], tailRef: Ref[ C, CList[ C, T ]])
    extends CCons[ C, T ] {
       def head : T = headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
       def head_=( a: T ) : Unit = headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
@@ -80,7 +80,7 @@ object CList {
          tailRef.inspect( path )
       }
 
-      def substitute( path: C ) = new CConsImpl[ C, T ]( path, sys, headRef, tailRef )
+      def substitute( path: C ) = new CConsImpl[ C, T ]( path, headRef, tailRef )
 
 //      def substitute( path: P ) : CCons[ P, T ] = new CConsImpl( a, sys[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
 //         val spath =
@@ -91,7 +91,7 @@ object CList {
       override def toString = "CCons[" + path + "]"
 
       def reverse : CList[ C, T ] = {
-         var succ       = CList.empty[ C, T ]( sys.newMutable( path ), sys )
+         var succ       = CList.empty[ C, T ]( path.seminal )
          var keepGoin   = true
          var pred: CCons[ C, T ] = this
          while( keepGoin ) {
@@ -186,10 +186,10 @@ object WorldTest {
    def main( args: Array[ String ]) { new WorldTest }
 }
 
-object WorldFactory { def apply[ P ] = new WorldFactory[ P ]}
-class WorldFactory[ P ] extends AccessProvider[ P, World[ P ]] {
-   def init( f: RefFactory[ P ])( implicit path: P ) : World[ P ] = {
-      val listRef = f.emptyRef[ CList[ P, Int ]]
+object WorldFactory { def apply[ P <: Ct[ P ]] = new WorldFactory[ P ]}
+class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
+   def init( implicit path: P ) : World[ P ] = {
+      val listRef = path.emptyRef[ CList[ P, Int ]]
 //      listRef.set
       new WorldImpl( path, listRef )
    }

@@ -37,7 +37,7 @@ trait System[ P,  // access path type
               A // access
 //              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
 //              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]
-] extends RefFactory[ C ] // variable to mutable (reference) value
+] // extends RefFactory[ C ] // variable to mutable (reference) value
 {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
 //   def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
@@ -50,7 +50,7 @@ trait System[ P,  // access path type
 //   def storeFactory : StoreFactory[ ]
 
 //   def newMutable( implicit access: A ) : P
-   def newMutable( implicit ctx: C ) : C
+//   def newMutable( implicit ctx: C ) : C
 }
 
 object ESystem {
@@ -76,7 +76,7 @@ object KSystemLike {
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
-trait KSystemLike[ C <: Ct, A,
+trait KSystemLike[ C <: Ct[ C ], A,
                    Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
 extends System[ Path, C, A ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R

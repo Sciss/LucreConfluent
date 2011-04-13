@@ -209,7 +209,7 @@ class WorldTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
 
-   implicit val sys = Factory.ksystem( WorldFactory[ KCtx ])
+   val sys = Factory.ksystem( WorldFactory[ KCtx ])
 
 //   val proj = sys.keProjector
 //   proj.in( VersionPath.init ) { implicit w =>

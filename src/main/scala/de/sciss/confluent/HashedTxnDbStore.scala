@@ -103,12 +103,23 @@ object HashedTxnDbStore {
 // since we use the cache now, let's just skip this check
 //         if( elems.isEmpty ) return
          ref.transform { map =>
-            elems.foldLeft( map ) { case (map, (key, value)) =>
-               val hash    = key.sum
-               Hashing.add( key, map, { s: Pth =>
-                  if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
+//            elems.foldLeft( map ) { case (map, (key, value)) =>
+//               val hash    = key.sum
+//               Hashing.add( key, map, { s: Pth =>
+//                  if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
+//               })
+//            }
+            val list = elems.flatMap { tup =>
+               val key        = tup._1
+               val value      = tup._2
+               val fullHash   = key.sum
+               Hashing.collect( key, map, { s: Pth =>
+                  if( s.isEmpty ) ValueNone else if( s.sum == fullHash ) DBValueFull( value ) else new ValuePre( s.sum )
                })
             }
+            dbStore.putAll( list )
+            val soft = list.map( tup => (tup._1, tup._2.soften) )
+            map ++ soft
          }
       }
    }

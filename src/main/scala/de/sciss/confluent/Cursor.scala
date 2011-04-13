@@ -30,63 +30,63 @@ package de.sciss.confluent
 
 import collection.immutable.{Set => ISet}
 
-trait Projection[ A ] {
-//   def isApplicable( implicit a: A ) : Boolean
+trait Projection[ C ] {
+//   def isApplicable( implicit ctx: C ) : Boolean
 }
 
 object Cursor {
    sealed trait Update
    case object Moved extends Update
 }
-trait Cursor[ A ] extends Projection[ A ] with Model[ ECtx, Cursor.Update ] {
+trait Cursor[ C ] extends Projection[ C ] with Model[ ECtx, Cursor.Update ] {
    def dispose( implicit C: ECtx ) : Unit
 }
 
 /**
  * A projection onto the ephemeral, basic transactional, level
  */
-trait EProjection[ Res, A ] extends Projection[ A ] {
+trait EProjection[ Res, A, C ] extends Projection[ C ] {
 //   def t[ R ]( fun: A => R ) : R
    def t( fun: A => Unit ) : Res
-   def meld[ R ]( fun: A => R )( implicit main: A ) : R
+   def meld[ R ]( fun: A => R )( implicit ctx: C ) : R
 }
 
 /**
  * A projection onto the ephemeral along with cursor (model) functionality.
  */
-trait ECursor[ Res, A ] extends EProjection[ Res, A ] with Cursor[ A ]
+trait ECursor[ Res, A, C ] extends EProjection[ Res, A, C ] with Cursor[ C ]
 
 object Projector {
-   sealed trait Update[ A, +Csr <: Cursor[ A ]]
-   case class CursorAdded[ A, Csr <: Cursor[ A ]]( cursor: Csr ) extends Update[ A, Csr ]
-   case class CursorRemoved[ A, Csr <: Cursor[ A ]]( cursor: Csr ) extends Update[ A, Csr ]
+   sealed trait Update[ C, +Csr <: Cursor[ C ]]
+   case class CursorAdded[ C, Csr <: Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
+   case class CursorRemoved[ C, Csr <: Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }
 
 /**
  * A projector manages cursors
  */
-trait Projector[ A, +Csr <: Cursor[ A ]] /* extends Model[ ECtx, Projector.Update[ A, Csr ]] */ {
+trait Projector[ C, +Csr <: Cursor[ C ]] /* extends Model[ ECtx, Projector.Update[ A, Csr ]] */ {
 //   def cursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
 }
 
 /**
  * A K projector manages cursors, and can create them from a k-time access path
  */
-trait KProjector[ A, +Proj, +Csr <: Cursor[ A ]] extends Projector[ A, Csr ] {
+trait KProjector[ C, +Proj, +Csr <: Cursor[ C ]] extends Projector[ C, Csr ] {
    def cursorIn( v: Path )( implicit c: ECtx ) : Csr
    def in( v: Path ) : Proj
 //   def kCursors( implicit c: CtxLike ) : Iterable[ Csr ]  // Set doesn't work because of variance...
 }
 
-trait KProjection[ A ] extends Projection[ A ] {
+trait KProjection[ C ] extends Projection[ C ] {
 //   def path( implicit c: CtxLike ) : Path // VersionPath
 }
 
 /**
  * A KE projector is a K projector that projects onto the ephemeral level
  */
-trait KEProjector[ A ]
-extends KProjector[ A, EProjection[ Path, A ] with KProjection[ A ], ECursor[ Path, A ] with KProjection[ A ]] {
+trait KEProjector[ A, C ]
+extends KProjector[ C, EProjection[ Path, A, C ] with KProjection[ C ], ECursor[ Path, A, C ] with KProjection[ C ]] {
 //   def in[ R ]( v: Path )( fun: A => R ) : R
 //   def range[ T ]( vr: V[ T ], interval: (VersionPath, VersionPath) )( implicit c: CtxLike ) : Traversable[ (VersionPath, T) ]
 }

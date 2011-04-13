@@ -45,30 +45,27 @@ object KSystemImpl {
       val valFactory = CachedTxnStore.valFactory[ Version ](
          HashedTxnStore.valFactory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
 
-      val refFactory = CachedTxnStore.refFactory[ Version, A ]( // ({type λ[α] = Mutable[A,α]})#λ
+      val refFactory = CachedTxnStore.refFactory[ Version, KCtx ]( // ({type λ[α] = Mutable[A,α]})#λ
          HashedTxnStore.valFactory[ Version, Any ], Cache.Ref )
 
-      type RefHolder[ T <: Mutable[ A, T ]] = Holder[ T ] // TxnStore[ Path, T ]
+      type RefHolder[ T <: Mutable[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
       val atomic = TxnExecutor.defaultAtomic
 
-      val aInit :A = atomic { txn =>
-         val res = ap.init( sys, Ctx( txn, VersionPath.init.path ))
+      val aInit : A = atomic { txn =>
+         val res = ap.init( sys )( Ctx( txn, VersionPath.init.path ))
          assert( Cache.isEmpty( txn ))
          res
       }
 
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
-      def newMutable( implicit access: A ) : A = {
+      def newMutable( implicit ctx: KCtx ) : KCtx = {
          // XXX seminalPath should go somewhere else
-         val ctx  = access.path
          val p    = ctx.path
 //         if( p.size == 1 ) access else {
 //            access.substitute( ctx.substitute( p.takeRight( 1 )))
 //         }
-         if( p.size == 0 ) access else {
-            access.substitute( ctx.substitute( EmptyPath ))
-         }
+         if( p.size == 0 ) ctx else ctx.substitute( EmptyPath )
       }
 
       override def toString = "KSystem"
@@ -136,11 +133,11 @@ object KSystemImpl {
 //      def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]] = dagRef.get( c.txn ).trie
 //      def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ] = dagRef.get( c.txn ) //.trie
 
-      def kProjector : KProjector[ A, KSystem.Projection[ A ], KSystem.Cursor[ A ]] = KEProjImpl
-      def keProjector : KEProjector[ A ] = KEProjImpl
+      def kProjector : KProjector[ KCtx, KSystem.Projection[ A ], KSystem.Cursor[ A ]] = KEProjImpl
+      def keProjector : KEProjector[ A, KCtx ] = KEProjImpl
 
-      private object KEProjImpl extends KEProjector[ A ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
-      with ModelImpl[ ECtx, Projector.Update[ A, KSystem.Cursor[ A ]]] {
+      private object KEProjImpl extends KEProjector[ A, KCtx ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
+      with ModelImpl[ ECtx, Projector.Update[ KCtx, KSystem.Cursor[ A ]]] {
 
          val cursorsRef = STMRef( ISet.empty[ KSystem.Cursor[ A ]])
 //         def cursors( implicit c: CtxLike ) : Iterable[ KSystem.Cursor[ A ]] = cursorsRef.get( c.txn )
@@ -150,16 +147,16 @@ object KSystemImpl {
          def cursorIn( path: Path )( implicit c: ECtx ) : KSystem.Cursor[ A ] = {
             val csr = new CursorImpl( /* sys, */ path )
             cursorsRef.transform( _ + csr )( c.txn )
-            fireUpdate( Projector.CursorAdded[ A, KSystem.Cursor[ A ]]( csr ))
+            fireUpdate( Projector.CursorAdded[ KCtx, KSystem.Cursor[ A ]]( csr ))
             csr
          }
 
          def removeKCursor( cursor: KSystem.Cursor[ A ])( implicit c: ECtx ) {
             cursorsRef.transform( _ - cursor )( c.txn )
-            fireUpdate( Projector.CursorRemoved[ A, KSystem.Cursor[ A ]]( cursor ))
+            fireUpdate( Projector.CursorRemoved[ KCtx, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in( version: Path ) : EProjection[ Path, A ] with KProjection[ A ] = new EProj( version )
+         def in( version: Path ) : EProjection[ Path, A, KCtx ] with KProjection[ KCtx ] = new EProj( version )
 
 //         def in( version: Path )( fun: A => Unit ) : Path = atomic { tx =>
 //            error( "NO FUNCTIONA" )
@@ -171,9 +168,9 @@ object KSystemImpl {
       }
 
       // XXX TODO: should factor out common stuff with CursorImpl
-      private class EProj( path: Path ) extends EProjection[ Path, A ] with KProjection[ A ] {
-         def meld[ R ]( fun: A => R )( implicit main: A ) : R = {
-            val am = main.substitute( main.path.substitute( path ))
+      private class EProj( path: Path ) extends EProjection[ Path, A, KCtx ] with KProjection[ KCtx ] {
+         def meld[ R ]( fun: A => R )( implicit main: KCtx ) : R = {
+            val am = aInit.substitute( main.substitute( path ))
             fun( am )
          }
 
@@ -191,7 +188,7 @@ object KSystemImpl {
       }
 
       private class CursorImpl( initialPath: Path )
-      extends ECursor[ Path, A ] with KProjection[ A ] with ModelImpl[ ECtx, Cursor.Update ] {
+      extends ECursor[ Path, A, KCtx ] with KProjection[ KCtx ] with ModelImpl[ ECtx, Cursor.Update ] {
          csr =>
 
          private val vRef = STMRef( initialPath )
@@ -206,9 +203,8 @@ object KSystemImpl {
 //            KEProjImpl.removeKCursor( csr )
          }
 
-         def meld[ R ]( fun: A => R )( implicit main: A ) : R = {
-            val cMain   = main.path
-            val txn     = cMain.txn
+         def meld[ R ]( fun: A => R )( implicit main: KCtx ) : R = {
+            val txn     = main.txn
             val cMeld   = Ctx( txn, vRef.get( txn ))
             val a       = aInit.substitute( cMeld )
             fun( a )
@@ -281,14 +277,15 @@ object KSystemImpl {
             }
          }
 
-         object Ref extends SubCache[ (Path, A) ] {
+         object Ref extends SubCache[ (Path, KCtx) ] {
             def flush( suffix: Version )( implicit txn: InTxn ) {
 //               val rid = suffix.rid
                cacheSet.get.foreach( _.flush( tup => {
-                  val ctx  = tup._2.path
-                  val p    = ctx.path
-                  val ctxm = ctx.substitute( p :+ suffix )
-                  (tup._1 :+ suffix, tup._2.substitute( ctxm ))
+                  val pset = tup._1
+                  val ctx  = tup._2 // .path
+                  val ctxm = ctx.substitute( ctx.path :+ suffix )
+//                  (tup._1 :+ suffix, tup._2.substitute( ctxm ))
+                  (pset :+ suffix, ctxm) // tup._2.substitute( ctxm ))
                }))
             }
          }
@@ -363,26 +360,25 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
       // ---- RefFactory ----
 
-      def emptyVal[ T ]( implicit access: A ): Val[ A, T ] = {
-         new ValImpl[ T ]( valFactory.emptyVal[ T ]( access.path.txn ), "val" )
+      def emptyVal[ T ]( implicit path: KCtx ): Val[ KCtx, T ] = {
+         new ValImpl[ T ]( valFactory.emptyVal[ T ]( path.txn ), "val" )
       }
-      def emptyRef[ T <: Mutable[ A, T ]]( implicit access: A ): Ref[ A, T ] = {
+      def emptyRef[ T <: Mutable[ KCtx, T ]]( implicit path: KCtx ): Ref[ KCtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
-         new RefImpl[ T ]( refFactory.emptyRef[ T ]( access.path.txn ), "ref" )
+         new RefImpl[ T ]( refFactory.emptyRef[ T ]( path.txn ), "ref" )
       }
 
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )
 
-      private trait AbstractRef[ T <: Mutable[ A, T ]]
-      extends Ref[ A, T ] {
+      private trait AbstractRef[ T <: Mutable[ KCtx, T ]]
+      extends Ref[ KCtx, T ] {
          protected val ref: RefHolder[ T ]
          protected val typeName : String
 
          override def toString = "KRefVar[" + typeName + "]"
 
-         def get( implicit access: A ) : T = {
-            val ctx  = access.path
+         def get( implicit ctx: KCtx ) : T = {
             val txn  = ctx.txn
             val p    = ctx.path
 
@@ -409,12 +405,11 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             if( pre == p.size ) raw else {
                // XXX ouch... path.path.path -- we'll get back to this as a problem
                // once the serialization is implemented :-(
-               raw.substitute( access.substitute( ctx.substitute( raw.path.path.path ++ p.drop( pre ))))
+               raw.substitute( ctx.substitute( raw.path.path ++ p.drop( pre )))
             }
          }
 
-         def set( v: T )( implicit access: A ) {
-            val ctx  = access.path
+         def set( v: T )( implicit ctx: KCtx ) {
             val txn  = ctx.txn
             val p    = ctx.path
             ref.put( p, v )( txn )
@@ -423,31 +418,28 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          }
 
 //         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
-         def inspect( implicit txn: InTxn ) : Unit = ref.inspect
+         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
       }
 
-      private class RefImpl[ T <: Mutable[ A, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
+      private class RefImpl[ T <: Mutable[ KCtx, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
       }
 
       private trait AbstractVal[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
-      extends Val[ A, T ] { // KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {
+      extends Val[ KCtx, T ] { // KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {
 //      protected def txn( c: C ) = c.repr.txn
          protected val ref: Holder[ T ] // Ref[ FatValue[ T ]]
          protected val typeName : String
 
          override def toString = "KVar[" + typeName + "]"
 
-         def get( implicit access: A ) : T = {
-            val ctx  = access.path
+         def get( implicit ctx: KCtx ) : T = {
             val txn  = ctx.txn
             val p    = ctx.path
-
             ref.get( p )( txn ).getOrElse( error( "No assignment for path " + p ))
          }
 
-         def set( v: T )( implicit access: A ) {
-            val ctx  = access.path
+         def set( v: T )( implicit ctx: KCtx ) {
             val txn  = ctx.txn
             val p    = ctx.path
             ref.put( p, v )( txn )
@@ -473,7 +465,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         fireUpdate( v, c )
 //      }
 
-         def inspect( implicit txn: InTxn ) : Unit = ref.inspect
+         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
       }
 
       private class ValImpl[ T ]( val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {

@@ -33,11 +33,11 @@ import Double.{PositiveInfinity => dinf}
 import reflect.OptManifest
 
 trait System[ P,  // access path type
-              C <: Ct,  // context
+              C,  // context
               A // access
 //              V[ ~ ] <: Vr[ C, ~ ], // variable to immutable value
 //              RV[ ~[ _ <: C ] <: Access[ C, A, ~ ]] <: RVr[ A, C, ~ ]
-] extends RefFactory[ A ] // variable to mutable (reference) value
+] extends RefFactory[ C ] // variable to mutable (reference) value
 {
    def t[ R ]( fun: ECtx => R ) : R // any system can initiate an ephemeral transaction
 //   def v[ T ]( init: T )( implicit m: OptManifest[ T ], c: C ) : V[ T ]
@@ -50,7 +50,7 @@ trait System[ P,  // access path type
 //   def storeFactory : StoreFactory[ ]
 
 //   def newMutable( implicit access: A ) : P
-   def newMutable( implicit access: A ) : A
+   def newMutable( implicit ctx: C ) : C
 }
 
 object ESystem {
@@ -77,12 +77,12 @@ object KSystemLike {
 }
 
 trait KSystemLike[ C <: Ct, A,
-                   Proj <: KProjection[ A ], Csr <: KProjection[ A ] with Cursor[ A ]]
+                   Proj <: KProjection[ C ], Csr <: KProjection[ C ] with Cursor[ C ]]
 extends System[ Path, C, A ] with Model[ ECtx, KSystemLike.Update ] {
 //   def in[ R ]( v: VersionPath )( fun: C => R ) : R
 
-   def kProjector : KProjector[ A, Proj, Csr ]
-   def keProjector : KEProjector[ A ]
+   def kProjector : KProjector[ C, Proj, Csr ]
+   def keProjector : KEProjector[ A, C ]
 
 //   def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath
 //   def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]]
@@ -98,9 +98,9 @@ object KSystem {
    type Var[ ~ ]                                         = KVar[ Ctx, ~ ]
 //   type RefVar[ ~[ _ <: Ctx ] <: Access[ Ctx, Path, ~ ]] = ERefVar[ Path, Ctx, ~ ]
 
-   type Projection[ A ]                                  = EProjection[ Path, A ] with KProjection[ A ]
+   type Projection[ A ]                                  = EProjection[ Path, A, Ctx ] with KProjection[ Ctx ]
 //   type Cursor                                           = ECursor[ Ctx ] with KProjection[ Ctx ]
-   type Cursor[ A ] = ECursor[ Path, A ] with KProjection[ A ]
+   type Cursor[ A ] = ECursor[ Path, A, Ctx ] with KProjection[ Ctx ]
 //   sealed trait Update extends KSystemLike.Update[ KCtx, Var ]
 }
 

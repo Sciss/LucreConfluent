@@ -72,29 +72,29 @@ trait Mutable[ A, Repr ] /* extends Acc */ {
 ////   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
 //}
 
-trait AccessProvider[ P, A ] {
-   def init( f: RefFactory[ A ], path: P ) : A
+trait AccessProvider[ C, A ] {
+   def init( f: RefFactory[ C ])( implicit path: C ) : A
 //   def access( a: A, p: P ) : A
 }
 
 trait Ref[ A, T <: Mutable[ A, T ]] {
-   def get( implicit access: A ) : T
-   def set( v: T )( implicit access: A ) : Unit
+   def get( implicit path: A ) : T
+   def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
-   def inspect( implicit txn: InTxn ) : Unit
+   def inspect( implicit path: A ) : Unit
 }
 
 trait RefFactory[ A ] {
-   def emptyVal[ T ]( implicit access: A ) : Val[ A, T ]
-   def emptyRef[ T <: Mutable[ A, T ]]( implicit access: A ) : Ref[ A, T ]
+   def emptyVal[ T ]( implicit path: A ) : Val[ A, T ]
+   def emptyRef[ T <: Mutable[ A, T ]]( implicit path: A ) : Ref[ A, T ]
 //   def apply[ V ]( v: V ) : RefVar[ A, V ]
 }
 
 trait Val[ A, T ] {
-   def get( implicit access: A ) : T
-   def set( v: T )( implicit access: A ) : Unit
+   def get( implicit path: A ) : T
+   def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
-   def inspect( implicit txn: InTxn ) : Unit
+   def inspect( implicit path: A ) : Unit
 }
 
 //trait ValFactory[ P ] {

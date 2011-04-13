@@ -132,14 +132,19 @@ object HashedTxnDbStore {
    }
    private class ValueFull[ V ]( v:  V ) extends JSoftReference[ V ]( v ) with Value[ V ]
 
-//   def valFactory[ X, Up[ _ ]]( dbStoreFactory: TxnStoreFactory[ Long, AnyRef ]) : TxnStoreFactory[ Path[ X ], Up ] =
-//      new FactoryImpl[ X, Up ]( dbStoreFactory )
-//
-//   def refFactory[ X, Up[ _ ]]( dbStoreFactory: TxnStoreFactory[ Long, AnyRef ]) : TxnStoreFactory[ Path[ X ], Up ] =
-//      new FactoryImpl[ X, Up ]( dbStoreFactory )
-//
-//   private class FactoryImpl[ X, Up[ _ ]]( dbStoreFactory: TxnStoreFactory[ Long, AnyRef ])
-//   extends TxnStoreFactory[ Path[ X ], Up ] {
-//      def empty[ V <: Up[ _ ]] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]( dbStoreFactory.empty[ V ])
-//   }
+   def valFactory[ X, Up ]( dbStore: TxnStore[ Long, AnyRef ]) : TxnValStoreFactory[ Path[ X ], Up ] =
+      new ValFactoryImpl[ X, Up ]( dbStore )
+
+   def refFactory[ X, Up[ _ ]]( dbStore: TxnStore[ Long, AnyRef ]) : TxnRefStoreFactory[ Path[ X ], Up ] =
+      new RefFactoryImpl[ X, Up ]( dbStore )
+
+   private class ValFactoryImpl[ X, Up ]( dbStore: TxnStore[ Long, AnyRef ])
+   extends TxnValStoreFactory[ Path[ X ], Up ] {
+      def emptyVal[ V <: Up ] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]( dbStore )
+   }
+
+   private class RefFactoryImpl[ X, Up[ _ ]]( dbStore: TxnStore[ Long, AnyRef ])
+   extends TxnRefStoreFactory[ Path[ X ], Up ] {
+      def emptyRef[ V <: Up[ _ ]] : TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]( dbStore )
+   }
 }

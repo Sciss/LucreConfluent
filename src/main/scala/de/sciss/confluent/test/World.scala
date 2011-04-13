@@ -39,7 +39,7 @@ object CList {
 //   var DEBUG_PRINT = true
 
    def empty[ C, T ]( implicit ctx: C, sys: System[ _, C, _ ]) : CList[ C, T ] = new CNilImpl[ C, T ]( sys.newMutable )
-   def apply[ C, T ]( elems: T* )( implicit path: C, sys: System[ _, C, _ ], mf: ClassManifest[ T ]) : CList[ C, T ] = {
+   def apply[ C <: Ct, T ]( elems: T* )( implicit path: C, sys: System[ _, C, _ ], mf: ClassManifest[ T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
       elems.iterator.foldRight[ CList[ C, T ]]( new CNilImpl[ C, T ]( path ))( (v, tail) => {
          val headRef = sys.emptyVal[ T ]
@@ -224,24 +224,28 @@ class WorldTest {
 //
 //   }
 
-   val v0 = csr.t { w =>
-      implicit val path = w.path
+//   implicit def worldPath[ P ]( implicit w: World[ P ]) : P = w.path
+//   implicit def worldPath[ P <: Ct ]( implicit w: World[ P ]) : P = w.path
+   implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
+
+   val v0 = csr.t { implicit w =>
+//      implicit val path = w.path
       w.list = CList( 2, 1 )
 
       val l = w.list.toList
       assert( l == List( 2, 1 ), l.toString )
    }
 
-   val v1 = csr.t { w =>
-      implicit val path = w.path
+   val v1 = csr.t { implicit w =>
+//      implicit val path = w.path
       w.list = w.list.reverse
 
       val l = w.list.toList
       assert( l == List( 1, 2 ), l.toString )
    }
 
-   val v2 = keproj.in( v0 ).t { w =>
-      implicit val path = w.path
+   val v2 = keproj.in( v0 ).t { implicit w =>
+//      implicit val path = w.path
       w.list = w.list.drop( 1 )
       w.list.lastOption.foreach( _.tail = CList( 4 ))
 
@@ -252,10 +256,10 @@ class WorldTest {
 //   println( "v1 = " + v1 )
 //   println( "v2 = " + v2 )
 
-   val v3 = csr.t { w =>
-      implicit val path = w.path
+   val v3 = csr.t { implicit w =>
+//      implicit val path = w.path
       val ro = keproj.in( v2 ).meld( _.list.headOption )
-      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]( path, sys ))
+      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
 // iterator not yet implemented
 //      r.iterator.foreach( _.head +=  2 )
       def inc( l: CList[ KCtx, Int]) : Unit = l match {
@@ -276,10 +280,10 @@ class WorldTest {
       assert( l == List( 1, 2, 3, 6 ), l.toString )
    }
 
-   val v4 = csr.t { w =>
-      implicit val path = w.path
+   val v4 = csr.t { implicit w =>
+//      implicit val path = w.path
       val ro = keproj.in( v2 ).meld( _.list.headOption )
-      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]( path, sys ))
+      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
       w.list.lastOption match {
          case Some( head ) => head.tail = r
          case None => w.list = r

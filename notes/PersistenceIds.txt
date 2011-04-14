@@ -1,0 +1,49 @@
+CList[ A ]( path :: id1 ) {
+   head : A (id1a -> map)
+   tail: Ref[ CList[ A ]] (id1b -> map)
+}
+
+0xFFFFFFFFFFFF0000 'seminal' mask
+0x000000000000FFFF 'ref factory' mask
+
+
+object CCons {
+   def create[]( implicit ctx: C ) {
+      implicit val m: MutableID = ctx.newMutable
+      val headRef = ctx.newVal[]
+      val tailRef = ctx.newRef[]
+      val data    = new Data( m, headRef, tailRef )
+      Impl[]( ctx.path, data )
+   }
+
+   private class Data( val m: Id, val headRef: Ref[], val tailRef: Ref[])
+   extends DataEntity( m, List( headRef, tailRef ) // ?
+
+   private class Impl[]( path, data ) extends CCons[] {
+      ...
+   }
+}
+trait CCons[] extends Node { def head; def head_=; def tail; def tail_= }
+
+;;; serialization
+
+(some object x) --> (path, m) (m <-- de-serialize data + wrap in ccons)
+                    
+   and at MMMMMMMMMMMM:
+       PPPPPPPP = seminal path
+   followed by data,
+   where data is merely : id-suffix shorts
+	AAAA -- head id / NOT EVEN -- it is purely deterministic, we could leave that away
+        BBBB -- tail id / NOT EVEN -- it is purely deterministic, we could leave that away
+   such that the map can retrieve them via MMMMMMMMMMMMAAAA and MMMMMMMMMMMMBBBB
+
+;;; de-serialization is more involved ?
+
+   val m <-- read
+   
+;;; encoding
+   ValueNone : 00
+   ValuePre  : 01 HHHHHHHHHHHHHHHH
+   ValueFull : 02 HHHHHHHHHHHHHHHH
+
+thus we may completely remove the distinction between ValuePre and ValueFull ?

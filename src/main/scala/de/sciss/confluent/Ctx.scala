@@ -30,13 +30,20 @@ package de.sciss.confluent
 
 import concurrent.stm.InTxn
 
-trait CtxLike[ Repr ] extends RefFactory[ Repr ] {
+trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
    def txn: InTxn
-   def eph : ECtx
-   def seminal: Repr
+   def eph: ECtx
+//   def seminal: (NodeID, Repr)
+//   def newNode[ T ]( fun: (Repr with NodeFactory[ Repr ]) => T ) : T
+   def newNode[ T ]( fun: NodeFactory[ Repr ] => T ) : T
 }
 
-trait ECtx extends CtxLike[ ECtx ] { def seminal = this }
+trait NodeFactory[ C ] extends RefFactory[ C ] {
+   def id: NodeID
+   def path: C
+}
+
+trait ECtx extends CtxLike[ ECtx ] // { def seminal = this }
 
 trait KCtxLike[ Repr ] extends CtxLike[ Repr ] { // [ Path ]
 //   def path : VersionPath // V

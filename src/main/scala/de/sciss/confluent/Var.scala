@@ -61,9 +61,9 @@ trait Mutable[ A, Repr ] /* extends Acc */ {
    def substitute( path: A ) : Repr
 }
 
-//trait Node[ A, Repr ]extends Mutable[ A, Repr ] {
-//   def id: Long
-//}
+trait Node[ A, Repr ]extends Mutable[ A, Repr ] {
+   def id: NodeID
+}
 
 //trait Access[ Up, V, Res[ _ <: Up ]] {
 ////   def accessPath: V
@@ -86,6 +86,15 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
    def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
    def inspect( implicit path: A ) : Unit
+   def id: FieldID
+}
+
+trait Val[ A, T ] {
+   def get( implicit path: A ) : T
+   def set( v: T )( implicit path: A ) : Unit
+//   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
+   def inspect( implicit path: A ) : Unit
+   def id: FieldID
 }
 
 trait RefFactory[ A ] {
@@ -94,13 +103,6 @@ trait RefFactory[ A ] {
    def emptyVal[ T ] : Val[ A, T ]
    def emptyRef[ T <: Mutable[ A, T ]] : Ref[ A, T ]
 //   def apply[ V ]( v: V ) : RefVar[ A, V ]
-}
-
-trait Val[ A, T ] {
-   def get( implicit path: A ) : T
-   def set( v: T )( implicit path: A ) : Unit
-//   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
-   def inspect( implicit path: A ) : Unit
 }
 
 //trait ValFactory[ P ] {

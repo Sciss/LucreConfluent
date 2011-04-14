@@ -15,7 +15,7 @@ object World {
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : World[ C, A ] = new Impl[ C, A ]( listRef )
 //   }
 }
-trait World[ P ] extends Mutable[ P, World[ P ]] {
+trait World[ P ] extends Node[ P, World[ P ]] {
 //   def head( implicit c: KCtx ) : CList
    // KSystem.Var[ Option[ CList[ KSystem.Ctx, KSystem.Var, Int ]]] // = None
    def list : CList[ P, Int ]
@@ -38,21 +38,28 @@ trait World[ P ] extends Mutable[ P, World[ P ]] {
 object CList {
 //   var DEBUG_PRINT = true
 
-   def empty[ C <: Ct[ C ], T ]( implicit ctx: C ) : CList[ C, T ] = new CNilImpl[ C, T ]( ctx.seminal )
+   def empty[ C <: Ct[ C ], T ]( implicit path: C ) : CList[ C, T ] = {
+      path.newNode { n => new CNilImpl[ C, T ]( n.path, n.id )}
+   }
+
    def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
-      elems.iterator.foldRight[ CList[ C, T ]]( new CNilImpl[ C, T ]( path ))( (v, tail) => {
-         val headRef = path.emptyVal[ T ]
-         headRef.set( v )
-         val tailRef = path.emptyRef[ CList[ C, T ]]
-         tailRef.set( tail )
-         new CConsImpl[ C, T ]( path, headRef, tailRef )
+      elems.iterator.foldRight[ CList[ C, T ]]( empty[ C, T ])( (v, tail) => {
+//         val (id, spath) = path.seminal
+         path.newNode { n =>
+            implicit val path = n.path
+            val headRef = n.emptyVal[ T ]
+            headRef.set( v )
+            val tailRef = n.emptyRef[ CList[ C, T ]]
+            tailRef.set( tail )
+            new CConsImpl[ C, T ]( path, CConsImpl.Data( n.id, headRef, tailRef ))
+         }
       })
 //      error( "No functiona" )
    }
 
-   private class CNilImpl[ C, T ]( val path: C ) extends CNil[ C, T ] {
-      def substitute( path: C ) = new CNilImpl[ C, T ]( path )
+   private class CNilImpl[ C, T ]( val path: C, val id: NodeID ) extends CNil[ C, T ] {
+      def substitute( path: C ) = new CNilImpl[ C, T ]( path, id )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
       def inspect { println( "CNil[ " + path + ", ? ]")}
 
@@ -61,12 +68,17 @@ object CList {
 
 //   private type ListHolder[ A ] = KSystem.RefVar[ CList[ _ <: KSystem.Ctx, A ]]
 
-   private class CConsImpl[ C <: Ct[ C ], T ]( val path: C, val headRef: Val[ C, T ], tailRef: Ref[ C, CList[ C, T ]])
+   private object CConsImpl {
+      case class Data[ C, T ]( id: NodeID, headRef: Val[ C, T ], tailRef: Ref[ C, CList[ C, T ]])
+   }
+
+   private class CConsImpl[ C <: Ct[ C ], T ]( val path: C, data: CConsImpl.Data[ C, T ])
    extends CCons[ C, T ] {
-      def head : T = headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
-      def head_=( a: T ) : Unit = headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
-      def tail : CList[ C, T ] = tailRef.get( path ) // error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
-      def tail_=( l: CList[ C, T ]) : Unit = tailRef.set( l )( path ) // error( "NO FUNCTIONA" ) // tailRef.set( l )
+      def id = data.id
+      def head : T = data.headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
+      def head_=( a: T ) : Unit = data.headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
+      def tail : CList[ C, T ] = data.tailRef.get( path ) // error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
+      def tail_=( l: CList[ C, T ]) : Unit = data.tailRef.set( l )( path ) // error( "NO FUNCTIONA" ) // tailRef.set( l )
 
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
@@ -75,12 +87,12 @@ object CList {
       def inspect {
          println( ":::::::: CCons[ " + path + "] ::::::::" )
          println( "  -head:" )
-         headRef.inspect( path )
+         data.headRef.inspect( path )
          println( "  -tail:" )
-         tailRef.inspect( path )
+         data.tailRef.inspect( path )
       }
 
-      def substitute( path: C ) = new CConsImpl[ C, T ]( path, headRef, tailRef )
+      def substitute( path: C ) = new CConsImpl[ C, T ]( path, data )
 
 //      def substitute( path: P ) : CCons[ P, T ] = new CConsImpl( a, sys[ V1 <: Version ]( implicit c: KCtx[ V1 ]) : CCons[ V1, A ] = {
 //         val spath =
@@ -91,7 +103,7 @@ object CList {
       override def toString = "CCons[" + path + "]"
 
       def reverse : CList[ C, T ] = {
-         var succ       = CList.empty[ C, T ]( path.seminal )
+         var succ       = CList.empty[ C, T ]( path )
          var keepGoin   = true
          var pred: CCons[ C, T ] = this
          while( keepGoin ) {
@@ -110,7 +122,7 @@ object CList {
 }
 // Partial2U[ KSystem.Ctx, CList, A ]#Apply
 //extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]
-sealed trait CList[ C, T] extends Mutable[ C, CList[ C, T ]] {
+sealed trait CList[ C, T] extends Node[ C, CList[ C, T ]] {
    def headOption : Option[ CCons[ C, T ]]
    def lastOption : Option[ CCons[ C, T ]]
    def drop( n: Int ) : CList[ C, T ]
@@ -188,18 +200,21 @@ object WorldTest {
 
 object WorldFactory { def apply[ P <: Ct[ P ]] = new WorldFactory[ P ]}
 class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
-   def init( implicit path: P ) : World[ P ] = {
-      val listRef = path.emptyRef[ CList[ P, Int ]]
-//      listRef.set
-      new WorldImpl( path, listRef )
+   def init( implicit path: P ) : World[ P ] = path.newNode { n =>
+      implicit val path = n.path
+      val listRef = n.emptyRef[ CList[ P, Int ]]
+      new WorldImpl( path, WorldImpl.Data( n.id, listRef ))
    }
-   def access( w: World[ P ]) : World[ P ] = error( "NO FUNCTIONA" )
 
-   private class WorldImpl[ P ]( val path: P, listRef: Ref[ P, CList[ P, Int ]]) extends World[ P ] {
-      def list : CList[ P, Int ] = listRef.get( path )
-      def list_=( l: CList[ P, Int ]) : Unit = listRef.set( l )( path )
+   private object WorldImpl {
+      case class Data[ P ]( id: NodeID, listRef: Ref[ P, CList[ P, Int ]])
+   }
+   private class WorldImpl[ P ]( val path: P, data: WorldImpl.Data[ P ]) extends World[ P ] {
+      def id = data.id
+      def list : CList[ P, Int ] = data.listRef.get( path )
+      def list_=( l: CList[ P, Int ]) : Unit = data.listRef.set( l )( path )
 
-      def substitute( path: P ) : World[ P ] = new WorldImpl[ P ]( path, listRef )
+      def substitute( path: P ) : World[ P ] = new WorldImpl[ P ]( path, data )
 
       override def toString = "World[" + path + "]"
    }

@@ -42,6 +42,8 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
+      val nodeIDRef = STMRef( 0 )
+
       val valFactory = CachedTxnStore.valFactory[ Version ](
          HashedTxnStore.valFactory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
 
@@ -135,6 +137,14 @@ object KSystemImpl {
 
       def kProjector : KProjector[ KCtx, KSystem.Projection[ A ], KSystem.Cursor[ A ]] = KEProjImpl
       def keProjector : KEProjector[ A, KCtx ] = KEProjImpl
+
+      private def nodeAlloc( implicit txn: InTxn ) : Int = {
+         nodeIDRef += 1
+         nodeIDRef.get
+      }
+
+      private case class NID( value: Int ) extends NodeID
+      private case class FID( value: Short ) extends FieldID
 
       private object KEProjImpl extends KEProjector[ A, KCtx ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
       with ModelImpl[ ECtx, Projector.Update[ KCtx, KSystem.Cursor[ A ]]] {
@@ -249,11 +259,18 @@ object KSystemImpl {
       extends ECtx {
          def substitute( newPath: Unit ) : ECtx = this
          def eph: ECtx = this
+         def newNode[ T ]( fun: NodeFactory[ ECtx ] => T ) : T = fun( new ENodeFactory( this ))
+      }
 
-         def emptyVal[ T ]: Val[ ECtx, T ] = {
+      private class ENodeFactory( ctx: ECtx ) extends NodeFactory[ ECtx ] {
+         def path = ctx
+
+         val id = NID( nodeAlloc( ctx.txn ))
+
+         def emptyVal[ T ] : Val[ ECtx, T ] = {
             error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
-         def emptyRef[ T <: Mutable[ ECtx, T ]]: Ref[ ECtx, T ] = {
+         def emptyRef[ T <: Mutable[ ECtx, T ]] : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
             error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
@@ -357,13 +374,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
          def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
 
-         def emptyVal[ T ]: Val[ KCtx, T ] = {
-            new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
-         }
-         def emptyRef[ T <: Mutable[ KCtx, T ]]: Ref[ KCtx, T ] = {
-//         val t: T => T = gimmeTrans[ T ]
-            new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
-         }
+         def newNode[ T ]( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( seminal ))
 
       //   private[proc] def readPath : VersionPath = pathRef.get( txn )
 
@@ -377,6 +388,27 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //               pw
 //            } else p
 //         }
+      }
+
+      private class KNodeFactory( ctx: KCtx ) extends NodeFactory[ KCtx ] {
+         def path = ctx
+
+         val nid     = nodeAlloc( ctx.txn )
+         def id      = NID( nid )
+         val fidRef  = TxnLocal( nid.toLong << 16 )
+
+         def emptyVal[ T ]: Val[ KCtx, T ] = {
+            implicit val txn = ctx.txn
+            val fid = fidRef.get
+            fidRef += 1
+            new ValImpl[ T ]( fid, valFactory.emptyVal[ T ], "val" )
+         }
+         def emptyRef[ T <: Mutable[ KCtx, T ]]: Ref[ KCtx, T ] = {
+            implicit val txn = ctx.txn
+            val fid = fidRef.get
+            fidRef += 1
+            new RefImpl[ T ]( fid, refFactory.emptyRef[ T ], "ref" )
+         }
       }
 
       // ---- RefFactory ----
@@ -444,8 +476,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
       }
 
-      private class RefImpl[ T <: Mutable[ KCtx, T ] ]( val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
+      private class RefImpl[ T <: Mutable[ KCtx, T ] ]( fid: Long, val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
+         def id = FID( fid.toShort )
       }
 
       private trait AbstractVal[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
@@ -491,8 +524,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
       }
 
-      private class ValImpl[ T ]( val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {
+      private class ValImpl[ T ]( fid: Long, val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
+         def id = FID( fid.toShort )
       }
    }
 //   private class ModelVar[ T ]( val ref: Holder[ T ], val typeName: String )

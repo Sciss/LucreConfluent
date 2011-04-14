@@ -86,8 +86,18 @@ trait TxnValStoreFactory[ K, Up ] {
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
+trait TxnDelegateValStoreFactory[ K, Up ] {
+   def emptyVal[ V <: Up ]( del: TxnStore[ K, V ])( implicit txn: InTxn ): TxnStore[ K, V ]
+}
+
 trait TxnRefStoreFactory[ K, Up[ _ ]] {
    def emptyRef[ V <: Up[ V ]]( implicit txn: InTxn ): TxnStore[ K, V ]
+//   def emptyVal[ V ]: TxnStore[ K, V ]
+//   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
+}
+
+trait TxnDelegateRefStoreFactory[ K, Up[ _ ]] {
+   def emptyRef[ V <: Up[ V ]]( del: TxnStore[ K, V ])( implicit txn: InTxn ): TxnStore[ K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }

@@ -36,21 +36,21 @@ object KSystemImpl {
    private type Holder[ T ]   = TxnStore[ Path, T ]
 //   private type StoreFactory  = TxnStoreFactory[ Path ]
 
-   def apply[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
+   def apply[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
 
-   private class Sys[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
+   private class Sys[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
       val nodeIDRef = STMRef( 0 )
 
-      val valFactory = CachedTxnStore.valFactory[ Version ](
-         HashedTxnStore.valFactory[ Version, Any ], Cache.Val ) // HashedTxnStore.cache( HashedTxnStore.cacheGroup ))
+      val cacheValFactory  = CachedTxnStore.valFactory[ Version ]( Cache.Val )
+      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
 
-      val refFactory = CachedTxnStore.refFactory[ Version, KCtx ]( // ({type λ[α] = Mutable[A,α]})#λ
-         HashedTxnStore.valFactory[ Version, Any ], Cache.Ref )
+      val cacheRefFactory  = CachedTxnStore.refFactory[ Version, KCtx ]( Cache.Ref )
+//      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
 
-      type RefHolder[ T <: Mutable[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
+      type RefHolder[ T <: Node[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
       val atomic = TxnExecutor.defaultAtomic
 
@@ -270,7 +270,7 @@ object KSystemImpl {
          def emptyVal[ T ] : Val[ ECtx, T ] = {
             error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
-         def emptyRef[ T <: Mutable[ ECtx, T ]] : Ref[ ECtx, T ] = {
+         def emptyRef[ T <: Node[ ECtx, T ]] : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
             error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
@@ -401,13 +401,13 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            new ValImpl[ T ]( fid, valFactory.emptyVal[ T ], "val" )
+            new ValImpl[ T ]( fid, cacheValFactory.emptyVal[ T ]( hashValFactory.emptyVal[ T ]), "val" )
          }
-         def emptyRef[ T <: Mutable[ KCtx, T ]]: Ref[ KCtx, T ] = {
+         def emptyRef[ T <: Node[ KCtx, T ]]: Ref[ KCtx, T ] = {
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            new RefImpl[ T ]( fid, refFactory.emptyRef[ T ], "ref" )
+            new RefImpl[ T ]( fid, cacheRefFactory.emptyRef[ T ]( hashValFactory.emptyVal[ T ]), "ref" )
          }
       }
 
@@ -426,7 +426,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )
 
-      private trait AbstractRef[ T <: Mutable[ KCtx, T ]]
+      private trait AbstractRef[ T <: Node[ KCtx, T ]]
       extends Ref[ KCtx, T ] {
          protected val ref: RefHolder[ T ]
          protected val typeName : String
@@ -476,7 +476,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
       }
 
-      private class RefImpl[ T <: Mutable[ KCtx, T ] ]( fid: Long, val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
+      private class RefImpl[ T <: Node[ KCtx, T ] ]( fid: Long, val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
          def id = FID( fid.toShort )
       }

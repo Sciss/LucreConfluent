@@ -44,7 +44,7 @@ object Factory {
 //   def esystem[ W[ _ <: ECtx ] <: Access[ ECtx, Unit, W ]]( init: W[ _ ])( implicit m: OptManifest[ W[ _ ]]) : ESystem[ W ] =
 //      ESystemImpl[ W ]( init )
 
-   def ksystem[ A <: Mutable[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = KSystemImpl[ A ]( ap ) // ( hsf )
+   def ksystem[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = KSystemImpl[ A ]( ap ) // ( hsf )
 
 //   def psystem : PSystem = error( "NOT YET IMPLEMENTED" ) // PSystemImpl()
 //   def bsystem : BSystem = error( "NOT YET IMPLEMENTED" ) // BSystemImpl()

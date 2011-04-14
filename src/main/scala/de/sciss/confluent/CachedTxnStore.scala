@@ -127,19 +127,37 @@ object CachedTxnStore {
       }
    }
 
-   def valFactory[ X ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]]) : TxnValStoreFactory[ Path[ X ], Any ] =
-      new ValFactoryImpl[ X ]( storeFactory, group )
+//   def valFactory[ X ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]]) : TxnValStoreFactory[ Path[ X ], Any ] =
+//      new ValFactoryImpl[ X ]( storeFactory, group )
+//
+//   def refFactory[ X, A ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, (Path[ X ], A) ]) : TxnRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] =
+//      new RefFactoryImpl[ X, A ]( storeFactory, group )
+//
+//   private class ValFactoryImpl[ X ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]])
+//   extends TxnValStoreFactory[ Path[ X ], Any ] {
+//      def emptyVal[ V ]( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] = new ValCache[ X, V ]( storeFactory.emptyVal[ V ], group )
+//   }
+//
+//   private class RefFactoryImpl[ X, A ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, (Path[ X ], A) ])
+//   extends TxnRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] {
+//      def emptyRef[ V <: Mutable[ A, V ]]( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] = new RefCache[ X, A, V ]( storeFactory.emptyVal[ V ], group )
+//   }
 
-   def refFactory[ X, A ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, (Path[ X ], A) ]) : TxnRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] =
-      new RefFactoryImpl[ X, A ]( storeFactory, group )
+   def valFactory[ X ]( group: TxnCacheGroup[ Long, Path[ X ]]) : TxnDelegateValStoreFactory[ Path[ X ], Any ] =
+      new ValFactoryImpl[ X ]( group )
 
-   private class ValFactoryImpl[ X ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, Path[ X ]])
-   extends TxnValStoreFactory[ Path[ X ], Any ] {
-      def emptyVal[ V ]( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] = new ValCache[ X, V ]( storeFactory.emptyVal[ V ], group )
+   def refFactory[ X, A ]( group: TxnCacheGroup[ Long, (Path[ X ], A) ]) : TxnDelegateRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] =
+      new RefFactoryImpl[ X, A ]( group )
+
+   private class ValFactoryImpl[ X ]( group: TxnCacheGroup[ Long, Path[ X ]])
+   extends TxnDelegateValStoreFactory[ Path[ X ], Any ] {
+      def emptyVal[ V ]( del: TxnStore[ Path[ X ], V ])( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] =
+         new ValCache[ X, V ]( del, group )
    }
 
-   private class RefFactoryImpl[ X, A ]( storeFactory: TxnValStoreFactory[ Path[ X ], Any ], group: TxnCacheGroup[ Long, (Path[ X ], A) ])
-   extends TxnRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] {
-      def emptyRef[ V <: Mutable[ A, V ]]( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] = new RefCache[ X, A, V ]( storeFactory.emptyVal[ V ], group )
+   private class RefFactoryImpl[ X, A ]( group: TxnCacheGroup[ Long, (Path[ X ], A) ])
+   extends TxnDelegateRefStoreFactory[ Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] {
+      def emptyRef[ V <: Mutable[ A, V ]]( del: TxnStore[ Path[ X ], V ])( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] =
+         new RefCache[ X, A, V ]( del, group )
    }
 }

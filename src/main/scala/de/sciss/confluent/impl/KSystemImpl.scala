@@ -32,9 +32,9 @@ package impl
 import collection.immutable.{Set => ISet}
 import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import com.sleepycat.je.Environment
-import java.io.File
-import HashedTxnDBStore.{Value => DBValue}
+import HashedTxnDBStore.{Value => DBValue, ValueNone => DBValueNone, ValuePre => DBValuePre, ValueFull => DBValueFull }
 import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
+import java.io.{ObjectInputStream, ObjectOutputStream, File}
 
 object KSystemImpl {
    private type Holder[ T ]   = TxnStore[ Path, T ]
@@ -46,24 +46,29 @@ object KSystemImpl {
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
 
+      type RefHolder[ T <: Node[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
+
       val nodeIDRef = STMRef( 0 )
+      val atomic = TxnExecutor.defaultAtomic
 
       val cacheValFactory  = CachedTxnStore.valFactory[ Version ]( Cache.Val )
 //      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
       val hashValFactory   = HashedTxnDBStore.valFactory[ Version, Any ]
-      val dbValFactory     = atomic { implicit txn => BerkeleyDBStore.open({
-         val envCfg  = BerkeleyDBStore.newEnvCfg
-         envCfg.setAllowCreate( true )
-         val dir     = new File( new File( System.getProperty( "user.home" ), "Desktop" ), "ksys" )
-         new Environment( dir, envCfg )
-      }, "ksys" )}
+      val dbValFactory     = atomic { implicit txn =>
+         val (env, dbCfg ) = {
+            val envCfg  = BerkeleyDBStore.newEnvCfg
+            val dbCfg   = BerkeleyDBStore.newDBCfg
+            envCfg.setAllowCreate( true )
+            dbCfg.setAllowCreate( true )  // why do we need to specify this twice??
+            val dir     = new File( new File( System.getProperty( "user.home" ), "Desktop" ), "ksys" )
+            dir.mkdirs()
+            (new Environment( dir, envCfg ), dbCfg)
+         }
+         BerkeleyDBStore.open( env, "ksys", dbCfg )
+      }
 
       val cacheRefFactory  = CachedTxnStore.refFactory[ Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
-
-      type RefHolder[ T <: Node[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
-
-      val atomic = TxnExecutor.defaultAtomic
 
       val aInit : A = atomic { txn =>
          val res = ap.init( Ctx( txn, VersionPath.init.path ))
@@ -423,7 +428,8 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            val db      = error( "TODO" ) // dbValFactory.emptyVal[ DBValue[ T ]]
+            implicit val serial = new ValSerializer[ T ]( fid )   // XXX hmmm....
+            val db      = dbValFactory.emptyVal[ DBValue[ T ]]
             val hashed  = hashValFactory.emptyVal[ T ]( db )
             val cached  = cacheRefFactory.emptyRef[ T ]( hashed )
             new RefImpl[ T ]( fid, cached, "ref" )
@@ -432,11 +438,29 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
       private class ValSerializer[ T ]( val id: Long ) extends DBSerializer[ DBValue[ T ]] {
          def readObject( in: TupleInput ) : DBValue[ T ] = {
-            error( "TODO" )
+            in.read() match {
+               case 0 =>
+                  DBValueNone
+               case 1 =>
+                  DBValuePre( in.readLong() )
+               case 2 =>
+                  val ois = new ObjectInputStream( in )
+                  DBValueFull( ois.readObject().asInstanceOf[ T ])
+            }
          }
 
-         def writeObject( out: TupleOutput, v: DBValue[ T ]) {
-            error( "TODO" )
+         def writeObject( out: TupleOutput, dbv: DBValue[ T ]) {
+            dbv match {
+               case DBValueNone =>
+                  out.write( 0 )
+               case DBValuePre( hash ) =>
+                  out.write( 1 )
+                  out.writeLong( hash )
+               case DBValueFull( v ) =>
+                  out.write( 2 )
+                  val oos = new ObjectOutputStream( out )
+                  oos.writeObject( v ) // XXX hmmm...
+            }
          }
       }
 

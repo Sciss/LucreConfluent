@@ -58,7 +58,7 @@ object CList {
 //      error( "No functiona" )
    }
 
-   private class CNilImpl[ C, T ]( val path: C, val id: NodeID ) extends CNil[ C, T ] {
+   /* @serializable */ private class CNilImpl[ C, T ]( val path: C, val id: NodeID ) extends CNil[ C, T ] {
       def substitute( path: C ) = new CNilImpl[ C, T ]( path, id )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
       def inspect { println( "CNil[ " + path + ", ? ]")}

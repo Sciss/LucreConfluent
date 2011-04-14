@@ -59,11 +59,13 @@ object BerkeleyDBStore {
       var ok   = false
       try {
          txn.setName( "Open '" + name + "'" )
-         val createDir = dbCfg.getAllowCreate && !dbCfg.getReadOnly
-         if( createDir ) env.getHome.mkdirs()
+//         val createDir = dbCfg.getAllowCreate && !dbCfg.getReadOnly
+//         if( createDir ) env.getHome.mkdirs()
          val db = env.openDatabase( txn, name, dbCfg )
          try {
-            new HandleImpl( env, db, txnCfg )
+            val res = new HandleImpl( env, db, txnCfg )
+            ok = true
+            res
          } finally {
             if( !ok ) db.close()
          }

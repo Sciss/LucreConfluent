@@ -30,6 +30,7 @@ package de.sciss.confluent
 
 import de.sciss.fingertree.FingerTree
 import concurrent.stm.InTxn
+import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 
 trait TxnStoreLike[ K, @specialized V, Repr ] {
 //   type Path = TxnStore.Path[ K ]
@@ -135,3 +136,18 @@ trait TxnCacheGroup[ H, K ] {
 //trait TxnDirtyRecorder[ K ] {
 //   def addDirty( key: K, com: TxnStoreCommitter[ K ])
 //}
+
+trait TxnDBStoreFactory[ K ] {
+   def emptyVal[ V ]( implicit txn: InTxn, serializer: DBSerializer[ V ]): TxnStore[ K, V ]
+}
+
+trait DBSerializer[ V ] {
+   /**
+    * Retrieve the 48-bit (!) identifier of the
+    * object. That is, it is assumed that the
+    * upper 16 bits are meaningless.
+    */
+   def id: Long // ( v: V ) : Long
+   def writeObject( out: TupleOutput, v: V ) : Unit
+   def readObject( in: TupleInput ) : V
+}

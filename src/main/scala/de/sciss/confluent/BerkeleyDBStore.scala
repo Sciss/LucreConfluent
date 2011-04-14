@@ -29,10 +29,10 @@
 package de.sciss.confluent
 
 import com.sleepycat.util.FastOutputStream
-import java.io.ObjectOutputStream
-import com.sleepycat.bind.tuple.TupleOutput
-import com.sleepycat.je.{Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
 import concurrent.stm.{InTxnEnd, Txn => STMTxn, TxnLocal, Ref => STMRef, InTxn}
+import java.io.{ObjectInputStream, ObjectOutputStream}
+import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
+import com.sleepycat.je.{OperationStatus, Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
 
 class BerkeleyDBStore {
    def newEnvCfg: EnvironmentConfig = {
@@ -75,7 +75,7 @@ class BerkeleyDBStore {
    private class HandleImpl( env: Environment, db: Database, txnCfg: TransactionConfig ) extends Handle with STMTxn.ExternalDecider {
       handle =>
 
-      val countRef      = STMRef( db.count() ) // XXX
+//      val countRef      = STMRef( db.count() ) // XXX
       val dbTxnRef      = TxnLocal( initialValue = initDBTxn( _ ))
 
       def environment   = env
@@ -108,18 +108,37 @@ class BerkeleyDBStore {
             try { dbTxn.abort() } catch { case _ => }
          }
          val to = new TupleOutput
-         DBTxnHandle( dbTxn, to, new ObjectOutputStream( to ))
+         DBTxnHandle( dbTxn, to, new DatabaseEntry(), new DatabaseEntry() )
       }
 
-      def emptyVal[ V <: AnyRef ]( implicit txn: InTxn ): TxnStore[ Long, V ] = {
-         val id = countRef.get
-         countRef.set( id + 1 )
-         new StoreImpl( id )
+//      def emptyVal[ V <: AnyRef ]( implicit txn: InTxn ): TxnStore[ Long, V ] = {
+//         val id = countRef.get
+//         countRef.set( id + 1 )
+//         new StoreImpl( id )
+//      }
+
+      def emptyVal[ V ]( implicit txn: InTxn, s: DBSerializer[ V ]): TxnStore[ Long, V ] = {
+//         val id = countRef.get
+//         countRef.set( id + 1 )
+         new StoreImpl( s )
       }
 
-      class StoreImpl[ V ]( id: Long ) extends TxnStore[ Long, V ] {
+      class StoreImpl[ V ]( s: DBSerializer[ V ]) extends TxnStore[ Long, V ] {
          def get( key: Long )( implicit txn: InTxn ) : Option[ V ] = {
-            error( "TODO" )
+            val h = dbTxnRef.get
+            val out = h.to
+            out.reset()  // actually this shouldn't be needed
+            val id = s.id // ( value )
+            out.writeInt( (id >> 16).toInt )
+            out.writeUnsignedShort( id.toInt )
+            out.writeLong( key )
+            h.dbKey.setData( out.toByteArray )
+            out.reset()
+            val dbValue = h.dbValue
+            if( db.get( h.txn, h.dbKey, dbValue, null ) == OperationStatus.SUCCESS ) {
+               val in = new TupleInput( dbValue.getData, dbValue.getOffset, dbValue.getSize )
+               Some( s.readObject( in ))
+            } else None
          }
 
          def put( key: Long, value: V )( implicit txn: InTxn ) {
@@ -133,27 +152,32 @@ class BerkeleyDBStore {
          }
 
          private def write( h: DBTxnHandle, key: Long, value : V ) {
-            h.to.reset()
-            h.to.writeLong( id )
-            h.to.writeLong( key )
-            val dbKey   = new DatabaseEntry( h.to.toByteArray )
-            h.to.reset()
-            h.oos.writeObject( value )
-            val dbValue = new DatabaseEntry( h.to.toByteArray )
-            db.put( h.txn, dbKey, dbValue )
+            val out = h.to
+            out.reset()  // actually this shouldn't be needed
+            val id = s.id // ( value )
+            out.writeInt( (id >> 16).toInt )
+            out.writeUnsignedShort( id.toInt )
+            out.writeLong( key )
+            h.dbKey.setData( out.toByteArray )
+            out.reset()
+//            h.oos.writeObject( value )
+            s.writeObject( out, value )
+            h.dbValue.setData( out.toByteArray )
+            out.reset()
+            db.put( h.txn, h.dbKey, h.dbValue )
          }
 
          def getWithPrefix( key: Long )( implicit txn: InTxn ) : Option[ (V, Int) ] = error( "Unsupported operation" )
 
          def inspect( implicit txn: InTxn ) {
-            println( "DBStore[" + id + "]" )
+            println( "DBStore" ) // [" + s.id + "]" )
          }
       }
    }
 
-   private case class DBTxnHandle( txn: DBTxn, to: TupleOutput, oos: ObjectOutputStream )
+   private case class DBTxnHandle( txn: DBTxn, to: TupleOutput, dbKey: DatabaseEntry, dbValue: DatabaseEntry /*, oos: ObjectOutputStream */)
 
-   trait Handle extends TxnValStoreFactory[ Long, AnyRef ] {
+   trait Handle extends TxnDBStoreFactory[ Long  ] {
       def name: String
       def close( env: Boolean ) : Unit
       def environment : Environment

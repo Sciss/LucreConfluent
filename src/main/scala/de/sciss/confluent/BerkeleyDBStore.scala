@@ -34,7 +34,7 @@ import java.io.{ObjectInputStream, ObjectOutputStream}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import com.sleepycat.je.{OperationStatus, Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
 
-class BerkeleyDBStore {
+object BerkeleyDBStore {
    def newEnvCfg: EnvironmentConfig = {
       val cfg = new EnvironmentConfig()
       cfg.setTransactional( true )

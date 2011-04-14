@@ -31,6 +31,10 @@ package impl
 
 import collection.immutable.{Set => ISet}
 import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
+import com.sleepycat.je.Environment
+import java.io.File
+import HashedTxnDBStore.{Value => DBValue}
+import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 
 object KSystemImpl {
    private type Holder[ T ]   = TxnStore[ Path, T ]
@@ -45,7 +49,14 @@ object KSystemImpl {
       val nodeIDRef = STMRef( 0 )
 
       val cacheValFactory  = CachedTxnStore.valFactory[ Version ]( Cache.Val )
-      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
+//      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
+      val hashValFactory   = HashedTxnDBStore.valFactory[ Version, Any ]
+      val dbValFactory     = atomic { implicit txn => BerkeleyDBStore.open({
+         val envCfg  = BerkeleyDBStore.newEnvCfg
+         envCfg.setAllowCreate( true )
+         val dir     = new File( new File( System.getProperty( "user.home" ), "Desktop" ), "ksys" )
+         new Environment( dir, envCfg )
+      }, "ksys" )}
 
       val cacheRefFactory  = CachedTxnStore.refFactory[ Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
@@ -401,13 +412,31 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            new ValImpl[ T ]( fid, cacheValFactory.emptyVal[ T ]( hashValFactory.emptyVal[ T ]), "val" )
+            implicit val serial = new ValSerializer[ T ]( fid )
+            val db      = dbValFactory.emptyVal[ DBValue[ T ]]
+            val hashed  = hashValFactory.emptyVal[ T ]( db )
+            val cached  = cacheValFactory.emptyVal[ T ]( hashed )
+            new ValImpl[ T ]( fid, cached, "val" )
          }
+
          def emptyRef[ T <: Node[ KCtx, T ]]: Ref[ KCtx, T ] = {
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            new RefImpl[ T ]( fid, cacheRefFactory.emptyRef[ T ]( hashValFactory.emptyVal[ T ]), "ref" )
+            val db      = error( "TODO" ) // dbValFactory.emptyVal[ DBValue[ T ]]
+            val hashed  = hashValFactory.emptyVal[ T ]( db )
+            val cached  = cacheRefFactory.emptyRef[ T ]( hashed )
+            new RefImpl[ T ]( fid, cached, "ref" )
+         }
+      }
+
+      private class ValSerializer[ T ]( val id: Long ) extends DBSerializer[ DBValue[ T ]] {
+         def readObject( in: TupleInput ) : DBValue[ T ] = {
+            error( "TODO" )
+         }
+
+         def writeObject( out: TupleOutput, v: DBValue[ T ]) {
+            error( "TODO" )
          }
       }
 

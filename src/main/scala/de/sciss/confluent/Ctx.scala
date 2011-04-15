@@ -38,9 +38,12 @@ trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
    def newNode[ T ]( fun: NodeFactory[ Repr ] => T ) : T
 }
 
-trait NodeFactory[ C ] extends RefFactory[ C ] {
+trait NodeFactory[ C ] /* extends RefFactory[ C ] */ {
    def id: NodeID
    def path: C
+
+   def emptyVal[ T : Serializer ] : Val[ C, T ]
+   def emptyRef[ T <: Node[ C, T ] : Serializer ] : Ref[ C, T ]
 }
 
 trait ECtx extends CtxLike[ ECtx ] // { def seminal = this }

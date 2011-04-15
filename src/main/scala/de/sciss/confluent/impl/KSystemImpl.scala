@@ -283,10 +283,10 @@ object KSystemImpl {
 
          val id = NID( nodeAlloc( ctx.txn ))
 
-         def emptyVal[ T ] : Val[ ECtx, T ] = {
+         def emptyVal[ T : Serializer ] : Val[ ECtx, T ] = {
             error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
-         def emptyRef[ T <: Node[ ECtx, T ]] : Ref[ ECtx, T ] = {
+         def emptyRef[ T <: Node[ ECtx, T ] : Serializer ] : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
             error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
@@ -413,22 +413,22 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def id      = NID( nid )
          val fidRef  = TxnLocal( nid.toLong << 16 )
 
-         def emptyVal[ T ]: Val[ KCtx, T ] = {
+         def emptyVal[ T : Serializer ]: Val[ KCtx, T ] = {
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            implicit val serial = new ValSerializer[ T ]( fid )
+            implicit val serial = new KValSerializer[ T ]( fid )
             val db      = dbValFactory.emptyVal[ DBValue[ T ]]
             val hashed  = hashValFactory.emptyVal[ T ]( db )
             val cached  = cacheValFactory.emptyVal[ T ]( hashed )
             new ValImpl[ T ]( fid, cached, "val" )
          }
 
-         def emptyRef[ T <: Node[ KCtx, T ]]: Ref[ KCtx, T ] = {
+         def emptyRef[ T <: Node[ KCtx, T ] : Serializer ]: Ref[ KCtx, T ] = {
             implicit val txn = ctx.txn
             val fid = fidRef.get
             fidRef += 1
-            implicit val serial = new ValSerializer[ T ]( fid )   // XXX hmmm....
+            implicit val serial = new KValSerializer[ T ]( fid )   // XXX hmmm....
             val db      = dbValFactory.emptyVal[ DBValue[ T ]]
             val hashed  = hashValFactory.emptyVal[ T ]( db )
             val cached  = cacheRefFactory.emptyRef[ T ]( hashed )
@@ -436,7 +436,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          }
       }
 
-      private class ValSerializer[ T ]( val id: Long ) extends DBSerializer[ DBValue[ T ]] {
+      private class KValSerializer[ T ]( val id: Long ) extends DirectSerializer[ DBValue[ T ]] {
          def readObject( in: TupleInput ) : DBValue[ T ] = {
             in.read() match {
                case 0 =>

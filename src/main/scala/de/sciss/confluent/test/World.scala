@@ -3,6 +3,7 @@ package test
 
 import de.sciss.fingertree.FingerTree
 import concurrent.stm.{InTxn, TxnExecutor}
+import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 
 object World {
 //   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
@@ -42,7 +43,7 @@ object CList {
       path.newNode { n => new CNilImpl[ C, T ]( n.path, n.id )}
    }
 
-   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ]) : CList[ C, T ] = {
+   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: Serializer[ T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
       elems.iterator.foldRight[ CList[ C, T ]]( empty[ C, T ])( (v, tail) => {
 //         val (id, spath) = path.seminal
@@ -56,6 +57,13 @@ object CList {
          }
       })
 //      error( "No functiona" )
+   }
+
+   implicit def serializer[ C, T ] : Serializer[ CList[ C, T ]] = new SerializerImpl[ C, T ]
+
+   private class SerializerImpl[ C, T ] extends DirectSerializer[ CList[ C, T ]] {
+      def readObject( in: TupleInput ) : CList[ C, T ] = error( "TODO" )
+      def writeObject( out: TupleOutput, v: CList[ C, T ]) : Unit = error( "TODO" )
    }
 
    /* @serializable */ private class CNilImpl[ C, T ]( val path: C, val id: NodeID ) extends CNil[ C, T ] {

@@ -119,18 +119,18 @@ object BerkeleyDBStore {
 //         new StoreImpl( id )
 //      }
 
-      def emptyVal[ V ]( implicit txn: InTxn, s: DBSerializer[ V ]): TxnStore[ Long, V ] = {
+      def emptyVal[ V ]( implicit txn: InTxn, s: Serializer[ V ]): TxnStore[ Long, V ] = {
 //         val id = countRef.get
 //         countRef.set( id + 1 )
          new StoreImpl( s )
       }
 
-      class StoreImpl[ V ]( s: DBSerializer[ V ]) extends TxnStore[ Long, V ] {
+      class StoreImpl[ V ]( s: Serializer[ V ]) extends TxnStore[ Long, V ] {
          def get( key: Long )( implicit txn: InTxn ) : Option[ V ] = {
             val h = dbTxnRef.get
             val out = h.to
             out.reset()  // actually this shouldn't be needed
-            val id = s.id // ( value )
+            val id: Long = error( "TODO" ) // = s.id // ( value )
             out.writeInt( (id >> 16).toInt )
             out.writeUnsignedShort( id.toInt )
             out.writeLong( key )
@@ -156,7 +156,7 @@ object BerkeleyDBStore {
          private def write( h: DBTxnHandle, key: Long, value : V ) {
             val out = h.to
             out.reset()  // actually this shouldn't be needed
-            val id = s.id // ( value )
+            val id: Long = error( "TODO" ) // val id = s.id // ( value )
             out.writeInt( (id >> 16).toInt )
             out.writeUnsignedShort( id.toInt )
             out.writeLong( key )

@@ -97,13 +97,13 @@ trait Val[ A, T ] {
    def id: FieldID
 }
 
-trait RefFactory[ A ] {
-//   def emptyVal[ T ]( implicit path: A ) : Val[ A, T ]
-//   def emptyRef[ T <: Mutable[ A, T ]]( implicit path: A ) : Ref[ A, T ]
-   def emptyVal[ T ] : Val[ A, T ]
-   def emptyRef[ T <: Node[ A, T ]] : Ref[ A, T ]
-//   def apply[ V ]( v: V ) : RefVar[ A, V ]
-}
+//trait RefFactory[ A ] {
+////   def emptyVal[ T ]( implicit path: A ) : Val[ A, T ]
+////   def emptyRef[ T <: Mutable[ A, T ]]( implicit path: A ) : Ref[ A, T ]
+//   def emptyVal[ T ] : Val[ A, T ]
+//   def emptyRef[ T <: Node[ A, T ]] : Ref[ A, T ]
+////   def apply[ V ]( v: V ) : RefVar[ A, V ]
+//}
 
 //trait ValFactory[ P ] {
 //   def emptyVal[ T ] : Val[ T ]

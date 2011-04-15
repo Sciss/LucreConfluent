@@ -144,16 +144,5 @@ trait TxnCacheGroup[ H, K ] {
 //}
 
 trait TxnDBStoreFactory[ K ] {
-   def emptyVal[ V ]( implicit txn: InTxn, serializer: DBSerializer[ V ]): TxnStore[ K, V ]
-}
-
-trait DBSerializer[ V ] {
-   /**
-    * Retrieve the 48-bit (!) identifier of the
-    * object. That is, it is assumed that the
-    * upper 16 bits are meaningless.
-    */
-   def id: Long // ( v: V ) : Long
-   def writeObject( out: TupleOutput, v: V ) : Unit
-   def readObject( in: TupleInput ) : V
+   def emptyVal[ V ]( implicit txn: InTxn, serializer: Serializer[ V ]): TxnStore[ K, V ]
 }

@@ -41,8 +41,14 @@ object CList {
 
    def empty[ C <: Ct[ C ], T ]( implicit path: C ) : CList[ C, T ] = path.newNode( makeNil )
 
-   private def makeNil[ C, T ]( n: NodeFactory[ C ]) : CList[ C, T ] = {
+   private def makeNil[ C, T ]( n: NodeFactory[ C ]) = {
       new CNilImpl[ C, T ]( n.path, n.id )
+   }
+
+   private def makeCons[ C <: Ct[ C ], T ]( n: NodeFactory[ C ])( implicit s: Serializer[ C, T ]) = {
+      val headRef = n.emptyVal[ T ]
+      val tailRef = n.emptyRef[ CList[ C, T ]]
+      new CConsImpl[ C, T ]( n.path, CConsImpl.Data( n.id, headRef, tailRef ))
    }
 
    def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: Serializer[ C, T ]) : CList[ C, T ] = {
@@ -50,37 +56,36 @@ object CList {
       elems.iterator.foldRight[ CList[ C, T ]]( empty[ C, T ])( (v, tail) => {
 //         val (id, spath) = path.seminal
          path.newNode { n =>
+            val ccns = makeCons[ C, T ]( n )
             implicit val path = n.path
-            val headRef = n.emptyVal[ T ]
-            headRef.set( v )
-            val tailRef = n.emptyRef[ CList[ C, T ]]
-            tailRef.set( tail )
-            new CConsImpl[ C, T ]( path, CConsImpl.Data( n.id, headRef, tailRef ))
+            ccns.head = v
+            ccns.tail = tail
+            ccns
          }
       })
 //      error( "No functiona" )
    }
 
-   implicit def serializer[ C <: Ct[ C ], T ] : Serializer[ C, CList[ C, T ]] = new SerializerImpl[ C, T ]
+   implicit def serializer[ C <: Ct[ C ], T ]( implicit s: Serializer[ C, T ]): Serializer[ C, CList[ C, T ]] =
+      new SerializerImpl[ C, T ]
 
-   private class SerializerImpl[ C <: Ct[ C ], T ] extends DirectSerializer[ C, CList[ C, T ]] {
+   private class SerializerImpl[ C <: Ct[ C ], T ]( implicit s: Serializer[ C, T ])
+   extends DirectSerializer[ C, CList[ C, T ]] {
       def readObject( in: TupleInput )( implicit access: C ) : CList[ C, T ] = {
          in.read() match {
-            case 1 => error( "TODO" )
+            case 1 => access.oldNode( in.readInt() )( n => makeCons( n )( s ))
             case 0 => access.oldNode( in.readInt() )( makeNil )
          }
       }
 
-      def writeObject( out: TupleOutput, v: CList[ C, T ])( implicit access: C ) : Unit = v match {
-         case ccns: CCons[ _, _ ] =>
-            out.write( 1 )
-            val id = ccns.id.value
-            out.writeInt( id >> 16 )
-            out.writeUnsignedShort( id )
-            // ccns.writeObject( out )
-            error( "TODO" ) // out.writeLong( v.id.value )
-         case cnil: CNil[ _, _ ] =>
-            out.write( 0 )
+      def writeObject( out: TupleOutput, v: CList[ C, T ])( implicit access: C ) : Unit = {
+         v match {
+            case ccns: CCons[ _, _ ] =>
+               out.write( 1 )
+            case cnil: CNil[ _, _ ] =>
+               out.write( 0 )
+         }
+         out.writeInt( v.id.value )
       }
    }
 

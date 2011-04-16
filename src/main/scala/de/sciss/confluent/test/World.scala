@@ -39,11 +39,13 @@ trait World[ P ] extends Node[ P, World[ P ]] {
 object CList {
 //   var DEBUG_PRINT = true
 
-   def empty[ C <: Ct[ C ], T ]( implicit path: C ) : CList[ C, T ] = {
-      path.newNode { n => new CNilImpl[ C, T ]( n.path, n.id )}
+   def empty[ C <: Ct[ C ], T ]( implicit path: C ) : CList[ C, T ] = path.newNode( makeNil )
+
+   private def makeNil[ C, T ]( n: NodeFactory[ C ]) : CList[ C, T ] = {
+      new CNilImpl[ C, T ]( n.path, n.id )
    }
 
-   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: Serializer[ T ]) : CList[ C, T ] = {
+   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: Serializer[ C, T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
       elems.iterator.foldRight[ CList[ C, T ]]( empty[ C, T ])( (v, tail) => {
 //         val (id, spath) = path.seminal
@@ -59,14 +61,30 @@ object CList {
 //      error( "No functiona" )
    }
 
-   implicit def serializer[ C, T ] : Serializer[ CList[ C, T ]] = new SerializerImpl[ C, T ]
+   implicit def serializer[ C <: Ct[ C ], T ] : Serializer[ C, CList[ C, T ]] = new SerializerImpl[ C, T ]
 
-   private class SerializerImpl[ C, T ] extends DirectSerializer[ CList[ C, T ]] {
-      def readObject( in: TupleInput ) : CList[ C, T ] = error( "TODO" )
-      def writeObject( out: TupleOutput, v: CList[ C, T ]) : Unit = error( "TODO" )
+   private class SerializerImpl[ C <: Ct[ C ], T ] extends DirectSerializer[ C, CList[ C, T ]] {
+      def readObject( in: TupleInput )( implicit access: C ) : CList[ C, T ] = {
+         in.read() match {
+            case 1 => error( "TODO" )
+            case 0 => access.oldNode( in.readInt() )( makeNil )
+         }
+      }
+
+      def writeObject( out: TupleOutput, v: CList[ C, T ])( implicit access: C ) : Unit = v match {
+         case ccns: CCons[ _, _ ] =>
+            out.write( 1 )
+            val id = ccns.id.value
+            out.writeInt( id >> 16 )
+            out.writeUnsignedShort( id )
+            // ccns.writeObject( out )
+            error( "TODO" ) // out.writeLong( v.id.value )
+         case cnil: CNil[ _, _ ] =>
+            out.write( 0 )
+      }
    }
 
-   /* @serializable */ private class CNilImpl[ C, T ]( val path: C, val id: NodeID ) extends CNil[ C, T ] {
+   /* @serializable */ private case class CNilImpl[ C, T ]( path: C, id: NodeID ) extends CNil[ C, T ] {
       def substitute( path: C ) = new CNilImpl[ C, T ]( path, id )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
       def inspect { println( "CNil[ " + path + ", ? ]")}
@@ -130,7 +148,7 @@ object CList {
 }
 // Partial2U[ KSystem.Ctx, CList, A ]#Apply
 //extends Access[ KSystem.Ctx, Path, ({type λ[ α <: KSystem.Ctx ] = CList[ α, A ]})#λ ]
-sealed trait CList[ C, T] extends Node[ C, CList[ C, T ]] {
+sealed trait CList[ C, T] extends Node[ C, CList[ C, T ]] /* with HasSerializer[ CList[ C, T ]] */ {
    def headOption : Option[ CCons[ C, T ]]
    def lastOption : Option[ CCons[ C, T ]]
    def drop( n: Int ) : CList[ C, T ]

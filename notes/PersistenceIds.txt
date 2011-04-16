@@ -47,3 +47,6 @@ trait CCons[] extends Node { def head; def head_=; def tail; def tail_= }
    ValueFull : 02 HHHHHHHHHHHHHHHH
 
 thus we may completely remove the distinction between ValuePre and ValueFull ?
+
+////////////////////////////////
+

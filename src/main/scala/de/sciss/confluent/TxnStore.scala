@@ -32,12 +32,12 @@ import de.sciss.fingertree.FingerTree
 import concurrent.stm.InTxn
 import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 
-trait TxnStoreLike[ K, @specialized V, Repr ] {
+trait TxnStoreLike[ C, K, @specialized V, Repr ] {
 //   type Path = TxnStore.Path[ K ]
 
-   def put( key: K, value: V )( implicit txn: InTxn ) : Unit
-   def get( key: K )( implicit txn: InTxn ) : Option[ V ]
-   def getOrElse( key: K, default: => V )( implicit txn: InTxn ) : V = get( key ).getOrElse( default )
+   def put( key: K, value: V )( implicit access: C ) : Unit
+   def get( key: K )( implicit access: C ) : Option[ V ]
+   def getOrElse( key: K, default: => V )( implicit access: C ) : V = get( key ).getOrElse( default )
 
    /**
     *    Finds the value which is the nearest
@@ -51,18 +51,18 @@ trait TxnStoreLike[ K, @specialized V, Repr ] {
     *    Like findMaxPrefixOffset, but with support
     *    for multiplicities
     */
-   def getWithPrefix( key: K )( implicit txn: InTxn ) : Option[ (V, Int) ]
+   def getWithPrefix( key: K )( implicit access: C ) : Option[ (V, Int) ]
 
-   def inspect( implicit txn: InTxn ) : Unit
+   def inspect( implicit access: C ) : Unit
 
-   def putAll( elems: Iterable[ (K, V) ])( implicit txn: InTxn ) : Unit
+   def putAll( elems: Iterable[ (K, V) ])( implicit access: C ) : Unit
 }
 
 //trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 //}
 
-trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
+trait TxnStore[ C, K, V ] extends TxnStoreLike[ C, K, V, TxnStore[ C, K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 }
 
@@ -70,8 +70,8 @@ trait TxnStore[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] {
 //   def flush( trns: ((K, V)) => (K, V) )( implicit txn: InTxn ) : Unit
 //}
 
-trait TxnCacheLike[ K ] {
-   def flush( trns: K => K )( implicit txn: InTxn ) : Unit
+trait TxnCacheLike[ C, K ] {
+   def flush( trns: K => K )( implicit access: C ) : Unit
 }
 
 //
@@ -81,32 +81,32 @@ trait TxnCacheLike[ K ] {
 //   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
 //}
 
-trait TxnValStoreFactory[ K, Up ] {
-   def emptyVal[ V <: Up ]( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnValStoreFactory[ C, K, Up ] {
+   def emptyVal[ V <: Up ]( implicit access: C ): TxnStore[ C, K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
-trait TxnDelegateValStoreFactory[ K, Up ] {
-   def emptyVal[ V <: Up ]( del: TxnStore[ K, V ])( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnDelegateValStoreFactory[ C, K, Up ] {
+   def emptyVal[ V <: Up ]( del: TxnStore[ C, K, V ])( implicit access: C ): TxnStore[ C, K, V ]
 }
 
-trait TxnDelegateValStoreFactory2[ K, Up, KD, Del[ _ ]] {
-   def emptyVal[ V <: Up ]( del: TxnStore[ KD, Del[ V ]])( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnDelegateValStoreFactory2[ C, K, Up, KD, Del[ _ ]] {
+   def emptyVal[ V <: Up ]( del: TxnStore[ C, KD, Del[ V ]])( implicit access: C ): TxnStore[ C, K, V ]
 }
 
-trait TxnRefStoreFactory[ K, Up[ _ ]] {
-   def emptyRef[ V <: Up[ V ]]( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnRefStoreFactory[ C, K, Up[ _ ]] {
+   def emptyRef[ V <: Up[ V ]]( implicit access: C ): TxnStore[ C, K, V ]
 //   def emptyVal[ V ]: TxnStore[ K, V ]
 //   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
-trait TxnDelegateRefStoreFactory[ K, Up[ _ ]] {
-   def emptyRef[ V <: Up[ V ]]( del: TxnStore[ K, V ])( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnDelegateRefStoreFactory[ C, K, Up[ _ ]] {
+   def emptyRef[ V <: Up[ V ]]( del: TxnStore[ C, K, V ])( implicit access: C ): TxnStore[ C, K, V ]
 }
 
-trait TxnDelegateRefStoreFactory2[ K, Up[ _ ], KD, Del[ _ ]] {
-   def emptyRef[ V <: Up[ V ]]( del: TxnStore[ KD, Del[ V ]])( implicit txn: InTxn ): TxnStore[ K, V ]
+trait TxnDelegateRefStoreFactory2[ C, K, Up[ _ ], KD, Del[ _ ]] {
+   def emptyRef[ V <: Up[ V ]]( del: TxnStore[ C, KD, Del[ V ]])( implicit access: C ): TxnStore[ C, K, V ]
 }
 
 //trait TxnStoreCacheFactory[ K ] {
@@ -116,10 +116,10 @@ trait TxnDelegateRefStoreFactory2[ K, Up[ _ ], KD, Del[ _ ]] {
 //}
 //
 
-trait TxnCacheGroup[ H, K ] {
+trait TxnCacheGroup[ C, H, K ] {
 //   def addDirty( cache: TxnCacheLike[ K, V ])( implicit txn: InTxn ) : Unit
-   def addDirty( cache: TxnCacheLike[ K ], hash: H )( implicit txn: InTxn ) : Unit
-   def addAllDirty( cache: TxnCacheLike[ K ], hashes: Traversable[ H ])( implicit txn: InTxn ) : Unit
+   def addDirty( cache: TxnCacheLike[ C, K ], hash: H )( implicit access: C ) : Unit
+   def addAllDirty( cache: TxnCacheLike[ C, K ], hashes: Traversable[ H ])( implicit access: C ) : Unit
 }
 
 //trait TxnStoreCommitter[ K ] {
@@ -143,6 +143,6 @@ trait TxnCacheGroup[ H, K ] {
 //   def addDirty( key: K, com: TxnStoreCommitter[ K ])
 //}
 
-trait TxnDBStoreFactory[ K ] {
-   def emptyVal[ V ]( implicit txn: InTxn, serializer: Serializer[ V ]): TxnStore[ K, V ]
+trait TxnDBStoreFactory[ C, K ] {
+   def emptyVal[ V ]( implicit access: C, serializer: Serializer[ C, V ]): TxnStore[ C, K, V ]
 }

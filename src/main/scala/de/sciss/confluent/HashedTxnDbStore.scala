@@ -39,15 +39,16 @@ object HashedTxnDBStore {
 //   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
 
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class StoreImpl[ X, V ]( dbStore: TxnStore[ Long, Value[ V ]]) extends TxnStore[ Path[ X ], V ] {
+   private class StoreImpl[ C <: Ct[ C ], X, V ]( dbStore: TxnStore[ C, Long, Value[ V ]])
+   extends TxnStore[ C, Path[ X ], V ] {
       type Pth = Path[ X ]
 
       val ref     = STMRef[ Map[ Long, SoftValue[ V ]]]( LongMap.empty[ SoftValue[ V ]])
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
 
-      def inspect( implicit txn: InTxn ) = {
+      def inspect( implicit access: C ) = {
          println( "INSPECT STORE" )
-         println( ref.get )
+         println( ref.get( access.txn ))
 //         println( "  perm = " + ref.get )
 //         println( "  temp = " + cache.get )
       }
@@ -56,8 +57,8 @@ object HashedTxnDBStore {
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = {
-         val map = ref.get
+      def get( key: Pth )( implicit access: C ) : Option[ V ] = {
+         val map = ref.get( access.txn )
          Hashing.getWithHash( key, map ).flatMap {
             case (vf: SoftValueFull[ _ ], hash) =>
                Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]))
@@ -67,8 +68,8 @@ object HashedTxnDBStore {
          }
       }
 
-      def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] = {
-         val map = ref.get
+      def getWithPrefix( key: Pth )( implicit access: C ) : Option[ (V, Int) ] = {
+         val map = ref.get( access.txn )
          Hashing.getWithPrefixAndHash( key, map ).flatMap {
             case (vf: SoftValueFull[ _ ], sz, hash) =>
                Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]), sz )
@@ -78,17 +79,17 @@ object HashedTxnDBStore {
          }
       }
 
-      private def dbGet( map: Map[ Long, SoftValue[ V ]], hash: Long, vf: SoftValueFull[ V ])( implicit txn: InTxn ) : V = {
+      private def dbGet( map: Map[ Long, SoftValue[ V ]], hash: Long, vf: SoftValueFull[ V ])( implicit access: C ) : V = {
          val v0 = vf.get()
          if( v0 == null ) {
             val vfh  = dbStore.get( hash ).getOrElse( error( "Missing entry in store (" + hash + ")" )).asInstanceOf[ ValueFull[ V ]]
-            ref.set( map + (hash -> vfh.soften))  // refresh SoftReference
+            ref.set( map + (hash -> vfh.soften))( access.txn )  // refresh SoftReference
             vfh.v
          } else v0
       }
 
-      def put( key: Pth, value: V )( implicit txn: InTxn ) {
-         ref.transform { map =>
+      def put( key: Pth, value: V )( implicit access: C ) {
+         ref.transform( map => {
             val fullHash = key.sum
             val list = Hashing.collect( key, map, { s: Pth =>
                if( s.isEmpty ) ValueNone else if( s.sum == fullHash ) ValueFull( value ) else new ValuePre( s.sum )
@@ -96,13 +97,13 @@ object HashedTxnDBStore {
             dbStore.putAll( list )
             val soft = list.map( tup => (tup._1, tup._2.soften) )
             map ++ soft
-         }
+         })( access.txn )
       }
 
-      def putAll( elems: Iterable[ (Pth, V) ])( implicit txn: InTxn ) {
+      def putAll( elems: Iterable[ (Pth, V) ])( implicit access: C ) {
 // since we use the cache now, let's just skip this check
 //         if( elems.isEmpty ) return
-         ref.transform { map =>
+         ref.transform( map => {
 //            elems.foldLeft( map ) { case (map, (key, value)) =>
 //               val hash    = key.sum
 //               Hashing.add( key, map, { s: Pth =>
@@ -120,7 +121,7 @@ object HashedTxnDBStore {
             dbStore.putAll( list )
             val soft = list.map( tup => (tup._1, tup._2.soften) )
             map ++ soft
-         }
+         })( access.txn )
       }
    }
 
@@ -164,21 +165,21 @@ object HashedTxnDBStore {
 //      def emptyRef[ V <: Up[ _ ]]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]( dbStoreFactory.emptyVal[ AnyRef ])
 //   }
 
-   def valFactory[ X, Up ] : TxnDelegateValStoreFactory2[ Path[ X ], Up, Long, Value ] =
-      new ValFactoryImpl[ X, Up ]
+   def valFactory[ C <: Ct[ C ], X, Up ] : TxnDelegateValStoreFactory2[ C, Path[ X ], Up, Long, Value ] =
+      new ValFactoryImpl[ C, X, Up ]
 
-   def refFactory[ X, Up[ _ ]] : TxnDelegateRefStoreFactory2[ Path[ X ], Up, Long, Value ] =
-      new RefFactoryImpl[ X, Up ]
+   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnDelegateRefStoreFactory2[ C, Path[ X ], Up, Long, Value ] =
+      new RefFactoryImpl[ C, X, Up ]
 
-   private class ValFactoryImpl[ X, Up ]
-   extends TxnDelegateValStoreFactory2[ Path[ X ], Up, Long, Value ] {
-      def emptyVal[ V <: Up ]( del: TxnStore[ Long, Value[ V ]])( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] =
-         new StoreImpl[ X, V ]( del )
+   private class ValFactoryImpl[ C <: Ct[ C ], X, Up ]
+   extends TxnDelegateValStoreFactory2[ C, Path[ X ], Up, Long, Value ] {
+      def emptyVal[ V <: Up ]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, Path[ X ], V ] =
+         new StoreImpl[ C, X, V ]( del )
    }
 
-   private class RefFactoryImpl[ X, Up[ _ ]]
-   extends TxnDelegateRefStoreFactory2[ Path[ X ], Up, Long, Value ] {
-      def emptyRef[ V <: Up[ _ ]]( del: TxnStore[ Long, Value[ V ]])( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] =
-         new StoreImpl[ X, V ]( del )
+   private class RefFactoryImpl[ C <: Ct[ C ], X, Up[ _ ]]
+   extends TxnDelegateRefStoreFactory2[ C, Path[ X ], Up, Long, Value ] {
+      def emptyRef[ V <: Up[ _ ]]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, Path[ X ], V ] =
+         new StoreImpl[ C, X, V ]( del )
    }
 }

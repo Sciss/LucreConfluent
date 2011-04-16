@@ -35,22 +35,22 @@ import de.sciss.fingertree.FingerTree
 object HashedTxnStore {
    type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
-   private class StoreImpl[ X, V ] extends TxnStore[ Path[ X ], V ] {
+   private class StoreImpl[ C <: Ct[ C ], X, V ] extends TxnStore[ C, Path[ X ], V ] {
       type Pth = Path[ X ]
 
       val ref = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
 
-      def inspect( implicit txn: InTxn ) = {
+      def inspect( implicit access: C ) = {
          println( "INSPECT STORE" )
-         println( ref.get )
+         println( ref.get( access.txn ))
       }
 
       /**
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Pth )( implicit txn: InTxn ) : Option[ V ] = {
-         val map = ref.get
+      def get( key: Pth )( implicit access: C ) : Option[ V ] = {
+         val map = ref.get( access.txn )
          Hashing.maxPrefixValue( key, map ).flatMap {
             case ValueFull( v )        => Some( v )
             case ValuePre( /* len, */ hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
@@ -58,8 +58,8 @@ object HashedTxnStore {
          }
       }
 
-      def getWithPrefix( key: Pth )( implicit txn: InTxn ) : Option[ (V, Int) ] = {
-         val map = ref.get
+      def getWithPrefix( key: Pth )( implicit access: C ) : Option[ (V, Int) ] = {
+         val map = ref.get( access.txn )
          Hashing.getWithPrefix( key, map ).flatMap {
             case (ValueFull( v ), sz)        => Some( v -> sz )
             case (ValuePre( /* len, */ hash ), sz) => {
@@ -75,27 +75,27 @@ object HashedTxnStore {
        * we only support bulk writing via `putAll`. This method throws
        * a runtime exception.
        */
-      def put( key: Pth, value: V )( implicit txn: InTxn ) {
-         ref.transform { map =>
+      def put( key: Pth, value: V )( implicit access: C ) {
+         ref.transform( map => {
             val hash    = key.sum
 //          if( map.isEmpty ) rec.addDirty( hash, this )
             Hashing.add( key, map, { s: Pth =>
                if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
             })
-         }
+         })( access.txn )
       }
 
-      def putAll( elems: Iterable[ (Pth, V) ])( implicit txn: InTxn ) {
+      def putAll( elems: Iterable[ (Pth, V) ])( implicit access: C ) {
 // since we use the cache now, let's just skip this check
 //         if( elems.isEmpty ) return
-         ref.transform { map =>
+         ref.transform( map => {
             elems.foldLeft( map ) { case (map, (key, value)) =>
                val hash    = key.sum
                Hashing.add( key, map, { s: Pth =>
                   if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
                })
             }
-         }
+         })( access.txn )
       }
    }
 
@@ -104,14 +104,14 @@ object HashedTxnStore {
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 
-   def valFactory[ X, Up ] : TxnValStoreFactory[ Path[ X ], Up ] = new ValFactoryImpl[ X, Up ]
-   def refFactory[ X, Up[ _ ]] : TxnRefStoreFactory[ Path[ X ], Up ] = new RefFactoryImpl[ X, Up ]
+   def valFactory[ C <: Ct[ C ], X, Up ] : TxnValStoreFactory[ C, Path[ X ], Up ] = new ValFactoryImpl[ C, X, Up ]
+   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnRefStoreFactory[ C, Path[ X ], Up ] = new RefFactoryImpl[ C, X, Up ]
 
-   private class ValFactoryImpl[ X, Up ] extends TxnValStoreFactory[ Path[ X ], Up ] {
-      def emptyVal[ V <: Up ]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+   private class ValFactoryImpl[ C <: Ct[ C ], X, Up ] extends TxnValStoreFactory[ C, Path[ X ], Up ] {
+      def emptyVal[ V <: Up ]( implicit access: C ): TxnStore[ C, Path[ X ], V ] = new StoreImpl[ C, X, V ]
    }
 
-   private class RefFactoryImpl[ X, Up[ _ ]] extends TxnRefStoreFactory[ Path[ X ], Up ] {
-      def emptyRef[ V <: Up[ _ ]]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]
+   private class RefFactoryImpl[ C <: Ct[ C ], X, Up[ _ ]] extends TxnRefStoreFactory[ C, Path[ X ], Up ] {
+      def emptyRef[ V <: Up[ _ ]]( implicit access: C ): TxnStore[ C, Path[ X ], V ] = new StoreImpl[ C, X, V ]
    }
 }

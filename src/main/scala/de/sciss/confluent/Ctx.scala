@@ -36,14 +36,15 @@ trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
 //   def seminal: (NodeID, Repr)
 //   def newNode[ T ]( fun: (Repr with NodeFactory[ Repr ]) => T ) : T
    def newNode[ T ]( fun: NodeFactory[ Repr ] => T ) : T
+   def oldNode[ T ]( id: Int )( fun: NodeFactory[ Repr ] => T ) : T
 }
 
 trait NodeFactory[ C ] /* extends RefFactory[ C ] */ {
    def id: NodeID
    def path: C
 
-   def emptyVal[ T : Serializer ] : Val[ C, T ]
-   def emptyRef[ T <: Node[ C, T ] : Serializer ] : Ref[ C, T ]
+   def emptyVal[ T ]( implicit s: Serializer[ C, T ]) : Val[ C, T ]
+   def emptyRef[ T <: Node[ C, T ]]( implicit s: Serializer[ C, T ]) : Ref[ C, T ]
 }
 
 trait ECtx extends CtxLike[ ECtx ] // { def seminal = this }

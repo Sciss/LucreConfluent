@@ -37,7 +37,7 @@ import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 import java.io.{ObjectInputStream, ObjectOutputStream, File}
 
 object KSystemImpl {
-   private type Holder[ T ]   = TxnStore[ Path, T ]
+   private type Holder[ T ]   = TxnStore[ KCtx, Path, T ]
 //   private type StoreFactory  = TxnStoreFactory[ Path ]
 
    def apply[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
@@ -51,10 +51,11 @@ object KSystemImpl {
       val nodeIDRef = STMRef( 0 )
       val atomic = TxnExecutor.defaultAtomic
 
-      val cacheValFactory  = CachedTxnStore.valFactory[ Version ]( Cache.Val )
+      val cacheValFactory  = CachedTxnStore.valFactory[ KCtx, Version ]( Cache.Val )
 //      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
-      val hashValFactory   = HashedTxnDBStore.valFactory[ Version, Any ]
-      val dbValFactory     = atomic { implicit txn =>
+      val hashValFactory   = HashedTxnDBStore.valFactory[ KCtx, Version, Any ]
+      val dbValFactory     = atomic { txn =>
+         implicit val ctx = Ctx( txn, VersionPath.init.path )
          val (env, dbCfg ) = {
             val envCfg  = BerkeleyDBStore.newEnvCfg
             val dbCfg   = BerkeleyDBStore.newDBCfg
@@ -64,15 +65,16 @@ object KSystemImpl {
             dir.mkdirs()
             (new Environment( dir, envCfg ), dbCfg)
          }
-         BerkeleyDBStore.open( env, "ksys", dbCfg )
+         BerkeleyDBStore.open[ KCtx ]( env, "ksys", dbCfg )
       }
 
-      val cacheRefFactory  = CachedTxnStore.refFactory[ Version, KCtx ]( Cache.Ref )
+      val cacheRefFactory  = CachedTxnStore.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
 
       val aInit : A = atomic { txn =>
-         val res = ap.init( Ctx( txn, VersionPath.init.path ))
-         assert( Cache.isEmpty( txn ))
+         val ctx  = Ctx( txn, VersionPath.init.path )
+         val res  = ap.init( ctx )
+         assert( Cache.isEmpty( ctx ))
          res
       }
 
@@ -96,8 +98,9 @@ object KSystemImpl {
 //      }
 
       def t[ R ]( fun: ECtx => R ) : R = atomic { txn =>
-         val res = fun( EphCtx( txn ))
-         assert( Cache.isEmpty( txn ))
+         val ctx  = EphCtx( txn )
+         val res  = fun( ctx )
+//         assert( Cache.isEmpty( txn ))
          res
       }
 
@@ -206,7 +209,7 @@ object KSystemImpl {
                val c = Ctx( txn, path )
                val a = aInit.substitute( c )
                fun( a )
-               Cache.flush( txn ).map( suffix => {
+               Cache.flush( c ).map( suffix => {
                   path :+ suffix
                }).getOrElse( path )
             }
@@ -262,7 +265,7 @@ object KSystemImpl {
 //                  res
 //               }
                // ...
-               Cache.flush( txn ).map( suffix => {
+               Cache.flush( c ).map( suffix => {
                   val newPath = oldPath :+ suffix
                   vRef.set( newPath )( txn )
                   newPath
@@ -275,7 +278,8 @@ object KSystemImpl {
       extends ECtx {
          def substitute( newPath: Unit ) : ECtx = this
          def eph: ECtx = this
-         def newNode[ T ]( fun: NodeFactory[ ECtx ] => T ) : T = fun( new ENodeFactory( this ))
+         def newNode[ T ]( fun: NodeFactory[ ECtx ] => T ) : T             = fun( new ENodeFactory( this ))
+         def oldNode[ T ]( id: Int )( fun: NodeFactory[ ECtx ] => T ) : T  = fun( new ENodeFactory( this ))
       }
 
       private class ENodeFactory( ctx: ECtx ) extends NodeFactory[ ECtx ] {
@@ -283,10 +287,10 @@ object KSystemImpl {
 
          val id = NID( nodeAlloc( ctx.txn ))
 
-         def emptyVal[ T : Serializer ] : Val[ ECtx, T ] = {
+         def emptyVal[ T ]( implicit s: Serializer[ ECtx, T ]) : Val[ ECtx, T ] = {
             error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
-         def emptyRef[ T <: Node[ ECtx, T ] : Serializer ] : Ref[ ECtx, T ] = {
+         def emptyRef[ T <: Node[ ECtx, T ]]( implicit s: Serializer[ ECtx, T ]) : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
             error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
@@ -295,33 +299,35 @@ object KSystemImpl {
       private object Cache {
          val hashSet = TxnLocal( Set.empty[ Long ])
 
-         trait SubCache[ X ] extends TxnCacheGroup[ Long, X ] {
-            val cacheSet = TxnLocal( Set.empty[ TxnCacheLike[ X ]])
+         trait SubCache[ X ] extends TxnCacheGroup[ KCtx, Long, X ] {
+            val cacheSet = TxnLocal( Set.empty[ TxnCacheLike[ KCtx, X ]])
 
-            def addDirty( cache: TxnCacheLike[ X ], hash: Long )( implicit txn: InTxn ) {
+            def addDirty( cache: TxnCacheLike[ KCtx, X ], hash: Long )( implicit access: KCtx ) {
+               implicit val txn = access.txn
                hashSet.transform( _ + hash )
                cacheSet.transform( _ + cache )
             }
 
-            def addAllDirty( cache: TxnCacheLike[ X ], hashes: Traversable[ Long ])( implicit txn: InTxn ) {
+            def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes: Traversable[ Long ])( implicit access: KCtx ) {
+               implicit val txn = access.txn
                hashSet.transform( _ ++ hashes )
                cacheSet.transform( _ + cache )
             }
 
-            def flush( suffix: Version )( implicit txn: InTxn ) : Unit
+            def flush( suffix: Version )( implicit access: KCtx ) : Unit
          }
 
          object Val extends SubCache[ Path ] {
-            def flush( suffix: Version )( implicit txn: InTxn ) {
+            def flush( suffix: Version )( implicit access: KCtx ) {
 //               val rid = suffix.rid
-               cacheSet.get.foreach( _.flush( _ :+ suffix ))
+               cacheSet.get( access.txn ).foreach( _.flush( _ :+ suffix ))
             }
          }
 
          object Ref extends SubCache[ (Path, KCtx) ] {
-            def flush( suffix: Version )( implicit txn: InTxn ) {
+            def flush( suffix: Version )( implicit access: KCtx ) {
 //               val rid = suffix.rid
-               cacheSet.get.foreach( _.flush( tup => {
+               cacheSet.get( access.txn ).foreach( _.flush( tup => {
                   val pset = tup._1
                   val ctx  = tup._2 // .path
                   val ctxm = ctx.substitute( ctx.path :+ suffix )
@@ -331,7 +337,8 @@ object KSystemImpl {
             }
          }
 
-         def flush( implicit txn: InTxn ) : Option[ Version ] = {
+         def flush( implicit access: KCtx ) : Option[ Version ] = {
+            implicit val txn = access.txn
             val hashes = hashSet.swap( Set.empty[ Long ])
             if( hashes.isEmpty ) return None
             val suffix = Version.newFrom( hashes )
@@ -341,7 +348,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             Some( suffix )
          }
 
-         def isEmpty( implicit txn: InTxn ) : Boolean = hashSet.get.isEmpty
+         def isEmpty( implicit access: KCtx ) : Boolean = hashSet.get( access.txn ).isEmpty
       }
 
 //      private object Recorder extends HashedTxnStore.Recorder {
@@ -390,7 +397,8 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
          def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
 
-         def newNode[ T ]( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( seminal ))
+         def newNode[ T ]( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( nodeAlloc( ctx.txn ), seminal ))
+         def oldNode[ T ]( id: Int )( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( id, seminal ))
 
       //   private[proc] def readPath : VersionPath = pathRef.get( txn )
 
@@ -406,15 +414,16 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         }
       }
 
-      private class KNodeFactory( ctx: KCtx ) extends NodeFactory[ KCtx ] {
+      private class KNodeFactory( nid: Int, ctx: KCtx ) extends NodeFactory[ KCtx ] {
          def path = ctx
 
-         val nid     = nodeAlloc( ctx.txn )
+//         val nid     = nodeAlloc( ctx.txn )
          def id      = NID( nid )
          val fidRef  = TxnLocal( nid.toLong << 16 )
 
-         def emptyVal[ T : Serializer ]: Val[ KCtx, T ] = {
-            implicit val txn = ctx.txn
+         def emptyVal[ T ]( implicit s: Serializer[ KCtx, T ]): Val[ KCtx, T ] = {
+            implicit val c    = ctx
+            implicit val txn  = c.txn
             val fid = fidRef.get
             fidRef += 1
             implicit val serial = new KValSerializer[ T ]( fid )
@@ -424,8 +433,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             new ValImpl[ T ]( fid, cached, "val" )
          }
 
-         def emptyRef[ T <: Node[ KCtx, T ] : Serializer ]: Ref[ KCtx, T ] = {
-            implicit val txn = ctx.txn
+         def emptyRef[ T <: Node[ KCtx, T ]]( implicit s: Serializer[ KCtx, T ]): Ref[ KCtx, T ] = {
+            implicit val c    = ctx
+            implicit val txn  = c.txn
             val fid = fidRef.get
             fidRef += 1
             implicit val serial = new KValSerializer[ T ]( fid )   // XXX hmmm....
@@ -436,8 +446,8 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          }
       }
 
-      private class KValSerializer[ T ]( val id: Long ) extends DirectSerializer[ DBValue[ T ]] {
-         def readObject( in: TupleInput ) : DBValue[ T ] = {
+      private class KValSerializer[ T ]( val id: Long ) extends DirectSerializer[ KCtx, DBValue[ T ]] {
+         def readObject( in: TupleInput )( implicit access: KCtx ) : DBValue[ T ] = {
             in.read() match {
                case 0 =>
                   DBValueNone
@@ -449,7 +459,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             }
          }
 
-         def writeObject( out: TupleOutput, dbv: DBValue[ T ]) {
+         def writeObject( out: TupleOutput, dbv: DBValue[ T ])( implicit access: KCtx ) {
             dbv match {
                case DBValueNone =>
                   out.write( 0 )
@@ -490,7 +500,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             val txn  = ctx.txn
             val p    = ctx.path
 
-            val tup = ref.getWithPrefix( p )( txn ).getOrElse( error( "No assignment for path " + p ))
+            val tup = ref.getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
             // what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
             val raw = tup._1
             val pre = tup._2
@@ -518,15 +528,14 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          }
 
          def set( v: T )( implicit ctx: KCtx ) {
-            val txn  = ctx.txn
-            val p    = ctx.path
-            ref.put( p, v )( txn )
+            val p = ctx.path
+            ref.put( p, v )
 //            ref.transform( _.put( p, v ))( txn )
 //            fireUpdate( v )( txn )
          }
 
 //         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
-         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
+         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
       }
 
       private class RefImpl[ T <: Node[ KCtx, T ] ]( fid: Long, val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
@@ -543,15 +552,13 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          override def toString = "KVar[" + typeName + "]"
 
          def get( implicit ctx: KCtx ) : T = {
-            val txn  = ctx.txn
             val p    = ctx.path
-            ref.get( p )( txn ).getOrElse( error( "No assignment for path " + p ))
+            ref.get( p ).getOrElse( error( "No assignment for path " + p ))
          }
 
          def set( v: T )( implicit ctx: KCtx ) {
-            val txn  = ctx.txn
             val p    = ctx.path
-            ref.put( p, v )( txn )
+            ref.put( p, v )
 //            fireUpdate( v )
          }
 
@@ -574,7 +581,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //         fireUpdate( v, c )
 //      }
 
-         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect( ctx.txn )
+         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
       }
 
       private class ValImpl[ T ]( fid: Long, val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {

@@ -49,8 +49,8 @@ object BerkeleyDBStore {
 
    def newTxnCfg: TransactionConfig = new TransactionConfig()
 
-   def open( env: Environment, name: String, dbCfg: DatabaseConfig = newDBCfg, txnCfg: TransactionConfig = newTxnCfg )
-           ( implicit txn: InTxn ) : Handle = {
+   def open[ C <: Ct[ C ]]( env: Environment, name: String, dbCfg: DatabaseConfig = newDBCfg, txnCfg: TransactionConfig = newTxnCfg )
+           ( implicit access: C ) : Handle[ C ] = {
 
       val envCfg = env.getConfig
       require( envCfg.getTransactional && dbCfg.getTransactional && !dbCfg.getSortedDuplicates )
@@ -63,7 +63,7 @@ object BerkeleyDBStore {
 //         if( createDir ) env.getHome.mkdirs()
          val db = env.openDatabase( txn, name, dbCfg )
          try {
-            val res = new HandleImpl( env, db, txnCfg )
+            val res = new HandleImpl[ C ]( env, db, txnCfg )
             ok = true
             res
          } finally {
@@ -74,7 +74,8 @@ object BerkeleyDBStore {
       }
    }
 
-   private class HandleImpl( env: Environment, db: Database, txnCfg: TransactionConfig ) extends Handle with STMTxn.ExternalDecider {
+   private class HandleImpl[ C <: Ct[ C ]]( env: Environment, db: Database, txnCfg: TransactionConfig )
+   extends Handle[ C ] with STMTxn.ExternalDecider {
       handle =>
 
 //      val countRef      = STMRef( db.count() ) // XXX
@@ -119,15 +120,15 @@ object BerkeleyDBStore {
 //         new StoreImpl( id )
 //      }
 
-      def emptyVal[ V ]( implicit txn: InTxn, s: Serializer[ V ]): TxnStore[ Long, V ] = {
+      def emptyVal[ V ]( implicit access: C, s: Serializer[ C, V ]): TxnStore[ C, Long, V ] = {
 //         val id = countRef.get
 //         countRef.set( id + 1 )
-         new StoreImpl( s )
+         new StoreImpl[ C, V ]( s )
       }
 
-      class StoreImpl[ V ]( s: Serializer[ V ]) extends TxnStore[ Long, V ] {
-         def get( key: Long )( implicit txn: InTxn ) : Option[ V ] = {
-            val h = dbTxnRef.get
+      class StoreImpl[ C <: Ct[ C ], V ]( s: Serializer[ C, V ]) extends TxnStore[ C, Long, V ] {
+         def get( key: Long )( implicit access: C ) : Option[ V ] = {
+            val h = dbTxnRef.get( access.txn )
             val out = h.to
             out.reset()  // actually this shouldn't be needed
             val id: Long = error( "TODO" ) // = s.id // ( value )
@@ -143,17 +144,17 @@ object BerkeleyDBStore {
             } else None
          }
 
-         def put( key: Long, value: V )( implicit txn: InTxn ) {
-            val h = dbTxnRef.get
+         def put( key: Long, value: V )( implicit access: C ) {
+            val h = dbTxnRef.get( access.txn )
             write( h, key, value )
          }
 
-         def putAll( elems: Iterable[ (Long, V) ])( implicit txn: InTxn ) {
-            val h = dbTxnRef.get
+         def putAll( elems: Iterable[ (Long, V) ])( implicit access: C ) {
+            val h = dbTxnRef.get( access.txn )
             elems.foreach { tup => write( h, tup._1, tup._2 )}
          }
 
-         private def write( h: DBTxnHandle, key: Long, value : V ) {
+         private def write( h: DBTxnHandle, key: Long, value : V )( implicit access: C ) {
             val out = h.to
             out.reset()  // actually this shouldn't be needed
             val id: Long = error( "TODO" ) // val id = s.id // ( value )
@@ -169,9 +170,9 @@ object BerkeleyDBStore {
             db.put( h.txn, h.dbKey, h.dbValue )
          }
 
-         def getWithPrefix( key: Long )( implicit txn: InTxn ) : Option[ (V, Int) ] = error( "Unsupported operation" )
+         def getWithPrefix( key: Long )( implicit access: C ) : Option[ (V, Int) ] = error( "Unsupported operation" )
 
-         def inspect( implicit txn: InTxn ) {
+         def inspect( implicit access: C ) {
             println( "DBStore" ) // [" + s.id + "]" )
          }
       }
@@ -179,7 +180,7 @@ object BerkeleyDBStore {
 
    private case class DBTxnHandle( txn: DBTxn, to: TupleOutput, dbKey: DatabaseEntry, dbValue: DatabaseEntry /*, oos: ObjectOutputStream */)
 
-   trait Handle extends TxnDBStoreFactory[ Long  ] {
+   trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ C, Long  ] {
       def name: String
       def close( env: Boolean ) : Unit
       def environment : Environment

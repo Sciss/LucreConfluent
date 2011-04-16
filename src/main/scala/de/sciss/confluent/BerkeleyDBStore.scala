@@ -120,18 +120,18 @@ object BerkeleyDBStore {
 //         new StoreImpl( id )
 //      }
 
-      def emptyVal[ V ]( implicit access: C, s: Serializer[ C, V ]): TxnStore[ C, Long, V ] = {
+      def emptyVal[ V ]( id: Long )( implicit access: C, s: Serializer[ C, V ]): TxnStore[ C, Long, V ] = {
 //         val id = countRef.get
 //         countRef.set( id + 1 )
-         new StoreImpl[ C, V ]( s )
+         new StoreImpl[ C, V ]( id, s )
       }
 
-      class StoreImpl[ C <: Ct[ C ], V ]( s: Serializer[ C, V ]) extends TxnStore[ C, Long, V ] {
+      class StoreImpl[ C <: Ct[ C ], V ]( id: Long, s: Serializer[ C, V ]) extends TxnStore[ C, Long, V ] {
          def get( key: Long )( implicit access: C ) : Option[ V ] = {
             val h = dbTxnRef.get( access.txn )
             val out = h.to
             out.reset()  // actually this shouldn't be needed
-            val id: Long = error( "TODO" ) // = s.id // ( value )
+//            val id: Long = error( "TODO" ) // = s.id // ( value )
             out.writeInt( (id >> 16).toInt )
             out.writeUnsignedShort( id.toInt )
             out.writeLong( key )
@@ -157,7 +157,7 @@ object BerkeleyDBStore {
          private def write( h: DBTxnHandle, key: Long, value : V )( implicit access: C ) {
             val out = h.to
             out.reset()  // actually this shouldn't be needed
-            val id: Long = error( "TODO" ) // val id = s.id // ( value )
+//            val id: Long = error( "TODO" ) // val id = s.id // ( value )
             out.writeInt( (id >> 16).toInt )
             out.writeUnsignedShort( id.toInt )
             out.writeLong( key )
@@ -180,7 +180,13 @@ object BerkeleyDBStore {
 
    private case class DBTxnHandle( txn: DBTxn, to: TupleOutput, dbKey: DatabaseEntry, dbValue: DatabaseEntry /*, oos: ObjectOutputStream */)
 
-   trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ C, Long  ] {
+   /**
+    * A handle to the database which also functions as a store factory.
+    *
+    * **Note** that the precision of the storage identifier, although given
+    * as `Long`, is only 48 bit (the least significant 48 bit of the `Long`).
+    */
+   trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ Long, C, Long  ] {
       def name: String
       def close( env: Boolean ) : Unit
       def environment : Environment

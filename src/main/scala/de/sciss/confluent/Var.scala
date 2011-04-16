@@ -86,7 +86,7 @@ trait Ref[ A, T <: Mutable[ A, T ]] {
    def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
    def inspect( implicit path: A ) : Unit
-   def id: FieldID
+//   def id: FieldID
 }
 
 trait Val[ A, T ] {
@@ -94,7 +94,7 @@ trait Val[ A, T ] {
    def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit
    def inspect( implicit path: A ) : Unit
-   def id: FieldID
+//   def id: FieldID
 }
 
 //trait RefFactory[ A ] {

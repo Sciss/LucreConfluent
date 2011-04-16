@@ -143,6 +143,6 @@ trait TxnCacheGroup[ C, H, K ] {
 //   def addDirty( key: K, com: TxnStoreCommitter[ K ])
 //}
 
-trait TxnDBStoreFactory[ C, K ] {
-   def emptyVal[ V ]( implicit access: C, serializer: Serializer[ C, V ]): TxnStore[ C, K, V ]
+trait TxnDBStoreFactory[ I, C, K ] {
+   def emptyVal[ V ]( i: I )( implicit access: C, serializer: Serializer[ C, V ]): TxnStore[ C, K, V ]
 }

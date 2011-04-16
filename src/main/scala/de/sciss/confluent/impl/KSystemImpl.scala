@@ -163,7 +163,7 @@ object KSystemImpl {
       }
 
       private case class NID( value: Int ) extends NodeID
-      private case class FID( value: Short ) extends FieldID
+//      private case class FID( value: Short ) extends FieldID
 
       private object KEProjImpl extends KEProjector[ A, KCtx ] // with KProjector[ A, KSystem.Projection, KSystem.Cursor[ A ]]
       with ModelImpl[ ECtx, Projector.Update[ KCtx, KSystem.Cursor[ A ]]] {
@@ -422,15 +422,15 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          val fidRef  = TxnLocal( nid.toLong << 16 )
 
          def emptyVal[ T ]( implicit s: Serializer[ KCtx, T ]): Val[ KCtx, T ] = {
-            implicit val c    = ctx
-            implicit val txn  = c.txn
-            val fid = fidRef.get
-            fidRef += 1
-            implicit val serial = new KValSerializer[ T ]( fid )
-            val db      = dbValFactory.emptyVal[ DBValue[ T ]]
-            val hashed  = hashValFactory.emptyVal[ T ]( db )
-            val cached  = cacheValFactory.emptyVal[ T ]( hashed )
-            new ValImpl[ T ]( fid, cached, "val" )
+            implicit val c       = ctx
+            implicit val txn     = c.txn
+            val fid              = fidRef.get
+            fidRef              += 1
+            implicit val serial  = new KValSerializer[ T ]( s )
+            val db               = dbValFactory.emptyVal[ DBValue[ T ]]( fid )
+            val hashed           = hashValFactory.emptyVal[ T ]( db )
+            val cached           = cacheValFactory.emptyVal[ T ]( hashed )
+            new ValImpl[ T ]( /* fid, */ cached, "val" )
          }
 
          def emptyRef[ T <: Node[ KCtx, T ]]( implicit s: Serializer[ KCtx, T ]): Ref[ KCtx, T ] = {
@@ -438,15 +438,15 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             implicit val txn  = c.txn
             val fid = fidRef.get
             fidRef += 1
-            implicit val serial = new KValSerializer[ T ]( fid )   // XXX hmmm....
-            val db      = dbValFactory.emptyVal[ DBValue[ T ]]
+            implicit val serial = new KValSerializer[ T ]( s )   // XXX hmmm....
+            val db      = dbValFactory.emptyVal[ DBValue[ T ]]( fid )
             val hashed  = hashValFactory.emptyVal[ T ]( db )
             val cached  = cacheRefFactory.emptyRef[ T ]( hashed )
-            new RefImpl[ T ]( fid, cached, "ref" )
+            new RefImpl[ T ]( /* fid, */ cached, "ref" )
          }
       }
 
-      private class KValSerializer[ T ]( val id: Long ) extends DirectSerializer[ KCtx, DBValue[ T ]] {
+      private class KValSerializer[ T ]( s: Serializer[ KCtx, T ]) extends DirectSerializer[ KCtx, DBValue[ T ]] {
          def readObject( in: TupleInput )( implicit access: KCtx ) : DBValue[ T ] = {
             in.read() match {
                case 0 =>
@@ -454,8 +454,10 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
                case 1 =>
                   DBValuePre( in.readLong() )
                case 2 =>
-                  val ois = new ObjectInputStream( in )
-                  DBValueFull( ois.readObject().asInstanceOf[ T ])
+//                  val ois = new ObjectInputStream( in )
+//                  val v = ois.readObject().asInstanceOf[ T ]
+                  val v = s.readObject( in )
+                  DBValueFull( v )
             }
          }
 
@@ -468,8 +470,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
                   out.writeLong( hash )
                case DBValueFull( v ) =>
                   out.write( 2 )
-                  val oos = new ObjectOutputStream( out )
-                  oos.writeObject( v ) // XXX hmmm...
+//                  val oos = new ObjectOutputStream( out )
+//                  oos.writeObject( v ) // XXX hmmm...
+                  s.writeObject( out, v )
             }
          }
       }
@@ -538,9 +541,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
       }
 
-      private class RefImpl[ T <: Node[ KCtx, T ] ]( fid: Long, val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
+      private class RefImpl[ T <: Node[ KCtx, T ] ]( /* fid: Long, */ val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
-         def id = FID( fid.toShort )
+//         def id = FID( fid.toShort )
       }
 
       private trait AbstractVal[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
@@ -584,9 +587,9 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
       }
 
-      private class ValImpl[ T ]( fid: Long, val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {
+      private class ValImpl[ T ]( /* fid: Long, */ val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {
          protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) {}
-         def id = FID( fid.toShort )
+//         def id = FID( fid.toShort )
       }
    }
 //   private class ModelVar[ T ]( val ref: Holder[ T ], val typeName: String )

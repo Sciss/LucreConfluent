@@ -32,16 +32,19 @@ import collection.immutable.LongMap
 import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
 import de.sciss.fingertree.FingerTree
 import java.lang.ref.{SoftReference => JSoftReference}
+import collection.immutable.Map._
 
 object HashedTxnDBStore {
-   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
+   import TxnStore._
+
+//   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
 //   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
 
    // XXX no specialization thanks to scalac 2.8.1 crashing
    private class StoreImpl[ C <: Ct[ C ], X, V ]( dbStore: TxnStore[ C, Long, Value[ V ]])
-   extends TxnStore[ C, Path[ X ], V ] {
-      type Pth = Path[ X ]
+   extends TxnStore[ C, PathLike[ X ], V ] {
+      type Pth = PathLike[ X ]
 
       val ref     = STMRef[ Map[ Long, SoftValue[ V ]]]( LongMap.empty[ SoftValue[ V ]])
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
@@ -58,48 +61,181 @@ object HashedTxnDBStore {
        * we will need to enrich the Path type to account for that
        */
       def get( key: Pth )( implicit access: C ) : Option[ V ] = {
-         val map = ref.get( access.txn )
-         Hashing.getWithHash( key, map ).flatMap {
-            case (vf: SoftValueFull[ _ ], hash) =>
-               Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]))
-            case (ValuePre( fullHash ), hash ) =>
-               Some( dbGet( map, hash, map( fullHash ).asInstanceOf[ SoftValueFull[ V ]]))
-            case (ValueNone, _) => None
+         implicit val txn  = access.txn
+         val map           = ref.get
+         val dbView        = dbStore.mapView
+         val tup           = dbGetAndResolve( key, map, dbView )
+         if( tup._1 ) { // ref needs update
+            ref.set( tup._2 )
          }
+         tup._3
       }
 
       def getWithPrefix( key: Pth )( implicit access: C ) : Option[ (V, Int) ] = {
-         val map = ref.get( access.txn )
-         Hashing.getWithPrefixAndHash( key, map ).flatMap {
-            case (vf: SoftValueFull[ _ ], sz, hash) =>
-               Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]), sz )
-            case (ValuePre( fullHash ), sz, hash ) =>
-               Some( dbGet( map, hash, map( fullHash ).asInstanceOf[ SoftValueFull[ V ]]), sz )
-            case (ValueNone, _, _ ) => None
+         error( "TODO" )
+//         val map = ref.get( access.txn )
+//         Hashing.getWithPrefixAndHash( key, map ).flatMap {
+//            case (vf: SoftValueFull[ _ ], sz, hash) =>
+//               Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]), sz )
+//            case (ValuePre( fullHash ), sz, hash ) =>
+//               Some( dbGet( map, hash, map( fullHash ).asInstanceOf[ SoftValueFull[ V ]]), sz )
+//            case (ValueNone, _, _ ) => None
+//         }
+      }
+
+      private def dbHarden( vf: SoftValueFull[ V ], key: Long, map: Map[ Long, SoftValue[ V ]],
+                            dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], V) = {
+         val v0 = vf.get()
+         if( v0 == null ) {
+            val vfh  = dbView.get( key ).getOrElse( error( "Missing entry in store (" + key + ")" )).asInstanceOf[ ValueFull[ V ]]
+            val map1 = map + (key -> vfh.soften)
+            (true, map1, vfh.v)
+         } else {
+            (false, map, v0)
          }
       }
 
-//      private def dbGetWithHash[ T, V ]( key: Pth, hash: Map[ Long, V ]) : Option[ (V, Long) ] = {
-//         val pre1    = maxPrefix1( s, hash )
-//         val pre1Sz  = pre1.size
-//         val pre1Sum = pre1.sum
-//         if( pre1Sz == 0 ) None else hash.get( pre1Sum ) match {
-//            case Some( v ) => Some( (v, pre1Sum) )
-//            case None => if( pre1Sz == 1 ) None else {
-//               val pre2Sum = pre1.init.sum
-//               hash.get( pre1Sz - 1 ).map( v => (v, pre2Sum) )
-//            }
-//         }
-//      }
-
-      private def dbGet( map: Map[ Long, SoftValue[ V ]], hash: Long, vf: SoftValueFull[ V ])( implicit access: C ) : V = {
-         val v0 = vf.get()
-         if( v0 == null ) {
-            val vfh  = dbStore.get( hash ).getOrElse( error( "Missing entry in store (" + hash + ")" )).asInstanceOf[ ValueFull[ V ]]
-            ref.set( map + (hash -> vfh.soften))( access.txn )  // refresh SoftReference
-            vfh.v
-         } else v0
+      /**
+       * Resolves a key through a double lookup: It first examines the in-memory map, and if the key is
+       * not found it performs search on the underlying database. In this latter case, entries found in
+       * the database (whether they are `ValueNone`, `ValuePre` or `ValueFull`) will be regenerated in
+       * the in-memory map (a `ValueFull` is translated into a `SoftValueFull` of course).
+       *
+       * @return  the search result, consisting of three parts: The first tuple entry specifies whether
+       *          the map was modified during the search (due to in-memory refresh). If so, the second
+       *          tuple entry corresponds to the refreshed map which the caller should thus write back
+       *          to the `Ref`.
+       *          Finally, the last tuple entry specifies the value lookup result: This is either
+       *          of `SearchNoKey` (the key was not found in the map),
+       *          `SearchNoValue` (the key was found but it was pointing to `ValueNone`) or
+       *          `SearchValue` (the key was found and either it pointed directly or indirectly through
+       *          `ValuePre` to the stored value)
+       */
+      private def dbGetRefresh( key: Long, map: Map[ Long, SoftValue[ V ]],
+                                dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Search[ V ]) = {
+         map.get( key ) match {
+            case Some( vp @ ValuePre( fullKey ) )  => dbGetRefresh( fullKey, map, dbView ) // retry with full key
+            case Some( vn @ ValueNone )            => (false, map, SearchNoValue)
+            case Some( vf: SoftValueFull[ _ ])     =>
+                  val tup = dbHarden( vf.asInstanceOf[ SoftValueFull[ V ]], key, map, dbView )  // refresh soft reference and unwrap full value
+                  (tup._1, tup._2, SearchValue( tup._3 ))       // lift full value to option
+            case None => dbView.get( key ) match {
+               case Some( vp @ ValuePre( fullKey )) =>
+                  val map1 = map + (key -> vp)  // first update the input map
+                  val tup  = dbGetRefresh( fullKey, map1, dbView )   // the retry with full key
+                  (true, tup._2, tup._3)        // true here is shorthand for (true | tup._1), since we know the map has been modified
+               case Some( vn @ ValueNone )      => (true, map + (key -> vn), SearchNoValue)
+               case Some( vfh @ ValueFull( v )) => (true, map + (key -> vfh.soften), SearchValue( v ))
+               case None                        => (false, map, SearchNoKey)
+            }
+         }
       }
+
+      private def dbContainsRefresh( key: Long, map: Map[ Long, SoftValue[ V ]],
+                                     dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Boolean) = {
+         if( map.contains( key )) {
+            (false, map, true)
+         } else {
+            dbView.get( key ) match {
+               case Some( vh )   => (true, map + (key -> vh.soften), true)
+               case None         => (false, map, false)
+            }
+         }
+      }
+
+      private def dbGetAndResolve( key: Pth, map: Map[ Long, SoftValue[ V ]],
+                                   dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Option[ V ]) = {
+         val tup1    = dbMaxPrefix( key, map, dbView )
+         val mod1    = tup1._1
+         val map1    = tup1._2
+         val pre1    = tup1._3
+         val pre1Sz  = pre1.size
+         val pre1Sum = pre1.sum
+         if( pre1Sz == 0 ) {
+            (mod1, map1, None)
+         } else {
+            val tup2 = dbGetRefresh( pre1Sum, map1, dbView )
+            val mod2 = mod1 | tup2._1
+            val map2 = tup2._2
+            tup2._3 match {
+               case SearchNoKey => if( pre1Sz == 1 ) {
+                  (mod2, map2, None)
+               } else {
+                  val pre2Sum = pre1.init.sum
+                  val tup3    = dbGetRefresh( pre2Sum, map2, dbView )
+                  val mod3    = mod2 | tup3._1
+                  val map3    = tup3._2
+                  (mod3, map3, tup3._3.valueOption)
+               }
+               case s => (mod2, map2, s.valueOption)
+            }
+         }
+      }
+
+      private def dbMaxPrefix( key: Pth, map: Map[ Long, SoftValue[ V ]],
+                               dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Pth) = {
+         var mod     = false
+         var mmap    = map
+
+         val sz      = key.size
+         val m       = Hashing.bitCount( sz )
+         // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
+         var allFound= true
+         var ij      = 0
+         var ijm     = 0
+
+         {
+            var succ    = 0
+            var i = 1; while( i <= m ) {
+               val pre  = succ
+               succ     = Hashing.prefix( sz, i, m )
+               val tup  = dbContainsRefresh( key.take( succ ).sum, mmap, dbView )
+               if( tup._1 ) {
+                  mod   = true
+                  mmap  = tup._2
+               }
+               if( !tup._3 && allFound ) {
+                  allFound = false
+                  ij       = succ
+                  ijm      = pre
+               }
+            i += 1 }
+         }
+
+//         val is      = Array.tabulate( m )( i => i -> Hashing.prefix( sz, i + 1, m ))
+//         val noPres  = is.filter( tup => !map.contains( key.take( tup._2 ).sum ))
+         // "If there is no such j then sum(r) itself is stored in the hash table H so r' = r"
+//         if( noPres.isEmpty ) return (mod, mmap, key)
+         if( allFound ) return (mod, mmap, key)
+
+//         val (j, ij) = noPres.min      // j - 1 actually
+//         val ijm     = if( j == 0 ) 0 else is( j - 1 )._2
+
+         val twopk   = ij - ijm
+         var d       = twopk >> 1
+         var twoprho = d
+         while( twoprho >= 2 ) {
+            twoprho >>= 1
+            val pre  = key.take( ijm + d )
+            val tup  = dbContainsRefresh( pre.sum, mmap, dbView )
+            if( tup._1 ) {
+               mod   = true
+               mmap  = tup._2
+            }
+            d        = if( tup._3 ) d + twoprho else d - twoprho
+         }
+
+         (mod, mmap, key.take( ijm + d ))
+      }
+
+//      private def dbGet( map: Map[ Long, SoftValue[ V ]], hash: Long, vf: SoftValueFull[ V ])( implicit access: C ) : V = {
+//         val v0 = vf.get()
+//         if( v0 == null ) {
+//            val vfh  = dbStore.get( hash ).getOrElse( error( "Missing entry in store (" + hash + ")" )).asInstanceOf[ ValueFull[ V ]]
+//            ref.set( map + (hash -> vfh.soften))( access.txn )  // refresh SoftReference
+//            vfh.v
+//         } else v0
+//      }
 
       def put( key: Pth, value: V )( implicit access: C ) {
          ref.transform( map => {
@@ -138,6 +274,19 @@ object HashedTxnDBStore {
       }
    }
 
+   private sealed trait Search[ +V ] {
+      def valueOption: Option[ V ]
+   }
+   private case object SearchNoKey extends Search[ Nothing ] {
+      def valueOption = None
+   }
+   private case object SearchNoValue extends Search[ Nothing ] {
+      def valueOption = None
+   }
+   private final case class SearchValue[ V ]( v: V ) extends Search[ V ] {
+      def valueOption = Some( v )
+   }
+
    private[HashedTxnDBStore] sealed trait SoftValue[ +V ]
 
    sealed trait Value[ +V ] {
@@ -146,10 +295,10 @@ object HashedTxnDBStore {
    case object ValueNone extends Value[ Nothing ] with SoftValue[ Nothing ] {
       private[HashedTxnDBStore] def soften: SoftValue[ Nothing ] = this
    }
-   case class ValuePre( hash: Long ) extends Value[ Nothing ] with SoftValue[ Nothing ] {
+   final case class ValuePre( hash: Long ) extends Value[ Nothing ] with SoftValue[ Nothing ] {
       private[HashedTxnDBStore] def soften: SoftValue[ Nothing ] = this
    }
-   case class ValueFull[ V ]( v: V ) extends Value[ V ] {
+   final case class ValueFull[ V ]( v: V ) extends Value[ V ] {
       private[HashedTxnDBStore] def soften: SoftValue[ V ] = SoftValueFull( v )
    }
 
@@ -178,21 +327,21 @@ object HashedTxnDBStore {
 //      def emptyRef[ V <: Up[ _ ]]( implicit txn: InTxn ): TxnStore[ Path[ X ], V ] = new StoreImpl[ X, V ]( dbStoreFactory.emptyVal[ AnyRef ])
 //   }
 
-   def valFactory[ C <: Ct[ C ], X, Up ] : TxnDelegateValStoreFactory2[ C, Path[ X ], Up, Long, Value ] =
+   def valFactory[ C <: Ct[ C ], X, Up ] : TxnDelegateValStoreFactory2[ C, PathLike[ X ], Up, Long, Value ] =
       new ValFactoryImpl[ C, X, Up ]
 
-   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnDelegateRefStoreFactory2[ C, Path[ X ], Up, Long, Value ] =
+   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnDelegateRefStoreFactory2[ C, PathLike[ X ], Up, Long, Value ] =
       new RefFactoryImpl[ C, X, Up ]
 
    private class ValFactoryImpl[ C <: Ct[ C ], X, Up ]
-   extends TxnDelegateValStoreFactory2[ C, Path[ X ], Up, Long, Value ] {
-      def emptyVal[ V <: Up ]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, Path[ X ], V ] =
+   extends TxnDelegateValStoreFactory2[ C, PathLike[ X ], Up, Long, Value ] {
+      def emptyVal[ V <: Up ]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, PathLike[ X ], V ] =
          new StoreImpl[ C, X, V ]( del )
    }
 
    private class RefFactoryImpl[ C <: Ct[ C ], X, Up[ _ ]]
-   extends TxnDelegateRefStoreFactory2[ C, Path[ X ], Up, Long, Value ] {
-      def emptyRef[ V <: Up[ _ ]]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, Path[ X ], V ] =
+   extends TxnDelegateRefStoreFactory2[ C, PathLike[ X ], Up, Long, Value ] {
+      def emptyRef[ V <: Up[ _ ]]( del: TxnStore[ C, Long, Value[ V ]])( implicit access: C ): TxnStore[ C, PathLike[ X ], V ] =
          new StoreImpl[ C, X, V ]( del )
    }
 }

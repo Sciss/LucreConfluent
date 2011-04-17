@@ -345,7 +345,7 @@ debug( "d = " + d + ", 2^rho = " + twoprho )
          case Some( v ) => Some( (v, pre1Sum) )
          case None => if( pre1Sz == 1 ) None else {
             val pre2Sum = pre1.init.sum
-            hash.get( pre1Sz - 1 ).map( v => (v, pre2Sum) )
+            hash.get( pre2Sum ).map( v => (v, pre2Sum) )
          }
       }
    }

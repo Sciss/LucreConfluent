@@ -28,13 +28,7 @@
 
 package de.sciss.confluent
 
-import de.sciss.fingertree.FingerTree
-import concurrent.stm.InTxn
-import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
-
 trait TxnStoreLike[ C, K, @specialized V, Repr ] {
-//   type Path = TxnStore.Path[ K ]
-
    def put( key: K, value: V )( implicit access: C ) : Unit
    def get( key: K )( implicit access: C ) : Option[ V ]
    def getOrElse( key: K, default: => V )( implicit access: C ) : V = get( key ).getOrElse( default )

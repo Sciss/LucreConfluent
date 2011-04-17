@@ -28,11 +28,7 @@
 
 package de.sciss.confluent
 
-import de.sciss.fingertree.FingerTree
-
 trait StoreLike[ K, @specialized V, Repr ] {
-//   type Path = FingerTree.IndexedSummed[ K, Long ]
-
    def put( key: K, value: V ) : Repr
    def get( key: K ) : Option[ V ]
    def getOrElse( key: K, default: => V ) : V = get( key ).getOrElse( default )

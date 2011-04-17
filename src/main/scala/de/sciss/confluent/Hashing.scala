@@ -37,7 +37,7 @@ import annotation.elidable
 
 object Hashing {
 //   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
-   type IntSeq          = FingerTree.IndexedSummed[ Int, Long ]
+   type IntSeq          = PathLike[ Int ]
    type IntSeqMap       = Map[ Long, IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
    val emptyIntSeq      = IntSeq()

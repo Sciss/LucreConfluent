@@ -33,13 +33,13 @@ import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
 import de.sciss.fingertree.FingerTree
 
 object CachedTxnStore {
-   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
+//   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
    private trait CacheLike[ C <: Ct[ C ], X, V ] // ( store: TxnStore[ Path[ X ], V ], group: TxnCacheGroup[ Long, Path[ X ], V ])
-   extends TxnStore[ C, Path[ X ], V ] /* with TxnCacheLike[ Path[ X ], V ] */ {
-      type Pth = Path[ X ]
+   extends TxnStore[ C, PathLike[ X ], V ] /* with TxnCacheLike[ Path[ X ], V ] */ {
+      type Pth = PathLike[ X ]
 
-      protected val store: TxnStore[ C, Path[ X ], V ]
+      protected val store: TxnStore[ C, PathLike[ X ], V ]
 //      val group: TxnCacheGroup[ Long, Path[ X ]]
 
       protected val ref = TxnLocal( LongMap.empty[ (Pth, V) ])
@@ -90,9 +90,9 @@ object CachedTxnStore {
 //      }
    }
 
-   private class ValCache[ C <: Ct[ C ], X, V ]( protected val store: TxnStore[ C, Path[ X ], V ],
-                                                 group: TxnCacheGroup[ C, Long, Path[ X ]])
-   extends CacheLike[ C, X, V ] with TxnCacheLike[ C, Path[ X ]] {
+   private class ValCache[ C <: Ct[ C ], X, V ]( protected val store: TxnStore[ C, PathLike[ X ], V ],
+                                                 group: TxnCacheGroup[ C, Long, PathLike[ X ]])
+   extends CacheLike[ C, X, V ] with TxnCacheLike[ C, PathLike[ X ]] {
       protected def addDirty( hash: Long )( implicit access: C ) {
          group.addDirty( this, hash )
       }
@@ -109,9 +109,9 @@ object CachedTxnStore {
       }
    }
 
-   private class RefCache[ C <: Ct[ C ], X, A, V <: Mutable[ A, V ]]( protected val store: TxnStore[ C, Path[ X ], V ],
-                                                                      group: TxnCacheGroup[ C, Long, (Path[ X ], A) ])
-   extends CacheLike[ C, X, V ] with TxnCacheLike[ C, (Path[ X ], A) ] {
+   private class RefCache[ C <: Ct[ C ], X, A, V <: Mutable[ A, V ]]( protected val store: TxnStore[ C, PathLike[ X ], V ],
+                                                                      group: TxnCacheGroup[ C, Long, (PathLike[ X ], A) ])
+   extends CacheLike[ C, X, V ] with TxnCacheLike[ C, (PathLike[ X ], A) ] {
       protected def addDirty( hash: Long )( implicit access: C ) {
          group.addDirty( this, hash )
       }
@@ -146,21 +146,21 @@ object CachedTxnStore {
 //      def emptyRef[ V <: Mutable[ A, V ]]( implicit txn: InTxn ) : TxnStore[ Path[ X ], V ] = new RefCache[ X, A, V ]( storeFactory.emptyVal[ V ], group )
 //   }
 
-   def valFactory[ C <: Ct[ C ], X ]( group: TxnCacheGroup[ C, Long, Path[ X ]]) : TxnDelegateValStoreFactory[ C, Path[ X ], Any ] =
+   def valFactory[ C <: Ct[ C ], X ]( group: TxnCacheGroup[ C, Long, PathLike[ X ]]) : TxnDelegateValStoreFactory[ C, PathLike[ X ], Any ] =
       new ValFactoryImpl[ C, X ]( group )
 
-   def refFactory[ C <: Ct[ C ], X, A ]( group: TxnCacheGroup[ C, Long, (Path[ X ], A) ]) : TxnDelegateRefStoreFactory[ C, Path[ X ],
+   def refFactory[ C <: Ct[ C ], X, A ]( group: TxnCacheGroup[ C, Long, (PathLike[ X ], A) ]) : TxnDelegateRefStoreFactory[ C, PathLike[ X ],
       ({type λ[α] = Mutable[A,α]})#λ ] = new RefFactoryImpl[ C, X, A ]( group )
 
-   private class ValFactoryImpl[ C <: Ct[ C ], X ]( group: TxnCacheGroup[ C, Long, Path[ X ]])
-   extends TxnDelegateValStoreFactory[ C, Path[ X ], Any ] {
-      def emptyVal[ V ]( del: TxnStore[ C, Path[ X ], V ])( implicit access: C ) : TxnStore[ C, Path[ X ], V ] =
+   private class ValFactoryImpl[ C <: Ct[ C ], X ]( group: TxnCacheGroup[ C, Long, PathLike[ X ]])
+   extends TxnDelegateValStoreFactory[ C, PathLike[ X ], Any ] {
+      def emptyVal[ V ]( del: TxnStore[ C, PathLike[ X ], V ])( implicit access: C ) : TxnStore[ C, PathLike[ X ], V ] =
          new ValCache[ C, X, V ]( del, group )
    }
 
-   private class RefFactoryImpl[ C <: Ct[ C ], X, A ]( group: TxnCacheGroup[ C, Long, (Path[ X ], A) ])
-   extends TxnDelegateRefStoreFactory[ C, Path[ X ], ({type λ[α] = Mutable[A,α]})#λ ] {
-      def emptyRef[ V <: Mutable[ A, V ]]( del: TxnStore[ C, Path[ X ], V ])( implicit access: C ) : TxnStore[ C, Path[ X ], V ] =
+   private class RefFactoryImpl[ C <: Ct[ C ], X, A ]( group: TxnCacheGroup[ C, Long, (PathLike[ X ], A) ])
+   extends TxnDelegateRefStoreFactory[ C, PathLike[ X ], ({type λ[α] = Mutable[A,α]})#λ ] {
+      def emptyRef[ V <: Mutable[ A, V ]]( del: TxnStore[ C, PathLike[ X ], V ])( implicit access: C ) : TxnStore[ C, PathLike[ X ], V ] =
          new RefCache[ C, X, A, V ]( del, group )
    }
 }

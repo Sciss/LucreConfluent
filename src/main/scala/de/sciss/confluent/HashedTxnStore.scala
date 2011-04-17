@@ -30,13 +30,10 @@ package de.sciss.confluent
 
 import collection.immutable.LongMap
 import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
-import de.sciss.fingertree.FingerTree
 
 object HashedTxnStore {
-   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
-
-   private class StoreImpl[ C <: Ct[ C ], X, V ] extends TxnStore[ C, Path[ X ], V ] {
-      type Pth = Path[ X ]
+   private class StoreImpl[ C <: Ct[ C ], X, V ] extends TxnStore[ C, PathLike[ X ], V ] {
+      type Pth = PathLike[ X ]
 
       val ref = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
 
@@ -104,14 +101,14 @@ object HashedTxnStore {
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 
-   def valFactory[ C <: Ct[ C ], X, Up ] : TxnValStoreFactory[ C, Path[ X ], Up ] = new ValFactoryImpl[ C, X, Up ]
-   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnRefStoreFactory[ C, Path[ X ], Up ] = new RefFactoryImpl[ C, X, Up ]
+   def valFactory[ C <: Ct[ C ], X, Up ] : TxnValStoreFactory[ C, PathLike[ X ], Up ] = new ValFactoryImpl[ C, X, Up ]
+   def refFactory[ C <: Ct[ C ], X, Up[ _ ]] : TxnRefStoreFactory[ C, PathLike[ X ], Up ] = new RefFactoryImpl[ C, X, Up ]
 
-   private class ValFactoryImpl[ C <: Ct[ C ], X, Up ] extends TxnValStoreFactory[ C, Path[ X ], Up ] {
-      def emptyVal[ V <: Up ]( implicit access: C ): TxnStore[ C, Path[ X ], V ] = new StoreImpl[ C, X, V ]
+   private class ValFactoryImpl[ C <: Ct[ C ], X, Up ] extends TxnValStoreFactory[ C, PathLike[ X ], Up ] {
+      def emptyVal[ V <: Up ]( implicit access: C ): TxnStore[ C, PathLike[ X ], V ] = new StoreImpl[ C, X, V ]
    }
 
-   private class RefFactoryImpl[ C <: Ct[ C ], X, Up[ _ ]] extends TxnRefStoreFactory[ C, Path[ X ], Up ] {
-      def emptyRef[ V <: Up[ _ ]]( implicit access: C ): TxnStore[ C, Path[ X ], V ] = new StoreImpl[ C, X, V ]
+   private class RefFactoryImpl[ C <: Ct[ C ], X, Up[ _ ]] extends TxnRefStoreFactory[ C, PathLike[ X ], Up ] {
+      def emptyRef[ V <: Up[ _ ]]( implicit access: C ): TxnStore[ C, PathLike[ X ], V ] = new StoreImpl[ C, X, V ]
    }
 }

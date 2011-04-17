@@ -29,12 +29,11 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
-import de.sciss.fingertree.FingerTree
 
 object HashedStoreFactory {
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ FingerTree.IndexedSummed[ K, Long ], V ] {
-      type Pth = PathLike[ K ] // FingerTree.IndexedSummed[ V, Long ]
+   private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ PathLike[ K ], V ] {
+      type Pth = PathLike[ K ]
 
       def inspect = {
 //         println( "HashedStore.inspect -- nothin here" )
@@ -99,7 +98,7 @@ object HashedStoreFactory {
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 }
 
-class HashedStoreFactory[ K ] extends StoreFactory[ FingerTree.IndexedSummed[ K, Long ]] {
+class HashedStoreFactory[ K ] extends StoreFactory[ PathLike[ K ]] {
    import HashedStoreFactory._
-   def empty[ V ] : Store[ FingerTree.IndexedSummed[ K, Long ], V ] = new HashedStore[ K, V ]( LongMap.empty[ Value[ V ]])
+   def empty[ V ] : Store[ PathLike[ K ], V ] = new HashedStore[ K, V ]( LongMap.empty[ Value[ V ]])
 }

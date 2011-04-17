@@ -30,14 +30,10 @@ package de.sciss.confluent
 
 import collection.immutable.LongMap
 import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
-import de.sciss.fingertree.FingerTree
 import java.lang.ref.{SoftReference => JSoftReference}
-import collection.immutable.Map._
 
 object HashedTxnDBStore {
    import TxnStore._
-
-//   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
 
 //   private case class Compound[ V ]( perm: Map[ Long, Value[ V ]], temp: Map[ Long, Value[ V ]])
 

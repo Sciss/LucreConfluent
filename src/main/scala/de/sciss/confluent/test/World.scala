@@ -73,20 +73,23 @@ object CList {
    private class SerializerImpl[ C <: Ct[ C ], T ]( implicit s: Serializer[ C, T ])
    extends DirectSerializer[ C, CList[ C, T ]] {
       def readObject( in: TupleInput )( implicit access: C ) : CList[ C, T ] = {
+         val ctx  = access.readObject( in )
+         val id   = in.readInt()
          in.read() match {
-            case 1 => access.oldNode( in.readInt() )( n => makeCons( n )( s ))
-            case 0 => access.oldNode( in.readInt() )( makeNil )
+            case 1 => ctx.oldNode( id )( n => makeCons( n )( s ))
+            case 0 => ctx.oldNode( id )( makeNil )
          }
       }
 
-      def writeObject( out: TupleOutput, v: CList[ C, T ])( implicit access: C ) : Unit = {
+      def writeObject( out: TupleOutput, v: CList[ C, T ]) /* ( implicit access: C ) */ : Unit = {
+         v.path.writeObject( out )
+         out.writeInt( v.id.value )
          v match {
             case ccns: CCons[ _, _ ] =>
                out.write( 1 )
             case cnil: CNil[ _, _ ] =>
                out.write( 0 )
          }
-         out.writeInt( v.id.value )
       }
    }
 

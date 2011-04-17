@@ -287,6 +287,9 @@ object KSystemImpl {
          def eph: ECtx = this
          def newNode[ T ]( fun: NodeFactory[ ECtx ] => T ) : T             = fun( new ENodeFactory( this ))
          def oldNode[ T ]( id: Int )( fun: NodeFactory[ ECtx ] => T ) : T  = fun( new ENodeFactory( this ))
+
+         def readObject( in: TupleInput ) : ECtx = this
+         def writeObject( out: TupleOutput ) {}
       }
 
       private class ENodeFactory( ctx: ECtx ) extends NodeFactory[ ECtx ] {
@@ -419,6 +422,19 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //               pw
 //            } else p
 //         }
+
+         def readObject( in: TupleInput ) : KCtx = {
+            val len = in.readInt()
+            substitute( Path( Seq.fill( len )( Version.testWrapXXX( in.readInt(), in.readInt() )): _* ))
+         }
+
+         def writeObject( out: TupleOutput ) {
+            out.writeInt( path.size )
+            path.foreach { v =>
+               out.writeInt( v.id )
+               out.writeInt( v.rid )
+            }
+         }
       }
 
       private class KNodeFactory( nid: Int, ctx: KCtx ) extends NodeFactory[ KCtx ] {
@@ -468,7 +484,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             }
          }
 
-         def writeObject( out: TupleOutput, dbv: DBValue[ T ])( implicit access: KCtx ) {
+         def writeObject( out: TupleOutput, dbv: DBValue[ T ]) /* ( implicit access: KCtx ) */ {
             dbv match {
                case DBValueNone =>
                   out.write( 0 )

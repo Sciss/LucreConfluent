@@ -17,3 +17,40 @@ FLUSH : v1 (rid = 1155099827)
 - Ok bis auf die fehlenden node pedigrees in den ref zuweisungen [fi1], was aus der fehlenden ref implementierung in KSystemImpl herruehrt
 - das Invertieren des MSB durch TupleOutput ist extrem nervig
 - hash key 128(0) 0 0 0 68 217 108 179 ist hex 44 D9 6C B3 und damit gleich rid 1155099827
+- die sache mit der id2 fuer Nil koennte sein, dass es schlauer ist die Ref-annahme auf der value seite zu machen, nicht auf der factory seite,
+  d.h. get( k: K )( implicit c: C ) : Option[ V ] = ref.get( c.txn ).map( s.refresh( _ ))
+  mit Serializer addition:
+      def refresh( implicit c: C ) : V
+  welche bei immutables einfache =this ist
+  ; folglich koennten sowohl mutables als auch immutables in einem field gespeichert werden, Cons vs. Nil ist ein gutes Beispiel; oder: Option[ V ] !
+  ; alternativ koennte Node differenziert werden in MutableNode und ImmutableNode
+
+:::::::::::::::
+
+110417 03:23:10:106 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 3 0 0 128 0 0 0 68 217 108 179  data=2 128 0 0 1 
+110417 03:23:10:111 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=12 lnLsn=0x0/0x48d index=0
+110417 03:23:10:113 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 4 0 0 128 0 0 0 68 217 108 179  data=2 128 0 0 2 
+110417 03:23:10:114 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=15 lnLsn=0x0/0x4b5 index=1
+110417 03:23:10:134 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 3 0 1 128 0 0 0 68 217 108 179  data=2 128 0 0 1 128 0 0 1 196 217 108 179 128 0 0 2 0 
+110417 03:23:10:134 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=16 lnLsn=0x0/0x4df index=1
+110417 03:23:10:134 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 4 0 1 128 0 0 0 68 217 108 179  data=2 128 0 0 1 128 0 0 1 196 217 108 179 128 0 0 3 1 
+110417 03:23:10:134 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=17 lnLsn=0x0/0x516 index=3
+110417 03:23:10:137 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 1 0 0 128 0 0 0 68 217 108 179  data=2 128 0 0 1 128 0 0 1 196 217 108 179 128 0 0 4 1 
+110417 03:23:10:137 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=18 lnLsn=0x0/0x54d index=0
+110417 03:23:10:142 FINE [/Users/hhrutz/Desktop/ksys] Commit: id = 3 numWriteLocks=5 numReadLocks = 0
+110417 03:23:10:150 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=4 key=128 0 0 4 0 1 128 0 0 0 181 96 143 118  data=2 128 0 0 1 128 0 0 2 240 135 34 195 128 0 0 5 0 
+110417 03:23:10:150 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=19 lnLsn=0x0/0x59e index=5
+110417 03:23:10:152 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=4 key=128 0 0 3 0 1 128 0 0 0 181 96 143 118  data=2 128 0 0 2 128 0 0 1 196 217 108 179 128 0 0 2 240 135 34 195 128 0 0 4 1 
+110417 03:23:10:152 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=20 lnLsn=0x0/0x5d3 index=3
+
+::::::::::::::::::
+
+das problem ist jetzt
+
+      def get( key: Pth )( implicit access: C ) : Option[ V ] = {
+         val map = ref.get( access.txn )
+         Hashing.getWithHash( key, map ).flatMap {
+
+--> - entweder die keys werden alle wieder angelegt beim erzeugen des stores
+    - oder Hashing.getWithHash wird so modifiziert, dass es auch auf der HD sucht
+    - einfachste erste loesung waere, das caching komplett auszuschalten!

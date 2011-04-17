@@ -102,6 +102,13 @@ object Version {
       new VersionImpl( id, rid, tree, insFun )
    }
 
+   def testWrapXXX( id: Int, rid: Int ) : Version = {
+      val pv      = init
+      val tree    = pv.tree
+      val insFun  = tree.insertChild( pv ) _
+      new VersionImpl( id, rid, tree, insFun )
+   }
+
 //   def newMultiFrom( v: Version, vs: Version* ) : Version = {
 //      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
 //      new MultiNeutralVersionImpl( tree, insFun )

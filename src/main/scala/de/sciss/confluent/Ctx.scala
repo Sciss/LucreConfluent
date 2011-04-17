@@ -29,6 +29,7 @@
 package de.sciss.confluent
 
 import concurrent.stm.InTxn
+import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 
 trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
    def txn: InTxn
@@ -37,6 +38,10 @@ trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
 //   def newNode[ T ]( fun: (Repr with NodeFactory[ Repr ]) => T ) : T
    def newNode[ T ]( fun: NodeFactory[ Repr ] => T ) : T
    def oldNode[ T ]( id: Int )( fun: NodeFactory[ Repr ] => T ) : T
+
+   // serialization
+   def writeObject( out: TupleOutput ) : Unit
+   def readObject( in: TupleInput ) : Repr
 }
 
 trait NodeFactory[ C ] /* extends RefFactory[ C ] */ {

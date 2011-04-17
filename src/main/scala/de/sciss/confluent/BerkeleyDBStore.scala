@@ -175,6 +175,15 @@ object BerkeleyDBStore {
          def inspect( implicit access: C ) {
             println( "DBStore" ) // [" + s.id + "]" )
          }
+
+         // lohnt sich, glaub ich, nicht....
+//         override def mapView( implicit access: C ): TxnStore.MapView[ Long, V ] = new MapView
+//
+//         private class MapView( implicit access: C ) extends TxnStore.MapView[ Long, V ] {
+//            lazy val h = dbTxnRef.get( access.txn )
+//
+//            def get( key: Long ) : Option[ V ] = dbGet( key, h )
+//         }
       }
    }
 

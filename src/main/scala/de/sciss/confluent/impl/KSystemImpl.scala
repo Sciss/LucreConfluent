@@ -408,7 +408,7 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
          def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
 
          def newNode[ T ]( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( nodeAlloc( ctx.txn ), seminal ))
-         def oldNode[ T ]( id: Int )( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( id, seminal ))
+         def oldNode[ T ]( id: Int )( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( id, ctx ))
 
       //   private[proc] def readPath : VersionPath = pathRef.get( txn )
 

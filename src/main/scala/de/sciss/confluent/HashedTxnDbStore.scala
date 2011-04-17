@@ -68,19 +68,18 @@ object HashedTxnDBStore {
          if( tup._1 ) { // ref needs update
             ref.set( tup._2 )
          }
-         tup._3
+         tup._4
       }
 
       def getWithPrefix( key: Pth )( implicit access: C ) : Option[ (V, Int) ] = {
-         error( "TODO" )
-//         val map = ref.get( access.txn )
-//         Hashing.getWithPrefixAndHash( key, map ).flatMap {
-//            case (vf: SoftValueFull[ _ ], sz, hash) =>
-//               Some( dbGet( map, hash, vf.asInstanceOf[ SoftValueFull[ V ]]), sz )
-//            case (ValuePre( fullHash ), sz, hash ) =>
-//               Some( dbGet( map, hash, map( fullHash ).asInstanceOf[ SoftValueFull[ V ]]), sz )
-//            case (ValueNone, _, _ ) => None
-//         }
+         implicit val txn  = access.txn
+         val map           = ref.get
+         val dbView        = dbStore.mapView
+         val tup           = dbGetAndResolve( key, map, dbView )
+         if( tup._1 ) { // ref needs update
+            ref.set( tup._2 )
+         }
+         tup._4.map( v => (v, tup._3) )
       }
 
       private def dbHarden( vf: SoftValueFull[ V ], key: Long, map: Map[ Long, SoftValue[ V ]],
@@ -143,8 +142,37 @@ object HashedTxnDBStore {
          }
       }
 
+//      private def dbGetAndResolve( key: Pth, map: Map[ Long, SoftValue[ V ]],
+//                                   dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Option[ V ]) = {
+//         val tup1    = dbMaxPrefix( key, map, dbView )
+//         val mod1    = tup1._1
+//         val map1    = tup1._2
+//         val pre1    = tup1._3
+//         val pre1Sz  = pre1.size
+//         val pre1Sum = pre1.sum
+//         if( pre1Sz == 0 ) {
+//            (mod1, map1, None)
+//         } else {
+//            val tup2 = dbGetRefresh( pre1Sum, map1, dbView )
+//            val mod2 = mod1 | tup2._1
+//            val map2 = tup2._2
+//            tup2._3 match {
+//               case SearchNoKey => if( pre1Sz == 1 ) {
+//                  (mod2, map2, None)
+//               } else {
+//                  val pre2Sum = pre1.init.sum
+//                  val tup3    = dbGetRefresh( pre2Sum, map2, dbView )
+//                  val mod3    = mod2 | tup3._1
+//                  val map3    = tup3._2
+//                  (mod3, map3, tup3._3.valueOption)
+//               }
+//               case s => (mod2, map2, s.valueOption)
+//            }
+//         }
+//      }
+
       private def dbGetAndResolve( key: Pth, map: Map[ Long, SoftValue[ V ]],
-                                   dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Option[ V ]) = {
+                                   dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], Int, Option[ V ]) = {
          val tup1    = dbMaxPrefix( key, map, dbView )
          val mod1    = tup1._1
          val map1    = tup1._2
@@ -152,22 +180,23 @@ object HashedTxnDBStore {
          val pre1Sz  = pre1.size
          val pre1Sum = pre1.sum
          if( pre1Sz == 0 ) {
-            (mod1, map1, None)
+            (mod1, map1, pre1Sz, None)
          } else {
             val tup2 = dbGetRefresh( pre1Sum, map1, dbView )
             val mod2 = mod1 | tup2._1
             val map2 = tup2._2
             tup2._3 match {
                case SearchNoKey => if( pre1Sz == 1 ) {
-                  (mod2, map2, None)
+                  (mod2, map2, pre1Sz, None)
                } else {
+                  val pre2Sz  = pre1Sz - 1
                   val pre2Sum = pre1.init.sum
                   val tup3    = dbGetRefresh( pre2Sum, map2, dbView )
                   val mod3    = mod2 | tup3._1
                   val map3    = tup3._2
-                  (mod3, map3, tup3._3.valueOption)
+                  (mod3, map3, pre2Sz, tup3._3.valueOption)
                }
-               case s => (mod2, map2, s.valueOption)
+               case s => (mod2, map2, pre1Sz, s.valueOption)
             }
          }
       }

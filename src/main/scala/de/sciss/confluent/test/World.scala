@@ -339,6 +339,8 @@ class WorldTest {
       assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
    }
 
+   sys.dispose
+
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
 //// hmmm... this would have been nice
 ////      println( "v0 : " + a0.list.toList )

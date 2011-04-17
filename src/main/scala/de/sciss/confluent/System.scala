@@ -51,6 +51,8 @@ trait System[ P,  // access path type
 
 //   def newMutable( implicit access: A ) : P
 //   def newMutable( implicit ctx: C ) : C
+
+   def dispose : Unit
 }
 
 object ESystem {

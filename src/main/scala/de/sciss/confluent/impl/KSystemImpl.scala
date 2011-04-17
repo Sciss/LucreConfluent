@@ -78,6 +78,8 @@ object KSystemImpl {
          res
       }
 
+      def dispose : Unit = dbValFactory.close( true )
+
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
 //      def newMutable( implicit ctx: KCtx ) : KCtx = {
 //         // XXX seminalPath should go somewhere else

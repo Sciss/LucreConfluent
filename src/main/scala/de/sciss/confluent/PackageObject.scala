@@ -37,6 +37,7 @@ import fingertree.FingerTree
 package object confluent {
 //   type Path  = Vector[ Version ]
    type Path = FingerTree.IndexedSummed[ Version, Long ]
+   type PathLike[ K ] = FingerTree.IndexedSummed[ K, Long ]
 
    def Path( vs: Version* ) : Path =
       FingerTree.IndexedSummed.applyWithView( vs: _* )( math.Numeric.LongIsIntegral, _.rid.toLong )

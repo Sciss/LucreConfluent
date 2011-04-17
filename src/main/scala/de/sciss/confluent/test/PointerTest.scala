@@ -16,7 +16,7 @@ class PointerTest {
    verbose = false
 
    val f       = new HashedStoreFactory[ Int ]
-   type Path   = FingerTree.IndexedSummed[ Int, Long ]
+   type Path   = PathLike[ Int ] // FingerTree.IndexedSummed[ Int, Long ]
 
    var access  = f.empty[ Option[ (Path, W) ]]
 
@@ -130,7 +130,7 @@ class PointerTest {
    }
 
    def appendTail( pw: Path, node: Option[ (Path, W) ]) {
-      var tail = (pw, access, (v: Store[ Int, Option[ (Path, W) ]]) => access = v) // Option.empty[ (Path, W) ]
+      var tail = (pw, access, (v: Store[ PathLike[ Int ], Option[ (Path, W) ]]) => access = v) // Option.empty[ (Path, W) ]
 //println( "appendTail..." )
       @tailrec def iter( nextOption: Option[ (Path, W) ]) : Unit = nextOption match {
          case None =>
@@ -138,7 +138,7 @@ class PointerTest {
 //println( "appendTail " + pw.toList + "; ptail = " + ptail.toList + "; node = " + node )
             fun( stail.put( ptail, node ))
          case Some( (p1, w) ) =>
-            tail  = (p1, w.next, (v: Store[ Int, Option[ (Path, W) ]]) => w.next = v)
+            tail  = (p1, w.next, (v: Store[ PathLike[ Int ], Option[ (Path, W) ]]) => w.next = v)
             iter( getAndSubstitute( w.next, p1 ))
       }
       iter( getAndSubstitute( access, pw ))
@@ -206,7 +206,7 @@ val test = p1.toList
       iter( getAndSubstitute( access, p ))
    }
 
-   def getAndSubstitute[ T ]( s: Store[ Int, Option[ (Path, T )]], p: Path ) : Option[ (Path, T )] = {
+   def getAndSubstitute[ T ]( s: Store[ PathLike[ Int ], Option[ (Path, T )]], p: Path ) : Option[ (Path, T )] = {
       s.getWithPrefix( p ).flatMap {
          case (Some( (ap, v) ), pre) =>
 //            println( "getAndSubstitute p = " + p.toList + " -> pre is " + pre + ", ap = " + ap.toList )

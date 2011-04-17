@@ -79,6 +79,19 @@ object HashedTxnDBStore {
          }
       }
 
+//      private def dbGetWithHash[ T, V ]( key: Pth, hash: Map[ Long, V ]) : Option[ (V, Long) ] = {
+//         val pre1    = maxPrefix1( s, hash )
+//         val pre1Sz  = pre1.size
+//         val pre1Sum = pre1.sum
+//         if( pre1Sz == 0 ) None else hash.get( pre1Sum ) match {
+//            case Some( v ) => Some( (v, pre1Sum) )
+//            case None => if( pre1Sz == 1 ) None else {
+//               val pre2Sum = pre1.init.sum
+//               hash.get( pre1Sz - 1 ).map( v => (v, pre2Sum) )
+//            }
+//         }
+//      }
+
       private def dbGet( map: Map[ Long, SoftValue[ V ]], hash: Long, vf: SoftValueFull[ V ])( implicit access: C ) : V = {
          val v0 = vf.get()
          if( v0 == null ) {

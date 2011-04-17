@@ -36,7 +36,7 @@ import util.Random
 import annotation.elidable
 
 object Hashing {
-   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
+//   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
    type IntSeq          = FingerTree.IndexedSummed[ Int, Long ]
    type IntSeqMap       = Map[ Long, IntSeq ]
    def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
@@ -119,7 +119,7 @@ object Hashing {
 //      preSeqMap.view.map( entry => entry._1 -> maxPrefix( entry._2, fullSeqMap )).filter( _._2.nonEmpty )
 //         .force[ (Long, IntSeq), IntSeqMap ]( breakOut )
 
-   def add[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, V ], v: UniqueSeq[ K ] => V ) : Map[ Long, V ] = {
+   def add[ K, V ]( s: PathLike[ K ], hash: Map[ Long, V ], v: PathLike[ K ] => V ) : Map[ Long, V ] = {
 //debug( "add.... " + (s.size) )
       val sz   = s.size
       val m    = bitCount( sz )
@@ -147,7 +147,7 @@ object Hashing {
     *
     * @param   hash  will only be used for `contains` operations
     */
-   def collect[ K, V ]( s: UniqueSeq[ K ], hash: Map[ Long, _ ], v: UniqueSeq[ K ] => V ) : List[ (Long, V) ] = {
+   def collect[ K, V ]( s: PathLike[ K ], hash: Map[ Long, _ ], v: PathLike[ K ] => V ) : List[ (Long, V) ] = {
       val sz   = s.size
       val m    = bitCount( sz )
       var j    = 1
@@ -282,14 +282,14 @@ object Hashing {
 //      assert( maxPrefix( k, set ).toList == k.toList, "assertion 2" )
 //   }
 
-   def maxPrefixKey[ T ]( s: UniqueSeq[ T ], hash: Map[ Long, _ ]) : UniqueSeq[ T ] = {
+   def maxPrefixKey[ T ]( s: PathLike[ T ], hash: Map[ Long, _ ]) : PathLike[ T ] = {
       val pre1 = maxPrefix1( s, hash )
       val res = if( hash.contains( pre1.sum )) pre1 else pre1.dropRight( 1 )
 debug( "res.size = " + res.size )
       res
    }
 
-   private def maxPrefix1[ T ]( s: UniqueSeq[ T ], hash: Map[ Long, _ ]) : UniqueSeq[ T ] = {
+   private def maxPrefix1[ T ]( s: PathLike[ T ], hash: Map[ Long, _ ]) : PathLike[ T ] = {
       val sz      = s.size
       val m       = bitCount( sz )
       // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
@@ -323,12 +323,12 @@ debug( "d = " + d + ", 2^rho = " + twoprho )
 //      res
 //   }
 
-   def maxPrefixValue[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ V ] = {
+   def maxPrefixValue[ T, V ]( s: PathLike[ T ], hash: Map[ Long, V ]) : Option[ V ] = {
       val pre1 = maxPrefix1( s, hash )
       hash.get( pre1.sum ).orElse( hash.get( pre1.dropRight( 1 ).sum ))
    }
 
-   def getWithPrefix[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Int) ] = {
+   def getWithPrefix[ T, V ]( s: PathLike[ T ], hash: Map[ Long, V ]) : Option[ (V, Int) ] = {
       val pre1    = maxPrefix1( s, hash )
       val pre1Sz  = pre1.size
       if( pre1Sz == 0 ) None else hash.get( pre1.sum ) match {
@@ -337,7 +337,7 @@ debug( "d = " + d + ", 2^rho = " + twoprho )
       }
    }
 
-   def getWithHash[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Long) ] = {
+   def getWithHash[ T, V ]( s: PathLike[ T ], hash: Map[ Long, V ]) : Option[ (V, Long) ] = {
       val pre1    = maxPrefix1( s, hash )
       val pre1Sz  = pre1.size
       val pre1Sum = pre1.sum
@@ -350,7 +350,7 @@ debug( "d = " + d + ", 2^rho = " + twoprho )
       }
    }
 
-   def getWithPrefixAndHash[ T, V ]( s: UniqueSeq[ T ], hash: Map[ Long, V ]) : Option[ (V, Int, Long) ] = {
+   def getWithPrefixAndHash[ T, V ]( s: PathLike[ T ], hash: Map[ Long, V ]) : Option[ (V, Int, Long) ] = {
       val pre1    = maxPrefix1( s, hash )
       val pre1Sz  = pre1.size
       val pre1Sum = pre1.sum

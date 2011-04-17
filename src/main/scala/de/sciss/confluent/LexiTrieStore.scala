@@ -28,10 +28,10 @@
 
 package de.sciss.confluent
 
-object LexiTrieStoreFactory extends StoreFactory[ Version ] {
-   def empty[ V ] : Store[ Version, V ] = new LexiTrieStore[ V ]( LexiTrie.empty[ OracleMap[ V ]])
+object LexiTrieStoreFactory extends StoreFactory[ PathLike[ Version ]] {
+   def empty[ V ] : Store[ PathLike[ Version ], V ] = new LexiTrieStore[ V ]( LexiTrie.empty[ OracleMap[ V ]])
 
-   private class LexiTrieStore[ @specialized V ]( lexi: LexiTrie[ OracleMap[ V ]]) extends Store[ Version, V ] {
+   private class LexiTrieStore[ @specialized V ]( lexi: LexiTrie[ OracleMap[ V ]]) extends Store[ PathLike[ Version ], V ] {
       def inspect = lexi.inspect
 
       def get( key: Path ) : Option[ V ] = {
@@ -50,7 +50,7 @@ object LexiTrieStoreFactory extends StoreFactory[ Version ] {
          oracleO.map( _.query( key( idx )).map( v => v -> off /* ??? XXX */ )) getOrElse None
       }
 
-      def put( key: Path, value: V) : Store[ Version, V ] = {
+      def put( key: Path, value: V) : Store[ PathLike[ Version ], V ] = {
          val idx        = key.dropRight( 1 )
          val last       = key.last
          val newEntry   = (last -> value)

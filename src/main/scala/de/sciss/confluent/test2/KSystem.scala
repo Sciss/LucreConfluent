@@ -1,6 +1,6 @@
 package de.sciss.confluent.test2
 
-import de.sciss.confluent.{HashedStoreFactory, StoreFactory}
+import de.sciss.confluent.{HashedStoreFactory, PathLike, StoreFactory}
 
 object Path {
    def init: Path = new Impl
@@ -34,7 +34,7 @@ trait Access[ Repr ] {
 trait KSystem[ A /* <: Access[ _ ] */ ] {
    type Vertex
 
-   def storeFactory : StoreFactory[ Vertex ]
+   def storeFactory : StoreFactory[ PathLike[ Vertex ]]
 
    def in[ T ]( v: Path )( fun: A => T ) : T
 }

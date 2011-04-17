@@ -56,12 +56,27 @@ trait TxnStoreLike[ C, K, @specialized V, Repr ] {
    def inspect( implicit access: C ) : Unit
 
    def putAll( elems: Iterable[ (K, V) ])( implicit access: C ) : Unit
+
+   def mapView( implicit access: C ): TxnStore.MapView[ K, V ] = TxnStore.MapView[ C, K, V ]( this )
 }
 
 //trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 //}
 
+object TxnStore {
+   trait MapView[ K, V ] {
+      def put( key: K, value: V ) : Unit
+      def get( key: K ) : Option[ V ]
+   }
+
+   def MapView[ C, K, V ]( underlying: TxnStoreLike[ C, K, V, _ ])( implicit access: C ) : MapView[ K, V ] = new MapView[ K, V ] {
+      def put( key: K, value: V ) : Unit = underlying.put( key, value )
+      def get( key: K ) : Option[ V ] = underlying.get( key )
+//      def getWithPrefix( key: K ) : Option[ (V, Int) ] = underlying.getWithPrefix( key )
+//      def inspect : Unit = underlying.inspect
+   }
+}
 trait TxnStore[ C, K, V ] extends TxnStoreLike[ C, K, V, TxnStore[ C, K, V ]] {
 //   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
 }

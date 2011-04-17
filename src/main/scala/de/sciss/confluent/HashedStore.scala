@@ -29,10 +29,13 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
+import de.sciss.fingertree.FingerTree
 
 object HashedStoreFactory {
    // XXX no specialization thanks to scalac 2.8.1 crashing
-   private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ K, V ] {
+   private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ FingerTree.IndexedSummed[ K, Long ], V ] {
+      type Pth = PathLike[ K ] // FingerTree.IndexedSummed[ V, Long ]
+
       def inspect = {
 //         println( "HashedStore.inspect -- nothin here" )
          println( "INSPECT" )
@@ -43,13 +46,13 @@ object HashedStoreFactory {
        * Warning: multiplicities are currently _not_ supported,
        * we will need to enrich the Path type to account for that
        */
-      def get( key: Path ) : Option[ V ] = Hashing.maxPrefixValue( key, map ).flatMap {
+      def get( key: Pth ) : Option[ V ] = Hashing.maxPrefixValue( key, map ).flatMap {
          case ValueFull( v )        => Some( v )
          case ValuePre( /* len, */ hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v )
          case ValueNone             => None // : Option[ V ]
       }
 
-      def getWithPrefix( key: Path ) : Option[ (V, Int) ] = {
+      def getWithPrefix( key: Pth ) : Option[ (V, Int) ] = {
          Hashing.getWithPrefix( key, map ).flatMap {
             case (ValueFull( v ), sz)        => Some( v -> sz )
             case (ValuePre( /* len, */ hash ), sz) => {
@@ -80,10 +83,10 @@ object HashedStoreFactory {
 //         }
       }
 
-      def put( key: Path, value: V ) : Store[ K, V ] = {
+      def put( key: Pth, value: V ) : Store[ Pth, V ] = {
          val hash       = key.sum
 //         lazy val proxy = ValueProxy( hash )
-         new HashedStore( Hashing.add( key, map, { s: Path =>
+         new HashedStore[ K, V ]( Hashing.add[ K, Value[ V ]]( key, map, { s: Pth =>
 //            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( s.size, hash )
             if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
          }))
@@ -96,7 +99,7 @@ object HashedStoreFactory {
    private case class ValueFull[ V ]( v:  V ) extends Value[ V ]
 }
 
-class HashedStoreFactory[ K ] extends StoreFactory[ K ] {
+class HashedStoreFactory[ K ] extends StoreFactory[ FingerTree.IndexedSummed[ K, Long ]] {
    import HashedStoreFactory._
-   def empty[ V ] : Store[ K, V ] = new HashedStore[ K, V ]( LongMap.empty[ Value[ V ]])
+   def empty[ V ] : Store[ FingerTree.IndexedSummed[ K, Long ], V ] = new HashedStore[ K, V ]( LongMap.empty[ Value[ V ]])
 }

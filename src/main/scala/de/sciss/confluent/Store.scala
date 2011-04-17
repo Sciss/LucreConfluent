@@ -31,11 +31,11 @@ package de.sciss.confluent
 import de.sciss.fingertree.FingerTree
 
 trait StoreLike[ K, @specialized V, Repr ] {
-   type Path = FingerTree.IndexedSummed[ K, Long ]
+//   type Path = FingerTree.IndexedSummed[ K, Long ]
 
-   def put( key: Path, value: V ) : Repr
-   def get( key: Path ) : Option[ V ]
-   def getOrElse( key: Path, default: => V ) : V = get( key ).getOrElse( default )
+   def put( key: K, value: V ) : Repr
+   def get( key: K ) : Option[ V ]
+   def getOrElse( key: K, default: => V ) : V = get( key ).getOrElse( default )
 
    /**
     *    Finds the value which is the nearest
@@ -49,7 +49,7 @@ trait StoreLike[ K, @specialized V, Repr ] {
     *    Like findMaxPrefixOffset, but with support
     *    for multiplicities
     */
-   def getWithPrefix( key: Path ) : Option[ (V, Int) ]
+   def getWithPrefix( key: K ) : Option[ (V, Int) ]
 
    def inspect : Unit
 }

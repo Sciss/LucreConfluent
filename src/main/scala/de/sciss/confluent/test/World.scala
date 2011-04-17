@@ -4,6 +4,7 @@ package test
 import de.sciss.fingertree.FingerTree
 import concurrent.stm.{InTxn, TxnExecutor}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
+import java.util.logging.{Level, Logger}
 
 object World {
 //   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
@@ -226,7 +227,15 @@ trait CCons[ C, T ] extends CList[ C, T ] {
 }
 
 object WorldTest {
-   def main( args: Array[ String ]) { new WorldTest }
+   def main( args: Array[ String ]) {
+      args.headOption match {
+         case Some( "-r" ) => new WorldReadTest
+         case Some( "-w" ) => new WorldWriteTest
+         case _ =>
+            println( "Options: -r for read, -w for write" )
+            System.exit( 1 )
+      }
+   }
 }
 
 object WorldFactory { def apply[ P <: Ct[ P ]] = new WorldFactory[ P ]}
@@ -251,10 +260,49 @@ class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
    }
 }
 
-class WorldTest {
+class WorldReadTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
 
+   val sys     = Factory.ksystem( WorldFactory[ KCtx ])
+   val kproj   = sys.kProjector
+   val keproj  = sys.keProjector
+   val csr     = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
+
+   val v0 = csr.t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 2, 1 ), l.toString )
+   }
+
+   val v1 = csr.t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2 ), l.toString )
+   }
+
+   val v2 = keproj.in( v0 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 4 ), l.toString )
+   }
+
+   val v3 = csr.t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6 ), l.toString )
+   }
+
+   val v4 = csr.t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+   }
+
+   sys.dispose
+}
+
+class WorldWriteTest {
+   Hashing.verbose               = false
+   FingerTree.TOSTRING_RESOLVE   = true
+
+   val log = Logger.getLogger( "com.sleepycat.je" )
+   log.setLevel( Level.ALL )
    val sys = Factory.ksystem( WorldFactory[ KCtx ])
 
 //   val proj = sys.keProjector
@@ -272,6 +320,8 @@ class WorldTest {
 
 //   implicit def worldPath[ P ]( implicit w: World[ P ]) : P = w.path
 //   implicit def worldPath[ P <: Ct ]( implicit w: World[ P ]) : P = w.path
+
+   // damn it...
    implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
 
    val v0 = csr.t { implicit w =>

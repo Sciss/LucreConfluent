@@ -1,0 +1,19 @@
+110417 01:31:15:403 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=2 ln=10 lnLsn=0x0/0x3c4 index=1
+110417 01:31:15:404 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=5 ln=11 lnLsn=0x0/0x3e8 index=1
+110417 01:31:15:411 FINE [/Users/hhrutz/Desktop/ksys] Commit: id = 2 numWriteLocks=0 numReadLocks = 0
+110417 01:31:15:488 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 3 0 0 128 0 0 0 68 217 108 179  data=2 128 0 0 1   [id3 fi0] w1.elem = 1
+110417 01:31:15:492 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=12 lnLsn=0x0/0x48d index=0
+110417 01:31:15:494 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 4 0 0 128 0 0 0 68 217 108 179  data=2 128 0 0 2   [id4 fi0] w0.elem = 2
+110417 01:31:15:494 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=15 lnLsn=0x0/0x4b5 index=1
+110417 01:31:15:495 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 3 0 1 128 0 0 0 68 217 108 179  data=2 0 128 0 0 2 [id3 fi1] w1.next = Nil [id2]
+110417 01:31:15:496 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=16 lnLsn=0x0/0x4df index=1
+110417 01:31:15:496 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 4 0 1 128 0 0 0 68 217 108 179  data=2 1 128 0 0 3 [id4 fi1] w0.next = Cons [id3]
+110417 01:31:15:496 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=17 lnLsn=0x0/0x50a index=3
+110417 01:31:15:499 FINEST [/Users/hhrutz/Desktop/ksys]Database.put txnId=3 key=128 0 0 1 0 0 128 0 0 0 68 217 108 179  data=2 1 128 0 0 4 [id1 fi0] world.list = w0 [i4]
+110417 01:31:15:499 FINER [/Users/hhrutz/Desktop/ksys]Ins: bin=13 ln=18 lnLsn=0x0/0x535 index=0
+110417 01:31:15:504 FINE [/Users/hhrutz/Desktop/ksys] Commit: id = 3 numWriteLocks=5 numReadLocks = 0
+FLUSH : v1 (rid = 1155099827)
+
+- Ok bis auf die fehlenden node pedigrees in den ref zuweisungen [fi1], was aus der fehlenden ref implementierung in KSystemImpl herruehrt
+- das Invertieren des MSB durch TupleOutput ist extrem nervig
+- hash key 128(0) 0 0 0 68 217 108 179 ist hex 44 D9 6C B3 und damit gleich rid 1155099827

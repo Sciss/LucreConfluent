@@ -34,6 +34,7 @@ import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import com.sleepycat.je.Environment
 import HashedTxnDBStore.{Value => DBValue, ValueNone => DBValueNone, ValuePre => DBValuePre, ValueFull => DBValueFull }
 import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
+import com.sleepycat.je.EnvironmentConfig
 import java.io.{ObjectInputStream, ObjectOutputStream, File}
 
 object KSystemImpl {
@@ -63,6 +64,10 @@ object KSystemImpl {
             dbCfg.setAllowCreate( true )  // why do we need to specify this twice??
             val dir     = new File( new File( System.getProperty( "user.home" ), "Desktop" ), "ksys" )
             dir.mkdirs()
+
+//            envCfg.setConfigParam( EnvironmentConfig.FILE_LOGGING_LEVEL, "ALL" )
+            envCfg.setConfigParam( EnvironmentConfig.CONSOLE_LOGGING_LEVEL, "ALL" )
+
             (new Environment( dir, envCfg ), dbCfg)
          }
          BerkeleyDBStore.open[ KCtx ]( env, "ksys", dbCfg )

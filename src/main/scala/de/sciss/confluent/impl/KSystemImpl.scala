@@ -38,6 +38,10 @@ import com.sleepycat.je.EnvironmentConfig
 import java.io.{ObjectInputStream, ObjectOutputStream, File}
 
 object KSystemImpl {
+   var CHECK_READS            = false
+   var LOG_FLUSH              = false
+   var DB_CONSOLE_LOG_LEVEL   = "OFF" // "OFF", "ALL"
+
    private type Holder[ T ]   = TxnStore[ KCtx, Path, T ]
 //   private type StoreFactory  = TxnStoreFactory[ Path ]
 
@@ -66,7 +70,7 @@ object KSystemImpl {
             dir.mkdirs()
 
 //            envCfg.setConfigParam( EnvironmentConfig.FILE_LOGGING_LEVEL, "ALL" )
-            envCfg.setConfigParam( EnvironmentConfig.CONSOLE_LOGGING_LEVEL, "ALL" )
+            envCfg.setConfigParam( EnvironmentConfig.CONSOLE_LOGGING_LEVEL, DB_CONSOLE_LOG_LEVEL )
 
             (new Environment( dir, envCfg ), dbCfg)
          }
@@ -354,7 +358,7 @@ object KSystemImpl {
             val suffix = Version.newFrom( hashes )
             Val.flush( suffix )
             Ref.flush( suffix )
-println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
+if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             Some( suffix )
          }
 
@@ -526,6 +530,13 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             val txn  = ctx.txn
             val p    = ctx.path
 
+if( CHECK_READS ) {
+   val hash = p.sum
+   if( !Version.assertExistsHash( hash )( txn )) {
+      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+   }
+}
+
             val tup = ref.getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
             // what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
             val raw = tup._1
@@ -579,6 +590,13 @@ println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
          def get( implicit ctx: KCtx ) : T = {
             val p    = ctx.path
+if( CHECK_READS ) {
+   val txn  = ctx.txn
+   val hash = p.sum
+   if( !Version.assertExistsHash( hash )( txn )) {
+      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+   }
+}
             ref.get( p ).getOrElse( error( "No assignment for path " + p ))
          }
 

@@ -70,6 +70,13 @@ object Version {
       new VersionImpl( 0, 0, tree, tree.insertRoot )
    }
 
+   def assertExistsHash( hash: Long )( implicit txn: InTxn ) : Boolean = {
+      val res = idRef.get.sumsTaken.contains( hash )
+//      assert( res )
+      res
+//      println( "EXISTS: " + hash )
+   }
+
 //   def testWrapXXX( suffix: Int )( implicit txn: InTxn ) : Version = {
 //      val pv      = init // parent.version
 //      val tree    = pv.tree

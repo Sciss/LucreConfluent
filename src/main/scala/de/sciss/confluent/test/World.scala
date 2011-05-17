@@ -5,6 +5,7 @@ import de.sciss.fingertree.FingerTree
 import concurrent.stm.{InTxn, TxnExecutor}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import java.util.logging.{Level, Logger}
+import impl.KSystemImpl
 
 object World {
 //   def apply[ C1 <: KSystem.Ctx, A ]( implicit c: C1, sys: KSystem ) : World[ C1, A ] =
@@ -234,8 +235,9 @@ object WorldTest {
       args.headOption match {
          case Some( "-r" ) => new WorldReadTest
          case Some( "-w" ) => new WorldWriteTest
+         case Some( "-h" ) => new WorldWriteReadTest
          case _ =>
-            println( "Options: -r for read, -w for write" )
+            println( "Options: -r for read, -w for write, -h for write/read" )
             System.exit( 1 )
       }
    }
@@ -261,6 +263,96 @@ class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
 
       override def toString = "World[" + path + "]"
    }
+}
+
+class WorldWriteReadTest {
+   Hashing.verbose               = false
+   FingerTree.TOSTRING_RESOLVE   = true
+
+   val log = Logger.getLogger( "com.sleepycat.je" )
+   log.setLevel( Level.ALL )
+   val sys = Factory.ksystem( WorldFactory[ KCtx ])
+
+   val kproj   = sys.kProjector
+   val keproj  = sys.keProjector
+   val csr  = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
+
+   // damn it...
+   implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
+
+   // ---- write ----
+
+   val v0 = csr.t { implicit w =>
+      w.list = CList( 2, 1 )
+   }
+
+   val v1 = csr.t { implicit w =>
+      w.list = w.list.reverse
+   }
+
+   val v2 = keproj.in( v0 ).t { implicit w =>
+      w.list = w.list.drop( 1 )
+      w.list.lastOption.foreach( _.tail = CList( 4 ))
+   }
+
+   val v3 = csr.t { implicit w =>
+      val ro = keproj.in( v2 ).meld( _.list.headOption )
+      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
+      def inc( l: CList[ KCtx, Int]) : Unit = l match {
+         case cons0: CCons[ _, _ ] =>
+            val cons = cons0.asInstanceOf[ CCons[ KCtx, Int ]]
+            cons.head += 2
+            inc( cons.tail )
+         case _ =>
+      }
+      inc( r )
+
+      w.list.lastOption match {
+         case Some( head ) => head.tail = r
+         case None => w.list = r
+      }
+   }
+
+   val v4 = csr.t { implicit w =>
+      val ro = keproj.in( v2 ).meld( _.list.headOption )
+      val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
+      w.list.lastOption match {
+         case Some( head ) => head.tail = r
+         case None => w.list = r
+      }
+   }
+
+   // ---- read ----
+   KSystemImpl.CHECK_READS = true
+
+   println( "---- read v0" )
+   keproj.in( v0 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 2, 1 ), l.toString )
+   }
+   println( "---- read v1" )
+   keproj.in( v1 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2 ), l.toString )
+   }
+   println( "---- read v2" )
+   keproj.in( v2 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 4 ), l.toString )
+   }
+   println( "---- read v3" )
+   keproj.in( v3 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6 ), l.toString )
+   }
+   println( "---- read v4" )
+   keproj.in( v4 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+   }
+   println( "---- reads done" )
+
+   sys.dispose
 }
 
 class WorldReadTest {
@@ -429,54 +521,4 @@ class WorldWriteTest {
 //      assert( l == List( 1, 4 ))
 //   }
 //   proj.projectIn( v2 ).t( t2( _ ))
-}
-
-class WorldTest1 {
-   val sys  = Factory.ksystem( WorldFactory[ KCtx ])
-//   val csr  = sys.t( sys.kProjector.cursorIn( VersionPath.init )( _ ))
-////   val l0   = csr.t( implicit c => CList.empty[ KSystem.Ctx, String ])
-//
-//   def a1[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
-//      val world = World.apply[ C1, String ]
-//      world.list_=( CList.apply( "A", "B", "C" ))
-//      world
-//   }
-//
-//   val w1 = csr.t( a1( _ ))
-//
-//   def a2[ C1 <: KSystem.Ctx ]( w1: World[ _, String ] )( implicit c: C1 ) = {
-//      val world   = w1.access( c.path.seminalPath )
-//      val l1      = world.list
-//      (l1.headOption, l1.lastOption) match {
-//         case (Some( head ), Some( tail )) => tail.tail = head
-//         case _ =>
-//      }
-//      world
-//   }
-//
-//   val w2 = csr.t( implicit c => a2( w1 ))
-//
-//   def a3[ C1 <: KSystem.Ctx ]( w2: World[ _, String ] )( implicit c: C1 ) = {
-//      val world   = w2.access( c.path.seminalPath )
-//      val l2      = world.list
-//      var lo      = l2.headOption
-//// infinite loop... ouch!
-////      while( lo.isDefined ) {
-////         val le   = lo.get
-////         println( le.head )
-////         lo       = le.tailOption
-////      }
-//   }
-//
-//   csr.t( implicit c => a3( w2 ))
-
-//   csr.t( implicit c => (l1.headOption, l1.tailOption) match {
-//      case (Some( head ), Some( tail )) => tail.tail = head
-//   })
-
-//   class MutVar[ V <: VersionPath ]( val v: KSystem.Var[ String ])
-//   class MutTest extends KMutVar[ KCtx, MutVar ] {
-//      def get[ V <: VersionPath ]( implicit c: KCtx[ V ]) : MutVar[ V ] = error( "NO" )
-//      def set[ V <: VersionPath ]( v: MutVar[ V ])( implicit c: KCtx[ V ]) : Unit = error( "NO" )
-//   }
 }

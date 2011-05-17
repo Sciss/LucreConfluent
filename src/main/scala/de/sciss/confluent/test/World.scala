@@ -288,6 +288,8 @@ class WorldWriteReadTest {
    // damn it...
    implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
 
+val fixAccess = true
+
    // ---- write ----
 
    println( "---- write v0" )
@@ -319,9 +321,13 @@ class WorldWriteReadTest {
       }
       inc( r )
 
-      w.list.lastOption match {
-         case Some( head ) => head.tail = r
-         case None => w.list = r
+      val l = w.list
+      l.lastOption match {
+         case Some( head ) =>
+            head.tail = r
+            if( fixAccess ) w.list = l
+         case None =>
+            w.list = r
       }
    }
 
@@ -329,9 +335,13 @@ class WorldWriteReadTest {
    val v4 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
-      w.list.lastOption match {
-         case Some( head ) => head.tail = r
-         case None => w.list = r
+      val l = w.list
+      l.lastOption match {
+         case Some( head ) =>
+            head.tail = r
+            if( fixAccess ) w.list = l
+         case None =>
+            w.list = r
       }
    }
    println( "---- writes done" )

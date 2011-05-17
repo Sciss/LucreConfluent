@@ -48,3 +48,21 @@ Assertion failed for path List(3, 5)
 ---- reads done
 
 Process finished with exit code 0
+
+///////
+missing paths (zero based):
+
+0, 1, 3, 4
+0, 2, 3, 4
+0, 2, 4
+2, 4
+
+assignment pedigrees
+0
+0, 1
+0, 1, 3
+0, 2
+0, 2, 3
+2
+2, 3
+2, 3, 4

@@ -289,6 +289,8 @@ class WorldWriteReadTest {
    implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
 
 val fixAccess = true
+val noMeld = true
+//KSystemImpl.CHECK_READS = true
 
    // ---- write ----
 
@@ -310,7 +312,7 @@ val fixAccess = true
 
    println( "---- write v3" )
    val v3 = csr.t { implicit w =>
-      val ro = keproj.in( v2 ).meld( _.list.headOption )
+      val ro: Option[ CList[ KCtx, Int ]] = if( noMeld ) None else keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
       def inc( l: CList[ KCtx, Int]) : Unit = l match {
          case cons0: CCons[ _, _ ] =>
@@ -333,7 +335,7 @@ val fixAccess = true
 
    println( "---- write v4" )
    val v4 = csr.t { implicit w =>
-      val ro = keproj.in( v2 ).meld( _.list.headOption )
+      val ro: Option[ CList[ KCtx, Int ]] = if( noMeld ) None else keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
       val l = w.list
       l.lastOption match {
@@ -371,12 +373,12 @@ val fixAccess = true
    println( "---- read v3" )
    keproj.in( v3 ).t { implicit w =>
       val l = w.list.toList( true )
-      assert( l == List( 1, 2, 3, 6 ), l.toString )
+      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6 )), l.toString )
    }
    println( "---- read v4" )
    keproj.in( v4 ).t { implicit w =>
       val l = w.list.toList( true )
-      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6, 1, 4 )), l.toString )
    }
    println( "---- reads done" )
 

@@ -163,7 +163,10 @@ sealed trait CList[ C, T] extends Node[ C, CList[ C, T ]] /* with HasSerializer[
    def lastOption : Option[ CCons[ C, T ]]
    def drop( n: Int ) : CList[ C, T ]
    def reverse : CList[ C, T ]
-   def toList : List[ T ]
+//   def toList : List[ T ]
+   final def toList : List[ T ] = toList( false )
+   def toList( debug: Boolean ) : List[ T ]
+
    def iterator : Iterator[ CCons[ C, T ]]
    def inspect : Unit
 }
@@ -172,7 +175,7 @@ trait CNil[ C, T ] extends CList[ C, T ] {
    def lastOption : Option[ CCons[ C, T ]] = None
    def drop( n: Int ) : CList[ C, T ] = this
    def reverse : CList[ C, T ] = this
-   def toList : List[ T ] = Nil
+   def toList( debug: Boolean ) : List[ T ] = Nil
    def iterator : Iterator[ CCons[ C, T ]] = Iterator.empty
 }
 trait CCons[ C, T ] extends CList[ C, T ] {
@@ -215,17 +218,22 @@ trait CCons[ C, T ] extends CList[ C, T ] {
 
    def reverse : CList[ C, T ]
 
-   def toList : List[ T ] = {
+   def toList( debug: Boolean ) : List[ T ] = {
       val b          = List.newBuilder[ T ]
       var res        = this
       var keepGoin   = true
+if( debug ) println( ":: toList BEGIN ::" )
       while( keepGoin ) {
+         if( debug ) println( "-> head" )
          b += res.head
-         res.tail.headOption match {
+         val tail = res.tail
+         if( debug ) println( "-> tail" )
+         tail.headOption match {
             case Some( head ) => res = head
             case None => keepGoin = false
          }
       }
+if( debug ) println( ":: toList END ::" )
       b.result
    }
 }
@@ -352,12 +360,12 @@ class WorldWriteReadTest {
    }
    println( "---- read v3" )
    keproj.in( v3 ).t { implicit w =>
-      val l = w.list.toList
+      val l = w.list.toList( true )
       assert( l == List( 1, 2, 3, 6 ), l.toString )
    }
    println( "---- read v4" )
    keproj.in( v4 ).t { implicit w =>
-      val l = w.list.toList
+      val l = w.list.toList( true )
       assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
    }
    println( "---- reads done" )

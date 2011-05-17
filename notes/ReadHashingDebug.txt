@@ -1,0 +1,50 @@
+---- write v0
+---- write v1
+---- write v2
+---- write v3
+---- write v4
+---- writes done
+---- read v0
+---- read v1
+---- read v2
+---- read v3
+Assertion failed for path List(0, 1, 2, 4) // = access !
+:: toList BEGIN ::
+-> head
+-> tail
+-> head
+-> tail
+-> head
+-> tail
+-> head
+-> tail
+:: toList END ::
+---- read v4
+Assertion failed for path List(0, 1, 2, 4, 5) // = access !
+:: toList BEGIN ::
+-> head
+Assertion failed for path List(1, 2, 4, 5)
+Assertion failed for path List(1, 2, 4, 5)
+-> tail
+-> head
+Assertion failed for path List(1, 2, 4, 5)
+Assertion failed for path List(1, 2, 4, 5)
+-> tail
+-> head
+Assertion failed for path List(1, 3, 4, 5)
+Assertion failed for path List(1, 3, 4, 5)
+-> tail
+-> head
+-> tail
+-> head
+Assertion failed for path List(1, 3, 5)
+Assertion failed for path List(1, 3, 5)
+-> tail
+-> head
+Assertion failed for path List(3, 5)
+Assertion failed for path List(3, 5)
+-> tail
+:: toList END ::
+---- reads done
+
+Process finished with exit code 0

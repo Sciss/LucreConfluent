@@ -62,12 +62,13 @@ object Version {
    }
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
-   private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 0 ), ISet.empty ))
+//   private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 0 ), ISet.empty ))
+   private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 1 ), ISet( 1 )))
 
    val init: Version = {
       val tree       = VersionTree.empty( 0 )
-//      val (id, rid)  = nextID( 0L )
-      new VersionImpl( 0, 0, tree, tree.insertRoot )
+//      new VersionImpl( 0, 0, tree, tree.insertRoot )
+      new VersionImpl( 0, 1, tree, tree.insertRoot )
    }
 
    def assertExistsHash( hash: Long )( implicit txn: InTxn ) : Boolean = {

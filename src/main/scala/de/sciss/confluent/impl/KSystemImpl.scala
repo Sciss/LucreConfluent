@@ -56,7 +56,7 @@ object KSystemImpl {
       val nodeIDRef = STMRef( 0 )
       val atomic = TxnExecutor.defaultAtomic
 
-      val cacheValFactory  = CachedTxnStore.valFactory[ KCtx, Version ]( Cache.Val )
+      val cacheValFactory  = CachedTxnStoreTest.valFactory[ KCtx, Version ]( Cache.Val )
 //      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
       val hashValFactory   = HashedTxnDBStore.valFactory[ KCtx, Version, Any ]
       val dbValFactory     = atomic { txn =>
@@ -77,7 +77,7 @@ object KSystemImpl {
          BerkeleyDBStore.open[ KCtx ]( env, "ksys", dbCfg )
       }
 
-      val cacheRefFactory  = CachedTxnStore.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
+      val cacheRefFactory  = CachedTxnStoreTest.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
 
       val aInit : A = atomic { txn =>
@@ -312,18 +312,26 @@ object KSystemImpl {
 
       private object Cache {
          val hashSet = TxnLocal( Set.empty[ Long ])
+val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
 
-         trait SubCache[ X ] extends TxnCacheGroup[ KCtx, Long, X ] {
+//         trait SubCache[ X ] extends TxnCacheGroup[ KCtx, Long, X ] { ... }
+         trait SubCache[ X ] extends TxnCacheGroup[ KCtx, PathLike[ Version ], X ] {
             val cacheSet = TxnLocal( Set.empty[ TxnCacheLike[ KCtx, X ]])
 
-            def addDirty( cache: TxnCacheLike[ KCtx, X ], hash: Long )( implicit access: KCtx ) {
+//            def addDirty( cache: TxnCacheLike[ KCtx, X ], hash: Long )( implicit access: KCtx ) { ... }
+            def addDirty( cache: TxnCacheLike[ KCtx, X ], hash0: PathLike[ Version ])( implicit access: KCtx ) {
                implicit val txn = access.txn
+val hash = hash0.sum
+pathSet.transform( _ + hash0 )
                hashSet.transform( _ + hash )
                cacheSet.transform( _ + cache )
             }
 
-            def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes: Traversable[ Long ])( implicit access: KCtx ) {
+//            def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes: Traversable[ Long ])( implicit access: KCtx ) { ... }
+            def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes0: Traversable[ PathLike[ Version ]])( implicit access: KCtx ) {
                implicit val txn = access.txn
+val hashes = hashes0.map( _.sum )
+pathSet.transform( _ ++ hashes0 )
                hashSet.transform( _ ++ hashes )
                cacheSet.transform( _ + cache )
             }
@@ -333,6 +341,7 @@ object KSystemImpl {
 
          object Val extends SubCache[ Path ] {
             def flush( suffix: Version )( implicit access: KCtx ) {
+error( "TODO" )
 //               val rid = suffix.rid
                cacheSet.get( access.txn ).foreach( _.flush( _ :+ suffix ))
             }
@@ -352,6 +361,7 @@ object KSystemImpl {
          }
 
          def flush( implicit access: KCtx ) : Option[ Version ] = {
+error( "TODO" )
             implicit val txn = access.txn
             val hashes = hashSet.swap( Set.empty[ Long ])
             if( hashes.isEmpty ) return None
@@ -519,6 +529,8 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )
 
+private val CHECK_REF = STMRef( Set.empty[ List[ Int ]])
+
       private trait AbstractRef[ T <: Node[ KCtx, T ]]
       extends Ref[ KCtx, T ] {
          protected val ref: RefHolder[ T ]
@@ -531,10 +543,15 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
             val p    = ctx.path
 
 if( CHECK_READS ) {
-   val hash = p.sum
-   if( !Version.assertExistsHash( hash )( txn )) {
-      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+   val l = p.toList.map( _.id )
+   if( !CHECK_REF.get( txn ).contains( l )) {
+      println( "Assertion failed for path " + l )
    }
+
+//   val hash = p.sum
+//   if( !Version.assertExistsHash( hash )( txn )) {
+//      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+//   }
 }
 
             val tup = ref.getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
@@ -592,10 +609,14 @@ if( CHECK_READS ) {
             val p    = ctx.path
 if( CHECK_READS ) {
    val txn  = ctx.txn
-   val hash = p.sum
-   if( !Version.assertExistsHash( hash )( txn )) {
-      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+   val l = p.toList.map( _.id )
+   if( !CHECK_REF.get( txn ).contains( l )) {
+      println( "Assertion failed for path " + l )
    }
+//   val hash = p.sum
+//   if( !Version.assertExistsHash( hash )( txn )) {
+//      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
+//   }
 }
             ref.get( p ).getOrElse( error( "No assignment for path " + p ))
          }

@@ -226,8 +226,8 @@ if( debug ) println( ":: toList BEGIN ::" )
       while( keepGoin ) {
          if( debug ) println( "-> head" )
          b += res.head
-         val tail = res.tail
          if( debug ) println( "-> tail" )
+         val tail = res.tail
          tail.headOption match {
             case Some( head ) => res = head
             case None => keepGoin = false
@@ -289,7 +289,7 @@ class WorldWriteReadTest {
    implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
 
 val fixAccess = true
-val noMeld = true
+val noMeld = false
 //KSystemImpl.CHECK_READS = true
 
    // ---- write ----

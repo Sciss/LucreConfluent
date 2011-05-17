@@ -8,7 +8,6 @@
 ---- read v1
 ---- read v2
 ---- read v3
-Assertion failed for path List(0, 1, 2, 4) // = access !
 :: toList BEGIN ::
 -> head
 -> tail
@@ -20,30 +19,29 @@ Assertion failed for path List(0, 1, 2, 4) // = access !
 -> tail
 :: toList END ::
 ---- read v4
-Assertion failed for path List(0, 1, 2, 4, 5) // = access !
 :: toList BEGIN ::
 -> head
 Assertion failed for path List(1, 2, 4, 5)
-Assertion failed for path List(1, 2, 4, 5)
 -> tail
+Assertion failed for path List(1, 2, 4, 5)
 -> head
 Assertion failed for path List(1, 2, 4, 5)
-Assertion failed for path List(1, 2, 4, 5)
 -> tail
+Assertion failed for path List(1, 2, 4, 5)
 -> head
 Assertion failed for path List(1, 3, 4, 5)
-Assertion failed for path List(1, 3, 4, 5)
 -> tail
+Assertion failed for path List(1, 3, 4, 5)
 -> head
 -> tail
 -> head
 Assertion failed for path List(1, 3, 5)
-Assertion failed for path List(1, 3, 5)
 -> tail
+Assertion failed for path List(1, 3, 5)
 -> head
 Assertion failed for path List(3, 5)
-Assertion failed for path List(3, 5)
 -> tail
+Assertion failed for path List(3, 5)
 :: toList END ::
 ---- reads done
 
@@ -66,3 +64,10 @@ assignment pedigrees
 2
 2, 3
 2, 3, 4
+
+/////
+ideas:
+- each mutable object would need to be 'touched'
+  if any of its field is modified? ; then the
+  read access would first cut off the tail according
+  to the touched set?

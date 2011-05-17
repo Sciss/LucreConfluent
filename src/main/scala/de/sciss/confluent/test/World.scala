@@ -282,19 +282,23 @@ class WorldWriteReadTest {
 
    // ---- write ----
 
+   println( "---- write v0" )
    val v0 = csr.t { implicit w =>
       w.list = CList( 2, 1 )
    }
 
+   println( "---- write v1" )
    val v1 = csr.t { implicit w =>
       w.list = w.list.reverse
    }
 
+   println( "---- write v2" )
    val v2 = keproj.in( v0 ).t { implicit w =>
       w.list = w.list.drop( 1 )
       w.list.lastOption.foreach( _.tail = CList( 4 ))
    }
 
+   println( "---- write v3" )
    val v3 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
@@ -313,6 +317,7 @@ class WorldWriteReadTest {
       }
    }
 
+   println( "---- write v4" )
    val v4 = csr.t { implicit w =>
       val ro = keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
@@ -321,6 +326,11 @@ class WorldWriteReadTest {
          case None => w.list = r
       }
    }
+   println( "---- writes done" )
+// this makes 'read v3' fail!
+//   csr.t { implicit w =>
+//      w.list = CList.empty[ KCtx, Int /* FUCKING BITCHES */ ] // w.list
+//   }
 
    // ---- read ----
    KSystemImpl.CHECK_READS = true

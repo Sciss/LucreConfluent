@@ -341,7 +341,7 @@ pathSet.transform( _ ++ hashes0 )
 
          object Val extends SubCache[ Path ] {
             def flush( suffix: Version )( implicit access: KCtx ) {
-error( "TODO" )
+CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
 //               val rid = suffix.rid
                cacheSet.get( access.txn ).foreach( _.flush( _ :+ suffix ))
             }
@@ -349,6 +349,7 @@ error( "TODO" )
 
          object Ref extends SubCache[ (Path, KCtx) ] {
             def flush( suffix: Version )( implicit access: KCtx ) {
+CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
 //               val rid = suffix.rid
                cacheSet.get( access.txn ).foreach( _.flush( tup => {
                   val pset = tup._1
@@ -361,7 +362,6 @@ error( "TODO" )
          }
 
          def flush( implicit access: KCtx ) : Option[ Version ] = {
-error( "TODO" )
             implicit val txn = access.txn
             val hashes = hashSet.swap( Set.empty[ Long ])
             if( hashes.isEmpty ) return None

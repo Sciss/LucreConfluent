@@ -49,13 +49,15 @@ object BerkeleyDBStore {
 
    def newTxnCfg: TransactionConfig = new TransactionConfig()
 
-   def open[ C <: Ct[ C ]]( env: Environment, name: String, dbCfg: DatabaseConfig = newDBCfg, txnCfg: TransactionConfig = newTxnCfg )
-           ( implicit access: C ) : Handle[ C ] = {
+   def newCtx( env: Environment, txnCfg: TransactionConfig = newTxnCfg ): DatabaseContext = new ContextImpl( env, txnCfg )
 
-      val envCfg = env.getConfig
+   def open[ C <: Ct[ C ]]( ctx: DatabaseContext, name: String, dbCfg: DatabaseConfig = newDBCfg )( implicit access: C ) : Handle[ C ] = {
+
+      val env     = ctx.env
+      val envCfg  = env.getConfig
       require( envCfg.getTransactional && dbCfg.getTransactional && !dbCfg.getSortedDuplicates )
 
-      val txn  = env.beginTransaction( null, txnCfg )
+      val txn  = env.beginTransaction( null, ctx.txnCfg )
       var ok   = false
       try {
          txn.setName( "Open '" + name + "'" )
@@ -63,7 +65,7 @@ object BerkeleyDBStore {
 //         if( createDir ) env.getHome.mkdirs()
          val db = env.openDatabase( txn, name, dbCfg )
          try {
-            val res = new HandleImpl[ C ]( env, db, txnCfg )
+            val res = new HandleImpl[ C ]( ctx, db )
             ok = true
             res
          } finally {
@@ -74,23 +76,22 @@ object BerkeleyDBStore {
       }
    }
 
-   private class HandleImpl[ C <: Ct[ C ]]( env: Environment, db: Database, txnCfg: TransactionConfig )
-   extends Handle[ C ] with STMTxn.ExternalDecider {
-      handle =>
+   private class ContextImpl( val env: Environment, val txnCfg: TransactionConfig )
+   extends DatabaseContext with STMTxn.ExternalDecider {
+      context =>
 
-//      val countRef      = STMRef( db.count() ) // XXX
-      val dbTxnRef      = TxnLocal( initialValue = initDBTxn( _ ))
+      private val dbTxnRef = TxnLocal( initialValue = initDBTxn( _ ))
 
-      def environment   = env
-      def name          = db.getDatabaseName
-      def dbCfg         = db.getConfig
+      private[BerkeleyDBStore] def txnHandle( implicit txn: InTxnEnd ) : DBTxnHandle = dbTxnRef.get
 
-      def close( closeEnv: Boolean ) {
-         try {
-            db.close()
-         } finally {
-            if( closeEnv ) env.close()
+      private def initDBTxn( implicit txn: InTxn ) : DBTxnHandle = {
+         STMTxn.setExternalDecider( context )
+         val dbTxn = env.beginTransaction( null, txnCfg )
+         STMTxn.afterRollback { status =>
+            try { dbTxn.abort() } catch { case _ => }
          }
+         val to = new TupleOutput
+         DBTxnHandle( dbTxn, to, new DatabaseEntry(), new DatabaseEntry() )
       }
 
       def shouldCommit( implicit txn: InTxnEnd ) : Boolean = {
@@ -103,16 +104,47 @@ object BerkeleyDBStore {
             false
          }
       }
+   }
 
-      private def initDBTxn( implicit txn: InTxn ) : DBTxnHandle = {
-         STMTxn.setExternalDecider( handle )
-         val dbTxn = env.beginTransaction( null, txnCfg )
-         STMTxn.afterRollback { status =>
-            try { dbTxn.abort() } catch { case _ => }
+   private class HandleImpl[ C <: Ct[ C ]]( val ctx: DatabaseContext, db: Database )
+   extends Handle[ C ] {
+      handle =>
+
+//      val countRef      = STMRef( db.count() ) // XXX
+//      val dbTxnRef      = TxnLocal( initialValue = initDBTxn( _ ))
+
+//      def environment   = env
+      def name          = db.getDatabaseName
+      def dbCfg         = db.getConfig
+
+      def close( closeEnv: Boolean ) {
+         try {
+            db.close()
+         } finally {
+            if( closeEnv ) ctx.env.close()
          }
-         val to = new TupleOutput
-         DBTxnHandle( dbTxn, to, new DatabaseEntry(), new DatabaseEntry() )
       }
+
+//      def shouldCommit( implicit txn: InTxnEnd ) : Boolean = {
+//         val h = ctx.txnHandle // dbTxnRef.get
+//         try {
+//            h.txn.commit()
+//            true
+//         } catch { case e =>
+//            try { h.txn.abort() } catch { case _ => }
+//            false
+//         }
+//      }
+
+//      private def initDBTxn( implicit txn: InTxn ) : DBTxnHandle = {
+//         STMTxn.setExternalDecider( handle )
+//         val dbTxn = env.beginTransaction( null, txnCfg )
+//         STMTxn.afterRollback { status =>
+//            try { dbTxn.abort() } catch { case _ => }
+//         }
+//         val to = new TupleOutput
+//         DBTxnHandle( dbTxn, to, new DatabaseEntry(), new DatabaseEntry() )
+//      }
 
 //      def emptyVal[ V <: AnyRef ]( implicit txn: InTxn ): TxnStore[ Long, V ] = {
 //         val id = countRef.get
@@ -128,7 +160,7 @@ object BerkeleyDBStore {
 
       class StoreImpl[ C <: Ct[ C ], V ]( id: Long, s: Serializer[ C, V ]) extends TxnStore[ C, Long, V ] {
          def get( key: Long )( implicit access: C ) : Option[ V ] = {
-            val h = dbTxnRef.get( access.txn )
+            val h = ctx.txnHandle( access.txn ) // dbTxnRef.get( access.txn )
             val out = h.to
             out.reset()  // actually this shouldn't be needed
 //            val id: Long = error( "TODO" ) // = s.id // ( value )
@@ -145,12 +177,12 @@ object BerkeleyDBStore {
          }
 
          def put( key: Long, value: V )( implicit access: C ) {
-            val h = dbTxnRef.get( access.txn )
+            val h = ctx.txnHandle( access.txn ) // dbTxnRef.get( access.txn )
             write( h, key, value )
          }
 
          def putAll( elems: Iterable[ (Long, V) ])( implicit access: C ) {
-            val h = dbTxnRef.get( access.txn )
+            val h = ctx.txnHandle( access.txn ) // dbTxnRef.get( access.txn )
             elems.foreach { tup => write( h, tup._1, tup._2 )}
          }
 
@@ -195,10 +227,17 @@ object BerkeleyDBStore {
     * **Note** that the precision of the storage identifier, although given
     * as `Long`, is only 48 bit (the least significant 48 bit of the `Long`).
     */
-   trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ Long, C, Long  ] {
+   sealed trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ Long, C, Long  ] {
       def name: String
       def close( env: Boolean ) : Unit
-      def environment : Environment
+//      def env : Environment
+      def ctx: DatabaseContext
       def dbCfg : DatabaseConfig
+   }
+
+   sealed trait DatabaseContext {
+      def env: Environment
+      def txnCfg: TransactionConfig
+      private[BerkeleyDBStore] def txnHandle( implicit txn: InTxnEnd ) : DBTxnHandle
    }
 }

@@ -74,7 +74,8 @@ object KSystemImpl {
 
             (new Environment( dir, envCfg ), dbCfg)
          }
-         BerkeleyDBStore.open[ KCtx ]( env, "ksys", dbCfg )
+         val dbCtx = BerkeleyDBStore.newCtx( env )
+         BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys", dbCfg )
       }
 
       val cacheRefFactory  = CachedTxnStoreTest.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )

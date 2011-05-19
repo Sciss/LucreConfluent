@@ -91,23 +91,24 @@ object Version {
 //   }
 
 //   def newFrom( v: Version, vs: Version* ) : Version = {
-   def newFrom( parent: VersionPath )( implicit txn: InTxn ) : Version = {
-//      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
-      val pv      = parent.version
-      val tree    = pv.tree
-      val insFun  = tree.insertChild( pv ) _
 
-      val (id, rid) = nextID( parent.path.sum :: Nil )
-      new VersionImpl( id, rid, tree, insFun )
-   }
+//   def newFrom( parent: VersionPath )( implicit txn: InTxn ) : Version = {
+////      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
+//      val pv      = parent.version
+//      val tree    = pv.tree
+//      val insFun  = tree.insertChild( pv ) _
+//
+//      val (id, rid) = nextID( parent.path.sum :: Nil )
+//      new VersionImpl( id, rid, tree, insFun )
+//   }
 
-   def newFrom( preSums: Traversable[ Long ])( implicit txn: InTxn ) : Version = {
+   def newFrom( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Version, Traversable[ Long ]) = {
       val pv      = init // parent.version
       val tree    = pv.tree
       val insFun  = tree.insertChild( pv ) _
 
-      val (id, rid) = nextID( preSums )
-      new VersionImpl( id, rid, tree, insFun )
+      val (id, rid, newSums) = nextID( preSums )
+      (new VersionImpl( id, rid, tree, insFun ), newSums)
    }
 
    def testWrapXXX( id: Int, rid: Int ) : Version = {
@@ -190,7 +191,7 @@ object Version {
 //      error( "Never here" )
 //   }
 
-   private def nextID( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Int, Int) = {
+   private def nextID( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Int, Int, Traversable[ Long ]) = {
       val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
       val view = preSums // .view
       while( true ) {
@@ -199,7 +200,7 @@ object Version {
             val sums = preSums.map( _ + rid )
             if( sums.forall( !sumsTaken.contains( _ ))) {
                idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken ++ sums ))( txn )
-               return (cnt, rid)
+               return (cnt, rid, sums)
             }
          }
       }

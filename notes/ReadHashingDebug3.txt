@@ -67,6 +67,8 @@ a more sophisticated algorithm
   the objects referred to by this ref.
   if referred to objects disappear, remove
   their subset from the multiset hash
+  ; maybe it's sufficient to maintain a
+  use count field?
 
 notes
 - the simple algorithm looks expensive,
@@ -84,4 +86,37 @@ notes
   will become increasingly more expensive :-(
 - the simple algorithm is worth a try,
   and i don't see much alternatives right now
+
+notes2
+- does Version.newFrom need to maintain a
+  total set of sums-taken, or is it sufficient
+  to take the one from the txn (input versions)?
+  ; if the latter -- is this safe in later
+  melds?
+  ; if this is safe -- are there any implications
+  of possibly several ids being mapped to the
+  same rid?
+! ANSWER: THE TOTAL SET IS REQUIRED! because
+  the same fat node may otherwise have conflicts
+  with two identical paths belonging to different
+  branches; an alternative would be to store the
+  sums-taken per node, but this doesn't seem to
+  be providing much benefit and costs extra space
+  ; also since the set lookup is fast, there is
+  no big issue maintaining this list along with
+  the sub-sets per access path
+! ; this is more a problem of persisting these
+  per access path sets!
+
+--- this last note explored ---
+- it would be straightforward to construct a
+Map[Int, Set[Long]] globally, instead of
+storing the sets somehow with the access paths...
+; there is really no difference between Version and
+VersionPath because the set associated with a Version
+is necessarily the one that would have been
+incrementally created in the only possible path
+from root to that version (no other paths _can_ be
+taken)
+
 

@@ -36,7 +36,8 @@ trait VersionPath {
    def path: Path
    def seminalPath : Path = path.takeRight( 1 )
 
-   def newBranch( implicit txn: InTxn ) : Child // VersionPath
+//   def newBranch( implicit txn: InTxn ) : Child // VersionPath
+
 //   def meldWith( v: Version ) : VersionPath
 //   def newRetroParent : VersionPath
 //   def newRetroChild : VersionPath
@@ -67,9 +68,9 @@ object VersionPath {
    extends VersionPath {
       type Child = VersionPathImpl
 
-      def newBranch( implicit txn: InTxn ) : Child =
-//         newTail( Version.newFrom( version ))
-         newTail( Version.newFrom( this ))
+//      def newBranch( implicit txn: InTxn ) : Child =
+////         newTail( Version.newFrom( version ))
+//         newTail( Version.newFrom( this ))
 
 //      def meldWith( v: Version ) : VersionPath = {
 //         newTail( Version.newFrom( version, v ))

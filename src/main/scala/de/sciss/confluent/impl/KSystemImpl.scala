@@ -29,13 +29,13 @@
 package de.sciss.confluent
 package impl
 
-import collection.immutable.{Set => ISet}
 import concurrent.stm.{Txn, TxnExecutor, InTxn, TxnLocal, Ref => STMRef}
 import com.sleepycat.je.Environment
 import HashedTxnDBStore.{Value => DBValue, ValueNone => DBValueNone, ValuePre => DBValuePre, ValueFull => DBValueFull }
 import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 import com.sleepycat.je.EnvironmentConfig
 import java.io.{ObjectInputStream, ObjectOutputStream, File}
+import collection.immutable.{IntMap, Set => ISet}
 
 object KSystemImpl {
    var CHECK_READS            = false
@@ -80,10 +80,12 @@ object KSystemImpl {
       val cacheRefFactory  = CachedTxnStoreTest.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
 
+      val versionHashes = STMRef( IntMap.empty[ Set[ Long ]])
+
       val aInit : A = atomic { txn =>
          val ctx  = Ctx( txn, VersionPath.init.path )
          val res  = ap.init( ctx )
-         assert( Cache.isEmpty( ctx ))
+         assert( Cache.isEmpty( txn ))
          res
       }
 
@@ -154,13 +156,13 @@ object KSystemImpl {
 //         Ref( fat1 ) -> m.toString
 //      }
 
-      def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath = {
-         val txn  = c.txn
-         val pw   = v.newBranch( txn )
-//         dagRef.transform( _.put( pw.path, pw ))( txn )
-         fireUpdate( KSystemLike.NewBranch( v, pw ))
-         pw
-      }
+//      def newBranch( v: VersionPath )( implicit c: ECtx ) : VersionPath = {
+//         val txn  = c.txn
+//         val pw   = v.newBranch( txn )
+////         dagRef.transform( _.put( pw.path, pw ))( txn )
+//         fireUpdate( KSystemLike.NewBranch( v, pw ))
+//         pw
+//      }
 
 //      def dag( implicit c: CtxLike ) : LexiTrie[ OracleMap[ VersionPath ]] = dagRef.get( c.txn ).trie
 //      def dag( implicit c: CtxLike ) : Store[ Version, VersionPath ] = dagRef.get( c.txn ) //.trie
@@ -184,6 +186,8 @@ object KSystemImpl {
 
 //         def projectIn( vp: VersionPath ) : KSystem.Projection = new CursorImpl( /* sys, */ vp )
 
+         def cursorInRoot( implicit c: ECtx ) : KSystem.Cursor[ A ] = cursorIn( EmptyPath ) // GraphPath( EmptyPath, Set.empty ))
+
          def cursorIn( path: Path )( implicit c: ECtx ) : KSystem.Cursor[ A ] = {
             val csr = new CursorImpl( /* sys, */ path )
             cursorsRef.transform( _ + csr )( c.txn )
@@ -196,7 +200,7 @@ object KSystemImpl {
             fireUpdate( Projector.CursorRemoved[ KCtx, KSystem.Cursor[ A ]]( cursor ))
          }
 
-         def in( version: Path ) : EProjection[ Path, A, KCtx ] with KProjection[ KCtx ] = new EProj( version )
+         def in( path: Path ) : EProjection[ Path, A, KCtx ] with KProjection[ KCtx ] = new EProj( path )
 
 //         def in( version: Path )( fun: A => Unit ) : Path = atomic { tx =>
 //            error( "NO FUNCTIONA" )
@@ -210,7 +214,8 @@ object KSystemImpl {
       // XXX TODO: should factor out common stuff with CursorImpl
       private class EProj( path: Path ) extends EProjection[ Path, A, KCtx ] with KProjection[ KCtx ] {
          def meld[ R ]( fun: A => R )( implicit main: KCtx ) : R = {
-            val am = aInit.substitute( main.substitute( path ))
+            val am   = aInit.substitute( main.substitute( path ))
+            path.lastOption.foreach( main.addInEdge( _ ))
             fun( am )
          }
 
@@ -220,9 +225,7 @@ object KSystemImpl {
                val c = Ctx( txn, path )
                val a = aInit.substitute( c )
                fun( a )
-               Cache.flush( c ).map( suffix => {
-                  path :+ suffix
-               }).getOrElse( path )
+               Cache.flush( path, c.inEdgesRef.get( txn ))( c ).getOrElse( path )
             }
          }
       }
@@ -245,8 +248,9 @@ object KSystemImpl {
 
          def meld[ R ]( fun: A => R )( implicit main: KCtx ) : R = {
             val txn     = main.txn
-            val cMeld   = Ctx( txn, vRef.get( txn ))
-            val a       = aInit.substitute( cMeld )
+            val p       = vRef.get( txn )
+            val a       = aInit.substitute( Ctx( txn, p ))
+            p.lastOption.foreach( main.addInEdge( _ ))
             fun( a )
          }
 
@@ -276,11 +280,10 @@ object KSystemImpl {
 //                  res
 //               }
                // ...
-               Cache.flush( c ).map( suffix => {
-                  val newPath = oldPath :+ suffix
-                  vRef.set( newPath )( txn )
-                  newPath
-               }).getOrElse( oldPath )
+               Cache.flush( oldPath, c.inEdgesRef.get( txn ))( c ) match {
+                  case Some( newPath ) => vRef.set( newPath )( txn ); newPath
+                  case None => oldPath
+               }
             }
          }
       }
@@ -311,8 +314,12 @@ object KSystemImpl {
       }
 
       private object Cache {
-         val hashSet = TxnLocal( Set.empty[ Long ])
+//         val hashSet = TxnLocal( Set.empty[ Long ])
 val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
+         private val hasSeminalRef = TxnLocal( false )
+
+         def hasSeminal( implicit txn: InTxn ) : Boolean = hasSeminalRef.get
+         def tagSeminal( implicit txn: InTxn ) { hasSeminalRef.set( true )}
 
 //         trait SubCache[ X ] extends TxnCacheGroup[ KCtx, Long, X ] { ... }
          trait SubCache[ X ] extends TxnCacheGroup[ KCtx, PathLike[ Version ], X ] {
@@ -321,21 +328,22 @@ val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
 //            def addDirty( cache: TxnCacheLike[ KCtx, X ], hash: Long )( implicit access: KCtx ) { ... }
             def addDirty( cache: TxnCacheLike[ KCtx, X ], hash0: PathLike[ Version ])( implicit access: KCtx ) {
                implicit val txn = access.txn
-val hash = hash0.sum
+//val hash = hash0.sum
 pathSet.transform( _ + hash0 )
-               hashSet.transform( _ + hash )
+//               hashSet.transform( _ + hash )
                cacheSet.transform( _ + cache )
             }
 
 //            def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes: Traversable[ Long ])( implicit access: KCtx ) { ... }
             def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes0: Traversable[ PathLike[ Version ]])( implicit access: KCtx ) {
                implicit val txn = access.txn
-val hashes = hashes0.map( _.sum )
+//val hashes = hashes0.map( _.sum )
 pathSet.transform( _ ++ hashes0 )
-               hashSet.transform( _ ++ hashes )
+//               hashSet.transform( _ ++ hashes )
                cacheSet.transform( _ + cache )
             }
 
+            def isEmpty( implicit txn: InTxn ) : Boolean = cacheSet.get.isEmpty
             def flush( suffix: Version )( implicit access: KCtx ) : Unit
          }
 
@@ -361,18 +369,29 @@ CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toLi
             }
          }
 
-         def flush( implicit access: KCtx ) : Option[ Version ] = {
+         def flush( oldPath: Path, inEdges: Set[ Int ])( implicit access: KCtx ) : Option[ Path ] = {
             implicit val txn = access.txn
-            val hashes = hashSet.swap( Set.empty[ Long ])
-            if( hashes.isEmpty ) return None
-            val suffix = Version.newFrom( hashes )
-            Val.flush( suffix )
-            Ref.flush( suffix )
+            val vEmpty = Val.isEmpty
+            val rEmpty = Ref.isEmpty
+//            val hashes = hashSet.swap( Set.empty[ Long ])
+//            if( hashes.isEmpty ) return None
+            val semi    = hasSeminal
+            if( !semi && vEmpty && rEmpty ) return None
+//            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
+            val vHashes = versionHashes.get
+            val hashes0 = inEdges.flatMap( vHashes( _ ))
+            val hashes1 = if( semi ) hashes0 + 0L else hashes0
+
+            val (suffix, hashes) = Version.newFrom( hashes1 )
+
+            if( !vEmpty ) Val.flush( suffix )
+            if( !rEmpty ) Ref.flush( suffix )
 if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
-            Some( suffix )
+//            Some( suffix )
+            Some( oldPath :+ suffix )
          }
 
-         def isEmpty( implicit access: KCtx ) : Boolean = hashSet.get( access.txn ).isEmpty
+         def isEmpty( implicit txn: InTxn ) : Boolean = !hasSeminal && Val.isEmpty && Ref.isEmpty
       }
 
 //      private object Recorder extends HashedTxnStore.Recorder {
@@ -395,8 +414,6 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //            comSet.get.foreach( _.commit( txn, suffix ))
 //            Some( suffix )
 //         }
-//
-//         def isEmpty( implicit txn: InTxn ) : Boolean = hashSet.get.isEmpty
 //      }
 
       private case class Ctx( txn: InTxn, path: Path )
@@ -405,11 +422,25 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
          def substitute( newPath: Path ) : KCtx = copy( path = newPath )
 
+         val inEdgesRef = STMRef( path.lastOption match {
+            case Some( v ) => Set( v.id )
+            case None      => Set.empty[ Int ]
+         })
+
+         def addInEdge( v: Version ) {
+            inEdgesRef.transform( _ + v.id )( txn )
+         }
+
 //      type Child = Ctx[ V#Child ]
 
          def seminal: KCtx = {
             // XXX seminalPath should go somewhere else
-            if( path.size == 0 ) this else substitute( EmptyPath )
+            if( path.size == 0 ) {  // indicates a seminal node has already been created in this txn
+               this
+            } else {
+               Cache.tagSeminal( txn )
+               substitute( EmptyPath )
+            }
          }
 
 //         override def toString = "KCtx"

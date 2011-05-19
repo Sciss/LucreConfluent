@@ -387,6 +387,7 @@ object KSystemImpl {
             val semi    = hasSeminal
             if( !semi && vEmpty && rEmpty ) return None
 //            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
+//println( "In " + oldPath.lastOption.map( _.toString ).getOrElse( "<>" ) + " semi? " + semi )
             val vHashes = versionHashes.get
             val hashes0 = inEdges.flatMap( vHashes( _ )) // + oldPath.sum // make sure we add the hash of the access path!
             val hashes1 = if( semi ) hashes0 + 0L else hashes0
@@ -403,7 +404,7 @@ CHECK_REF.transform( set => {
 
             if( !vEmpty ) Val.flush( suffix )
             if( !rEmpty ) Ref.flush( suffix )
-if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
+if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + "; semi? " + semi + ")" )
 //            Some( suffix )
             Some( oldPath :+ suffix )
          }
@@ -452,12 +453,8 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 
          def seminal: KCtx = {
             // XXX seminalPath should go somewhere else
-            if( path.size == 0 ) {  // indicates a seminal node has already been created in this txn
-               this
-            } else {
-               Cache.tagSeminal( txn )
-               substitute( EmptyPath )
-            }
+            Cache.tagSeminal( txn )
+            if( path.isEmpty ) this else substitute( EmptyPath )
          }
 
 //         override def toString = "KCtx"

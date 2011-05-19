@@ -276,6 +276,7 @@ class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
 class WorldWriteReadTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
+   KSystemImpl.LOG_FLUSH         = true
 
    val log = Logger.getLogger( "com.sleepycat.je" )
    log.setLevel( Level.ALL )
@@ -377,13 +378,13 @@ val noMeld = false
    }
    println( "---- read v3" )
    keproj.in( v3 ).t { implicit w =>
-      val l = w.list.toList( true )
+      val l = w.list.toList // ( true )
       assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6 )), l.toString )
    }
    println( "---- read v4" )
    keproj.in( v4 ).t { implicit w =>
-      break
-      val l = w.list.toList( true )
+//      break
+      val l = w.list.toList // ( true )
       assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6, 1, 4 )), l.toString )
    }
    println( "---- reads done" )

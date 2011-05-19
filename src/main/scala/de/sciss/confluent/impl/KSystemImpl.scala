@@ -384,7 +384,6 @@ object KSystemImpl {
             val rEmpty = Ref.isEmpty
 //            val hashes = hashSet.swap( Set.empty[ Long ])
 //            if( hashes.isEmpty ) return None
-            val semi    = hasSeminal
             if( /* !semi && */ vEmpty && rEmpty ) return None
 //            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
 //println( "In " + oldPath.lastOption.map( _.toString ).getOrElse( "<>" ) + " semi? " + semi )
@@ -395,6 +394,7 @@ object KSystemImpl {
             val (suffix, hashes) = Version.newFrom( hashes0 /* hashes1 */)
             versionHashes.transform( _ + (suffix.id -> hashes) )
 
+val semi    = hasSeminal
 CHECK_REF.transform( set => {
    val setf    = set.filter( seq => inEdges.contains( seq.last ))
    val setfm0  = setf.map( _ :+ suffix.id )

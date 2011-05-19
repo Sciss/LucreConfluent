@@ -288,7 +288,7 @@ class WorldWriteReadTest {
    // damn it...
    implicit def unwrapWorld( implicit w: World[ KCtx ]) : KCtx = w.path
 
-val fixAccess = true
+val fixAccess = false
 val noMeld = false
 //KSystemImpl.CHECK_READS = true
 
@@ -352,6 +352,10 @@ val noMeld = false
 //      w.list = CList.empty[ KCtx, Int /* FUCKING BITCHES */ ] // w.list
 //   }
 
+   def break {
+      println( "break" )
+   }
+
    // ---- read ----
    KSystemImpl.CHECK_READS = true
 
@@ -377,6 +381,7 @@ val noMeld = false
    }
    println( "---- read v4" )
    keproj.in( v4 ).t { implicit w =>
+      break
       val l = w.list.toList( true )
       assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6, 1, 4 )), l.toString )
    }

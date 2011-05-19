@@ -102,7 +102,7 @@ object Version {
 //      new VersionImpl( id, rid, tree, insFun )
 //   }
 
-   def newFrom( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Version, Traversable[ Long ]) = {
+   def newFrom( preSums: Set[ Long ])( implicit txn: InTxn ) : (Version, Set[ Long ]) = {
       val pv      = init // parent.version
       val tree    = pv.tree
       val insFun  = tree.insertChild( pv ) _
@@ -191,7 +191,7 @@ object Version {
 //      error( "Never here" )
 //   }
 
-   private def nextID( preSums: Traversable[ Long ])( implicit txn: InTxn ) : (Int, Int, Traversable[ Long ]) = {
+   private def nextID( preSums: Set[ Long ])( implicit txn: InTxn ) : (Int, Int, Set[ Long ]) = {
       val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
       val view = preSums // .view
       while( true ) {

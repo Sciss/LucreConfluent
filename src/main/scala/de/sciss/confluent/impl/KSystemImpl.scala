@@ -34,8 +34,8 @@ import com.sleepycat.je.Environment
 import HashedTxnDBStore.{Value => DBValue, ValueNone => DBValueNone, ValuePre => DBValuePre, ValueFull => DBValueFull }
 import com.sleepycat.bind.tuple.{TupleOutput, TupleInput}
 import com.sleepycat.je.EnvironmentConfig
-import java.io.{ObjectInputStream, ObjectOutputStream, File}
-import collection.immutable.{IntMap, Set => ISet}
+import java.io.File
+import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, Set => ISet}
 
 object KSystemImpl {
    var CHECK_READS            = false
@@ -80,12 +80,20 @@ object KSystemImpl {
       val cacheRefFactory  = CachedTxnStoreTest.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
 //      val hashRefFactory   = HashedTxnStore.refFactory[ Version, Any ]
 
-      val versionHashes = STMRef( IntMap.empty[ Set[ Long ]])
+//      val aInit : A = atomic { txn =>
+//         val ctx  = Ctx( txn, VersionPath.init.path )
+//         val res  = ap.init( ctx )
+//         assert( Cache.isEmpty( txn ))
+//         res
+//      }
 
-      val aInit : A = atomic { txn =>
-         val ctx  = Ctx( txn, VersionPath.init.path )
+      // XXX not very elegant with the duplicate creation of Ctx
+      // ; also not safe against ap.init calling stuff like meld
+      lazy val aInit : A = {
+         val txn  = Txn.findCurrent.getOrElse( error( "Assertion failed -- no enclosing txn" ))
+         val ctx  = Ctx( txn, EmptyPath ) // VersionPath.init.path )
          val res  = ap.init( ctx )
-         assert( Cache.isEmpty( txn ))
+//         assert( Cache.isEmpty( txn ))
          res
       }
 
@@ -315,8 +323,9 @@ object KSystemImpl {
 
       private object Cache {
 //         val hashSet = TxnLocal( Set.empty[ Long ])
-val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
+//val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
          private val hasSeminalRef = TxnLocal( false )
+         private val versionHashes = STMRef( IntMap.empty[ Set[ Long ]])
 
          def hasSeminal( implicit txn: InTxn ) : Boolean = hasSeminalRef.get
          def tagSeminal( implicit txn: InTxn ) { hasSeminalRef.set( true )}
@@ -329,7 +338,7 @@ val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
             def addDirty( cache: TxnCacheLike[ KCtx, X ], hash0: PathLike[ Version ])( implicit access: KCtx ) {
                implicit val txn = access.txn
 //val hash = hash0.sum
-pathSet.transform( _ + hash0 )
+//pathSet.transform( _ + hash0 )
 //               hashSet.transform( _ + hash )
                cacheSet.transform( _ + cache )
             }
@@ -338,7 +347,7 @@ pathSet.transform( _ + hash0 )
             def addAllDirty( cache: TxnCacheLike[ KCtx, X ], hashes0: Traversable[ PathLike[ Version ]])( implicit access: KCtx ) {
                implicit val txn = access.txn
 //val hashes = hashes0.map( _.sum )
-pathSet.transform( _ ++ hashes0 )
+//pathSet.transform( _ ++ hashes0 )
 //               hashSet.transform( _ ++ hashes )
                cacheSet.transform( _ + cache )
             }
@@ -349,7 +358,7 @@ pathSet.transform( _ ++ hashes0 )
 
          object Val extends SubCache[ Path ] {
             def flush( suffix: Version )( implicit access: KCtx ) {
-CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
+//CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
 //               val rid = suffix.rid
                cacheSet.get( access.txn ).foreach( _.flush( _ :+ suffix ))
             }
@@ -357,7 +366,7 @@ CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toLi
 
          object Ref extends SubCache[ (Path, KCtx) ] {
             def flush( suffix: Version )( implicit access: KCtx ) {
-CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
+//CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toList.map( _.id )))( access.txn )
 //               val rid = suffix.rid
                cacheSet.get( access.txn ).foreach( _.flush( tup => {
                   val pset = tup._1
@@ -379,10 +388,18 @@ CHECK_REF.transform( _ ++ pathSet.get( access.txn ).map( p => (p :+ suffix).toLi
             if( !semi && vEmpty && rEmpty ) return None
 //            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
             val vHashes = versionHashes.get
-            val hashes0 = inEdges.flatMap( vHashes( _ ))
+            val hashes0 = inEdges.flatMap( vHashes( _ )) // + oldPath.sum // make sure we add the hash of the access path!
             val hashes1 = if( semi ) hashes0 + 0L else hashes0
 
             val (suffix, hashes) = Version.newFrom( hashes1 )
+            versionHashes.transform( _ + (suffix.id -> hashes) )
+
+CHECK_REF.transform( set => {
+   val setf    = set.filter( seq => inEdges.contains( seq.last ))
+   val setfm0  = setf.map( _ :+ suffix.id )
+   val setfm   = if( semi ) setfm0 + IIdxSeq( suffix.id ) else setfm0
+   set ++ setfm
+})
 
             if( !vEmpty ) Val.flush( suffix )
             if( !rEmpty ) Ref.flush( suffix )
@@ -560,7 +577,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + ")" )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]] : (T => T) = (t: T) => t.substitute( t.path )
 //      private def gimmeTrans[ T <: Mutable[ A, T ]]( t: T ) : T = t.substitute( t.path )
 
-private val CHECK_REF = STMRef( Set.empty[ List[ Int ]])
+private val CHECK_REF = STMRef( Set.empty[ IIdxSeq[ Int ]])
 
       private trait AbstractRef[ T <: Node[ KCtx, T ]]
       extends Ref[ KCtx, T ] {
@@ -574,7 +591,7 @@ private val CHECK_REF = STMRef( Set.empty[ List[ Int ]])
             val p    = ctx.path
 
 if( CHECK_READS ) {
-   val l = p.toList.map( _.id )
+   val l = p.toList.toIndexedSeq.map( (v: Version) => v.id )
    if( !CHECK_REF.get( txn ).contains( l )) {
       println( "Assertion failed for path " + l )
    }
@@ -640,7 +657,7 @@ if( CHECK_READS ) {
             val p    = ctx.path
 if( CHECK_READS ) {
    val txn  = ctx.txn
-   val l = p.toList.map( _.id )
+   val l = p.toList.toIndexedSeq.map( (v: Version) => v.id )
    if( !CHECK_REF.get( txn ).contains( l )) {
       println( "Assertion failed for path " + l )
    }

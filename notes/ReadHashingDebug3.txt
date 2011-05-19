@@ -1,0 +1,87 @@
+v0 : create a node w0
+   w0 created (add seminal <0>)
+   w0.x : write <0>
+   w0.next : write <0> : nil // (<0>, f(w1))
+
+   access : write <0> : (<0>, f(w0))
+   
+v0 -> v1 : create a node w1 and add it to the head
+   w1 created (add seminal <1>)
+   w1.x : write <1>
+   w1.next : write <1> : (<0, 1>, f(w0))
+
+   access : write <0, 1> : (<1>, f(w1))
+
+v1 -> v2 : increase the head's x by 1
+   w1.x : write <1, 2>
+
+   --- traversal (ex-post, i.e. v2's rid has been assigned) ---
+
+   access read @ <0, 1, 2> -->
+      raw = (<1>, f(w1))
+      pre = 2
+      substituted : (<1, 2>, f(w1))
+
+   w1.x read @ <1, 2>
+   w1.next read @ <1, 2> -->
+      raw = (<0, 1>, f(w0))
+      pre = 1
+      substituted : (<0, 1, 2>, f(w0))
+
+   w0.x read @ <0, 1, 2>
+   w0.next read @ <0, 1, 2> --> nil
+
+   // no collision because <0, 1, 2> should have been
+   // recorded as access path in v2
+
+v1 -> v3 : increase the last node's x by 1
+   w0.x : write <0, 1, 3>
+
+   --- traversal (ex-post, i.e. v3's rid has been assigned) ---
+
+   access read @ <0, 1, 3> -->
+      raw = (<1>, f(w1))
+      pre = 2
+      substituted : (<1, 3>, f(w1)) // BANG! this path is not in the set
+
+::::::::::::::::::
+a simple algorithm
+
+- maintain a set of hashes
+  in each version
+- if a seminal node is created in a version
+  during a txn, add 0 to this hash set
+- at the flush: assign rid such that no
+  sums of the set of hashes and this new rid
+  appear in the set of taken sums
+- the final set for the new version is
+  the input set in which to each element
+  the new rid is added
+- when a meld is performed, add the melded
+  version's set to the current set
+
+a more sophisticated algorithm
+- maintain a kind of garbage collection so
+  that for each ref a set is maintained,
+  consisting of the union of the sets of
+  the objects referred to by this ref.
+  if referred to objects disappear, remove
+  their subset from the multiset hash
+
+notes
+- the simple algorithm looks expensive,
+  as it can quite grow over time
+- however, it may be much smaller in the
+  compressed path case?
+- also, the Set[Long] performance should
+  be quite good, and if an immutable Set
+  is used, hopefully much space is saved
+  by structural sharing with previous
+  versions
+- reading the DAG at program start may be
+  slower, but this is a one-time activity
+- on the downside, creating new versions
+  will become increasingly more expensive :-(
+- the simple algorithm is worth a try,
+  and i don't see much alternatives right now
+

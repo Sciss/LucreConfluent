@@ -385,14 +385,14 @@ object KSystemImpl {
 //            val hashes = hashSet.swap( Set.empty[ Long ])
 //            if( hashes.isEmpty ) return None
             val semi    = hasSeminal
-            if( !semi && vEmpty && rEmpty ) return None
+            if( /* !semi && */ vEmpty && rEmpty ) return None
 //            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
 //println( "In " + oldPath.lastOption.map( _.toString ).getOrElse( "<>" ) + " semi? " + semi )
             val vHashes = versionHashes.get
             val hashes0 = inEdges.flatMap( vHashes( _ )) // + oldPath.sum // make sure we add the hash of the access path!
-            val hashes1 = if( semi ) hashes0 + 0L else hashes0
+//            val hashes1 = if( semi ) hashes0 + 0L else hashes0
 
-            val (suffix, hashes) = Version.newFrom( hashes1 )
+            val (suffix, hashes) = Version.newFrom( hashes0 /* hashes1 */)
             versionHashes.transform( _ + (suffix.id -> hashes) )
 
 CHECK_REF.transform( set => {

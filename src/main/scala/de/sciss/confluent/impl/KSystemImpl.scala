@@ -48,6 +48,7 @@ object KSystemImpl {
    def apply[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
 
    def DEBUG_HASHES( sys: KSystem[ _ ]) = sys.asInstanceOf[ Sys[ _ ]].Cache.versionHashes.single()
+   def DEBUG_GRAPH( sys: KSystem[ _ ]) = sys.asInstanceOf[ Sys[ _ ]].dbVersionFactory
 
    private class Sys[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {

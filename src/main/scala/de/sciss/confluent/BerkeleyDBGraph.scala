@@ -157,10 +157,12 @@ if( DEBUG_PRINT ) println( "writeVersion " + id + " -> " + rec )
          error( "Never here" )
       }
 
-      private def info( v: Version )( implicit txn: InTxn ) : IDInfo = infoRef.get.apply( v.id )
+      private def info( id: Int )( implicit txn: InTxn ) : IDInfo = infoRef.get.apply( id )
 
-      def versionTime(    v: Version )( implicit txn: InTxn ) : Long   = info( v ).time
-      def versionComment( v: Version )( implicit txn: InTxn ) : String = info( v ).comment
+      def versionTime(    v: Version )( implicit txn: InTxn ) : Long   = info( v.id ).time
+      def versionComment( v: Version )( implicit txn: InTxn ) : String = info( v.id ).comment
+      def numVersions( implicit txn: InTxn ) : Int = infoRef.get.size
+      def versionFromID( id: Int )( implicit txn: InTxn ) : RandomizedVersion = VersionImpl( id, info( id ).rid )
    }
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
@@ -226,4 +228,6 @@ trait BerkeleyDBGraph[ C <: Ct[ C ]] extends BerkeleyDB.Handle {
    def newVersion( inEdges: Set[ Int ], preSums: Set[ Long ], seminal: Boolean )( implicit access: C ) : (RandomizedVersion, Set[ Long ])
    def versionTime(    v: Version )( implicit txn: InTxn ) : Long
    def versionComment( v: Version )( implicit txn: InTxn ) : String
+   def numVersions( implicit txn: InTxn ) : Int
+   def versionFromID( id: Int )( implicit txn: InTxn ) : RandomizedVersion
 }

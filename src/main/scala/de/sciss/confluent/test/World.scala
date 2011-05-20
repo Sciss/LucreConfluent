@@ -396,52 +396,58 @@ val noMeld = false
 }
 
 class WorldReadTest {
-   error( "NO FUNCTIONA" )
-//   Hashing.verbose               = false
-//   FingerTree.TOSTRING_RESOLVE   = true
-//
-//   val sys     = Factory.ksystem( WorldFactory[ KCtx ])
-//   val kproj   = sys.kProjector
-//   val keproj  = sys.keProjector
-////   val csr     = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
-//
-//   def break {
-//      println( "break" )
-//   }
-//
-//   val v0 = Path( Version.testWrapXXX( 0, 0 ), Version.testWrapXXX( 1, 1155099827 ))
-//   keproj.in( v0 ).t { implicit w =>
-////      break
-//      val l = w.list.toList
-//      assert( l == List( 2, 1 ), l.toString )
-//   }
-//
-//   val v1 = v0 :+ Version.testWrapXXX( 2, 1887904451 )
-//   keproj.in( v1 ).t { implicit w =>
-//      val l = w.list.toList
-//      assert( l == List( 1, 2 ), l.toString )
-//   }
-//
-//   val v2 = v0 :+ Version.testWrapXXX( 3, 52699159 )
-//   keproj.in( v2 ).t { implicit w =>
-//      val l = w.list.toList
-//      assert( l == List( 1, 4 ), l.toString )
-//   }
-//
-//   val v3 = v1 :+ Version.testWrapXXX( 4, 206307230 )
-//   keproj.in( v3 ).t { implicit w =>
-//      val l = w.list.toList
-//      assert( l == List( 1, 2, 3, 6 ), l.toString )
-//   }
-//
-//   val v4 = v3 :+ Version.testWrapXXX( 5, 696147561 )
-//   keproj.in( v4 ).t { implicit w =>
-//      val l = w.list.toList
-//      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
-//   }
-//
-//   println( "All assertions hold" )
-//   sys.dispose
+   Hashing.verbose               = false
+   FingerTree.TOSTRING_RESOLVE   = true
+   BerkeleyDBGraph.DEBUG_PRINT   = true
+
+   val sys     = Factory.ksystem( WorldFactory[ KCtx ])
+   val kproj   = sys.kProjector
+   val keproj  = sys.keProjector
+//   val csr     = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
+
+   def break {
+      println( "break" )
+   }
+
+   val graph   = KSystemImpl.DEBUG_GRAPH( sys )
+   def readPath( ids: Int* ) = TxnExecutor.defaultAtomic { txn =>
+      val vs = ids.map( graph.versionFromID( _ )( txn ))
+      Path( vs: _* )
+   }
+
+   val v0 = readPath( 0 )
+   keproj.in( v0 ).t { implicit w =>
+//      break
+      val l = w.list.toList
+      assert( l == List( 2, 1 ), l.toString )
+   }
+
+   val v1 = readPath( 0, 1 )
+   keproj.in( v1 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2 ), l.toString )
+   }
+
+   val v2 = readPath( 0, 2 )
+   keproj.in( v2 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 4 ), l.toString )
+   }
+
+   val v3 = readPath( 0, 1, 3 )
+   keproj.in( v3 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6 ), l.toString )
+   }
+
+   val v4 = readPath( 0, 1, 3, 4 )
+   keproj.in( v4 ).t { implicit w =>
+      val l = w.list.toList
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+   }
+
+   println( "All assertions hold" )
+   sys.dispose
 }
 
 class WorldWriteTest {

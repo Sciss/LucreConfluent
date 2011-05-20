@@ -31,8 +31,11 @@ package de.sciss.confluent
 import com.sleepycat.je.{Database, DatabaseConfig}
 import concurrent.stm.{InTxn, Ref => STMRef}
 import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, Set => ISet}
+import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 
 object BerkeleyDBGraph extends BerkeleyDB.Provider {
+   var DEBUG_PRINT = false
+
    def open[ C <: Ct[ C ]]( ctx: BerkeleyDB.Context, name: String, dbCfg: DatabaseConfig = BerkeleyDB.newDBCfg )
                           ( implicit access: C ) : BerkeleyDBGraph[ C ] =
       provide( ctx, name, dbCfg ) { (ctx, db) =>
@@ -41,6 +44,8 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
          val infoRef  = STMRef( IIdxSeq.empty[ IDInfo ]) // index=ids to id infos
          new HandleImpl[ C ]( ctx, db, idRef, infoRef )
       }
+
+//   private def readVersion
 
    private class HandleImpl[ C <: Ct[ C ]]( val ctx: BerkeleyDB.Context, db: Database,
                                             idRef: STMRef[ IDGen ], infoRef: STMRef[ IIdxSeq[ IDInfo ]])
@@ -78,7 +83,8 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
          infoRef.transform( _ :+ info )
 
          // persist to database
-         writeVersion( id, info, inEdges, seminal, ctx.txnHandle )
+         val rec = Record( info, inEdges, seminal )
+         writeVersion( id, rec, ctx.txnHandle )
 
          // return results
          (v, newSums)
@@ -86,31 +92,19 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
 
       /**
        * key: (Int) id
-       * value:
-       *    (Int) rid
-       *    (Short) flags
-       *       0x01  seminal
-       *    (Int) numInEdges
-       *    [ (Int) inEdge-id ] * numInEdges
-       *    (Long) time
-       *    (String) comment
+       * value: (Record)
        */
-      def writeVersion( id: Int, info: IDInfo, inEdges: Set[ Int ], seminal: Boolean, h: BerkeleyDB.TxnHandle ) {
+      def writeVersion( id: Int, rec: Record, h: BerkeleyDB.TxnHandle ) {
          val out = h.to
          out.reset()  // actually this shouldn't be needed
          out.writeInt( id )
          h.dbKey.setData( out.toByteArray )
          out.reset()
-         out.writeInt( info.rid )
-         val flags = if( seminal ) 0x01 else 0
-         out.writeUnsignedShort( flags )
-         out.writeInt( inEdges.size )  // XXX check performance of size
-         inEdges.foreach( out.writeInt( _ ))
-         out.writeLong( info.time )
-         out.writeString( info.comment )
+         rec.writeObject( out )
          h.dbValue.setData( out.toByteArray )
          out.reset()
          db.put( h.txn, h.dbKey, h.dbValue )
+if( DEBUG_PRINT ) println( "writeVersion " + id + " -> " + rec )
       }
 
       // XXX TODO: the creation of the sums and the checking against sumsTaken
@@ -138,9 +132,59 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
    }
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
+   /**
+    * Storage:
+    *    (Int) rid
+    *    (Short) flags
+    *       0x01  seminal
+    *    (Int) numInEdges
+    *    [ (Int) inEdge-id ] * numInEdges
+    *    (Long) time
+    *    (String) comment
+    */
+   private object Record {
+      def readObject( in: TupleInput ) : Record = {
+         val rid        = in.readInt()
+         val flags      = in.readUnsignedShort()
+         val seminal    = (flags & 0x01) != 0
+         val numInEdges = in.readInt()
+         val inEdges    = {
+            val b          = ISet.newBuilder[ Int ]
+            var i = 0; while( i < numInEdges ) {
+               b += in.readInt()
+            i += 1 }
+            b.result()
+         }
+         val time       = in.readLong()
+         val comment    = in.readString()
+         val info       = IDInfo( rid, time, comment )
+         Record( info, inEdges, seminal )
+      }
+   }
+   private case class Record( info: IDInfo, inEdges: Set[ Int ], seminal: Boolean ) {
+      def writeObject( out: TupleOutput ) {
+         out.writeInt( info.rid )
+         val flags = if( seminal ) 0x01 else 0
+         out.writeUnsignedShort( flags )
+         // "For most any immutable set, you'll have a HashSet$HashTrieSet, which has O(1) size lookup"
+         out.writeInt( inEdges.size )
+         inEdges.foreach( out.writeInt( _ ))
+         out.writeLong( info.time )
+         out.writeString( info.comment )
+      }
+
+      override def toString = {
+         "Record(" + info.toString + inEdges.mkString( ", inEdges = {" , ", ", "}, seminal = " ) + seminal + ")"
+      }
+   }
 
    // random id, time and comment (the latter taken from the corresponding context)
-   private case class IDInfo( rid: Int, time: Long, comment: String )
+   private case class IDInfo( rid: Int, time: Long, comment: String ) {
+      override def toString =
+         "(rid = 0x" + ("0000000000000000" + rid.toHexString.toUpperCase).takeRight( 16 ) +
+         ", time = " + new java.util.Date( time ).toString +
+         (if( comment.size > 0 ) ", comment = '" + comment + "')" else ")")
+   }
 
    private case class VersionImpl( id: Int, rid: Int ) extends RandomizedVersion {
       override def toString = "v" + id

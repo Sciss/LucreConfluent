@@ -276,7 +276,8 @@ class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
 class WorldWriteReadTest {
    Hashing.verbose               = false
    FingerTree.TOSTRING_RESOLVE   = true
-   KSystemImpl.LOG_FLUSH         = true
+   KSystemImpl.LOG_FLUSH         = false // true
+   BerkeleyDBGraph.DEBUG_PRINT   = true
 
    val log = Logger.getLogger( "com.sleepycat.je" )
    log.setLevel( Level.ALL )

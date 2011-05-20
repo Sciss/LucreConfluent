@@ -62,7 +62,7 @@ object KSystemImpl {
 //      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
       val hashValFactory   = HashedTxnDBStore.valFactory[ KCtx, Version, Any ]
       val (dbValFactory, dbVersionFactory) = atomic { txn =>
-         implicit val ctx = Ctx( txn, VersionPath.init.path )
+         implicit val ctx = Ctx( txn, EmptyPath )
          val (dbCtx, dbCfg ) = {
             val envCfg  = BerkeleyDB.newEnvCfg
             val dbCfg   = BerkeleyDB.newDBCfg
@@ -78,7 +78,7 @@ object KSystemImpl {
             (dbCtx, dbCfg)
          }
          val valF    = BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys-nodes", dbCfg )
-         val versionF= BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys-dag", dbCfg )
+         val versionF= BerkeleyDBGraph.open[ KCtx ]( dbCtx, "ksys-dag", dbCfg )
          (valF, versionF)
       }
 
@@ -102,9 +102,9 @@ object KSystemImpl {
          res
       }
 
-      def addVersion( suffix: Version, inEdges: Set[ Int ], semi: Boolean )( implicit access: KCtx ) {
-         error( "TODO" ) // dbVersionFactory.emptyVal()
-      }
+//      def addVersion( suffix: Version, inEdges: Set[ Int ], semi: Boolean )( implicit access: KCtx ) {
+//         error( "TODO" ) // dbVersionFactory.emptyVal()
+//      }
 
       def dispose {
          dbValFactory.close( false )
@@ -400,14 +400,16 @@ object KSystemImpl {
             val hashes0 = inEdges.flatMap( vHashes( _ )) // + oldPath.sum // make sure we add the hash of the access path!
 //            val hashes1 = if( semi ) hashes0 + 0L else hashes0
 
-            val (suffix, hashes1) = Version.newFrom( hashes0 /* hashes1 */)
+//            val (suffix, hashes1) = Version.newFrom( hashes0 /* hashes1 */)
+            val (suffix, hashes1) = dbVersionFactory.newVersion( hashes0 )
+
             // we didn't add 0L to hashes0 because Version already checks
             // against idsTaken, so we do not need to duplicate the test
             // in sumsTaken. However, for the seminal paths to correctly
             // propagate, we need to add the new rid here if a seminal
             // node had been constructed.
             val hashes = if( semi ) hashes1 + suffix.rid.toLong else hashes1
-            addVersion( suffix, inEdges, semi )
+//            addVersion( suffix, inEdges, semi )
             versionHashes.transform( _ + (suffix.id -> hashes) )
 
 CHECK_REF.transform( set => {

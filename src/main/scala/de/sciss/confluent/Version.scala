@@ -33,50 +33,35 @@ import concurrent.stm.{InTxn, Ref => STMRef}
 
 trait Version {
    def id: Int               // we don't really need this anymore, but it might be nice for inspection
-   def rid: Int              // randomized ID
-   def tree: VersionTree     // might be able to get rid of this!
-   def preRec: PreOrder.Record[ Version ]
-   def postRec: PostOrder.Record[ Version ]
+def rid: Int // XXX remove from here
 
-   def level: Int = tree.level
-   
-   // ---- multiplicities support ----
-   def appendLevel:  Int
-   def fallBack:     Version
+//   def tree: VersionTree     // might be able to get rid of this!
+//   def preRec: PreOrder.Record[ Version ]
+//   def postRec: PostOrder.Record[ Version ]
+//
+//   def level: Int = tree.level
+//
+//   // ---- multiplicities support ----
+//   def appendLevel:  Int
+//   def fallBack:     Version
 }
 
 //case class VersionVertex( preRec: PreOrder.Record[ Version ], postRec: PostOrder.Record[ Version ])
 
 object Version {
-//   private val idSync = new AnyRef
-//   private var idValCnt = 0
-////   private val idRnd = new util.Random()
-////   private val idRndSet = IntMap.empty[ Unit ]
-//
-//   private val idsTaken    = MSet( 0 ) // .empty[ Int ]
-//   private val sumsTaken   = MSet.empty[ Long ]
-   val FREEZE_SEED = true
+   def testWrapXXX( id: Int, rid: Int ) : Version = VersionImpl( id, rid )
 
-   private val idRnd       = {
-      if( FREEZE_SEED ) new util.Random( -1 ) else new util.Random()
-   }
+   private case class VersionImpl( id: Int, rid: Int ) extends Version
 
-   private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
-//   private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 0 ), ISet.empty ))
-   private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 1 ), ISet( 1 )))
+//   val init: Version = {
+//      val tree       = VersionTree.empty( 0 )
+//      new VersionImpl( 0, 1, tree, tree.insertRoot )
+//   }
 
-   val init: Version = {
-      val tree       = VersionTree.empty( 0 )
-//      new VersionImpl( 0, 0, tree, tree.insertRoot )
-      new VersionImpl( 0, 1, tree, tree.insertRoot )
-   }
-
-   def assertExistsHash( hash: Long )( implicit txn: InTxn ) : Boolean = {
-      val res = idRef.get.sumsTaken.contains( hash )
-//      assert( res )
-      res
-//      println( "EXISTS: " + hash )
-   }
+//   def assertExistsHash( hash: Long )( implicit txn: InTxn ) : Boolean = {
+//      val res = idRef.get.sumsTaken.contains( hash )
+//      res
+//   }
 
 //   def testWrapXXX( suffix: Int )( implicit txn: InTxn ) : Version = {
 //      val pv      = init // parent.version
@@ -102,21 +87,21 @@ object Version {
 //      new VersionImpl( id, rid, tree, insFun )
 //   }
 
-   def newFrom( preSums: Set[ Long ])( implicit txn: InTxn ) : (Version, Set[ Long ]) = {
-      val pv      = init // parent.version
-      val tree    = pv.tree
-      val insFun  = tree.insertChild( pv ) _
-
-      val (id, rid, newSums) = nextID( preSums )
-      (new VersionImpl( id, rid, tree, insFun ), newSums)
-   }
-
-   def testWrapXXX( id: Int, rid: Int ) : Version = {
-      val pv      = init
-      val tree    = pv.tree
-      val insFun  = tree.insertChild( pv ) _
-      new VersionImpl( id, rid, tree, insFun )
-   }
+//   def newFrom( preSums: Set[ Long ])( implicit txn: InTxn ) : (Version, Set[ Long ]) = {
+//      val pv      = init // parent.version
+//      val tree    = pv.tree
+//      val insFun  = tree.insertChild( pv ) _
+//
+//      val (id, rid, newSums) = nextID( preSums )
+//      (new VersionImpl( id, rid, tree, insFun ), newSums)
+//   }
+//
+//   def testWrapXXX( id: Int, rid: Int ) : Version = {
+//      val pv      = init
+//      val tree    = pv.tree
+//      val insFun  = tree.insertChild( pv ) _
+//      new VersionImpl( id, rid, tree, insFun )
+//   }
 
 //   def newMultiFrom( v: Version, vs: Version* ) : Version = {
 //      val (tree, insFun) = prepareNewFrom( v, vs: _ * )
@@ -129,28 +114,28 @@ object Version {
 //      new MultiVariantVersionImpl( v, tree, tree.insertChild( v ))
 //   }
 
-   private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionTreeOrder ] = {
-
-      // the new version's level is the maximum of the levels of
-      // the ancestor versions, unless there is more than one
-      // ancestor with that maximum level in which case that
-      // level is incremented by 1.
-      // note: my interpretation of p. 21 is that for the
-      // second case, each time a new tree is created, although
-      // we might then have several trees with the same level.
-      // this is indicated by figure 5 (p. 22)
-      val level = vs.foldLeft[ Int ]( v.appendLevel )( (level, vi) => {
-         if( vi.appendLevel == level ) level + 1 else math.max( vi.appendLevel, level )
-      })
-
-      if( level == v.level ) {
-         val tree = v.tree
-         (tree, tree.insertChild( v ))
-      } else {
-         val tree = VersionTree.empty( level )
-         (tree, tree.insertRoot)
-      }
-   }
+//   private def prepareNewFrom( v: Version, vs: Version* ) : Tuple2[ VersionTree, (Version) => VersionTreeOrder ] = {
+//
+//      // the new version's level is the maximum of the levels of
+//      // the ancestor versions, unless there is more than one
+//      // ancestor with that maximum level in which case that
+//      // level is incremented by 1.
+//      // note: my interpretation of p. 21 is that for the
+//      // second case, each time a new tree is created, although
+//      // we might then have several trees with the same level.
+//      // this is indicated by figure 5 (p. 22)
+//      val level = vs.foldLeft[ Int ]( v.appendLevel )( (level, vi) => {
+//         if( vi.appendLevel == level ) level + 1 else math.max( vi.appendLevel, level )
+//      })
+//
+//      if( level == v.level ) {
+//         val tree = v.tree
+//         (tree, tree.insertChild( v ))
+//      } else {
+//         val tree = VersionTree.empty( level )
+//         (tree, tree.insertRoot)
+//      }
+//   }
 
 //   def newRetroParent( child: Version ) : Version = {
 //      val tree = child.tree
@@ -191,35 +176,35 @@ object Version {
 //      error( "Never here" )
 //   }
 
-   private def nextID( preSums: Set[ Long ])( implicit txn: InTxn ) : (Int, Int, Set[ Long ]) = {
-      val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
-      val view = preSums // .view
-      while( true ) {
-         val rid = idRnd.nextInt() & 0x7FFFFFFF
-         if( !idsTaken.contains( rid )) {   // unique vertices
-            val sums = preSums.map( _ + rid )
-            if( sums.forall( !sumsTaken.contains( _ ))) {
-               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken ++ sums ))( txn )
-               return (cnt, rid, sums)
-            }
-         }
-      }
-      error( "Never here" )
-   }
+//   private def nextID( preSums: Set[ Long ])( implicit txn: InTxn ) : (Int, Int, Set[ Long ]) = {
+//      val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
+//      val view = preSums // .view
+//      while( true ) {
+//         val rid = idRnd.nextInt() & 0x7FFFFFFF
+//         if( !idsTaken.contains( rid )) {   // unique vertices
+//            val sums = preSums.map( _ + rid )
+//            if( sums.forall( !sumsTaken.contains( _ ))) {
+//               idRef.set( IDGen( cnt + 1, idsTaken + rid, sumsTaken ++ sums ))( txn )
+//               return (cnt, rid, sums)
+//            }
+//         }
+//      }
+//      error( "Never here" )
+//   }
 
-   private abstract class AbstractVersionImpl( val id: Int, val rid: Int, val tree: VersionTree, insertionFun: (Version) => VersionTreeOrder )
-   extends Version {
-//      val (id: Int, rid: Int) = nextID( parentSum )
-      val (preRec, postRec)   = insertionFun( this )
+//   private abstract class AbstractVersionImpl( val id: Int, val rid: Int, val tree: VersionTree, insertionFun: (Version) => VersionTreeOrder )
+//   extends Version {
+////      val (id: Int, rid: Int) = nextID( parentSum )
+//      val (preRec, postRec)   = insertionFun( this )
+//
+//      override def toString = "v" + id
+//   }
 
-      override def toString = "v" + id
-   }
-
-   private class VersionImpl( id: Int, rid: Int, t: VersionTree, insFun: (Version) => VersionTreeOrder )
-   extends AbstractVersionImpl( id, rid, t, insFun ) {
-      def appendLevel = level
-      def fallBack = this
-   }
+//   private class VersionImpl( id: Int, rid: Int, t: VersionTree, insFun: (Version) => VersionTreeOrder )
+//   extends AbstractVersionImpl( id, rid, t, insFun ) {
+//      def appendLevel = level
+//      def fallBack = this
+//   }
 
 //   private class MultiNeutralVersionImpl( t: VersionTree, insFun: (Version) => VersionTreeOrder )
 //   extends AbstractVersionImpl( t, insFun ) {

@@ -72,8 +72,7 @@ object KSystemLike {
    /* sealed */ trait Update // [ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]
 
 //   case class NewBranch[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( oldPath: VersionPath, newPath: VersionPath )
-   case class NewBranch( oldPath: VersionPath, newPath: VersionPath )
-   extends Update // [ C, Csr ]
+//   case class NewBranch( oldPath: VersionPath, newPath: VersionPath ) extends Update // [ C, Csr ]
 //   case class CursorAdded[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 //   case class CursorRemoved[ C <: Ct, Csr <: KProjection[ C ] with Cursor[ C ]]( cursor: Csr ) extends Update[ C, Csr ]
 }

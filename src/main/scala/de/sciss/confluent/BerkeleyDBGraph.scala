@@ -28,10 +28,10 @@
 
 package de.sciss.confluent
 
-import com.sleepycat.je.{Database, DatabaseConfig}
 import concurrent.stm.{InTxn, Ref => STMRef}
 import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, Set => ISet}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
+import com.sleepycat.je.{OperationStatus, Database, DatabaseConfig}
 
 object BerkeleyDBGraph extends BerkeleyDB.Provider {
    var DEBUG_PRINT = false
@@ -39,13 +39,45 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
    def open[ C <: Ct[ C ]]( ctx: BerkeleyDB.Context, name: String, dbCfg: DatabaseConfig = BerkeleyDB.newDBCfg )
                           ( implicit access: C ) : BerkeleyDBGraph[ C ] =
       provide( ctx, name, dbCfg ) { (ctx, db) =>
+         // read in graph
+         val h          = ctx.txnHandle( access.txn )
+         var sumsTaken  = ISet.empty[ Long ]
+         var cnt        = 0
+         var infos      = IIdxSeq.empty[ IDInfo ] // index=ids to id infos
+         var keepReading= true
+         while( keepReading ) {
+            readVersion( cnt, db, h ) match {
+               case Some( Record( info, inEdges, seminal )) =>
+                  infos     :+= info
+                  val rid     = info.rid
+                  sumsTaken ++= sumsTaken.map( _ + rid )
+                  if( seminal ) sumsTaken += rid.toLong
+                  cnt        += 1
+               case None =>
+                  keepReading = false
+            }
+         }
+         val idsTaken: ISet[ Int ] = infos.map( _.rid )( collection.breakOut )
          // Note: it is important to have 0 in idsTaken
-         val idRef    = STMRef( IDGen( 0, ISet( 0 ), ISet.empty[ Long ]))
-         val infoRef  = STMRef( IIdxSeq.empty[ IDInfo ]) // index=ids to id infos
+         val idRef    = STMRef( IDGen( cnt, idsTaken + 0, sumsTaken ))
+         val infoRef  = STMRef( infos )
          new HandleImpl[ C ]( ctx, db, idRef, infoRef )
       }
 
-//   private def readVersion
+   private def readVersion( id: Int, db: Database, h: BerkeleyDB.TxnHandle ) : Option[ Record ] = {
+      val out = h.to
+      out.reset()  // actually this shouldn't be needed
+      out.writeInt( id )
+      h.dbKey.setData( out.toByteArray )
+      out.reset()
+      val dbValue = h.dbValue
+      if( db.get( h.txn, h.dbKey, dbValue, null ) == OperationStatus.SUCCESS ) {
+         val in   = new TupleInput( dbValue.getData, dbValue.getOffset, dbValue.getSize )
+         val rec  = Record.readObject( in )
+if( DEBUG_PRINT ) println( "readVersion " + id + " -> " + rec )
+         Some( rec )
+      } else None
+   }
 
    private class HandleImpl[ C <: Ct[ C ]]( val ctx: BerkeleyDB.Context, db: Database,
                                             idRef: STMRef[ IDGen ], infoRef: STMRef[ IIdxSeq[ IDInfo ]])
@@ -181,7 +213,7 @@ if( DEBUG_PRINT ) println( "writeVersion " + id + " -> " + rec )
    // random id, time and comment (the latter taken from the corresponding context)
    private case class IDInfo( rid: Int, time: Long, comment: String ) {
       override def toString =
-         "(rid = 0x" + ("0000000000000000" + rid.toHexString.toUpperCase).takeRight( 16 ) +
+         "(rid = 0x" + ("00000000" + rid.toHexString.toUpperCase).takeRight( 8 ) +
          ", time = " + new java.util.Date( time ).toString +
          (if( comment.size > 0 ) ", comment = '" + comment + "')" else ")")
    }

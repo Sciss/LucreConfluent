@@ -32,9 +32,8 @@ import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import com.sleepycat.je.{OperationStatus, Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
 import concurrent.stm.{Txn => STMTxn, InTxn, InTxnEnd, TxnLocal}
 
-/**
- * XXX TODO: Ensure thread safety -- probably the TxnHandle is _not_ thread safe!
- */
+// XXX TODO: Ensure thread safety -- probably the TxnHandle is _not_ thread safe!
+// We could just have a `def to`, `def dbKey` etc. ?
 object BerkeleyDB {
    def newEnvCfg: EnvironmentConfig = {
       val cfg = new EnvironmentConfig()

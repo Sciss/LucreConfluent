@@ -32,7 +32,16 @@ import collection.immutable.{IntMap, Set => ISet}
 import concurrent.stm.{InTxn, Ref => STMRef}
 
 trait Version {
+   /**
+    * Unique monotonically incremented identifier.
+    */
    def id: Int               // we don't really need this anymore, but it might be nice for inspection
+//   /**
+//    * Time stamp when this version was originally created.
+//    * Milliseconds since January 1, 1970, 00:00:00 GMT
+//    */
+//   def time: Long
+
 def rid: Int // XXX remove from here
 
 //   def tree: VersionTree     // might be able to get rid of this!

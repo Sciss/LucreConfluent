@@ -32,15 +32,47 @@ import concurrent.stm.InTxn
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 
 trait CtxLike[ Repr ] /* extends RefFactory[ Repr ] */ {
+   /**
+    * Logical system time when this context has been created.
+    * Milliseconds since January 1, 1970, 00:00:00 GMT
+    */
+   def time: Long
+
+   /**
+    * A commit comment, or empty string.
+    */
+   def comment: String
+
+   /**
+    * The STM transaction corresponding to this context.
+    */
    def txn: InTxn
+
+   /**
+    * Constructs an ephemeral 'downgrade' of this context.
+    */
    def eph: ECtx
 //   def seminal: (NodeID, Repr)
 //   def newNode[ T ]( fun: (Repr with NodeFactory[ Repr ]) => T ) : T
+
+   /**
+    * Initiates a node creation process.
+    */
    def newNode[ T ]( fun: NodeFactory[ Repr ] => T ) : T
+
+   /**
+    * Initiates a node re-creation process. This is used in de-serialization.
+    */
    def oldNode[ T ]( id: Int )( fun: NodeFactory[ Repr ] => T ) : T
 
-   // serialization
+   /**
+    * Serialization support.
+    */
    def writeObject( out: TupleOutput ) : Unit
+
+   /**
+    * Serialization support.
+    */
    def readObject( in: TupleInput ) : Repr
 }
 

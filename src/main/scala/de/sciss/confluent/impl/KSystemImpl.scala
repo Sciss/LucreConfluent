@@ -308,7 +308,7 @@ object KSystemImpl {
          }
       }
 
-      private case class EphCtx( txn: InTxn )
+      private case class EphCtx( txn: InTxn, time: Long = System.currentTimeMillis(), comment: String = "" )
       extends ECtx {
          def substitute( newPath: Unit ) : ECtx = this
          def eph: ECtx = this
@@ -401,14 +401,8 @@ object KSystemImpl {
 //            val hashes1 = if( semi ) hashes0 + 0L else hashes0
 
 //            val (suffix, hashes1) = Version.newFrom( hashes0 /* hashes1 */)
-            val (suffix, hashes1) = dbVersionFactory.newVersion( hashes0 )
+            val (suffix, hashes) = dbVersionFactory.newVersion( inEdges, hashes0, semi )
 
-            // we didn't add 0L to hashes0 because Version already checks
-            // against idsTaken, so we do not need to duplicate the test
-            // in sumsTaken. However, for the seminal paths to correctly
-            // propagate, we need to add the new rid here if a seminal
-            // node had been constructed.
-            val hashes = if( semi ) hashes1 + suffix.rid.toLong else hashes1
 //            addVersion( suffix, inEdges, semi )
             versionHashes.transform( _ + (suffix.id -> hashes) )
 
@@ -421,7 +415,7 @@ CHECK_REF.transform( set => {
 
             if( !vEmpty ) Val.flush( suffix )
             if( !rEmpty ) Ref.flush( suffix )
-if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + "; semi? " + semi + ")" )
+if( LOG_FLUSH ) println( "FLUSH : " + suffix + /* " (rid = " + suffix.rid + "; " + */ "(semi? " + semi + ")" )
 //            Some( suffix )
             Some( oldPath :+ suffix )
          }
@@ -451,7 +445,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + " (rid = " + suffix.rid + "; semi
 //         }
 //      }
 
-      private case class Ctx( txn: InTxn, path: Path )
+      private case class Ctx( txn: InTxn, path: Path, time: Long = System.currentTimeMillis(), comment: String = "" )
       extends KCtx {
          ctx =>
 

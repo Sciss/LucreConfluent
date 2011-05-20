@@ -1,19 +1,53 @@
+/*
+ *  BerkeleyDBGraph.scala
+ *  (TemporalObjects)
+ *
+ *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
+ *
+ *	 This software is free software; you can redistribute it and/or
+ *	 modify it under the terms of the GNU General Public License
+ *	 as published by the Free Software Foundation; either
+ *	 version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *	 This software is distributed in the hope that it will be useful,
+ *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *	 General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public
+ *  License (gpl.txt) along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ *
+ *	 For further information, please contact Hanns Holger Rutz at
+ *	 contact@sciss.de
+ *
+ *
+ *  Changelog:
+ */
+
 package de.sciss.confluent
 
 import com.sleepycat.je.{Database, DatabaseConfig}
 import concurrent.stm.{InTxn, Ref => STMRef}
-import collection.immutable.{Set => ISet}
+import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, Set => ISet}
 
 object BerkeleyDBGraph extends BerkeleyDB.Provider {
    def open[ C <: Ct[ C ]]( ctx: BerkeleyDB.Context, name: String, dbCfg: DatabaseConfig = BerkeleyDB.newDBCfg )
-                          ( implicit access: C ) : BerkeleyDBGraph[ C ] = provide( ctx, name, dbCfg )( new HandleImpl[ C ]( _, _ ))
-
-   private class HandleImpl[ C <: Ct[ C ]]( val ctx: BerkeleyDB.Context, db: Database )
-   extends BerkeleyDBGraph[ C ] {
-      private val idRnd       = {
-         if( RandomizedVersion.FREEZE_SEED ) new util.Random( -1 ) else new util.Random()
+                          ( implicit access: C ) : BerkeleyDBGraph[ C ] =
+      provide( ctx, name, dbCfg ) { (ctx, db) =>
+         // Note: it is important to have 0 in idsTaken
+         val idRef    = STMRef( IDGen( 0, ISet( 0 ), ISet.empty[ Long ]))
+         val infoRef  = STMRef( IIdxSeq.empty[ IDInfo ]) // index=ids to id infos
+         new HandleImpl[ C ]( ctx, db, idRef, infoRef )
       }
-      private val idRef = STMRef( IDGen( 1 /* 0 */, ISet( 1 ), ISet( 1 )))
+
+   private class HandleImpl[ C <: Ct[ C ]]( val ctx: BerkeleyDB.Context, db: Database,
+                                            idRef: STMRef[ IDGen ], infoRef: STMRef[ IIdxSeq[ IDInfo ]])
+   extends BerkeleyDBGraph[ C ] {
+      private val idRnd = {
+         if( RandomizedVersion.FREEZE_SEED ) new util.Random( 0 ) else new util.Random()
+      }
 
       def name          = db.getDatabaseName
       def dbCfg         = db.getConfig
@@ -26,14 +60,64 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
          }
       }
 
-      def newVersion( preSums: Set[ Long ])( implicit txn: InTxn ) : (RandomizedVersion, Set[ Long ]) = {
-         val (id, rid, newSums) = nextID( preSums )
-         (new VersionImpl( id, rid ), newSums)
+      def newVersion( inEdges: Set[ Int ], preSums: Set[ Long ], seminal: Boolean )( implicit access: C ) : (RandomizedVersion, Set[ Long ]) = {
+         // find new randomized ID and update hashes
+         implicit val txn = access.txn
+         val (id, rid, newSums0) = nextID( preSums )
+         // create the version wrapper
+         val v = new VersionImpl( id, rid )
+         // 0L was not part of preSums which is fine because we already check
+         // against idsTaken, so we do not need to duplicate the test
+         // in sumsTaken. However, for the seminal paths to correctly
+         // propagate, we need to add the new rid here if a seminal
+         // node had been constructed.
+         val newSums = if( seminal ) newSums0 + rid.toLong else newSums0
+
+         // create and store corresponding info
+         val info = IDInfo( rid, access.time, access.comment )
+         infoRef.transform( _ :+ info )
+
+         // persist to database
+         writeVersion( id, info, inEdges, seminal, ctx.txnHandle )
+
+         // return results
+         (v, newSums)
       }
 
-      private def nextID( preSums: Set[ Long ])( implicit txn: InTxn ) : (Int, Int, Set[ Long ]) = {
+      /**
+       * key: (Int) id
+       * value:
+       *    (Int) rid
+       *    (Short) flags
+       *       0x01  seminal
+       *    (Int) numInEdges
+       *    [ (Int) inEdge-id ] * numInEdges
+       *    (Long) time
+       *    (String) comment
+       */
+      def writeVersion( id: Int, info: IDInfo, inEdges: Set[ Int ], seminal: Boolean, h: BerkeleyDB.TxnHandle ) {
+         val out = h.to
+         out.reset()  // actually this shouldn't be needed
+         out.writeInt( id )
+         h.dbKey.setData( out.toByteArray )
+         out.reset()
+         out.writeInt( info.rid )
+         val flags = if( seminal ) 0x01 else 0
+         out.writeUnsignedShort( flags )
+         out.writeInt( inEdges.size )  // XXX check performance of size
+         inEdges.foreach( out.writeInt( _ ))
+         out.writeLong( info.time )
+         out.writeString( info.comment )
+         h.dbValue.setData( out.toByteArray )
+         out.reset()
+         db.put( h.txn, h.dbKey, h.dbValue )
+      }
+
+      // XXX TODO: the creation of the sums and the checking against sumsTaken
+      // could happen in one loop, so that the process can be stopped as soon
+      // as a collision happens
+      def nextID( preSums: Set[ Long ])( implicit txn: InTxn ) : (Int, Int, Set[ Long ]) = {
          val IDGen( cnt, idsTaken, sumsTaken ) = idRef.get( txn )
-         val view = preSums // .view
          while( true ) {
             val rid = idRnd.nextInt() & 0x7FFFFFFF
             if( !idsTaken.contains( rid )) {   // unique vertices
@@ -46,12 +130,24 @@ object BerkeleyDBGraph extends BerkeleyDB.Provider {
          }
          error( "Never here" )
       }
+
+      private def info( v: Version )( implicit txn: InTxn ) : IDInfo = infoRef.get.apply( v.id )
+
+      def versionTime(    v: Version )( implicit txn: InTxn ) : Long   = info( v ).time
+      def versionComment( v: Version )( implicit txn: InTxn ) : String = info( v ).comment
    }
 
    private case class IDGen( cnt: Int, idsTaken: ISet[ Int ], sumsTaken: ISet[ Long ])
 
-   private case class VersionImpl( id: Int, rid: Int ) extends RandomizedVersion
+   // random id, time and comment (the latter taken from the corresponding context)
+   private case class IDInfo( rid: Int, time: Long, comment: String )
+
+   private case class VersionImpl( id: Int, rid: Int ) extends RandomizedVersion {
+      override def toString = "v" + id
+   }
 }
 trait BerkeleyDBGraph[ C <: Ct[ C ]] extends BerkeleyDB.Handle {
-   def newVersion( preSums: Set[ Long ])( implicit txn: InTxn ) : (RandomizedVersion, Set[ Long ])
+   def newVersion( inEdges: Set[ Int ], preSums: Set[ Long ], seminal: Boolean )( implicit access: C ) : (RandomizedVersion, Set[ Long ])
+   def versionTime(    v: Version )( implicit txn: InTxn ) : Long
+   def versionComment( v: Version )( implicit txn: InTxn ) : String
 }

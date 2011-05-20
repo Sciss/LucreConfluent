@@ -34,79 +34,11 @@ import java.io.{ObjectInputStream, ObjectOutputStream}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import com.sleepycat.je.{OperationStatus, Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
 
-object BerkeleyDBStore {
-   def newEnvCfg: EnvironmentConfig = {
-      val cfg = new EnvironmentConfig()
-      cfg.setTransactional( true )
-      cfg
-   }
+object BerkeleyDBStore extends BerkeleyDB.Provider {
+   def open[ C <: Ct[ C ]]( ctx: BerkeleyDB.Context, name: String, dbCfg: DatabaseConfig = BerkeleyDB.newDBCfg )
+                          ( implicit access: C ) : Handle[ C ] = provide( ctx, name, dbCfg )( new HandleImpl[ C ]( _, _ ))
 
-   def newDBCfg : DatabaseConfig = {
-      val cfg = new DatabaseConfig()
-      cfg.setTransactional( true )
-      cfg
-   }
-
-   def newTxnCfg: TransactionConfig = new TransactionConfig()
-
-   def newCtx( env: Environment, txnCfg: TransactionConfig = newTxnCfg ): DatabaseContext = new ContextImpl( env, txnCfg )
-
-   def open[ C <: Ct[ C ]]( ctx: DatabaseContext, name: String, dbCfg: DatabaseConfig = newDBCfg )( implicit access: C ) : Handle[ C ] = {
-
-      val env     = ctx.env
-      val envCfg  = env.getConfig
-      require( envCfg.getTransactional && dbCfg.getTransactional && !dbCfg.getSortedDuplicates )
-
-      val txn  = env.beginTransaction( null, ctx.txnCfg )
-      var ok   = false
-      try {
-         txn.setName( "Open '" + name + "'" )
-//         val createDir = dbCfg.getAllowCreate && !dbCfg.getReadOnly
-//         if( createDir ) env.getHome.mkdirs()
-         val db = env.openDatabase( txn, name, dbCfg )
-         try {
-            val res = new HandleImpl[ C ]( ctx, db )
-            ok = true
-            res
-         } finally {
-            if( !ok ) db.close()
-         }
-      } finally {
-         if( ok ) txn.commit() else txn.abort()
-      }
-   }
-
-   private class ContextImpl( val env: Environment, val txnCfg: TransactionConfig )
-   extends DatabaseContext with STMTxn.ExternalDecider {
-      context =>
-
-      private val dbTxnRef = TxnLocal( initialValue = initDBTxn( _ ))
-
-      private[BerkeleyDBStore] def txnHandle( implicit txn: InTxnEnd ) : DBTxnHandle = dbTxnRef.get
-
-      private def initDBTxn( implicit txn: InTxn ) : DBTxnHandle = {
-         STMTxn.setExternalDecider( context )
-         val dbTxn = env.beginTransaction( null, txnCfg )
-         STMTxn.afterRollback { status =>
-            try { dbTxn.abort() } catch { case _ => }
-         }
-         val to = new TupleOutput
-         DBTxnHandle( dbTxn, to, new DatabaseEntry(), new DatabaseEntry() )
-      }
-
-      def shouldCommit( implicit txn: InTxnEnd ) : Boolean = {
-         val h = dbTxnRef.get
-         try {
-            h.txn.commit()
-            true
-         } catch { case e =>
-            try { h.txn.abort() } catch { case _ => }
-            false
-         }
-      }
-   }
-
-   private class HandleImpl[ C <: Ct[ C ]]( val ctx: DatabaseContext, db: Database )
+   private class HandleImpl[ C <: Ct[ C ]]( val ctx: BerkeleyDB.Context, db: Database )
    extends Handle[ C ] {
       handle =>
 
@@ -186,7 +118,7 @@ object BerkeleyDBStore {
             elems.foreach { tup => write( h, tup._1, tup._2 )}
          }
 
-         private def write( h: DBTxnHandle, key: Long, value : V )( implicit access: C ) {
+         private def write( h: BerkeleyDB.TxnHandle, key: Long, value : V )( implicit access: C ) {
             val out = h.to
             out.reset()  // actually this shouldn't be needed
 //            val id: Long = error( "TODO" ) // val id = s.id // ( value )
@@ -219,25 +151,11 @@ object BerkeleyDBStore {
       }
    }
 
-   private case class DBTxnHandle( txn: DBTxn, to: TupleOutput, dbKey: DatabaseEntry, dbValue: DatabaseEntry /*, oos: ObjectOutputStream */)
-
    /**
     * A handle to the database which also functions as a store factory.
     *
     * **Note** that the precision of the storage identifier, although given
     * as `Long`, is only 48 bit (the least significant 48 bit of the `Long`).
     */
-   sealed trait Handle[ C <: Ct[ C ]] extends TxnDBStoreFactory[ Long, C, Long  ] {
-      def name: String
-      def close( env: Boolean ) : Unit
-//      def env : Environment
-      def ctx: DatabaseContext
-      def dbCfg : DatabaseConfig
-   }
-
-   sealed trait DatabaseContext {
-      def env: Environment
-      def txnCfg: TransactionConfig
-      private[BerkeleyDBStore] def txnHandle( implicit txn: InTxnEnd ) : DBTxnHandle
-   }
+   sealed trait Handle[ C <: Ct[ C ]] extends BerkeleyDB.Handle with TxnDBStoreFactory[ Long, C, Long  ]
 }

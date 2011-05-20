@@ -389,6 +389,8 @@ val noMeld = false
    }
    println( "---- reads done" )
 
+   println( "hashes: " + KSystemImpl.DEBUG_HASHES( sys ))
+
    sys.dispose
 }
 

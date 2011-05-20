@@ -47,6 +47,8 @@ object KSystemImpl {
 
    def apply[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ]) : KSystem[ A ] = new Sys[ A ]( ap )
 
+   def DEBUG_HASHES( sys: KSystem[ _ ]) = sys.asInstanceOf[ Sys[ _ ]].Cache.versionHashes.single()
+
    private class Sys[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
       sys =>
@@ -59,11 +61,11 @@ object KSystemImpl {
       val cacheValFactory  = CachedTxnStoreTest.valFactory[ KCtx, Version ]( Cache.Val )
 //      val hashValFactory   = HashedTxnStore.valFactory[ Version, Any ]
       val hashValFactory   = HashedTxnDBStore.valFactory[ KCtx, Version, Any ]
-      val dbValFactory     = atomic { txn =>
+      val (dbValFactory, dbVersionFactory) = atomic { txn =>
          implicit val ctx = Ctx( txn, VersionPath.init.path )
-         val (env, dbCfg ) = {
-            val envCfg  = BerkeleyDBStore.newEnvCfg
-            val dbCfg   = BerkeleyDBStore.newDBCfg
+         val (dbCtx, dbCfg ) = {
+            val envCfg  = BerkeleyDB.newEnvCfg
+            val dbCfg   = BerkeleyDB.newDBCfg
             envCfg.setAllowCreate( true )
             dbCfg.setAllowCreate( true )  // why do we need to specify this twice??
             val dir     = new File( new File( System.getProperty( "user.home" ), "Desktop" ), "ksys" )
@@ -71,11 +73,13 @@ object KSystemImpl {
 
 //            envCfg.setConfigParam( EnvironmentConfig.FILE_LOGGING_LEVEL, "ALL" )
             envCfg.setConfigParam( EnvironmentConfig.CONSOLE_LOGGING_LEVEL, DB_CONSOLE_LOG_LEVEL )
-
-            (new Environment( dir, envCfg ), dbCfg)
+            val env     = new Environment( dir, envCfg )
+            val dbCtx   = BerkeleyDB.newCtx( env )
+            (dbCtx, dbCfg)
          }
-         val dbCtx = BerkeleyDBStore.newCtx( env )
-         BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys", dbCfg )
+         val valF    = BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys-nodes", dbCfg )
+         val versionF= BerkeleyDBStore.open[ KCtx ]( dbCtx, "ksys-dag", dbCfg )
+         (valF, versionF)
       }
 
       val cacheRefFactory  = CachedTxnStoreTest.refFactory[ KCtx, Version, KCtx ]( Cache.Ref )
@@ -98,7 +102,14 @@ object KSystemImpl {
          res
       }
 
-      def dispose : Unit = dbValFactory.close( true )
+      def addVersion( suffix: Version, inEdges: Set[ Int ], semi: Boolean )( implicit access: KCtx ) {
+         error( "TODO" ) // dbVersionFactory.emptyVal()
+      }
+
+      def dispose {
+         dbValFactory.close( false )
+         dbVersionFactory.close( true )
+      }
 
 //      def newMutable( implicit access: A ) : Path = access.path.takeRight( 1 ) // XXX seminalPath should go somewhere else
 //      def newMutable( implicit ctx: KCtx ) : KCtx = {
@@ -322,11 +333,11 @@ object KSystemImpl {
          }
       }
 
-      private object Cache {
+      object Cache {
 //         val hashSet = TxnLocal( Set.empty[ Long ])
 //val pathSet = TxnLocal( Set.empty[ PathLike[ Version ]])
          private val hasSeminalRef = TxnLocal( false )
-         private val versionHashes = STMRef( IntMap.empty[ Set[ Long ]])
+         val versionHashes = STMRef( IntMap.empty[ Set[ Long ]])
 
          def hasSeminal( implicit txn: InTxn ) : Boolean = hasSeminalRef.get
          def tagSeminal( implicit txn: InTxn ) { hasSeminalRef.set( true )}
@@ -381,21 +392,24 @@ object KSystemImpl {
 
          def flush( oldPath: Path, inEdges: Set[ Int ])( implicit access: KCtx ) : Option[ Path ] = {
             implicit val txn = access.txn
-            val vEmpty = Val.isEmpty
-            val rEmpty = Ref.isEmpty
-//            val hashes = hashSet.swap( Set.empty[ Long ])
-//            if( hashes.isEmpty ) return None
+            val vEmpty  = Val.isEmpty
+            val rEmpty  = Ref.isEmpty
+            val semi    = hasSeminal
             if( /* !semi && */ vEmpty && rEmpty ) return None
-//            val hashes0 = if( semi ) oldPath.hashes + 0L else oldPath.hashes
-//println( "In " + oldPath.lastOption.map( _.toString ).getOrElse( "<>" ) + " semi? " + semi )
             val vHashes = versionHashes.get
             val hashes0 = inEdges.flatMap( vHashes( _ )) // + oldPath.sum // make sure we add the hash of the access path!
 //            val hashes1 = if( semi ) hashes0 + 0L else hashes0
 
-            val (suffix, hashes) = Version.newFrom( hashes0 /* hashes1 */)
+            val (suffix, hashes1) = Version.newFrom( hashes0 /* hashes1 */)
+            // we didn't add 0L to hashes0 because Version already checks
+            // against idsTaken, so we do not need to duplicate the test
+            // in sumsTaken. However, for the seminal paths to correctly
+            // propagate, we need to add the new rid here if a seminal
+            // node had been constructed.
+            val hashes = if( semi ) hashes1 + suffix.rid.toLong else hashes1
+            addVersion( suffix, inEdges, semi )
             versionHashes.transform( _ + (suffix.id -> hashes) )
 
-val semi    = hasSeminal
 CHECK_REF.transform( set => {
    val setf    = set.filter( seq => inEdges.contains( seq.last ))
    val setfm0  = setf.map( _ :+ suffix.id )

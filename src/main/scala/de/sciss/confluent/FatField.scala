@@ -31,7 +31,7 @@ package de.sciss.confluent
 /**
  *    @version 0.16, 13-Nov-10
  */
-class FatValue[ @specialized V ] private( lexi: LexiTrie[ OracleMap[ V ]]) {
+class FatValue[ /* @specialized */ V ] private( lexi: LexiTrie[ OracleMap[ V ]]) {
 //   protected val lexi = new FatFieldMap[ V ]
 //   protected val lexi = LexiTrie.empty[ OracleMap[ V ]] // ()( Version.IdOrdering )
 
@@ -73,7 +73,7 @@ object FatValue {
    def empty[ V ] = new FatValue( LexiTrie.empty[ OracleMap[ V ]])
 }
 
-case class FatIdentifier[ @specialized V ]( path: Path, value: V ) {
+case class FatIdentifier[ /* @specialized */ V ]( path: Path, value: V ) {
    type I = FatIdentifier[ V ] 
 
 	def setValue( v: V ) : I = FatIdentifier( path, v )

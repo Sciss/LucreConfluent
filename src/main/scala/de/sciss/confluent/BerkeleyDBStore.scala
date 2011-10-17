@@ -134,7 +134,7 @@ object BerkeleyDBStore extends BerkeleyDB.Provider {
             db.put( h.txn, h.dbKey, h.dbValue )
          }
 
-         def getWithPrefix( key: Long )( implicit access: C ) : Option[ (V, Int) ] = error( "Unsupported operation" )
+         def getWithPrefix( key: Long )( implicit access: C ) : Option[ (V, Int) ] = sys.error( "Unsupported operation" )
 
          def inspect( implicit access: C ) {
             println( "DBStore" ) // [" + s.id + "]" )

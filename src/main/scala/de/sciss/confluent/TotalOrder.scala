@@ -110,7 +110,7 @@ extends Ordering[ Rec ] {
     * @returns the child's record
     */
    protected def insertAfter( pred: Rec, v0: Tag, elem: T ) : Rec = {
-      if( n == nmax ) error( "Maximum capacity reached" )
+      require( n != nmax, "Maximum capacity reached" )
 
       var j       = 1L  // careful to use long since we do j*j
       val sp      = pred.moveRight
@@ -216,8 +216,8 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
       var v: Tag = 0 // arbitrary
       var pred: Rec = this
       var succ: Rec = this
-      def elem = error( "Illegal Access" ) // not very pretty, but we had to escape from type hell
-      def tail = error( "Illegal Access" )
+      def elem = sys.error( "Illegal Access" ) // not very pretty, but we had to escape from type hell
+      def tail = sys.error( "Illegal Access" )
 
       override def toString = "Base"
    }
@@ -225,12 +225,12 @@ class PreOrder[ T ] extends TotalOrder[ T, PreOrder.Record[ T ]] {
    protected class TailMark( ref: Rec, var succ: Rec ) extends Rec {
       var pred = ref
 //      var v: Tag = 0 // never used
-      def v: Tag = error( "Illegal Access" )
-      def v_=( newTag: Tag ) = error( "Illegal Access" ) 
+      def v: Tag = sys.error( "Illegal Access" )
+      def v_=( newTag: Tag ) = sys.error( "Illegal Access" )
       override def skipLeft: Rec  = moveLeft
       override def skipRight: Rec = moveRight
-      def elem = error( "Illegal Access" )
-      def tail = error( "Illegal Access" )
+      def elem = sys.error( "Illegal Access" )
+      def tail = sys.error( "Illegal Access" )
 
       override def toString = "M(" + ref + ")"
    }
@@ -283,7 +283,7 @@ class PostOrder[ T ] extends TotalOrder[ T, PostOrder.Record[ T ]] {
       var pred: Rec = this
       var succ: Rec = this
       def moveRight = succ
-      def elem = error( "Illegal Access" )
+      def elem = sys.error( "Illegal Access" )
 
       override def toString = "Base"
    }

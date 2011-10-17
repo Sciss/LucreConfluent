@@ -16,7 +16,7 @@ sealed trait Serializer[ -C, V ] {
 }
 trait DirectSerializer[ -C, V ] extends Serializer[ C, V ]
 trait IndirectSerializer[ -C, V ] extends Serializer[ C, V ] {
-   error( "NOT YET SUPPORTED" )
+   sys.error( "NOT YET SUPPORTED" )
 
    /**
     * Retrieve the 48-bit (!) identifier of the

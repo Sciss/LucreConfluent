@@ -154,7 +154,7 @@ if( DEBUG_PRINT ) println( "writeVersion " + id + " -> " + rec )
                }
             }
          }
-         error( "Never here" )
+         sys.error( "Never here" )
       }
 
       private def info( id: Int )( implicit txn: InTxn ) : IDInfo = infoRef.get.apply( id )

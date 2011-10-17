@@ -82,7 +82,7 @@ object HashedTxnDBStore {
                             dbView: MapView[ Long, Value[ V ]]) : (Boolean, Map[ Long, SoftValue[ V ]], V) = {
          val v0 = vf.get()
          if( v0 == null ) {
-            val vfh  = dbView.get( key ).getOrElse( error( "Missing entry in store (" + key + ")" )).asInstanceOf[ ValueFull[ V ]]
+            val vfh  = dbView.get( key ).getOrElse( sys.error( "Missing entry in store (" + key + ")" )).asInstanceOf[ ValueFull[ V ]]
             val map1 = map + (key -> vfh.soften)
             (true, map1, vfh.v)
          } else {

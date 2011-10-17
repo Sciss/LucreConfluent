@@ -68,7 +68,7 @@ object Hashing {
             }
          }
       }
-      error( "Never here" )
+      sys.error( "Never here" )
    }
 
    def mappend( s: IntSeq* ) : Int = nextUnique( s.map( _.sum ))
@@ -87,7 +87,7 @@ object Hashing {
             }
          }
       }
-      error( "Never here" )
+      sys.error( "Never here" )
    }
 
    def appendn( s: IntSeq, n: Int ) : IntSeq = (0 until n).foldLeft( s )( (s1, _ ) => append( s1 ))

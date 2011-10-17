@@ -48,9 +48,15 @@ object TotalOrder {
    type Tag = Long
 
    trait Record[ T, Repr ] {
-      var v: Tag
-      var pred: Repr
-      var succ: Repr
+//      var v: Tag
+//      var pred: Repr
+//      var succ: Repr
+      def v: Tag
+      def v_=( value: Tag ) : Unit
+      def pred: Repr
+      def pred_=( value: Repr ) : Unit
+      def succ: Repr
+      def succ_=( value: Repr ) : Unit
       def moveRight: Repr
       def elem: T
    }
@@ -138,7 +144,7 @@ extends Ordering[ Rec ] {
       rec
    }
 
-   def inspect {
+   def inspect() {
       var iter    = base.moveRight
       var succ    = false
       print( "[")
@@ -150,7 +156,7 @@ extends Ordering[ Rec ] {
       println( "]")
    }
 
-   def inspectVerbose {
+   def inspectVerbose() {
       var iter    = base
       var succ    = false
       print( "[")

@@ -52,7 +52,7 @@ object KSystemImpl {
 
    private class Sys[ A <: Node[ KCtx, A ]]( ap: AccessProvider[ KCtx, A ])
    extends KSystem[ A ] with ModelImpl[ ECtx, KSystemLike.Update ] {
-      sys =>
+      system =>
 
       type RefHolder[ T <: Node[ KCtx, T ]] = Holder[ T ] // TxnStore[ Path, T ]
 
@@ -96,7 +96,7 @@ object KSystemImpl {
       // XXX not very elegant with the duplicate creation of Ctx
       // ; also not safe against ap.init calling stuff like meld
       lazy val aInit : A = {
-         val txn  = Txn.findCurrent.getOrElse( error( "Assertion failed -- no enclosing txn" ))
+         val txn  = Txn.findCurrent.getOrElse( sys.error( "Assertion failed -- no enclosing txn" ))
          val ctx  = Ctx( txn, EmptyPath ) // VersionPath.init.path )
          val res  = ap.init( ctx )
 //         assert( Cache.isEmpty( txn ))
@@ -107,7 +107,7 @@ object KSystemImpl {
 //         error( "TODO" ) // dbVersionFactory.emptyVal()
 //      }
 
-      def dispose {
+      def dispose() {
          dbValFactory.close( false )
          dbVersionFactory.close( true )
       }
@@ -326,11 +326,11 @@ object KSystemImpl {
          val id = NID( nodeAlloc( ctx.txn ))
 
          def emptyVal[ T ]( implicit s: Serializer[ ECtx, T ]) : Val[ ECtx, T ] = {
-            error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
+            sys.error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
          def emptyRef[ T <: Node[ ECtx, T ]]( implicit s: Serializer[ ECtx, T ]) : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
-            error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
+            sys.error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
       }
 
@@ -476,7 +476,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + /* " (rid = " + suffix.rid + "; "
 //
 //         def path : VersionPath = pathRef.get( txn )
 
-         def eph : ECtx = error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
+         def eph : ECtx = sys.error( "NO FUNCTIONA" ) // ESystemImpl.join( txn )
 
          def newNode[ T ]( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( nodeAlloc( ctx.txn ), seminal ))
          def oldNode[ T ]( id: Int )( fun: NodeFactory[ KCtx ] => T ) : T = fun( new KNodeFactory( id, ctx ))
@@ -611,7 +611,7 @@ if( CHECK_READS ) {
 //   }
 }
 
-            val tup = ref.getWithPrefix( p ).getOrElse( error( "No assignment for path " + p ))
+            val tup = ref.getWithPrefix( p ).getOrElse( sys.error( "No assignment for path " + p ))
             // what the f***, tuple unpacking doesn't work, probably scalac bug (has problems with type bounds of T[ _ ])
             val raw = tup._1
             val pre = tup._2
@@ -657,8 +657,8 @@ if( CHECK_READS ) {
       private trait AbstractVal[ T ] // ( ref: Ref[ FatValue[ T ]], typeName: String )
       extends Val[ KCtx, T ] { // KVar[ KSystem.Ctx, T ] /* with ModelImpl[ KCtx, T ] */ {
 //      protected def txn( c: C ) = c.repr.txn
-         protected val ref: Holder[ T ] // Ref[ FatValue[ T ]]
-         protected val typeName : String
+         protected def ref: Holder[ T ] // Ref[ FatValue[ T ]]
+         protected def typeName : String
 
          override def toString = "KVar[" + typeName + "]"
 
@@ -675,7 +675,7 @@ if( CHECK_READS ) {
 //      println( "Assertion failed for path " + p.toList + " (hash = " + hash + ")" )
 //   }
 }
-            ref.get( p ).getOrElse( error( "No assignment for path " + p ))
+            ref.get( p ).getOrElse( sys.error( "No assignment for path " + p ))
          }
 
          def set( v: T )( implicit ctx: KCtx ) {
@@ -703,7 +703,7 @@ if( CHECK_READS ) {
 //         fireUpdate( v, c )
 //      }
 
-         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
+         def inspect( implicit ctx: KCtx ) { ref.inspect }
       }
 
       private class ValImpl[ T ]( /* fid: Long, */ val ref: Holder[ T ], val typeName: String ) extends AbstractVal[ T ] {

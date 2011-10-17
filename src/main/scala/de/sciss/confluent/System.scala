@@ -28,10 +28,6 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{Set => ISet}
-import Double.{PositiveInfinity => dinf}
-import reflect.OptManifest
-
 trait System[ P,  // access path type
               C,  // context
               A // access
@@ -52,7 +48,7 @@ trait System[ P,  // access path type
 //   def newMutable( implicit access: A ) : P
 //   def newMutable( implicit ctx: C ) : C
 
-   def dispose : Unit
+   def dispose() : Unit
 }
 
 object ESystem {

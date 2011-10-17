@@ -33,8 +33,6 @@ import collection.immutable.{Queue => IQueue}
 import concurrent.stm.Ref
 
 trait ModelImpl[ C <: Ct[ C ], T ] extends Model[ C, T ] {
-   import Model._
-
    private val listeners = Ref( IQueue.empty[ L ])
 
    def addListener( l: L )( implicit c: Ct[ _ ]) {

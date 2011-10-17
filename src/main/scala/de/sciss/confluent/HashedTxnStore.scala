@@ -29,7 +29,7 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
-import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
+import concurrent.stm.{Ref => STMRef}
 
 object HashedTxnStore {
    private class StoreImpl[ C <: Ct[ C ], X, V ] extends TxnStore[ C, PathLike[ X ], V ] {
@@ -37,7 +37,7 @@ object HashedTxnStore {
 
       val ref = STMRef[ Map[ Long, Value[ V ]]]( LongMap.empty[ Value[ V ]])
 
-      def inspect( implicit access: C ) = {
+      def inspect( implicit access: C ) {
          println( "INSPECT STORE" )
          println( ref.get( access.txn ))
       }
@@ -86,9 +86,9 @@ object HashedTxnStore {
 // since we use the cache now, let's just skip this check
 //         if( elems.isEmpty ) return
          ref.transform( map => {
-            elems.foldLeft( map ) { case (map, (key, value)) =>
+            elems.foldLeft( map ) { case (map1, (key, value)) =>
                val hash    = key.sum
-               Hashing.add( key, map, { s: Pth =>
+               Hashing.add( key, map1, { s: Pth =>
                   if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
                })
             }

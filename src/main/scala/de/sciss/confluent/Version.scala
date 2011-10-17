@@ -28,9 +28,6 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{IntMap, Set => ISet}
-import concurrent.stm.{InTxn, Ref => STMRef}
-
 trait Version {
    /**
     * Unique monotonically incremented identifier.

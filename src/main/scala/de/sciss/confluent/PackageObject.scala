@@ -28,7 +28,6 @@
 
 package de.sciss
 
-import collection.immutable.{ Vector }
 import fingertree.FingerTree
 
 /**

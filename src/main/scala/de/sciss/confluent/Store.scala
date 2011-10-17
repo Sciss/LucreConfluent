@@ -47,7 +47,7 @@ trait StoreLike[ K, @specialized V, Repr ] {
     */
    def getWithPrefix( key: K ) : Option[ (V, Int) ]
 
-   def inspect : Unit
+   def inspect() : Unit
 }
 
 trait Store[ K, V ] extends StoreLike[ K, V, Store[ K, V ]]

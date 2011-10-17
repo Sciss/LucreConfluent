@@ -29,7 +29,6 @@
 package de.sciss.confluent
 
 import impl._
-import reflect.OptManifest
 
 object Factory {
 //   def proc[ C <: Ct, V[ ~ ] <: Vr[ C, ~ ]]( name: String )( implicit sys: System[ C, V ], c: C ) : Proc[ C, V ] =

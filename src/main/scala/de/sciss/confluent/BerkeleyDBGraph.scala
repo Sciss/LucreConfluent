@@ -29,7 +29,7 @@
 package de.sciss.confluent
 
 import concurrent.stm.{InTxn, Ref => STMRef}
-import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, Set => ISet}
+import collection.immutable.{IndexedSeq => IIdxSeq, Set => ISet}
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import com.sleepycat.je.{OperationStatus, Database, DatabaseConfig}
 

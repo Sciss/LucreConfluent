@@ -65,7 +65,7 @@ object TxnStore {
    }
 
    def MapView[ C, K, V ]( underlying: TxnStoreLike[ C, K, V, _ ])( implicit access: C ) : MapView[ K, V ] = new MapView[ K, V ] {
-      def put( key: K, value: V ) : Unit = underlying.put( key, value )
+      def put( key: K, value: V ) { underlying.put( key, value )}
       def get( key: K ) : Option[ V ] = underlying.get( key )
 //      def getWithPrefix( key: K ) : Option[ (V, Int) ] = underlying.getWithPrefix( key )
 //      def inspect : Unit = underlying.inspect

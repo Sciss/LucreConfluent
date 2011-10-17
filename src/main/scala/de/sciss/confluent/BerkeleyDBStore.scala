@@ -28,11 +28,8 @@
 
 package de.sciss.confluent
 
-import com.sleepycat.util.FastOutputStream
-import concurrent.stm.{InTxnEnd, Txn => STMTxn, TxnLocal, Ref => STMRef, InTxn}
-import java.io.{ObjectInputStream, ObjectOutputStream}
-import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
-import com.sleepycat.je.{OperationStatus, Transaction => DBTxn, DatabaseEntry, Database, TransactionConfig, Environment, DatabaseConfig, EnvironmentConfig}
+import com.sleepycat.bind.tuple.TupleInput
+import com.sleepycat.je.{OperationStatus, Database, DatabaseConfig}
 
 object BerkeleyDBStore extends BerkeleyDB.Provider {
    def open[ C <: Ct[ C ]]( ctx: BerkeleyDB.Context, name: String, dbCfg: DatabaseConfig = BerkeleyDB.newDBCfg )

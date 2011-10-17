@@ -35,7 +35,7 @@ object HashedStoreFactory {
    private class HashedStore[ K, V ]( map: Map[ Long, Value[ V ]]) extends Store[ PathLike[ K ], V ] {
       type Pth = PathLike[ K ]
 
-      def inspect = {
+      def inspect() {
 //         println( "HashedStore.inspect -- nothin here" )
          println( "INSPECT" )
          println( "  " + map )

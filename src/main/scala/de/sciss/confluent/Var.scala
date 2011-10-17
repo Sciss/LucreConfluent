@@ -28,8 +28,6 @@
 
 package de.sciss.confluent
 
-import concurrent.stm.InTxn
-
 trait EVar[ C, T ] {
    def get( implicit c: C ) : T
    def set( v: T )( implicit c: C ) : Unit

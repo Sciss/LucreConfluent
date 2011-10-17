@@ -29,8 +29,7 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
-import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
-import de.sciss.fingertree.FingerTree
+import concurrent.stm.TxnLocal
 
 object CachedTxnStoreTest {
 //   type Path[ V ] = FingerTree.IndexedSummed[ V, Long ]
@@ -39,12 +38,12 @@ object CachedTxnStoreTest {
    extends TxnStore[ C, PathLike[ X ], V ] /* with TxnCacheLike[ Path[ X ], V ] */ {
       type Pth = PathLike[ X ]
 
-      protected val store: TxnStore[ C, PathLike[ X ], V ]
+      protected def store: TxnStore[ C, PathLike[ X ], V ]
 //      val group: TxnCacheGroup[ Long, Path[ X ]]
 
       protected val ref = TxnLocal( LongMap.empty[ (Pth, V) ])
 
-      def inspect( implicit access: C ) = {
+      def inspect( implicit access: C ) {
          println( "INSPECT CACHE" )
          println( ref.get( access.txn ))
          store.inspect

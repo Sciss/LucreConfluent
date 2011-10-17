@@ -29,8 +29,7 @@
 package de.sciss.confluent
 
 import de.sciss.fingertree.FingerTree
-import collection.breakOut
-import collection.immutable.{IntMap, LongMap}
+import collection.immutable.LongMap
 import collection.mutable.{Set => MSet}
 import util.Random
 import annotation.elidable
@@ -175,7 +174,7 @@ object Hashing {
       example1
    }
 
-   def test3 {
+   def test3() {
       val (seq, hash) = example1
       val Seq( p, q, k ) = seq
       println( "Assert maxPrefix( q :+ _ ) == q         ?  " + (maxPrefixValue( append( q ), hash ).toList      == q.toList) )

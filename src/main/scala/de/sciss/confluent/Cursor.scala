@@ -28,8 +28,6 @@
 
 package de.sciss.confluent
 
-import collection.immutable.{Set => ISet}
-
 trait Projection[ C ] {
 //   def isApplicable( implicit ctx: C ) : Boolean
 }

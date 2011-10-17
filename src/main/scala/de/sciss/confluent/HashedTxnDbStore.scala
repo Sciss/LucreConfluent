@@ -29,7 +29,7 @@
 package de.sciss.confluent
 
 import collection.immutable.LongMap
-import concurrent.stm.{TxnLocal, InTxn, Ref => STMRef}
+import concurrent.stm.{Ref => STMRef}
 import java.lang.ref.{SoftReference => JSoftReference}
 
 object HashedTxnDBStore {
@@ -45,7 +45,7 @@ object HashedTxnDBStore {
       val ref     = STMRef[ Map[ Long, SoftValue[ V ]]]( LongMap.empty[ SoftValue[ V ]])
 //      val cache   = TxnLocal( Map.empty[ Long, V ])
 
-      def inspect( implicit access: C ) = {
+      def inspect( implicit access: C ) {
          println( "INSPECT STORE" )
          println( ref.get( access.txn ))
 //         println( "  perm = " + ref.get )

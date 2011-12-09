@@ -43,7 +43,7 @@ package object confluent {
 
    val EmptyPath = FingerTree.IndexedSummed.emptyWithView[ Version, Long ]( math.Numeric.LongIsIntegral, _.rid.toLong )
 
-   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
+//   type VersionTreeOrder = (PreOrder.Record[ Version ], PostOrder.Record[ Version ])
 
    type Ct[ Repr ]                                    = CtxLike[ Repr ]
    type Vr[ C, T ]                                    = EVar[ C, T ]

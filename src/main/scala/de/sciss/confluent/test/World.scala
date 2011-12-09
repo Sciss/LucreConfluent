@@ -189,7 +189,7 @@ trait CCons[ C, T ] extends CList[ C, T ] {
    def headOption : Option[ CCons[ C, T ]] = Some( this )
    def lastOption : Option[ CCons[ C, T ]] = Some( last )
 
-   def iterator : Iterator[ CCons[ C, T ]] = error( "NO FUNCTIONA" )
+   def iterator : Iterator[ CCons[ C, T ]] = sys.error( "NO FUNCTIONA" )
 
    def last : CCons[ C, T ] = {
       var res        = this

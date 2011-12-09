@@ -46,7 +46,7 @@ trait KSystem[ A /* <: Access[ _ ] */ ] {
 
 trait KSystemImpl[ A ] extends KSystem[ A ] {
    def in[ T ]( v: Path )( fun: A => T ) : T = {
-      error( "TODO" )
+      sys.error( "TODO" )
    }
 }
 
@@ -57,8 +57,8 @@ object Test {
    }
 
    object CLinkOption {
-      def empty[ A <: Access[ _ ], V ]( implicit a: A ) : CNoLink[ A, V ] = error( "TODO" )
-      def single[ A <: Access[ _ ], V ]( init: V )( implicit a: A ) : CLink[ A, V ] = error( "TODO" )
+      def empty[ A <: Access[ _ ], V ]( implicit a: A ) : CNoLink[ A, V ] = sys.error( "TODO" )
+      def single[ A <: Access[ _ ], V ]( init: V )( implicit a: A ) : CLink[ A, V ] = sys.error( "TODO" )
 //      def single[ A, V ]( init: V )( implicit a: A /*, ev: A <:< Access[ _ ]*/) : CLink[ A, V ] = error( "TODO" )
    }
    trait Funk[ A ]

@@ -10,8 +10,7 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.12",
-   "org.scala-tools" %% "scala-stm" % "0.3",
-   "com.sleepycat" % "je" % "4.1.7"
+   "de.sciss" %% "lucredata-txn" % "0.12"
 )
 
 retrieveManaged := true

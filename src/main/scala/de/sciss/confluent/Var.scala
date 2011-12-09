@@ -53,13 +53,13 @@ trait KVar[ C, T ] extends EVar[ C, T ]  {
 
 // trait Acc
 
-trait Mutable[ A, Repr ] /* extends Acc */ {
+trait MutableOld[ A, Repr ] /* extends Acc */ {
 //   def accessPath: V
    def path : A
    def substitute( path: A ) : Repr
 }
 
-trait Node[ A, Repr ]extends Mutable[ A, Repr ] {
+trait Node[ A, Repr ]extends MutableOld[ A, Repr ] {
    def id: NodeID
 }
 
@@ -79,7 +79,7 @@ trait AccessProvider[ C, A ] {
 //   def access( a: A, p: P ) : A
 }
 
-trait Ref[ A, T <: Mutable[ A, T ]] {
+trait Ref[ A, T <: MutableOld[ A, T ]] {
    def get( implicit path: A ) : T
    def set( v: T )( implicit path: A ) : Unit
 //   def transform[ C1 <: C ]( f: T[ C1 ] => T[ C1 ])(implicit c: C1 ) : Unit

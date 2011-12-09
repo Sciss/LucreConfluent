@@ -91,7 +91,7 @@ trait KCtxLike[ Repr ] extends CtxLike[ Repr ] { // [ Path ]
 //   private[confluent] def writePath : VersionPath
 }
 
-trait KCtx extends Mutable[ Path, KCtx ] with KCtxLike[ KCtx ] {
+trait KCtx extends MutableOld[ Path, KCtx ] with KCtxLike[ KCtx ] {
    def addInEdge( v: Version ) : Unit
 }
 

@@ -140,11 +140,17 @@ object FullTree {
       }
       skip += root
 
-      def insertChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+      def insertChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = {
+         sys.error( "TODO" )
+      }
 
-      def insertRetroChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+      def insertRetroChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = {
+         sys.error( "TODO" )
+      }
 
-      def insertRetroParent( child: V, newParent: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+      def insertRetroParent( child: V, newParent: A )( implicit tx: S#Tx ) : V = {
+         sys.error( "TODO" )
+      }
 
       // ---- RelabelObserver ----
 

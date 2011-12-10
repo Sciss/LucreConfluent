@@ -81,13 +81,13 @@ object BerkeleyDBStore extends BerkeleyDB.Provider {
 //         new StoreImpl( id )
 //      }
 
-      def emptyVal[ V ]( id: Long )( implicit access: C, s: Serializer[ C, V ]): TxnStore[ C, Long, V ] = {
+      def emptyVal[ V ]( id: Long )( implicit access: C, s: SerializerOld[ C, V ]): TxnStore[ C, Long, V ] = {
 //         val id = countRef.get
 //         countRef.set( id + 1 )
          new StoreImpl[ C, V ]( id, s )
       }
 
-      class StoreImpl[ C <: Ct[ C ], V ]( id: Long, s: Serializer[ C, V ]) extends TxnStore[ C, Long, V ] {
+      class StoreImpl[ C <: Ct[ C ], V ]( id: Long, s: SerializerOld[ C, V ]) extends TxnStore[ C, Long, V ] {
          def get( key: Long )( implicit access: C ) : Option[ V ] = {
             val h = ctx.txnHandle( access.txn ) // dbTxnRef.get( access.txn )
             val out = h.to

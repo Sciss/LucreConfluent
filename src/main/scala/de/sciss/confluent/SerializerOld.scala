@@ -2,7 +2,7 @@ package de.sciss.confluent
 
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 
-object Serializer {
+object SerializerOld {
    implicit object IntSerializer extends DirectSerializer[ Any, Int ] {
       def readObject( in: TupleInput )( implicit access: Any ) : Int = in.readInt()
       def writeObject( out: TupleOutput, v: Int ) /* ( implicit access: Any ) */ { out.writeInt( v )}
@@ -10,12 +10,12 @@ object Serializer {
 //   implicit def has[ V ]( hs: HasSerializer[ V ]) : Serializer[ V ] = hs.serializer
 }
 
-sealed trait Serializer[ -C, V ] {
+sealed trait SerializerOld[ -C, V ] {
    def writeObject( out: TupleOutput, v: V ) : Unit // ( implicit access: C ) : Unit
    def readObject( in: TupleInput )( implicit access: C ) : V
 }
-trait DirectSerializer[ -C, V ] extends Serializer[ C, V ]
-trait IndirectSerializer[ -C, V ] extends Serializer[ C, V ] {
+trait DirectSerializer[ -C, V ] extends SerializerOld[ C, V ]
+trait IndirectSerializer[ -C, V ] extends SerializerOld[ C, V ] {
    sys.error( "NOT YET SUPPORTED" )
 
    /**

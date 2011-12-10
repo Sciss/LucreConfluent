@@ -153,5 +153,5 @@ trait TxnCacheGroup[ C, H, K ] {
 //}
 
 trait TxnDBStoreFactory[ I, C, K ] {
-   def emptyVal[ V ]( i: I )( implicit access: C, serializer: Serializer[ C, V ]): TxnStore[ C, K, V ]
+   def emptyVal[ V ]( i: I )( implicit access: C, serializer: SerializerOld[ C, V ]): TxnStore[ C, K, V ]
 }

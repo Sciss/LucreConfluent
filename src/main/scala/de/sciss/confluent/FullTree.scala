@@ -25,9 +25,9 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucrestm.{DataOutput, Writer, DataInput, Reader, Sys}
-import de.sciss.collection.txn.TotalOrder
-
+import de.sciss.collection.txn.{SpaceSerializers, SkipOctree, TotalOrder, Iterator}
+import de.sciss.collection.geom.{Point3D, Cube, Space}
+import de.sciss.lucrestm.{Serializer, MutableReader, DataOutput, Writer, DataInput, Reader, Sys}
 
 object FullTree {
    private object PreKey {
@@ -44,58 +44,123 @@ object FullTree {
       }
    }
 
-   private type PreOrder[  S <: Sys[ S ], A ] = TotalOrder.Map.Entry[ S, PreHeadKey[ S, A ]]
+   private type PreOrder[  S <: Sys[ S ], A ] = TotalOrder.Map.Entry[ S, PreKey[ S, A ]]
    private type PostOrder[ S <: Sys[ S ], A ] = TotalOrder.Map.Entry[ S, Vertex[ S, A ]]
 
-   private sealed trait PreKey[ S <: Sys[ S ], A ] extends Writer /* with VertexSource[ S, Vertex[ S ]] */ {
-//      def order: FullPreOrder[ S ]
+   private sealed trait PreKey[ S <: Sys[ S ], A ] extends VertexProxy[ S, A ] {
+      def order: PreOrder[ S, A ]
       def id: Int
 
       final def write( out: DataOutput ) {
          out.writeUnsignedByte( id )
-         vertex.write( out )
+         source.write( out )
       }
 
-      def vertex: Vertex[ S, A ]
+//      def vertex: Vertex[ S, A ]
 
       override def equals( that: Any ) : Boolean = {
          (that.isInstanceOf[ PreKey[ _, _ ]] && {
             val thatPre = that.asInstanceOf[ PreKey[ _, _ ]]
-            (id == thatPre.id) && (vertex == thatPre.vertex)
+            (id == thatPre.id) && (source == thatPre.source)
          })
       }
    }
 
-   private final class PreHeadKey[ S <: Sys[ S ], A ]( val vertex: Vertex[ S, A ])
+   private final class PreHeadKey[ S <: Sys[ S ], A ]( val source: Vertex[ S, A ])
    extends PreKey[ S, A ] {
-      def order = vertex.preHead
-      def id = 0
+      def order   = source.preHead
+      def id      = 0
 
-      override def toString = vertex.toString + "<pre>"
-      def debugString( implicit tx: S#Tx ) = toString + "@" + vertex.preHead.tag
+      override def toString = source.toString + "<pre>"
+      def debugString( implicit tx: S#Tx ) = toString + "@" + source.preHead.tag
    }
 
-   private final class PreTailKey[ S <: Sys[ S ], A ]( val vertex: Vertex[ S, A ])
+   private final class PreTailKey[ S <: Sys[ S ], A ]( val source: Vertex[ S, A ])
    extends PreKey[ S, A ] {
-      def order = vertex.preTail
-      def id = 1
+      def order   = source.preTail
+      def id      = 1
 
-      override def toString = vertex.toString + "<pre-tail>"
-      def debugString( implicit tx: S#Tx ) = toString + "@" + vertex.preTail.tag
+      override def toString = source.toString + "<pre-tail>"
+      def debugString( implicit tx: S#Tx ) = toString + "@" + source.preTail.tag
    }
 
-   sealed trait Vertex[ S <: Sys[ S ], A ] extends Writer {
+   sealed trait VertexProxy[ S <: Sys[ S ], A ] extends Writer {
+      private[FullTree] def source: Vertex[ S, A ]
+   }
+
+   object Vertex {
+      private[FullTree] implicit def toPoint[ S <: Sys[ S ], A ]( v: Vertex[ S, A ], tx: S#Tx ) : Point3D =
+         sys.error( "TODO" )
+      private[FullTree] implicit def vertexSerializer[ S <: Sys[ S ], A ] : Serializer[ Vertex[ S, A ]] =
+         sys.error( "TODO" )
+   }
+   sealed trait Vertex[ S <: Sys[ S ], A ] extends VertexProxy[ S, A ] {
       def value: A
+
+      private[FullTree] final def source: Vertex[ S, A ] = this
 
       private[FullTree] final val preHeadKey  = new PreHeadKey( this )
       private[FullTree] final val preTailKey  = new PreTailKey( this )
       private[FullTree] def preHead: PreOrder[ S, A ]
       private[FullTree] def preTail: PreOrder[ S, A ]
       private[FullTree] def post:    PostOrder[ S, A ]
+
+      final def write( out: DataOutput ) {
+         sys.error( "TODO" )
+      }
+   }
+
+   def empty[ S <: Sys[ S ], A ]( rootValue: A )( implicit tx: S#Tx, system: S, smf: Manifest[ S ],
+                                                  amf: Manifest[ A ]) : FullTree[ S, A ] =
+      new TreeNew[ S, A ]( rootValue )
+
+//   private final class VertexNew[ S <: Sys[ S ], A ] extends Vertex[ S, A ] {
+//
+//   }
+
+   private final class TreeNew[ S <: Sys[ S ], A ]( rootValue: A )( implicit tx: S#Tx, system: S,
+                                                                    smf: Manifest[ S ], amf: Manifest[ A ])
+   extends FullTree[ S, A ] with TotalOrder.Map.RelabelObserver[ S#Tx, VertexProxy[ S, A ]] {
+      tree =>
+
+      val cube = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
+      val skip = {
+         import SpaceSerializers.CubeSerializer
+         SkipOctree.empty[ S, Space.ThreeDim, V ]( cube )
+      }
+      val preOrder      = TotalOrder.Map.empty[ S, PreKey[ S, A ]]( tree, _.order, 0 )
+      val postOrder     = TotalOrder.Map.empty[ S, V ](             tree, _.post,  Int.MaxValue )
+      val root = new V {
+         def value : A                 = rootValue
+         val preHead: PreOrder[ S, A ] = preOrder.root
+         val post: PostOrder[ S, A ]   = postOrder.root
+         val preTail: PreOrder[ S, A ] = preOrder.insert()
+         val version = 0
+         preOrder.placeAfter( preHeadKey, preTailKey )   // preTailKey must come last
+      }
+      skip += root
+
+      def insertChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+
+      def insertRetroChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+
+      def insertRetroParent( child: V, newParent: A )( implicit tx: S#Tx ) : V = sys.error( "TODO" )
+
+      // ---- RelabelObserver ----
+
+      def beforeRelabeling( dirty: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
+         sys.error( "TODO" )
+      }
+
+      def afterRelabeling( clean: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
+         sys.error( "TODO" )
+      }
    }
 }
 sealed trait FullTree[ S <:Sys[ S ], A ] {
-   private type V = FullTree.Vertex[ S, A ]
+   protected type V = FullTree.Vertex[ S, A ]
+
+   def root : V
 
    def insertChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V
 

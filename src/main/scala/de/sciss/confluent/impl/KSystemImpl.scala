@@ -325,10 +325,10 @@ object KSystemImpl {
 
          val id = NID( nodeAlloc( ctx.txn ))
 
-         def emptyVal[ T ]( implicit s: Serializer[ ECtx, T ]) : Val[ ECtx, T ] = {
+         def emptyVal[ T ]( implicit s: SerializerOld[ ECtx, T ]) : Val[ ECtx, T ] = {
             sys.error( "NO FUNCTIONA" ) // new ValImpl[ T ]( valFactory.emptyVal[ T ]( txn ), "val" )
          }
-         def emptyRef[ T <: Node[ ECtx, T ]]( implicit s: Serializer[ ECtx, T ]) : Ref[ ECtx, T ] = {
+         def emptyRef[ T <: Node[ ECtx, T ]]( implicit s: SerializerOld[ ECtx, T ]) : Ref[ ECtx, T ] = {
 //         val t: T => T = gimmeTrans[ T ]
             sys.error( "NO FUNCTIONA" ) // new RefImpl[ T ]( refFactory.emptyRef[ T ]( txn ), "ref" )
          }
@@ -515,7 +515,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + /* " (rid = " + suffix.rid + "; "
          def id      = NID( nid )
          val fidRef  = TxnLocal( nid.toLong << 16 )
 
-         def emptyVal[ T ]( implicit s: Serializer[ KCtx, T ]): Val[ KCtx, T ] = {
+         def emptyVal[ T ]( implicit s: SerializerOld[ KCtx, T ]): Val[ KCtx, T ] = {
             implicit val c       = ctx
             implicit val txn     = c.txn
             val fid              = fidRef.get
@@ -527,7 +527,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + /* " (rid = " + suffix.rid + "; "
             new ValImpl[ T ]( /* fid, */ cached, "val" )
          }
 
-         def emptyRef[ T <: Node[ KCtx, T ]]( implicit s: Serializer[ KCtx, T ]): Ref[ KCtx, T ] = {
+         def emptyRef[ T <: Node[ KCtx, T ]]( implicit s: SerializerOld[ KCtx, T ]): Ref[ KCtx, T ] = {
             implicit val c    = ctx
             implicit val txn  = c.txn
             val fid = fidRef.get
@@ -540,7 +540,7 @@ if( LOG_FLUSH ) println( "FLUSH : " + suffix + /* " (rid = " + suffix.rid + "; "
          }
       }
 
-      private class KValSerializer[ T ]( s: Serializer[ KCtx, T ]) extends DirectSerializer[ KCtx, DBValue[ T ]] {
+      private class KValSerializer[ T ]( s: SerializerOld[ KCtx, T ]) extends DirectSerializer[ KCtx, DBValue[ T ]] {
          def readObject( in: TupleInput )( implicit access: KCtx ) : DBValue[ T ] = {
             in.read() match {
                case 0 =>

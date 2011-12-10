@@ -80,8 +80,8 @@ trait NodeFactory[ C ] /* extends RefFactory[ C ] */ {
    def id: NodeID
    def path: C
 
-   def emptyVal[ T ]( implicit s: Serializer[ C, T ]) : Val[ C, T ]
-   def emptyRef[ T <: Node[ C, T ]]( implicit s: Serializer[ C, T ]) : Ref[ C, T ]
+   def emptyVal[ T ]( implicit s: SerializerOld[ C, T ]) : Val[ C, T ]
+   def emptyRef[ T <: Node[ C, T ]]( implicit s: SerializerOld[ C, T ]) : Ref[ C, T ]
 }
 
 trait ECtx extends CtxLike[ ECtx ] // { def seminal = this }

@@ -47,13 +47,13 @@ object CList {
       new CNilImpl[ C, T ]( n.path, n.id )
    }
 
-   private def makeCons[ C <: Ct[ C ], T ]( n: NodeFactory[ C ])( implicit s: Serializer[ C, T ]) = {
+   private def makeCons[ C <: Ct[ C ], T ]( n: NodeFactory[ C ])( implicit s: SerializerOld[ C, T ]) = {
       val headRef = n.emptyVal[ T ]
       val tailRef = n.emptyRef[ CList[ C, T ]]
       new CConsImpl[ C, T ]( n.path, CConsImpl.Data( n.id, headRef, tailRef ))
    }
 
-   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: Serializer[ C, T ]) : CList[ C, T ] = {
+   def apply[ C <: Ct[ C ], T ]( elems: T* )( implicit path: C, mf: ClassManifest[ T ], ts: SerializerOld[ C, T ]) : CList[ C, T ] = {
 //      val p = c.writePath.seminalPath
       elems.iterator.foldRight[ CList[ C, T ]]( empty[ C, T ])( (v, tail) => {
 //         val (id, spath) = path.seminal
@@ -68,10 +68,10 @@ object CList {
 //      error( "No functiona" )
    }
 
-   implicit def serializer[ C <: Ct[ C ], T ]( implicit s: Serializer[ C, T ]): Serializer[ C, CList[ C, T ]] =
+   implicit def serializer[ C <: Ct[ C ], T ]( implicit s: SerializerOld[ C, T ]): SerializerOld[ C, CList[ C, T ]] =
       new SerializerImpl[ C, T ]
 
-   private class SerializerImpl[ C <: Ct[ C ], T ]( implicit s: Serializer[ C, T ])
+   private class SerializerImpl[ C <: Ct[ C ], T ]( implicit s: SerializerOld[ C, T ])
    extends DirectSerializer[ C, CList[ C, T ]] {
       def readObject( in: TupleInput )( implicit access: C ) : CList[ C, T ] = {
          val ctx  = access.readObject( in )

@@ -27,7 +27,7 @@ package de.sciss.confluent
 
 import de.sciss.collection.txn.{SpaceSerializers, SkipOctree, TotalOrder, Iterator}
 import de.sciss.collection.geom.{Point3D, Cube, Space}
-import de.sciss.lucrestm.{Serializer, MutableReader, DataOutput, Writer, DataInput, Reader, Sys}
+import de.sciss.lucrestm.{Serializer, DataOutput, Writer, DataInput, Reader, Sys}
 
 object FullTree {
    private object PreKey {
@@ -55,8 +55,6 @@ object FullTree {
          out.writeUnsignedByte( id )
          source.write( out )
       }
-
-//      def vertex: Vertex[ S, A ]
 
       override def equals( that: Any ) : Boolean = {
          (that.isInstanceOf[ PreKey[ _, _ ]] && {
@@ -90,12 +88,15 @@ object FullTree {
 
    object Vertex {
       private[FullTree] implicit def toPoint[ S <: Sys[ S ], A ]( v: Vertex[ S, A ], tx: S#Tx ) : Point3D =
-         sys.error( "TODO" )
-      private[FullTree] implicit def vertexSerializer[ S <: Sys[ S ], A ] : Serializer[ Vertex[ S, A ]] =
-         sys.error( "TODO" )
+         new Point3D( v.preHead.tag( tx ), v.post.tag( tx ), v.version )
+
+//      private[FullTree] implicit def vertexSerializer[ S <: Sys[ S ], A ](
+//         implicit valueReader: Reader[ A ], versionView: A => Int ) : Serializer[ Vertex[ S, A ]] =
+//            new SerializerImpl[ S, A ]( valueReader, versionView )
    }
    sealed trait Vertex[ S <: Sys[ S ], A ] extends VertexProxy[ S, A ] {
       def value: A
+      final def version: Int = tree.versionView( value )
 
       private[FullTree] final def source: Vertex[ S, A ] = this
 
@@ -105,66 +106,126 @@ object FullTree {
       private[FullTree] def preTail: PreOrder[ S, A ]
       private[FullTree] def post:    PostOrder[ S, A ]
 
+      private[FullTree] def tree: FullTree[ S, A ]
+
       final def write( out: DataOutput ) {
-         sys.error( "TODO" )
+         tree.valueSerializer.write( value, out )
+         preHead.write( out )
+         preTail.write( out )
+         post.write( out )
       }
    }
 
-   def empty[ S <: Sys[ S ], A ]( rootValue: A )( implicit tx: S#Tx, system: S, smf: Manifest[ S ],
+   def empty[ S <: Sys[ S ], A ]( rootValue: A )( implicit tx: S#Tx, system: S, valueSerializer: Serializer[ A ],
+                                                  versionView: A => Int, smf: Manifest[ S ],
                                                   amf: Manifest[ A ]) : FullTree[ S, A ] =
       new TreeNew[ S, A ]( rootValue )
 
-//   private final class VertexNew[ S <: Sys[ S ], A ] extends Vertex[ S, A ] {
-//
-//   }
-
    private final class TreeNew[ S <: Sys[ S ], A ]( rootValue: A )( implicit tx: S#Tx, system: S,
+                                                                    val valueSerializer: Serializer[ A ],
+                                                                    val versionView: A => Int,
                                                                     smf: Manifest[ S ], amf: Manifest[ A ])
    extends FullTree[ S, A ] with TotalOrder.Map.RelabelObserver[ S#Tx, VertexProxy[ S, A ]] {
-      tree =>
+      me =>
+
+      private implicit object VertexSerializer extends Serializer[ Vertex[ S, A ]] {
+         def write( v: V, out: DataOutput ) { v.write( out )}
+
+         def read( in: DataInput ) : V = {
+            new V {
+               def tree    = me
+               val value   = valueSerializer.read( in )
+               val preHead = preOrder.readEntry( in )
+               val preTail = preOrder.readEntry( in )
+               val post    = postOrder.readEntry( in )
+            }
+         }
+      }
 
       val cube = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
       val skip = {
          import SpaceSerializers.CubeSerializer
          SkipOctree.empty[ S, Space.ThreeDim, V ]( cube )
       }
-      val preOrder      = TotalOrder.Map.empty[ S, PreKey[ S, A ]]( tree, _.order, 0 )
-      val postOrder     = TotalOrder.Map.empty[ S, V ](             tree, _.post,  Int.MaxValue )
+      val preOrder      = TotalOrder.Map.empty[ S, PreKey[ S, A ]]( me, _.order, 0 )
+      val postOrder     = TotalOrder.Map.empty[ S, V ](             me, _.post,  Int.MaxValue )
       val root = new V {
-         def value : A                 = rootValue
-         val preHead: PreOrder[ S, A ] = preOrder.root
-         val post: PostOrder[ S, A ]   = postOrder.root
-         val preTail: PreOrder[ S, A ] = preOrder.insert()
-         val version = 0
+         def tree    = me
+         def value   = rootValue
+         val preHead = preOrder.root
+         val preTail = preOrder.insert()
+         val post    = postOrder.root
          preOrder.placeAfter( preHeadKey, preTailKey )   // preTailKey must come last
       }
       skip += root
 
       def insertChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = {
-         sys.error( "TODO" )
+         val v = new V {
+            def tree    = me
+            val value   = newChild
+            val preHead = preOrder.insert()
+            val preTail = preOrder.insert()
+            val post    = postOrder.insert()
+            preOrder.placeBefore( parent.preTailKey, preHeadKey )
+            postOrder.placeBefore( parent, this )
+            preOrder.placeAfter( preHeadKey, preTailKey )   // preTailKey must come last!
+         }
+         skip += v
+         v
       }
 
       def insertRetroChild( parent: V, newChild: A )( implicit tx: S#Tx ) : V = {
-         sys.error( "TODO" )
+         val v = new V {
+            def tree    = me
+            val value   = newChild
+            val preHead = preOrder.insert()
+            val preTail = preOrder.insert()
+            val post    = postOrder.insert()
+            preOrder.placeAfter( parent.preHeadKey, preHeadKey )
+            postOrder.placeBefore( parent, this )
+            preOrder.placeBefore( parent.preTailKey, preTailKey ) // preTailKey must come last
+            override def toString = super.toString + "@r-ch"
+         }
+         skip += v
+         v
       }
 
       def insertRetroParent( child: V, newParent: A )( implicit tx: S#Tx ) : V = {
-         sys.error( "TODO" )
+         require( child != root )
+         val v = new V {
+            def tree    = me
+            val value   = newParent
+            val preHead = preOrder.insert()
+            val preTail = preOrder.insert()
+            val post    = postOrder.insert()
+            preOrder.placeBefore( child.preHeadKey, preHeadKey )
+            postOrder.placeAfter( child, this )
+            preOrder.placeAfter( child.preTailKey, preTailKey )   // preTailKey must come last
+            override def toString = super.toString + "@r-par"
+         }
+         skip += v
+         v
       }
 
       // ---- RelabelObserver ----
 
-      def beforeRelabeling( dirty: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
+      def beforeRelabeling( iter: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
+         // the nasty thing is, in the pre-order list the items appear twice
+         // due to pre versus preTail. thus the items might get removed twice
+         // here, too, and we cannot assert that t.remove( v ) == true
+         iter.foreach( skip -= _.source )
       }
 
-      def afterRelabeling( clean: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
+      def afterRelabeling( iter: Iterator[ S#Tx, VertexProxy[ S, A ]])( implicit tx: S#Tx ) {
+         iter.foreach( skip += _.source )
       }
    }
 }
 sealed trait FullTree[ S <:Sys[ S ], A ] {
    protected type V = FullTree.Vertex[ S, A ]
+
+   protected def valueSerializer: Serializer[ A ]
+   protected def versionView: A => Int
 
    def root : V
 

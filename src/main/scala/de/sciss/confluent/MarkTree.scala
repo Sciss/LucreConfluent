@@ -25,12 +25,14 @@
 
 package de.sciss.confluent
 
-import de.sciss.collection.geom.{Point3D, Space}
 import de.sciss.lucrestm.{Writer, DataInput, DataOutput, Serializer, Sys}
 import de.sciss.collection.txn.{Iterator, Ordered, Ordering, SpaceSerializers, SkipList, SkipOctree, TotalOrder}
+import de.sciss.collection.geom.{DistanceMeasure3D, Point3D, Space}
 
 object MarkTree {
    private type Order[ S <: Sys[ S ], A, V ] = TotalOrder.Map.Entry[ S, Vertex[ S, A, V ]]
+
+   private val metric = DistanceMeasure3D.chebyshevXY.orthant( 2 )
 
    private sealed trait Vertex[ S <: Sys[ S ], A, @specialized V ] extends Writer {
       def fullVertex: FullTree.Vertex[ S, A ]
@@ -39,13 +41,19 @@ object MarkTree {
       def post: Order[ S, A, V ]
       def value: V
 
-      def tree: MarkTree[ S, A, V ]
+      def tree: TreeNew[ S, A, V ] // MarkTree[ S, A, V ]
 
       def write( out: DataOutput ) {
          fullVertex.write( out )
          pre.write( out )
          post.write( out )
          tree.valueSerializer.write( value, out )
+      }
+
+      def removeAndDispose()( implicit tx: S#Tx ) {
+         tree.skip.remove( this )
+         pre.removeAndDispose()
+         post.removeAndDispose()
       }
    }
 
@@ -137,7 +145,7 @@ object MarkTree {
                cfPost.compare( that.fullVertex.post )
             }
          })
-         new IsoResult[ S, A, V ]( cmPreN, cmPreCmp, cmPost, cmPostCmp )
+         new IsoResult[ S, A, V ]( cmPreN, cmPreCmp, cmPostN, cmPostCmp )
       }
 
       private def wrap( entry: (K, V) ) : MV = {
@@ -164,7 +172,11 @@ object MarkTree {
 
       def remove( version: K )( implicit tx: S#Tx ) : Boolean = {
          val iso = query( version )
-         skip.removeAt( point ).isDefined
+         (iso.preCmp == 0) /* && (iso.postCmp == 0) */ && {
+            assert( iso.postCmp == 0 )
+            iso.pre.removeAndDispose() // iso.pre is a VM!
+            true
+         }
       }
 
       def -=( version: K )( implicit tx: S#Tx ) : this.type = {
@@ -173,15 +185,26 @@ object MarkTree {
       }
 
       def get( version: K )( implicit tx: S#Tx ) : Option[ V ] = {
-         sys.error( "TODO" )
+         val iso = query( version )
+         if( iso.preCmp == 0 ) {
+            assert( iso.postCmp == 0 )
+            Some( iso.pre.value )
+         } else None
       }
 
       def nearest( version: K )( implicit tx: S#Tx ) : (K, V) = {
-         sys.error( "TODO" )
-      }
-
-      private def map( version: K ) : MV = {
-         sys.error( "TODO" )
+         val iso = query( version )
+         if( iso.preCmp == 0 ) {
+            assert( iso.postCmp == 0 )
+            (version, iso.pre.value)
+         } else {
+            val preTag  = iso.pre.pre.tag
+            val postTag = iso.post.post.tag
+            val x       = if( iso.preCmp  < 0 ) preTag  - 1 else preTag
+            val y       = if( iso.postCmp > 0 ) postTag + 1 else postTag
+            val nn      = skip.nearestNeighbor( Point3D( x, y, version.version ), metric )
+            (nn.fullVertex, nn.value)
+         }
       }
 
       // ---- RelabelObserver ----

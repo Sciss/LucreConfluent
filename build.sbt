@@ -10,7 +10,7 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.12",
-   "de.sciss" %% "lucredata-txn" % "0.12"
+   "de.sciss" %% "lucredata-txn" % "0.13"
 )
 
 retrieveManaged := true

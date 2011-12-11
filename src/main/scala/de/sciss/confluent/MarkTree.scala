@@ -27,7 +27,7 @@ package de.sciss.confluent
 
 import de.sciss.collection.geom.{Point3D, Space}
 import de.sciss.lucrestm.{Writer, DataInput, DataOutput, Serializer, Sys}
-import de.sciss.collection.txn.{Iterator, Ordering, SpaceSerializers, SkipList, SkipOctree, TotalOrder}
+import de.sciss.collection.txn.{Iterator, Ordered, Ordering, SpaceSerializers, SkipList, SkipOctree, TotalOrder}
 
 object MarkTree {
    private type Order[ S <: Sys[ S ], A, V ] = TotalOrder.Map.Entry[ S, Vertex[ S, A, V ]]
@@ -37,22 +37,30 @@ object MarkTree {
       final def toPoint( implicit tx: S#Tx ): Point3D = new Point3D( pre.tag, post.tag, fullVertex.version )
       def pre:  Order[ S, A, V ]
       def post: Order[ S, A, V ]
+      def value: V
+
+      def tree: MarkTree[ S, A, V ]
 
       def write( out: DataOutput ) {
          fullVertex.write( out )
          pre.write( out )
          post.write( out )
+         tree.valueSerializer.write( value, out )
       }
    }
 
    def apply[ S <: Sys[ S ], A, @specialized V ]( full: FullTree[ S, A ], rootValue: V )(
-      implicit tx: S#Tx, system: S, smf: Manifest[ S ], vmf: Manifest[ V ]) : MarkTree[ S, A, V ] = {
+      implicit tx: S#Tx, system: S, valueSerializer: Serializer[ V ],
+      smf: Manifest[ S ], vmf: Manifest[ V ]) : MarkTree[ S, A, V ] = {
 
       new TreeNew[ S, A, V ]( full, rootValue )
    }
 
+   private final class IsoResult[ S <: Sys[ S ], A, @specialized V ](
+      val pre: Vertex[ S, A, V ], val preCmp: Int, val post: Vertex[ S, A, V ], val postCmp: Int )
+
    private final class TreeNew[ S <: Sys[ S ], A, @specialized V ]( full: FullTree[ S, A ], rootValue: V )(
-      implicit tx: S#Tx, system: S, smf: Manifest[ S ], vmf: Manifest[ V ])
+      implicit tx: S#Tx, system: S, val valueSerializer: Serializer[ V ], smf: Manifest[ S ], vmf: Manifest[ V ])
    extends MarkTree[ S, A, V ] with TotalOrder.Map.RelabelObserver[ S#Tx, Vertex[ S, A, V ]] {
       me =>
 
@@ -64,9 +72,11 @@ object MarkTree {
          def write( v: MV, out: DataOutput ) { v.write( out )}
 
          def read( in: DataInput ) : MV = new MV {
+            def tree       = me
             val fullVertex = full.vertexSerializer.read( in )
             val pre        = preOrder.readEntry( in )
             val post       = postOrder.readEntry( in )
+            val value      = valueSerializer.read( in )
          }
       }
 
@@ -80,9 +90,11 @@ object MarkTree {
       }
 
       val root = new MV {
+         def tree       = me
          def fullVertex = full.root
          def pre        = preOrder.root
          def post       = postOrder.root
+         def value      = rootValue
       }
 
       val preList   = {
@@ -112,45 +124,52 @@ object MarkTree {
          this
       }
 
-      private def wrap( entry: (K, V) ) : MV = {
-         val fullVertex = entry._1
-         val cfPre = fullVertex.preHead
+      private def query( version: K ) : IsoResult[ S, A, V ] = {
+         val cfPre = version.preHead
          val (cmPreN, cmPreCmp) = preList.isomorphicQuery( new Ordered[ S#Tx, MV ] {
             def compare( that: MV )( implicit tx: S#Tx ) : Int = {
-               val res = cfPre.compare( that.fullVertex.preHead )
-               res
+               cfPre.compare( that.fullVertex.preHead )
             }
          })
-         val cfPost = fullVertex.post
+         val cfPost = version.post
          val (cmPostN, cmPostCmp ) = postList.isomorphicQuery( new Ordered[ S#Tx, MV ] {
             def compare( that: MV )( implicit tx: S#Tx ) : Int = {
-               val res = cfPost.compare( that.fullVertex.post )
-               res
+               cfPost.compare( that.fullVertex.post )
             }
          })
+         new IsoResult[ S, A, V ]( cmPreN, cmPreCmp, cmPost, cmPostCmp )
+      }
+
+      private def wrap( entry: (K, V) ) : MV = {
+         val version = entry._1
+         val iso = query( version )
          new MV {
-            val pre  = preOrder.insert()
-            val post = postOrder.insert()
-            val full = child
-            if( cmPreCmp  <= 0 ) {
-               preOrder.placeBefore( cmPreN, this )
+            def tree       = me
+            val fullVertex = version
+            val pre        = preOrder.insert()
+            val post       = postOrder.insert()
+            if( iso.preCmp <= 0 ) {
+               preOrder.placeBefore( iso.pre, this )
             } else {
-               preOrder.placeAfter( cmPreN, this )
+               preOrder.placeAfter( iso.pre, this )
             }
-            if( cmPostCmp <= 0 ) {
-               postOrder.placeBefore( cmPostN, this )
+            if( iso.postCmp <= 0 ) {
+               postOrder.placeBefore( iso.post, this )
             } else {
-               postOrder.placeAfter( cmPostN, this )
+               postOrder.placeAfter( iso.post, this )
             }
+            val value      = entry._2
          }
       }
 
       def remove( version: K )( implicit tx: S#Tx ) : Boolean = {
-         sys.error( "TODO" )
+         val iso = query( version )
+         skip.removeAt( point ).isDefined
       }
 
       def -=( version: K )( implicit tx: S#Tx ) : this.type = {
-         sys.error( "TODO" )
+         remove( version )
+         this
       }
 
       def get( version: K )( implicit tx: S#Tx ) : Option[ V ] = {
@@ -184,4 +203,6 @@ sealed trait MarkTree[ S <:Sys[ S ], A, @specialized V ] {
    def -=( version: K )( implicit tx: S#Tx ) : this.type
    def get( version: K )( implicit tx: S#Tx ) : Option[ V ]
    def nearest( version: K )( implicit tx: S#Tx ) : (K, V)
+
+   def valueSerializer: Serializer[ V ]
 }

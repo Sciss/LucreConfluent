@@ -1,0 +1,67 @@
+test/World
+impl/KSystemImpl
+TxnStore
+
+Mutable(Old)
+--> path, substitute
+
+Node extends Mutable; def id: NodeID
+
+KSystemLike
+: Ct, Proj, Csr
+
+ECtx
+     newNode (= newRef)
+     oldNode (= readRef)
+
+CachedTxnStoreTest
+--> getWithPrefix
+
+  (((  TxnLocal( LongMap[ (Pth, V) ]) == cache )))
+--> fallback: store.getWithPrefix
+
+HashedTxnDbStore
+--> getWithPrefix
+  key: Pth
+  map: STMRef[ Map[ Long, SoftValue[ V ]]]
+  dbView : dbStore.mapView = ?
+  dbGetAndResolve( key, map, dbView )
+  --> Tuple4
+     _1: Boolean
+     _2: Map[ Long, SoftValue[ V ]]
+     _3: Int
+     _4: Option[ V ]
+
+    dbMaxPrefix
+    --> Tuple3
+       _1:
+       _2:
+       _3:
+
+::::::::::::::::::::::::
+
+what we'd need to transform LucreSTM to something more general that could host KSys:
+
+      protected implicit object EntryReader extends MutableReader[ S, E ] {
+         def readData( in: DataInput, id: S#ID ) : E = {
+            val tagVal  = system.readInt( in )
+            val prevRef = system.readOptionRef[ EOpt ]( in )
+            val nextRef = system.readOptionRef[ EOpt ]( in )
+            new E( id, me, tagVal, prevRef, nextRef )
+         }
+      }
+
+to this:
+
+      protected implicit object EntryReader extends MutableReader[ S, E ] {
+         def readData( in: DataInput, _id: S#ID ) : E = new E {
+            val id      = _id
+            val tagVal  = readInt( in )
+            val prevRef = readOptionRef[ EOpt ]( in )
+            val nextRef = readOptionRef[ EOpt ]( in )
+         }
+      }
+
+? (with E extending Mutable[ S ])
+
+as a side effect we'd get rid of the crappy transportation of a 'system' value only for the sake of readers

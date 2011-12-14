@@ -1,5 +1,5 @@
 /*
- *  HashedStore.scala
+ *  HashedStoreFactory.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2011 Hanns Holger Rutz. All rights reserved.
@@ -21,9 +21,6 @@
  *
  *	 For further information, please contact Hanns Holger Rutz at
  *	 contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.confluent
@@ -60,26 +57,6 @@ object HashedStoreFactory {
             }
             case (ValueNone, _)              => None // : Option[ V ]
          }
-
-//         val pre1    = maxPrefix1( key, map )
-//         val pre1Sz  = pre1.size
-//
-//         def done( v: Value[ V ], fullSz: Int ) : Option[ (V, Int) ] = v match {
-//            case ValueFull( v )        => Some( v -> fullSz )
-//            case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
-//            case ValueNone             => None // : Option[ V ]
-//         }
-//
-//         map.get( pre1 ) match {
-//            case Some( v ) => done( pre1Sz )
-//            case None      => map.get( pre1.init.sum ).flatMap( v => done( v, pre1Sz - 1 ))
-//         }
-
-//         Hashing.maxPrefixValue( key, map ).flatMap {
-//            case ValueFull( v )        => Some( v -> key.size )
-//            case ValuePre( len, hash ) => Some( map( hash ).asInstanceOf[ ValueFull[ V ]].v -> len )
-//            case ValueNone             => None // : Option[ V ]
-//         }
       }
 
       def put( key: Pth, value: V ) : Store[ Pth, V ] = {

@@ -2,7 +2,7 @@ package de.sciss.confluent
 package test
 
 import de.sciss.fingertree.FingerTree
-import concurrent.stm.{InTxn, TxnExecutor}
+import concurrent.stm.TxnExecutor
 import com.sleepycat.bind.tuple.{TupleInput, TupleOutput}
 import java.util.logging.{Level, Logger}
 import impl.KSystemImpl
@@ -82,7 +82,7 @@ object CList {
          }
       }
 
-      def writeObject( out: TupleOutput, v: CList[ C, T ]) /* ( implicit access: C ) */ : Unit = {
+      def writeObject( out: TupleOutput, v: CList[ C, T ]) {
          v.path.writeObject( out )
          out.writeInt( v.id.value )
          v match {
@@ -97,7 +97,7 @@ object CList {
    /* @serializable */ private case class CNilImpl[ C, T ]( path: C, id: NodeID ) extends CNil[ C, T ] {
       def substitute( path: C ) = new CNilImpl[ C, T ]( path, id )
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = new CNilImpl[ C, A ]
-      def inspect { println( "CNil[ " + path + ", ? ]")}
+      def inspect() { println( "CNil[ " + path + ", ? ]")}
 
       override def toString = "CNil[" + path + "]"
    }
@@ -112,15 +112,15 @@ object CList {
    extends CCons[ C, T ] {
       def id = data.id
       def head : T = data.headRef.get( path ) // error( "NO FUNCTIONA" ) // headRef.get( c )
-      def head_=( a: T ) : Unit = data.headRef.set( a )( path ) // error( "NO FUNCTIONA" ) // headRef.set( a )
+      def head_=( a: T ) { data.headRef.set( a )( path )}
       def tail : CList[ C, T ] = data.tailRef.get( path ) // error( "NO FUNCTIONA" ) // tailRef.get[ C1 ]
-      def tail_=( l: CList[ C, T ]) : Unit = data.tailRef.set( l )( path ) // error( "NO FUNCTIONA" ) // tailRef.set( l )
+      def tail_=( l: CList[ C, T ]) { data.tailRef.set( l )( path )}
 
 //      def access[ C <: KSystem.Ctx ]( post: Path ) : CList[ C, A ] = {
 //         new CConsImpl[ C, A ]( path ++ post, headRef, tailRef )
 //      }
 
-      def inspect {
+      def inspect() {
          println( ":::::::: CCons[ " + path + "] ::::::::" )
          println( "  -head:" )
          data.headRef.inspect( path )
@@ -168,7 +168,7 @@ sealed trait CList[ C, T] extends Node[ C, CList[ C, T ]] /* with HasSerializer[
    def toList( debug: Boolean ) : List[ T ]
 
    def iterator : Iterator[ CCons[ C, T ]]
-   def inspect : Unit
+   def inspect() : Unit
 }
 trait CNil[ C, T ] extends CList[ C, T ] {
    def headOption : Option[ CCons[ C, T ]] = None
@@ -234,7 +234,7 @@ if( debug ) println( ":: toList BEGIN ::" )
          }
       }
 if( debug ) println( ":: toList END ::" )
-      b.result
+      b.result()
    }
 }
 
@@ -265,7 +265,7 @@ class WorldFactory[ P <: Ct[ P ]] extends AccessProvider[ P, World[ P ]] {
    private class WorldImpl[ P ]( val path: P, data: WorldImpl.Data[ P ]) extends World[ P ] {
       def id = data.id
       def list : CList[ P, Int ] = data.listRef.get( path )
-      def list_=( l: CList[ P, Int ]) : Unit = data.listRef.set( l )( path )
+      def list_=( l: CList[ P, Int ]) { data.listRef.set( l )( path )}
 
       def substitute( path: P ) : World[ P ] = new WorldImpl[ P ]( path, data )
 
@@ -317,13 +317,13 @@ val noMeld = false
    val v3 = csr.t { implicit w =>
       val ro: Option[ CList[ KCtx, Int ]] = if( noMeld ) None else keproj.in( v2 ).meld( _.list.headOption )
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
-      def inc( l: CList[ KCtx, Int]) : Unit = l match {
+      def inc( l: CList[ KCtx, Int]) { l match {
          case cons0: CCons[ _, _ ] =>
             val cons = cons0.asInstanceOf[ CCons[ KCtx, Int ]]
             cons.head += 2
             inc( cons.tail )
          case _ =>
-      }
+      }}
       inc( r )
 
       val l = w.list
@@ -355,7 +355,7 @@ val noMeld = false
 //      w.list = CList.empty[ KCtx, Int /* FUCKING BITCHES */ ] // w.list
 //   }
 
-   def break {
+   def break() {
       println( "break" )
    }
 
@@ -365,34 +365,34 @@ val noMeld = false
    println( "---- read v0" )
    keproj.in( v0 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 2, 1 ), l.toString )
+      assert( l == List( 2, 1 ), l.toString() )
    }
    println( "---- read v1" )
    keproj.in( v1 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 2 ), l.toString )
+      assert( l == List( 1, 2 ), l.toString() )
    }
    println( "---- read v2" )
    keproj.in( v2 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 4 ), l.toString )
+      assert( l == List( 1, 4 ), l.toString() )
    }
    println( "---- read v3" )
    keproj.in( v3 ).t { implicit w =>
       val l = w.list.toList // ( true )
-      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6 )), l.toString )
+      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6 )), l.toString() )
    }
    println( "---- read v4" )
    keproj.in( v4 ).t { implicit w =>
 //      break
       val l = w.list.toList // ( true )
-      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6, 1, 4 )), l.toString )
+      assert( l == (if( noMeld ) List( 1, 2 ) else List( 1, 2, 3, 6, 1, 4 )), l.toString() )
    }
    println( "---- reads done" )
 
    println( "hashes: " + KSystemImpl.DEBUG_HASHES( sys ))
 
-   sys.dispose
+   sys.dispose()
 }
 
 class WorldReadTest {
@@ -405,7 +405,7 @@ class WorldReadTest {
    val keproj  = sys.keProjector
 //   val csr     = sys.t( kproj.cursorIn( VersionPath.init.path )( _ ))
 
-   def break {
+   def break() {
       println( "break" )
    }
 
@@ -419,35 +419,35 @@ class WorldReadTest {
    keproj.in( v0 ).t { implicit w =>
 //      break
       val l = w.list.toList
-      assert( l == List( 2, 1 ), l.toString )
+      assert( l == List( 2, 1 ), l.toString() )
    }
 
    val v1 = readPath( 0, 1 )
    keproj.in( v1 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 2 ), l.toString )
+      assert( l == List( 1, 2 ), l.toString() )
    }
 
    val v2 = readPath( 0, 2 )
    keproj.in( v2 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 4 ), l.toString )
+      assert( l == List( 1, 4 ), l.toString() )
    }
 
    val v3 = readPath( 0, 1, 3 )
    keproj.in( v3 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 2, 3, 6 ), l.toString )
+      assert( l == List( 1, 2, 3, 6 ), l.toString() )
    }
 
    val v4 = readPath( 0, 1, 3, 4 )
    keproj.in( v4 ).t { implicit w =>
       val l = w.list.toList
-      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString() )
    }
 
    println( "All assertions hold" )
-   sys.dispose
+   sys.dispose()
 }
 
 class WorldWriteTest {
@@ -483,7 +483,7 @@ class WorldWriteTest {
       w.list = CList( 2, 1 )
 
       val l = w.list.toList
-      assert( l == List( 2, 1 ), l.toString )
+      assert( l == List( 2, 1 ), l.toString() )
    }
 //   println( v0.toList.map( v => "Version( " + v.id + ", " + v.rid + " )" ))
 
@@ -492,7 +492,7 @@ class WorldWriteTest {
       w.list = w.list.reverse
 
       val l = w.list.toList
-      assert( l == List( 1, 2 ), l.toString )
+      assert( l == List( 1, 2 ), l.toString() )
    }
 
    val v2 = keproj.in( v0 ).t { implicit w =>
@@ -501,7 +501,7 @@ class WorldWriteTest {
       w.list.lastOption.foreach( _.tail = CList( 4 ))
 
       val l = w.list.toList
-      assert( l == List( 1, 4 ), l.toString )
+      assert( l == List( 1, 4 ), l.toString() )
    }
 
 //   println( "v1 = " + v1 )
@@ -513,13 +513,13 @@ class WorldWriteTest {
       val r = ro.getOrElse( CList.empty[ KCtx, Int /* FUCKING BITCHES */ ]) // ( path, sys ))
 // iterator not yet implemented
 //      r.iterator.foreach( _.head +=  2 )
-      def inc( l: CList[ KCtx, Int]) : Unit = l match {
+      def inc( l: CList[ KCtx, Int]) { l match {
          case cons0: CCons[ _, _ ] =>
             val cons = cons0.asInstanceOf[ CCons[ KCtx, Int ]]
             cons.head += 2
             inc( cons.tail )
          case _ =>
-      }
+      }}
       inc( r )
 
       w.list.lastOption match {
@@ -528,7 +528,7 @@ class WorldWriteTest {
       }
 
       val l = w.list.toList
-      assert( l == List( 1, 2, 3, 6 ), l.toString )
+      assert( l == List( 1, 2, 3, 6 ), l.toString() )
    }
 
    val v4 = csr.t { implicit w =>
@@ -541,10 +541,10 @@ class WorldWriteTest {
       }
 
       val l = w.list.toList
-      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString )
+      assert( l == List( 1, 2, 3, 6, 1, 4 ), l.toString() )
    }
 
-   sys.dispose
+   sys.dispose()
 
 //   def t0[ C1 <: KSystem.Ctx ]( implicit c: C1 ) = {
 //// hmmm... this would have been nice

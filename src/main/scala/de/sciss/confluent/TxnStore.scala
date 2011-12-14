@@ -21,9 +21,6 @@
  *
  *	 For further information, please contact Hanns Holger Rutz at
  *	 contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.confluent
@@ -54,10 +51,6 @@ trait TxnStoreLike[ C, K, @specialized V, Repr ] {
    def mapView( implicit access: C ): TxnStore.MapView[ K, V ] = TxnStore.MapView[ C, K, V ]( this )
 }
 
-//trait TxnCachedStore[ K, V ] extends TxnStoreLike[ K, V, TxnCachedStore[ K, V ]] {
-//   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
-//}
-
 object TxnStore {
    trait MapView[ K, V ] {
       def put( key: K, value: V ) : Unit
@@ -67,33 +60,16 @@ object TxnStore {
    def MapView[ C, K, V ]( underlying: TxnStoreLike[ C, K, V, _ ])( implicit access: C ) : MapView[ K, V ] = new MapView[ K, V ] {
       def put( key: K, value: V ) { underlying.put( key, value )}
       def get( key: K ) : Option[ V ] = underlying.get( key )
-//      def getWithPrefix( key: K ) : Option[ (V, Int) ] = underlying.getWithPrefix( key )
-//      def inspect : Unit = underlying.inspect
    }
 }
-trait TxnStore[ C, K, V ] extends TxnStoreLike[ C, K, V, TxnStore[ C, K, V ]] {
-//   def flush( pairs: (K, V)* )( implicit txn: InTxn ) : Unit
-}
-
-//trait TxnCacheLike[ K, V ] {
-//   def flush( trns: ((K, V)) => (K, V) )( implicit txn: InTxn ) : Unit
-//}
+trait TxnStore[ C, K, V ] extends TxnStoreLike[ C, K, V, TxnStore[ C, K, V ]]
 
 trait TxnCacheLike[ C, K ] {
    def flush( trns: K => K )( implicit access: C ) : Unit
 }
 
-//
-//trait TxnStoreCache[ K, V ] extends TxnStoreLike[ K, V, TxnStore[ K, V ]] with TxnCacheLike
-
-//object TxnStore {
-//   type Path[ K ] = FingerTree.IndexedSummed[ K, Long ]
-//}
-
 trait TxnValStoreFactory[ C, K, Up ] {
    def emptyVal[ V <: Up ]( implicit access: C ): TxnStore[ C, K, V ]
-//   def emptyVal[ V ]: TxnStore[ K, V ]
-//   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
 trait TxnDelegateValStoreFactory[ C, K, Up ] {
@@ -106,8 +82,6 @@ trait TxnDelegateValStoreFactory2[ C, K, Up, KD, Del[ _ ]] {
 
 trait TxnRefStoreFactory[ C, K, Up[ _ ]] {
    def emptyRef[ V <: Up[ V ]]( implicit access: C ): TxnStore[ C, K, V ]
-//   def emptyVal[ V ]: TxnStore[ K, V ]
-//   def emptyRef[ V <: Ref ]: TxnStore[ K, V ]
 }
 
 trait TxnDelegateRefStoreFactory[ C, K, Up[ _ ]] {
@@ -118,39 +92,10 @@ trait TxnDelegateRefStoreFactory2[ C, K, Up[ _ ], KD, Del[ _ ]] {
    def emptyRef[ V <: Up[ V ]]( del: TxnStore[ C, KD, Del[ V ]])( implicit access: C ): TxnStore[ C, K, V ]
 }
 
-//trait TxnStoreCacheFactory[ K ] {
-//   def empty[ V ]( store: => TxnStore[ K, V ]): TxnStoreCache[ K, V ]
-////   def emptyVal[ V ]: TxnStore[ K, V ]
-////   def emptyRef[ V ]: TxnStore[ K, V ]
-//}
-//
-
 trait TxnCacheGroup[ C, H, K ] {
-//   def addDirty( cache: TxnCacheLike[ K, V ])( implicit txn: InTxn ) : Unit
    def addDirty( cache: TxnCacheLike[ C, K ], hash: H )( implicit access: C ) : Unit
    def addAllDirty( cache: TxnCacheLike[ C, K ], hashes: Traversable[ H ])( implicit access: C ) : Unit
 }
-
-//trait TxnStoreCommitter[ K ] {
-//   def commit( txn: InTxn, keyTrns: KeyTransformer[ K ]) : Unit
-//}
-//
-
-//trait KeyValueTransformer[ K, Up ] {
-//   def transform[ V <: Up ]( entry: (K, V) ) : (K, V)
-//}
-
-//class TestTrans[ Up <: Mutable[ Int, Up ]] extends KeyValueTransformer[ Int, Up ] {
-//   def transform[ V <: Up ]( entry: (Int, V) ) : (Int, V) = {
-//      val (k, v) = entry
-//      val v2 = v.substitute( 33 )
-//      (k, v2)
-//   }
-//}
-
-//trait TxnDirtyRecorder[ K ] {
-//   def addDirty( key: K, com: TxnStoreCommitter[ K ])
-//}
 
 trait TxnDBStoreFactory[ I, C, K ] {
    def emptyVal[ V ]( i: I )( implicit access: C, serializer: SerializerOld[ C, V ]): TxnStore[ C, K, V ]

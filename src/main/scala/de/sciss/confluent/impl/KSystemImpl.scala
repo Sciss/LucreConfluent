@@ -590,8 +590,8 @@ private val CHECK_REF = STMRef( Set.empty[ IIdxSeq[ Int ]])
 
       private trait AbstractRef[ T <: Node[ KCtx, T ]]
       extends Ref[ KCtx, T ] {
-         protected val ref: RefHolder[ T ]
-         protected val typeName : String
+         protected def ref: RefHolder[ T ]
+         protected def typeName : String
 
          override def toString = "KRefVar[" + typeName + "]"
 
@@ -646,7 +646,7 @@ if( CHECK_READS ) {
          }
 
 //         protected def fireUpdate( v: T )( implicit c: KSystem.Ctx ) : Unit
-         def inspect( implicit ctx: KCtx ) : Unit = ref.inspect
+         def inspect( implicit ctx: KCtx ) { ref.inspect }
       }
 
       private class RefImpl[ T <: Node[ KCtx, T ] ]( /* fid: Long, */ val ref: RefHolder[ T ], val typeName: String ) extends AbstractRef[ T ] {

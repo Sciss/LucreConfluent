@@ -1,0 +1,394 @@
+X_# —> Expr —> Expr —> Eval
+
+Mutable {
+   
+      
+Txn {
+   def newVar
+   
+   def newEval
+
+   def newExpr
+}
+
+View {
+   
+}
+
+Expr {
+   def startListening {
+      ...
+   }
+
+   def stopListening {
+      ...
+   }
+}
+
+SystemAdaptor[ In, Out ] {
+}
+
+dyn.react { case (old, new) =>
+}
+
+addReaction
+removeReaction
+
+lazy: write-version
+
+arm / disarm
+
+:::::::::::::::::::::::::
+
+LazyPush[ A ] extends Var[ A ] {
+   def writeCount
+   
+}
+
+:::::::::::::::::::::::::
+
+val start_# = observable newIntVar( 33 )
+
+trait ObservableImpl[ S <: Sys[ S ], A ] {
+   protected def peer: S#Ref[ A ]
+   def addObserver( ... ) {
+      val becomeLive = coll.isEmpty
+      coll :+= obs
+      if( becomeLive ) tx.system.addLive( peer )
+   }
+
+   def removeObserver( ... ) {
+      coll = coll.filterNot( _ == obs )
+      val die = coll.isEmpty
+      if( die ) tx.system.removeLive( peer )
+   }
+}
+
+but then, if isolation is not obeyed, several instances may try to make the same var live?
+
+:::::::::::::::::::::::::
+
+The advantage of a push based system beyond 'live' objects is that it can be used for a more
+general form of event propagation in the future; that is, event propagation in transports or
+p-time?
+
+Also it could spread the amount of time needed for engaging the connections evenly across
+instantiations (e.g. of regions), avoiding a huge penality for opening a view (establishing
+the push-network for all regions at once).
+
+after becoming live:
+
+ref -> expr -> expr -> view
+
+:::::::::::::::::::::::::
+
+if we allow for non-live evals, we need to deal with the situation of not having de-serializers
+available for them. the solution could be a deferral of the event-updates, so an invalidation
+of an eval? but it becomes problematic with collection based events, such as multiple additions
+to a list -- how would we invalidate that?
+
+say, we use ref(list->size) ...
+
+:::::::::::::::::::::::::
+
+ok, let's make a 'rather simple' system first: only live objects can establish the push-network.
+
+spatial-view:
+   collection.anyRegionChange += reaction
+   dispose { collection.anyRegionChange -= reaction }
+}
+
+... the question is: what is the advantage now of the two stage propagation (collection listening
+to all regions, spatial listening to collection), over one stage (spatial listening to all regions),
+as both take O(N) for engage / disposal? -- well, it's less clutter on the view side
+
+can we compose the events like in escala?
+
+renamed || moved || mute-changed || ...
+
+aka name_changed || span_changed || mute_changed || ...
+aka name.changed || span.changed || mute.changed || ...
+
+:::::::::::::::::::::::::
+
+Observable[ A ]:
+   peer: S#Ref[ A ]
+   reactions: S#Ref[ OrderedSet ] / or mutable txn ordered set
+
+Region {
+   // this is a lightweight functional thing?
+   def attrsChanged = name.changed || span.changed || mute.changed...
+}
+
+View {
+   regions.foreach { _.attrsChanged += updateMyself }
+   dispose { regions.foreach { _.attrsChanged _= updateMyself }}
+}
+
+so how to maintain the identity of attrsChanged? in fact, attrsChanged would need to be persisted, or not?
+
+:::::::::::::::::::::::::
+
+imagine for a second how a non-live eval could look like....
+
+it would need a sort of dynamic deserialization?
+
+:::::::::::::::::::::::::
+
+attrsChanged = name.changed || span.changed || mute.changed...
+
+nameExpr = name(_#) + ".suffix"
+
+region:
+   name: S#Ref[ StringExpr ] <- otherRegion.name(_#) + ".suffix"
+
+guiObject:
+   var str = region.name.get_~( (_, now) => Swing.onEDT { str = now; repaint() })
+
+that's for a S#Ref
+
+and for a direct observable would be like
+
+nameExpr.eval_~( ... ) ?
+
+or equally
+
+nameExpr.get_~( ... ) ?
+
+Quite unfortunate that this method produces a code splice. Wouldn't it be better
+to have something like
+
+guiObject:
+   private val strObs = region.name.observe( repaint() )
+
+   def dispose() {
+      strObs.dispose()
+   }
+?
+
+:::::::::::::::::::::::::
+
+The expression universe is closed -- we need a serializer for them....
+
+; an expression must be serializable, but it doesn't necessarily need an identifier?
+; it will need some sort of identifier, though, as soon as observation comes in, because
+we need to be able to 'tunnel through the black box' in the push motion, and also
+make sure to only keep one set of observers for the same expression....
+
+That in turn means, we need to call into tx.newID()
+
+But an expression may be immutable, and thus not need a full id?
+
+ID = (Key, Path)
+
+(location, position, site)
+
+sealed trait ExprOrConstant[ A ] extends Writer
+
+final class Constant[ A ]( v: A ) extends ExprOrConstant[ A ]
+
+trait Expr[ A ] extends ExprOrConstant[ A ] {
+   def key: Key
+
+   final def write( out: DataOutput ) {
+      key.write( out )
+      writeExpr( out )
+   }
+
+   protected def writeExpr( out: DataOutput ) : Unit
+}
+
+sealed trait StringExpr extends Expr[String] {
+   protected def op: Int
+
+   protected final def writeExpr( out: DataOutput ) {
+      out.writeInt( op )
+      writeExprOperands( out )
+   }
+
+   protected def writeExprOperands( out: DataOutput ) : Unit
+}
+
+sealed trait StringBinExpr extends StringExpr {
+   protected def a: StringExpr
+   protected def b: StringExpr
+
+   protected final def writeExprOperands( out: DataOutput ) {
+      a.write( out )
+      b.write( out )
+   }
+}
+
+:::::::::::::::::::::::::
+
+val start_# = observable newIntVar( 33 )
+
+or
+
+val start_# = observable newVar[IntExpr]( 33 )
+
+?
+
+:::::::::::::::::::::::::
+
+wenn also die expressions geschlossen sind wrt serialization, dann gibt es auch keinen 'tunnel'...?
+und filterungen koennen funktionieren (z.b. intExpr % 2)
+
+dann gibt es auch keine allgemeinen addObserver gagaismen.
+
+nun, man koennte natuerlich irgendwann etwas wie StringMapExpr( fun: String => String ) haben, wenn sich fun serialisieren laesst....
+
+:::::::::::::::::::::::::
+
+if we wish to use S#Ref _as an ExprOrConst_, we'd need to define a super type
+
+or: ObservableOrConst ... or just: Observable?
+
+It would be good, though, to be able to compose things like
+
+Collection {
+    event[Int] size
+}
+
+that is to say, to abstract from what size really is (what is behind size, e.g. a private int variable maybe, or maybe already an expression
+
+Expr[Int] versus IntExpr
+
+:::::::::::::::::::::::::
+
+     private val sizeVar = observable newIntVar( 0 )
+     def size : Observable[ IntExpr ] = sizeVar
+
+isn't this a standard functional construct:
+
+     A[ B ] => A[ C[ B ]] ?
+
+:::::::::::::::::::::::::
+
+closed-univserse doesn't compose, e.g. what about (i: IntExpr) + 1L ?
+
+so there would be a LongExpr dependent or an IntExpr. in any case, there would be heterogeneous observers.
+
+how about storing serializers in the database at a dedicated spot somehow, using writeObject, and then assigning incrementals keys for them, and caching them in memory? (wouldn't it be sufficient to use a parameterless constructor and Class.forName?)
+
+the other option is to keep them in-memory with the live view....
+
+   private val strObs = region.name.observe( (_, _) => repaint() )
+
+- allocates a new key
+- stores the key with the argument( function call to repaint ) in the live map
+- stores the key in the observed objects' dependents list
+
+problem: we'll have one observer per region again, _in memory_ (the reference strObs)
+
+it must be possible to add the same observer to multiple observed objects
+
+region:
+   name : observable S#Ref[ StringExpr ]
+//   name_# : Observable[ (Region, String, String) ] ?
+   name_# : Observable[ (Region, (String, String)) ]
+   def attr_# = name_# || color_# || ...
+
+collection:
+   private val rNameObs = new Observer[ (Region, (String, String)) ] {
+      ...
+   }
+
+   def addRegion( r: Region ) {
+      r.name_# += rNameObs
+   }
+
+can we manage to have collection generic from region?
+
+collection[A : Observable]:
+   private val obs = implicitly[Observable[A]].properties.map { prop =>
+      new Observer { ... }
+   }
+
+   def add( r: A ) {
+      implicitly[Observable[A]].properties.foreach( _.observe( r ) ... )
+   }
+
+   def any( ... ) { }
+}
+
+einfacher: wie E-Scala's VarList (any) und EventNodeExists
+
+:::::::::::::::::::::::::
+
+IntExpr( a_#, +, IntExpr( a_#, * 2 ))   // a + (a * 2)
+
+how to collapse a change of a_# in terms of merging dependencies?
+
+BinOp[ A ] {
+   def a: A
+   def b: A
+   cache: Option[ A ]
+}
+
+propagate txn id
+(or use TxnLocal)
+
+however, there might be several writes per txn, requiring different event ids
+
+cache before result, calculate new, filter only changes
+
+:::::::::::::::::::::::::
+
+ref -> expr -> expr -> view
+
+object IntExpr {
+   lazy val ser: Serializer[ IntExpr ] = {
+      
+   }
+
+   private final class Ser[ S <: Sys[ S ]]( tx0: S#Tx ) extends Serializer[ IntExpr ] {
+      me =>
+
+      lazy val id = {
+          tx0.tryRead( getClass.getName ?? ).getOrElse {
+             val res = tx0.newID
+             tx0.putSer( res, me )  // dout.writeObject( me )
+             me
+          }
+      }
+
+      def write( out: DataOutput ) {
+         out.writeLong( id )
+      }
+      ...
+   }
+}
+
+:::::::::::::::::::::::::
+
+versus tunnel ('ping-pong')
+
+            (black)       (black)      (grey)
+REF --ping-> EXPR --ping-> EXPR --ping-> VIEW.ob
+                                          |
+REF <-pong-- EXPR <-pong-- EXPR <-pong----+
+(white)     (white)       (white)
+
+this might be less efficient in some cases, but probably is less hassle in most cases than maintaining a persisted serializer map
+
+how does 'pong' look like? it should abort early when values don't change. that is to say
+
+newValue = EXPR2( EXPR1( REF ))
+(expressions are considered referentially transparent)
+
+advantages: no growing dump of serialized serializers (and the slowdown from maintaining like a transactional hash map for them)
+
+how would the tunneling look for collections and addition, removal of elements?
+
+COLL {
+   event[Elem] elementAdded
+   event[Elem] elementRemoved
+   def any[A]( Elem => event[A]) : event[A]
+}
+
+SPATIAL( coll: COLL ) {
+   private val movedEvent = coll.any( _.moved )
+   movedEvent += ...
+}
+

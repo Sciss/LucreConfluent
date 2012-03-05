@@ -246,7 +246,7 @@ object WorldTest {
          case Some( "-h" ) => new WorldWriteReadTest
          case _ =>
             println( "Options: -r for read, -w for write, -h for write/read" )
-            System.exit( 1 )
+            sys.exit( 1 )
       }
    }
 }

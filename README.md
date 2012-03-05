@@ -2,7 +2,7 @@
 
 ### statement
 
-TemporalObjects is (C)opyright 2009-2011 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt).
+TemporalObjects is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt).
 
 TemporalObjects is an ongoing attempt to build a confluent persistence framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan [^1] and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references, as described by Rutz et al [^2]. It uses [LucreData](https://github.com/Sciss/LucreData) for the transactional layer. The overall target is integration with a system for computer music composition.
 

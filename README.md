@@ -1,5 +1,7 @@
 ## TemporalObjects
 
+__Note:__ see tag v0.14 for the example using actual audio file regions and sonogram view. The current version is a rework based on a new modularisation.
+
 ### statement
 
 TemporalObjects is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt).
@@ -12,9 +14,20 @@ TemporalObjects is an ongoing attempt to build a confluent persistence framework
 
 ### requirements / installation
 
-Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The dependencies [LucreSTM](https://github.com/Sciss/LucreSTM) and [LucreData](https://github.com/Sciss/LucreData) are currently not in any repository, so you need to clone them and export each of them with `sbt publish-local` first. An IntelliJ IDEA project can be created with the sbt-idea plugin which provides the `gen-idea` task.
+Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The required snapshot versions of the dependencies [LucreSTM](https://github.com/Sciss/LucreSTM) and [LucreData](https://github.com/Sciss/LucreData) are currently not in any repository, so you need to clone them and export each of them with `sbt publish-local` first.
 
-__Note:__ see tag v0.14 for the example using actual audio file regions and sonogram view. The current version is stripped down to prepare for use as library.
+## creating an IntelliJ IDEA project
+
+To develop the sources of TemporalObjects, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
+
+    resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
+
+    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")
+
+Then to create the IDEA project, run the following two commands from the sbt shell:
+
+    > set ideaProjectName := "TemporalObjects"
+    > gen-idea
 
 ### download
 

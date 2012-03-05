@@ -35,6 +35,10 @@ import util.Random
 import annotation.elidable
 
 object Hashing {
+   type Path = FingerTree.IndexedSummed[ Version, Long ]
+   type PathLike[ K ] = FingerTree.IndexedSummed[ K, Long ]
+
+
 //   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
    type IntSeq          = PathLike[ Int ]
    type IntSeqMap       = Map[ Long, IntSeq ]

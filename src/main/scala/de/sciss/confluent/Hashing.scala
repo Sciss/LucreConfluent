@@ -32,8 +32,8 @@ import annotation.elidable
 import de.sciss.fingertree.IndexedSummedSeq
 
 object Hashing {
-   type Path = IndexedSummedSeq[ Version, Long ]
-   type PathLike[ K ] = IndexedSummedSeq[ K, Long ]
+   type Path            = IndexedSummedSeq[ Version, Long ]
+   type PathLike[ K ]   = IndexedSummedSeq[ K, Long ]
 
 //   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
    type IntSeq          = PathLike[ Int ]

@@ -21,28 +21,24 @@
  *
  *	 For further information, please contact Hanns Holger Rutz at
  *	 contact@sciss.de
- *
- *
- *  Changelog:
  */
 
 package de.sciss.confluent
 
-import de.sciss.fingertree.FingerTree
 import collection.immutable.LongMap
 import collection.mutable.{Set => MSet}
 import util.Random
 import annotation.elidable
+import de.sciss.fingertree.IndexedSummedSeq
 
 object Hashing {
-   type Path = FingerTree.IndexedSummed[ Version, Long ]
-   type PathLike[ K ] = FingerTree.IndexedSummed[ K, Long ]
-
+   type Path = IndexedSummedSeq[ Version, Long ]
+   type PathLike[ K ] = IndexedSummedSeq[ K, Long ]
 
 //   type UniqueSeq[ T ]  = FingerTree.IndexedSummed[ T, Long ]
    type IntSeq          = PathLike[ Int ]
    type IntSeqMap       = Map[ Long, IntSeq ]
-   def IntSeq( is: Int* ) : IntSeq = FingerTree.IndexedSummed.applyWithView[ Int, Long ]( is: _* )
+   def IntSeq( is: Int* ) : IntSeq = IndexedSummedSeq.applyIntLong( is: _* )
    val emptyIntSeq      = IntSeq()
    val emptyHash        = LongMap.empty[ IntSeq ]
 

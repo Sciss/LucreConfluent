@@ -68,6 +68,9 @@ object KSysImpl {
 
 //   private object PathMeasure extends Measure[ Int, (Int, Long) ]
 
+   object Path {
+      def test_empty : Path = new Path( FingerTree.empty( Measure.IndexedSummedIntLong ))
+   }
    final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Int ])
    extends KSys.Acc with FingerTreeLike[ (Int, Long), Int, Path ] {
       implicit protected def m: Measure[ Int, (Int, Long) ] = Measure.IndexedSummedIntLong
@@ -76,7 +79,12 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
+      override def toString = mkString( "Path(", ", ", ")" )
+
 //      def size : Int = sys.error( "TODO" )
+
+      def test_:+( elem: Int ) : Path = wrap( tree :+ elem )
+      def test_+:( elem: Int ) : Path = wrap( elem +: tree )
 
       def write( out: DataOutput ) {
 //         out.writeInt( path.size )
@@ -92,14 +100,15 @@ object KSysImpl {
 //         if( n <= 0 ) return 0L
 //         if( n >= size ) return sum
 //         tree.find1( _._1 >= n ).
-         tree.split( _._1 >= n )._1.measure._2
+         tree.split( _._1 > n )._1.measure._2
       }
 
       def take( n: Int ) : PathLike = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
 
       protected def wrap( _tree: FingerTree[ (Int, Long), Int ]) : Path = new Path( _tree )
 
-      def mkString( prefix: String, sep: String, suffix: String ) : String = sys.error( "TODO" )
+      def mkString( prefix: String, sep: String, suffix: String ) : String =
+         tree.iterator.mkString( prefix, sep, suffix )
    }
 
    final class Txn private[KSysImpl]( val system: System, val peer: InTxn ) extends KSys.Txn[ S ] {

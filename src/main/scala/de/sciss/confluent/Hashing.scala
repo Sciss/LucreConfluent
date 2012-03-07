@@ -65,7 +65,7 @@ object Hashing {
     *                   prefixes are provided for hashes which are not already present according to this function
     * @return  an iterator over the prefixes.
     */
-   def prefixes( s: PathLike, contains: Long => Boolean ) : Iterator[ (Long, Long) ] = new Iterator[ (Long, Long) ] {
+   def prefixIterator( s: PathLike, contains: Long => Boolean ) : Iterator[ (Long, Long) ] = new Iterator[ (Long, Long) ] {
       private val sz = s.size
       private val m  = bitCount( sz )
       private var j  = 1
@@ -76,11 +76,12 @@ object Hashing {
       private def findNext() : Boolean = {
          while( j < m ) {
             val i    = prefix( sz, j, m )
-            val sp   = s.take( i )
-            val sps  = sp.sum                            // "... we insert the values sum(\tau') ... to the table H"
-            if( !contains( sps )) {                      // ", if they are not already there."
-               val pre  = maxPrefixKey( sp, contains )   // "... we compute ... the longest prefix of \tau' in \Pi"
-               nextVar = (sps, pre)                      // ", and store a pointer to a representation of this sequence."
+//            val sp   = s.take( i )
+//            val sps  = sp.sum                             // "... we insert the values sum(\tau') ... to the table H"
+            val sps = s.sumUntil( i )
+            if( !contains( sps )) {                         // ", if they are not already there."
+               val pre  = maxPrefixKey( s, i, contains )    // "... we compute ... the longest prefix of \tau' in \Pi"
+               nextVar  = (sps, pre)                        // ", and store a pointer to a representation of this sequence."
                return true
             }
          j += 1 }
@@ -141,15 +142,15 @@ object Hashing {
 //      res
 //   }
 
-   @inline private def maxPrefixKey( s: PathLike, contains: Long => Boolean ) : Long = {
-      val pre1Len = maxPrefix1Len( s, contains )
+   @inline private def maxPrefixKey( s: PathLike, sz: Int, contains: Long => Boolean ) : Long = {
+      val pre1Len = maxPrefix1Len( s, sz, contains )
       val pre1Sum = s.sumUntil( pre1Len )
       if( contains( pre1Sum )) pre1Sum else s.sumUntil( pre1Len - 1 )
    }
 
 //   private def maxPrefix1( s: PathLike, contains: Long => Boolean ) : PathLike =
-   private def maxPrefix1Len( s: PathLike, contains: Long => Boolean ) : Int = {
-      val sz      = s.size
+   private def maxPrefix1Len( s: PathLike, sz: Int, contains: Long => Boolean ) : Int = {
+//      val sz      = s.size
       val m       = bitCount( sz )
       // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
       val isPre   = new Array[ Int ]( m )

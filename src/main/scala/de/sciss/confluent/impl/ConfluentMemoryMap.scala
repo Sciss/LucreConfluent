@@ -13,18 +13,20 @@ object ConfluentMemoryMap {
    private final class Impl[ A ] extends ConfluentTxMap[ A ] {
       private val idMapRef = TxnLocal[ IntMap[ LongMap[ Value[ A ]]]]( IntMap.empty )
 
-      def put( key: Int, path: PathLike, value: A )( implicit tx: InTxn ) {
-         val idMap   = idMapRef.get
-         val map0    = idMap.getOrElse( key, emptyLongMap[ Value[ A ]])
-//         val map1    = HashingOld.add( key, map, { s: Pth =>
-//            if( s.isEmpty ) ValueNone else if( s.sum == hash ) ValueFull( value ) else new ValuePre( /* s.size, */ s.sum )
-//         })
-
-
-         sys.error( "TODO" )
+      def put( id: Int, path: PathLike, value: A )( implicit tx: InTxn ) {
+         idMapRef.transform { idMap =>
+            val mapOld  = idMap.getOrElse( id, emptyLongMap[ Value[ A ]])
+            var mapNew  = mapOld
+            Hashing.prefixIterator( path, mapOld.contains ).foreach {
+               case (key, preSum) =>
+                  mapNew += ((key, if( preSum == 0L ) ValueNone else ValuePre( preSum )))
+            }
+            mapNew += ((path.sum, ValueFull( value )))
+            idMap + ((id, mapNew))
+         }
       }
 
-      def get( key: Int, path: PathLike )( implicit tx: InTxn ) : A = {
+      def get( id: Int, path: PathLike )( implicit tx: InTxn ) : A = {
          sys.error( "TODO" )
       }
 

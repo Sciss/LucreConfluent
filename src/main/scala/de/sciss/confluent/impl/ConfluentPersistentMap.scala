@@ -46,7 +46,7 @@ object ConfluentPersistentMap {
    private final class Impl[ S <: Sys[ S ], A ]( idMapRef: RefLike[ MapType[ S, A ], _ >: InTxn ]) extends ConfluentTxMap[ S#Tx, S#Acc, A ] {
 //      private val idMapRef = TxnLocal[ MapType[ A ]]( IntMap.empty )
 
-      def put( id: Int, path: PathLike, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+      def put( id: Int, path: PathLike with S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
 //         idMapRef.transform { idMap =>
 //            val mapOld  = idMap.getOrElse( id, emptyLongMap[ Entry[ A ]])
 //            var mapNew  = mapOld
@@ -60,7 +60,7 @@ object ConfluentPersistentMap {
          sys.error( "TODO" )
       }
 
-      def get( id: Int, path: PathLike )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+      def get( id: Int, path: PathLike with S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
          val idMap   = idMapRef.get( tx.peer )
          val map     = idMap( id )
 sys.error( "TODO" )

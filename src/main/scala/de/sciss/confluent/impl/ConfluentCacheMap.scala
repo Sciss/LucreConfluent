@@ -26,57 +26,42 @@
 package de.sciss.confluent
 package impl
 
-import collection.immutable.{LongMap, IntMap}
-import concurrent.stm._
-import de.sciss.collection.txn.Ancestor
+import collection.immutable.LongMap
 import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
+import concurrent.stm.TMap
 
 object ConfluentCacheMap {
-   private type MapType[ S <: Sys[ S ], ~ ] = IntMap[ LongMap[ Entry[ Marked[ S, ~ ]]]]
-   private def EmptyMap[ S <: Sys[ S ], ~ ] : MapType[ S, ~ ] = IntMap.empty
-   private type Marked[ S <: Sys[ S ], ~ ] = Ancestor.Map[ S, Int, ~ ]
-
-//   def apply[ A ]() : ConfluentTxMap[ A ] = new Impl[ A ]
    def apply[ S <: Sys[ S ], A ]() : ConfluentTxMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]
-//   def ref[ S <: Sys[ S ], A ]()   : ConfluentTxMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
 
    private val emptyLongMapVal   = LongMap.empty[ Any ]
    private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: Sys[ S ], A ] extends ConfluentTxMap[ S#Tx, S#Acc, A ] {
-      private val idMapRef = TxnLocal[ MapType[ S, A ]]( IntMap.empty )
+   private final class Impl[ S <: Sys[ S ], A ] extends ConfluentCacheMap[ S, A ] {
+      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ PathLike with S#Acc, A ]]]
+      @volatile private var dirtyVar = false
 
-      def put( id: Int, path: PathLike, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
-//         idMapRef.transform { idMap =>
-//            val mapOld  = idMap.getOrElse( id, emptyLongMap[ Entry[ A ]])
-//            var mapNew  = mapOld
-//            Hashing.foreachPrefix( path, mapOld.contains ) {
-//               case (key, preSum) =>
-//                  mapNew += ((key, /* if( preSum == 0L ) ValueNone else */ EntryPre( preSum )))
-//            }
-//            mapNew += ((path.sum, EntryFull( value )))
-//            idMap + ((id, mapNew))
-//         }
-         sys.error( "TODO" )
+      def isDirty : Boolean = dirtyVar
+
+      def put( id: Int, path: PathLike with S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+         implicit val itx = tx.peer
+         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ PathLike with S#Acc, A ]])
+         val mapNew  = mapOld + ((path.sum, Write( path, value, writer )))
+         idMapRef.put( id, mapNew )
+         dirtyVar = true
       }
 
-      def get( id: Int, path: PathLike )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         val idMap   = idMapRef.get( tx.peer )
-         val map     = idMap( id )
-//         map( Hashing.maxPrefixKey( path, map.contains )) match {
-//            case EntryFull( v )      => v
-//            case EntryPre( hash )    => map( hash ) match {
-//               case EntryFull( v )   => v
-//               case _                => sys.error( "Orphaned partial prefix for id " + id + " and path " + path )
-//            }
-////            case ValueNone           => throw new NoSuchElementException( "path not found: " + path )
-//         }
+      def get( id: Int, path: PathLike with S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).getOrElse( sys.error( "TODO" ))
+      }
+
+      def flush()( implicit tx: S#Tx ) {
          sys.error( "TODO" )
       }
    }
 
-   private sealed trait Entry[ +A ]
-//   private case object ValueNone extends Value[ Nothing ]
-   private case class EntryPre( /* len: Int, */ hash: Long ) extends Entry[ Nothing ]
-   private case class EntryFull[ A ]( v: A ) extends Entry[ A ]
+   private final case class Write[ Acc, A ]( path: Acc, value: A, writer: TxnWriter[ A ])
+}
+sealed trait ConfluentCacheMap[ S <: Sys[ S ], A ] extends ConfluentTxMap[ S#Tx, S#Acc, A ] {
+   def isDirty : Boolean
+   def flush()( implicit tx: S#Tx ) : Unit
 }

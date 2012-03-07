@@ -24,7 +24,7 @@ object ConfluentMemoryMap {
             var mapNew  = mapOld
             Hashing.foreachPrefix( path, mapOld.contains ) {
                case (key, preSum) =>
-                  mapNew += ((key, if( preSum == 0L ) ValueNone else ValuePre( preSum )))
+                  mapNew += ((key, /* if( preSum == 0L ) ValueNone else */ ValuePre( preSum )))
             }
             mapNew += ((path.sum, ValueFull( value )))
             idMap + ((id, mapNew))
@@ -32,13 +32,21 @@ object ConfluentMemoryMap {
       }
 
       def get( id: Int, path: PathLike )( implicit tx: Txn ) : A = {
-         sys.error( "TODO" )
+         val idMap   = idMapRef.get
+         val map     = idMap( id )
+         map( Hashing.maxPrefixKey( path, map.contains )) match {
+            case ValueFull( v )      => v
+            case ValuePre( hash )    => map( hash ) match {
+               case ValueFull( v )   => v
+               case _                => sys.error( "Orphaned partial prefix for id " + id + " and path " + path )
+            }
+//            case ValueNone           => throw new NoSuchElementException( "path not found: " + path )
+         }
       }
-
    }
 
    private sealed trait Value[ +A ]
-   private case object ValueNone extends Value[ Nothing ]
+//   private case object ValueNone extends Value[ Nothing ]
    private case class ValuePre( /* len: Int, */ hash: Long ) extends Value[ Nothing ]
    private case class ValueFull[ A ]( v: A ) extends Value[ A ]
 }

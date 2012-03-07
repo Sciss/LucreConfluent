@@ -79,10 +79,15 @@ object Hashing {
             val pre  = maxPrefixKey( s, i, contains )    // "... we compute ... the longest prefix of \tau' in \Pi"
 //            nextVar  = (sps, pre)                        // ", and store a pointer to a representation of this sequence."
 //            return true
-            fun( sps, pre )
+            if( pre != 0L ) fun( sps, pre )
          }
       j += 1 }
    }
+
+//   def maxPrefixValue( s: PathLike, contains: Long => Boolean ) : Option[ V ] = {
+//      val pre1Len = maxPrefix1Len( s, s.size, contains )
+//      hash.get( pre1.sum ).orElse( hash.get( pre1.dropRight( 1 ).sum ))
+//   }
 
    private def prefix( n: Int, j: Int, m: Int ) : Int = {
       var zero    = m - j
@@ -120,21 +125,16 @@ object Hashing {
       }
    }
 
-//   @inline private def maxPrefixKey( s: PathLike, contains: Long => Boolean ) : PathLike = {
-//      val pre1 = maxPrefix1( s, contains )
-//      val res = if( contains( pre1.sum )) pre1 else pre1.init // pre1.dropRight( 1 )
-////debug( "res.size = " + res.size )
-//      res
-//   }
+   def maxPrefixKey( s: PathLike, contains: Long => Boolean ) : Long = maxPrefixKey( s, s.size, contains )
 
    @inline private def maxPrefixKey( s: PathLike, sz: Int, contains: Long => Boolean ) : Long = {
-      val pre1Len = maxPrefix1Len( s, sz, contains )
+      val pre1Len = maxPrefixLength( s, sz, contains )
       val pre1Sum = s.sumUntil( pre1Len )
       if( contains( pre1Sum )) pre1Sum else s.sumUntil( pre1Len - 1 )
    }
 
 //   private def maxPrefix1( s: PathLike, contains: Long => Boolean ) : PathLike =
-   private def maxPrefix1Len( s: PathLike, sz: Int, contains: Long => Boolean ) : Int = {
+   private def maxPrefixLength( s: PathLike, sz: Int, contains: Long => Boolean ) : Int = {
 //      val sz      = s.size
       val m       = bitCount( sz )
       // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"

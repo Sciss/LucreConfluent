@@ -21,3 +21,44 @@ writeCache
 
   Map Int<id> -> Long<pathSum+partialHashes> -> Octree
                                              -> Int<leaf> -> Value
+::::::::::::::::::
+
+ft = Ancestor.newTree[ S, Version ]( rootVersion )
+mp = Ancestor.newMap[ S, Version, V ]( ft, rootValue )
+
+tree supports
+
+insertChild( parentVersion, childVersion ) : childVertex
+
+-- how do we use this for the txnLocal cache?
+-- it would be logical to construct the ConfluentMemoryMap with the persistent map
+   as 'fallback' argument.
+
+::::::::::::::::::
+
+Brilliant (???) idea: there is no reason why we cannot have a impl.InMemory which uses TxnLocal's instead of Refs ! That is to say, we can have our Ancestor tree and map based on TxnLocals instead for the ConfluentMemoryMap
+
+::::::::::::::::::
+
+assume we are in version (in the following only compressed paths are used!) 
+
+v_before = <v0, v0>
+we issue a transaction which will result either in 
+v_after = <v0, v1>
+or
+v_after = <v0, v0, v1, v1>  (correct ??)
+
+a `get` call will do the following:
+assume that the accessed node has access path of v_before -- right?
+
+- we simply need a Map[ Int<id>, Map[ Long<hash>, V ]] for the cached values,
+where the hash is the sum of v_before
+- then we look up that map. if there is no value stored, we fall back to the persisted confluent map
+
+to facilitate flush at the end of the txn, the map might to look a bit enhanced:
+
+Map[ Int<id>, Map[ Long<hash>, Write[ V ]]
+
+where Write[ V ] = (V, S#Acc, TxnSerializer[ S#Tx, S#Acc, V ])
+
+the flushing then just becomes iterating over the map entries, and executing the write method on the serializer, adding the final suffix to the path

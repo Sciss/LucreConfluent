@@ -29,10 +29,10 @@ package impl
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
-import de.sciss.lucre.stm.{Writer, TxnReader, TxnSerializer}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike, IndexedSeqLike}
 import concurrent.stm.{TxnLocal, InTxn}
 import collection.immutable.{IntMap, LongMap}
+import de.sciss.lucre.stm.{TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -145,9 +145,9 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit writer: TxnWriter[ A ]) {
          val out = new DataOutput()
-         ser.write( value, out )
+         writer.write( value, out )
          val bytes = out.toByteArray
 //         system.storage += id.id -> (system.storage.getOrElse( id.id,
 //            Map.empty[ S#Acc, Array[ Byte ]]) + (parent.path -> bytes))
@@ -256,7 +256,8 @@ object KSysImpl {
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = sys.error( "TODO" )
       private[KSysImpl] def newIDCnt()( implicit tx: S#Tx ) : Int = sys.error( "TODO" )
 
-      private val writeCache = ConfluentMemoryMap.local[ Any ]()
+      private val storage  = ConfluentPersistentMap[ S, Any ]()
+      private val cache    = ConfluentCacheMap[ S, Any ]()
 
       def atomic[ A ]( fun: Txn => A ) : A = sys.error( "TODO" )
 

@@ -1,14 +1,14 @@
 package de.sciss.confluent
 
 import concurrent.stm.TxnExecutor
-import impl.{KSysImpl, ConfluentMemoryMap}
+import impl.{KSysImpl, ConfluentPersistentMap}
 
 object PrefixTest extends App {
    import TxnExecutor.{defaultAtomic => atomic}
    import KSysImpl.Path
 
    val rnd     = new util.Random( 0L )
-   val map     = ConfluentMemoryMap.ref[ String ]()
+   val map     = ConfluentPersistentMap.ref[ String ]()
    val id      = 0
    val path0   = Path.test_empty
    val path1   = path0 test_:+ rnd.nextInt()

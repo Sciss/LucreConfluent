@@ -99,7 +99,7 @@ object KSysImpl {
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val id   = alloc( pid )
-//         val res  = new VarImpl[ A ]( id, system, ser )
+//         val res  = new Var[ A ]( id, system, ser )
 //         res.store( init )
 //         res
          sys.error( "TODO" )
@@ -148,7 +148,7 @@ object KSysImpl {
 
       def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val id = readSource( in, pid )
-//         new VarImpl( id, system, ser )
+//         new Var( id, system, ser )
          sys.error( "TODO" )
       }
 
@@ -159,6 +159,60 @@ object KSysImpl {
       def readID( in: DataInput, acc: S#Acc ) : S#ID = sys.error( "TODO" ) // IDImpl.readAndAppend( in.readInt(), acc, in )
 
       def access[ A ]( source: S#Var[ A ]) : A = sys.error( "TODO" ) // source.access( system.path( this ))( this )
+   }
+
+   sealed trait SourceImpl[ A ] {
+      protected def system: S
+      protected def id: S#ID
+
+      protected final def toString( pre: String ) = pre + id // + ": " +
+//         (system.storage.getOrElse( id.id, Map.empty ).map( _._1 )).mkString( ", " )
+
+      final def set( v: A )( implicit tx: S#Tx ) {
+         store( v )
+      }
+
+      final def write( out: DataOutput ) {
+         out.writeInt( id.id )
+      }
+
+      protected def writeValue( v: A, out: DataOutput ) : Unit
+      protected def readValue( in: DataInput, postfix: S#Acc )( implicit tx: S#Tx ) : A
+
+      final def store( v: A ) {
+         val out = new DataOutput()
+         writeValue( v, out )
+         val bytes = out.toByteArray
+//         system.storage += id.id -> (system.storage.getOrElse( id.id,
+//            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
+         sys.error( "TODO" )
+      }
+
+      final def get( implicit tx: Txn ) : A = access( id.path )
+
+      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
+//         val (in, acc1) = system.access( id.id, acc )
+//         readValue( in, acc1 )
+         sys.error( "TODO" )
+      }
+
+      final def transform( f: A => A )( implicit tx: Txn ) { set( f( get ))}
+
+      final def dispose()( implicit tx: Txn ) {}
+   }
+
+   private final class Var[ A ]( val id: ID, protected val system: S, ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends KSys.Var[ S, A ] with SourceImpl[ A ] {
+
+      override def toString = toString( "Var" )
+
+      protected def writeValue( v: A, out: DataOutput ) {
+         ser.write( v, out )
+      }
+
+      protected def readValue( in: DataInput, postfix: S#Acc )( implicit tx: S#Tx ) : A = {
+         ser.read( in, postfix )
+      }
    }
 
    final class System private[KSysImpl]() extends KSys[ System ] {

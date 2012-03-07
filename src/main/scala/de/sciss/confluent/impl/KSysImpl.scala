@@ -247,7 +247,7 @@ object KSysImpl {
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = sys.error( "TODO" )
       private[KSysImpl] def newIDCnt()( implicit tx: S#Tx ) : Int = sys.error( "TODO" )
 
-      private val writeCache = ConfluentMemoryMap()
+      private val writeCache = ConfluentMemoryMap.local[ Any ]()
 
       def atomic[ A ]( fun: Txn => A ) : A = sys.error( "TODO" )
 

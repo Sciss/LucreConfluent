@@ -54,9 +54,9 @@ object Hashing {
 
 //   def prefixes( s: PathLike, contains: Long => Boolean ) : Iterator[ (Long, PathLike) ] = new Iterator[ (Long, PathLike) ]
    /**
-    * Provides an iterator over all the hash prefixes of a given path (excluding the full prefix itself).
+    * Iterates over all the hash prefixes of a given path (excluding the full prefix itself).
     * The caller would typically test whether the returned element's sub path is empty or not, and store
-    * an appropriate empty or partial tag in its representation. After the iterator is exhausted, the
+    * an appropriate empty or partial tag in its representation. After the method returns, the
     * caller will typically add an entry for the full hash (`s.sum`), an entry which is not provided by the
     * iterator itself.
     *
@@ -65,38 +65,23 @@ object Hashing {
     *                   prefixes are provided for hashes which are not already present according to this function
     * @return  an iterator over the prefixes.
     */
-   def prefixIterator( s: PathLike, contains: Long => Boolean ) : Iterator[ (Long, Long) ] = new Iterator[ (Long, Long) ] {
-      private val sz = s.size
-      private val m  = bitCount( sz )
-      private var j  = 1
-//      private var nextVar: (Long, PathLike) = _
-      private var nextVar: (Long, Long) = _
-      private var hasNextVar = findNext()
+   def foreachPrefix( s: PathLike, contains: Long => Boolean )( fun: (Long, Long) => Unit ) {
+      val sz = s.size
+      val m  = bitCount( sz )
+      var j  = 1
 
-      private def findNext() : Boolean = {
-         while( j < m ) {
-            val i    = prefix( sz, j, m )
+      while( j < m ) {
+         val i    = prefix( sz, j, m )
 //            val sp   = s.take( i )
 //            val sps  = sp.sum                             // "... we insert the values sum(\tau') ... to the table H"
-            val sps = s.sumUntil( i )
-            if( !contains( sps )) {                         // ", if they are not already there."
-               val pre  = maxPrefixKey( s, i, contains )    // "... we compute ... the longest prefix of \tau' in \Pi"
-               nextVar  = (sps, pre)                        // ", and store a pointer to a representation of this sequence."
-               return true
-            }
-         j += 1 }
-         false
-      }
-
-      def hasNext : Boolean = hasNextVar
-
-//      def next() : (Long, PathLike) =
-      def next() : (Long, Long) = {
-         if( !hasNextVar ) throw new NoSuchElementException( "next on empty iterator" )
-         val res     = nextVar
-         hasNextVar  = findNext()
-         res
-      }
+         val sps = s.sumUntil( i )
+         if( !contains( sps )) {                         // ", if they are not already there."
+            val pre  = maxPrefixKey( s, i, contains )    // "... we compute ... the longest prefix of \tau' in \Pi"
+//            nextVar  = (sps, pre)                        // ", and store a pointer to a representation of this sequence."
+//            return true
+            fun( sps, pre )
+         }
+      j += 1 }
    }
 
    private def prefix( n: Int, j: Int, m: Int ) : Int = {

@@ -72,7 +72,7 @@ object KSysImpl {
       def test_empty : Path = new Path( FingerTree.empty( Measure.IndexedSummedIntLong ))
    }
    final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Int ])
-   extends KSys.Acc with FingerTreeLike[ (Int, Long), Int, Path ] {
+   extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Int, Path ] {
       implicit protected def m: Measure[ Int, (Int, Long) ] = Measure.IndexedSummedIntLong
 
       def foreach( fun: Int => Unit ) {
@@ -83,8 +83,13 @@ object KSysImpl {
 
 //      def size : Int = sys.error( "TODO" )
 
-      def test_:+( elem: Int ) : Path = wrap( tree :+ elem )
+      def test_:+( elem: Int ) : Path = :+( elem )
       def test_+:( elem: Int ) : Path = wrap( elem +: tree )
+
+      private[confluent] def :+( suffix: Int ) : Path = wrap( tree :+ suffix )
+
+      // XXX TODO should have an efficient method in finger tree
+      private[confluent] def :-|( suffix: Int ) : Path = wrap( tree.init :+ suffix )
 
       def write( out: DataOutput ) {
 //         out.writeInt( path.size )
@@ -257,7 +262,7 @@ object KSysImpl {
       private[KSysImpl] def newIDCnt()( implicit tx: S#Tx ) : Int = sys.error( "TODO" )
 
       private val storage  = ConfluentPersistentMap[ S, Any ]()
-      private val cache    = ConfluentCacheMap[ S, Any ]()
+      private val cache    = ConfluentCacheMap[ S, Any ]( storage )
 
       def atomic[ A ]( fun: Txn => A ) : A = sys.error( "TODO" )
 

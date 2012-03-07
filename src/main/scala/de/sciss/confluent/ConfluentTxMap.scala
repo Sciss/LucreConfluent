@@ -28,6 +28,6 @@ package de.sciss.confluent
 import de.sciss.lucre.stm.{TxnWriter, TxnReader}
 
 trait ConfluentTxMap[ Txn, Access, A ] {
-   def put( id: Int, path: PathLike with Access, value: A )( implicit tx: Txn, writer: TxnWriter[ A ]) : Unit
-   def get( id: Int, path: PathLike with Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : A
+   def put( id: Int, path: Access, value: A )( implicit tx: Txn, writer: TxnWriter[ A ]) : Unit
+   def get( id: Int, path: Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : A
 }

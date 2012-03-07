@@ -39,13 +39,18 @@ object KSys {
       def path: Acc
    }
 
-   trait Acc extends Writer with PathLike {
+   trait Acc[ S <: KSys[ S ]] extends Writer with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
+      // append element
+      private[confluent] def :+( suffix: Int ) : S#Acc
+      private[confluent] def init : S#Acc
+      // replace last element
+      private[confluent] def :-|( suffix: Int ) : S#Acc
    }
 }
 trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
    type Var[ @specialized A ] <: KSys.Var[ S, A ]
    type Tx <: KSys.Txn[ S ]
    type ID <: KSys.ID[ S#Tx, S#Acc ]
-   type Acc <: KSys.Acc
+   type Acc <: KSys.Acc[ S ]
 }

@@ -1,0 +1,23 @@
+Var interface:
+   serializer
+   set( V )( Tx )
+   get( Tx ) : V
+
+-- storage --
+type M = Map[ Acc, Array[ Byte ]]
+type Storage = Map[ Int, M ]
+
+::::::::::::::::::
+
+- let's forget about the caching first, it can always be added later transparently
+- but: we might need to cache the current txn's writes, as the path can only be
+  constructed right before the commit.
+- could do the latter as a 'global' map in system, saves space, and also is easier
+  as one TxnLocal with one particular before-commit hook
+
+::::::::::::::::::
+
+writeCache
+
+  Map Int<id> -> Long<pathSum+partialHashes> -> Octree
+                                             -> Int<leaf> -> Value

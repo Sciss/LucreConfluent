@@ -16,3 +16,5 @@ libraryDependencies ++= Seq(
 retrieveManaged := true
 
 scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+
+initialCommands in console := """import de.sciss.confluent._"""

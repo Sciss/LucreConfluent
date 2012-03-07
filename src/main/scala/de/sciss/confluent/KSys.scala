@@ -39,7 +39,7 @@ object KSys {
       def path: Acc
    }
 
-   trait Acc extends Writer {
+   trait Acc extends Writer with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
    }
 }

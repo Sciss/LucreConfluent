@@ -27,11 +27,12 @@ package de.sciss.confluent
 package impl
 
 import util.MurmurHash
-import concurrent.stm.InTxn
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.lucre.stm.{Writer, TxnReader, TxnSerializer}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike, IndexedSeqLike}
+import concurrent.stm.{TxnLocal, InTxn}
+import collection.immutable.{IntMap, LongMap}
 
 object KSysImpl {
    private type S = System
@@ -82,6 +83,19 @@ object KSysImpl {
 //         path.foreach( out.writeInt( _ ))
          sys.error( "TODO" )
       }
+
+      def size : Int = tree.measure._1
+      def sum : Long = tree.measure._2
+
+      // XXX TODO -- need an applyMeasure method in finger tree
+      def sumUntil( n: Int ) : Long = {
+//         if( n <= 0 ) return 0L
+//         if( n >= size ) return sum
+//         tree.find1( _._1 >= n ).
+         tree.split( _._1 >= n )._1.measure._2
+      }
+
+      def take( n: Int ) : PathLike = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
 
       protected def wrap( _tree: FingerTree[ (Int, Long), Int ]) : Path = new Path( _tree )
 
@@ -190,11 +204,12 @@ object KSysImpl {
 
       final def get( implicit tx: Txn ) : A = access( id.path )
 
-      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
-//         val (in, acc1) = system.access( id.id, acc )
+      def access( acc: S#Acc )( implicit tx: S#Tx ) : A
+
+//      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
+//         val (in, acc1) = system.access( id.id, acc )( tx, ser )
 //         readValue( in, acc1 )
-         sys.error( "TODO" )
-      }
+//      }
 
       final def transform( f: A => A )( implicit tx: Txn ) { set( f( get ))}
 
@@ -205,6 +220,12 @@ object KSysImpl {
    extends KSys.Var[ S, A ] with SourceImpl[ A ] {
 
       override def toString = toString( "Var" )
+
+      def access( acc: S#Acc )( implicit tx: Txn ) : A = {
+//         val (in, acc1) =
+         system.access( id.id, acc )( tx, ser )
+//         readValue( in, acc1 )
+      }
 
       protected def writeValue( v: A, out: DataOutput ) {
          ser.write( v, out )
@@ -226,6 +247,29 @@ object KSysImpl {
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = sys.error( "TODO" )
       private[KSysImpl] def newIDCnt()( implicit tx: S#Tx ) : Int = sys.error( "TODO" )
 
+      private val writeCache = ConfluentMemoryMap()
+
       def atomic[ A ]( fun: Txn => A ) : A = sys.error( "TODO" )
+
+      private[KSysImpl] def access[ A ]( id: Int, acc: S#Acc )
+                                       ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+         sys.error( "TODO" )
+//
+//
+//         var best: Array[Byte]   = null
+//         var bestLen = 0
+//         val map = storage.getOrElse( id, Map.empty )
+//         map.foreach {
+//            case (path, arr) =>
+//               val len = path.zip( acc ).segmentLength({ case (a, b) => a == b }, 0 )
+//               if( len > bestLen && len == path.size ) {
+//                  best     = arr
+//                  bestLen  = len
+//               }
+//         }
+//         require( best != null, "No value for path " + acc )
+//         val in = new DataInput( best )
+//         (in, acc.drop( bestLen ))
+      }
    }
 }

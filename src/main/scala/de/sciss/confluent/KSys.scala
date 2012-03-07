@@ -25,15 +25,26 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{Identifier, Sys, Txn => _Txn}
+import de.sciss.lucre.stm.{Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
+
 
 object KSys {
-   trait Txn extends _Txn[ KSys ]
-   trait ID extends Identifier[ Txn ] {
+//   private type S = KSys
+
+   trait Txn[ S <: KSys[ S ]] extends _Txn[ S ]
+
+   trait ID[ Txn, Acc ] extends Identifier[ Txn ] {
       def id: Int
-      def access: KSys#Acc
+      def path: Acc
+   }
+
+   trait Acc extends Writer {
+      def mkString( prefix: String, sep: String, suffix: String ) : String
    }
 }
-trait KSys extends Sys[ KSys ] {
-   final val manifest = Predef.manifest[ KSys ]
+trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
+//   type Var[ @specialized A ] <: _Var[ KSys#Tx, A ]
+   type Tx <: KSys.Txn[ S ]
+   type ID <: KSys.ID[ S#Tx, S#Acc ]
+   type Acc <: KSys.Acc
 }

@@ -25,29 +25,29 @@
 
 package de.sciss.confluent
 
-trait StoreLike[ K, @specialized V, Repr ] {
-   def put( key: K, value: V ) : Repr
+trait Store[ K, V ] {
+   def put( key: K, value: V ) : Unit
    def get( key: K ) : Option[ V ]
    def getOrElse( key: K, default: => V ) : V = get( key ).getOrElse( default )
 
-   /**
-    *    Finds the value which is the nearest
-    *    ancestor in the trie. It returns a tuple
-    *    composed of this value as an Option
-    *    (None if no ancestor assignment found),
-    *    along with an offset Int which is the
-    *    offset into path for the first key
-    *    element _not_ found in the trie.
-    *
-    *    Like findMaxPrefixOffset, but with support
-    *    for multiplicities
-    */
-   def getWithPrefix( key: K ) : Option[ (V, Int) ]
-
-   def inspect() : Unit
+//   /**
+//    *    Finds the value which is the nearest
+//    *    ancestor in the trie. It returns a tuple
+//    *    composed of this value as an Option
+//    *    (None if no ancestor assignment found),
+//    *    along with an offset Int which is the
+//    *    offset into path for the first key
+//    *    element _not_ found in the trie.
+//    *
+//    *    Like findMaxPrefixOffset, but with support
+//    *    for multiplicities
+//    */
+//   def getWithPrefix( key: K ) : Option[ (V, Int) ]
+//
+//   def inspect() : Unit
 }
 
-trait Store[ K, V ] extends StoreLike[ K, V, Store[ K, V ]]
+// trait Store[ K, V ] extends StoreLike[ K, V, Store[ K, V ]]
 
 trait StoreFactory[ K ] {
    def empty[ V ] : Store[ K, V ]

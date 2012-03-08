@@ -84,7 +84,6 @@ object KSysImpl {
 //      def size : Int = sys.error( "TODO" )
 
       def test_:+( elem: Int ) : Path = :+( elem )
-      def test_+:( elem: Int ) : Path = wrap( elem +: tree )
 
       private[confluent] def :+( suffix: Int ) : Path = wrap( tree :+ suffix )
 
@@ -116,7 +115,11 @@ object KSysImpl {
          tree.iterator.mkString( prefix, sep, suffix )
    }
 
-   final class Txn private[KSysImpl]( val system: System, val peer: InTxn ) extends KSys.Txn[ S ] {
+   final class Txn private[KSysImpl]( val system: System,
+                                      val peer: InTxn,
+                                      private[KSysImpl] val cache: ConfluentCacheMap[ S ])
+   extends KSys.Txn[ S ] {
+
       def newID() : S#ID = system.newID()( this )
 
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )

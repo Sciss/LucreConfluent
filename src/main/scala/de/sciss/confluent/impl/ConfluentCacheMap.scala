@@ -31,29 +31,30 @@ import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
 import concurrent.stm.TMap
 
 object ConfluentCacheMap {
-   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxMap[ S#Tx, S#Acc, A ]) : ConfluentCacheMap[ S, A ] =
-      new Impl[ S, A ]( persistent )
+   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
+      new Impl[ S ]( persistent )
 
    private val emptyLongMapVal   = LongMap.empty[ Any ]
    private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: KSys[ S ], A ]( persistent: ConfluentTxMap[ S#Tx, S#Acc, A ])
-   extends ConfluentCacheMap[ S, A ] {
-      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, A ]]]
+   private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxMap[ S#Tx, S#Acc ])
+   extends ConfluentCacheMap[ S ] {
+      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, _ ]]]
       @volatile private var dirtyVar = false
 
       def isDirty : Boolean = dirtyVar
 
-      def put( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
          implicit val itx = tx.peer
-         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Acc, A ]])
+         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Acc, _ ]])
          val mapNew  = mapOld + ((path.sum, Write( path, value, writer )))
          idMapRef.put( id, mapNew )
          dirtyVar = true
       }
 
-      def get( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).getOrElse( sys.error( "TODO" ))
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value ))
+            .getOrElse( sys.error( "TODO" )).asInstanceOf[ A ]
       }
 
       def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) {
@@ -61,11 +62,11 @@ object ConfluentCacheMap {
          if( dirtyVar ) idMapRef.foreach { tup1 =>
             val id   = tup1._1
             val map  = tup1._2
-            map.foreach { tup2 =>
-               val write   = tup2._2
-               var path    = write.path.init
-               suffix.foreach( path :+= _ )
-               persistent.put( id, path, write.value )( tx, write.writer )
+            map.foreach {
+               case (_, Write( p, value, writer )) =>
+                  var path = p.init
+                  suffix.foreach( path :+= _ )
+                  persistent.put( id, path, value )( tx, writer )
             }
          }
       }
@@ -75,18 +76,20 @@ object ConfluentCacheMap {
          if( dirtyVar ) idMapRef.foreach { tup1 =>
             val id   = tup1._1
             val map  = tup1._2
-            map.foreach { tup2 =>
-               val write   = tup2._2
-               val path    = write.path.init :-| suffix
-               persistent.put( id, path, write.value )( tx, write.writer )
+            map.foreach {
+               case (_, Write( p, value, writer )) =>
+                  val path    = p.init :-| suffix
+                  persistent.put( id, path, value )( tx, writer )
             }
          }
       }
    }
 
-   private final case class Write[ Acc, A ]( path: Acc, value: A, writer: TxnWriter[ A ])
+   private final case class Write[ Acc, A ]( path: Acc, value: A, writer: TxnWriter[ A ]) {
+      type A1 = A
+   }
 }
-sealed trait ConfluentCacheMap[ S <: Sys[ S ], A ] extends ConfluentTxMap[ S#Tx, S#Acc, A ] {
+sealed trait ConfluentCacheMap[ S <: Sys[ S ]] extends ConfluentTxMap[ S#Tx, S#Acc ] {
    def isDirty : Boolean
    def flush( suffix: Int )( implicit tx: S#Tx ) : Unit
    def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) : Unit

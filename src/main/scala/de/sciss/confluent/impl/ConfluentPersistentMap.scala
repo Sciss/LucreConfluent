@@ -37,16 +37,16 @@ object ConfluentPersistentMap {
    private type Marked[ S <: Sys[ S ], ~ ] = Ancestor.Map[ S, Int, ~ ]
 
 //   def apply[ A ]() : ConfluentTxMap[ A ] = new Impl[ A ]
-   def apply[ S <: Sys[ S ], A ]() : ConfluentTxMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
+   def apply[ S <: Sys[ S ], A ]() : ConfluentTxMap[ S#Tx, S#Acc ] = new Impl[ S ]
 //   def ref[ S <: Sys[ S ], A ]()   : ConfluentTxMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
 
    private val emptyLongMapVal   = LongMap.empty[ Any ]
    private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: Sys[ S ], A ]( idMapRef: RefLike[ MapType[ S, A ], _ >: InTxn ]) extends ConfluentTxMap[ S#Tx, S#Acc, A ] {
+   private final class Impl[ S <: Sys[ S ]] extends ConfluentTxMap[ S#Tx, S#Acc ] {
 //      private val idMapRef = TxnLocal[ MapType[ A ]]( IntMap.empty )
 
-      def put( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
 //         idMapRef.transform { idMap =>
 //            val mapOld  = idMap.getOrElse( id, emptyLongMap[ Entry[ A ]])
 //            var mapNew  = mapOld
@@ -60,9 +60,9 @@ object ConfluentPersistentMap {
          sys.error( "TODO" )
       }
 
-      def get( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         val idMap   = idMapRef.get( tx.peer )
-         val map     = idMap( id )
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+//         val idMap   = idMapRef.get( tx.peer )
+//         val map     = idMap( id )
 sys.error( "TODO" )
 //         map( Hashing.maxPrefixKey( path, map.contains )) match {
 //            case EntryFull( v )      => v

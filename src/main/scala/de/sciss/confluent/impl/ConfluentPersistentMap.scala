@@ -27,7 +27,6 @@ package de.sciss.confluent
 package impl
 
 import collection.immutable.{LongMap, IntMap}
-import concurrent.stm._
 import de.sciss.collection.txn.Ancestor
 import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
 
@@ -60,7 +59,7 @@ object ConfluentPersistentMap {
          sys.error( "TODO" )
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ] = {
 //         val idMap   = idMapRef.get( tx.peer )
 //         val map     = idMap( id )
 sys.error( "TODO" )

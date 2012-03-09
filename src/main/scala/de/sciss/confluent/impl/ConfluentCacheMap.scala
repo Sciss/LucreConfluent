@@ -52,9 +52,9 @@ object ConfluentCacheMap {
          dirtyVar = true
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value ))
-            .getOrElse( sys.error( "TODO" )).asInstanceOf[ A ]
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]]
+//            .getOrElse( sys.error( "TODO" )).asInstanceOf[ A ]
       }
 
       def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) {
@@ -89,7 +89,10 @@ object ConfluentCacheMap {
       type A1 = A
    }
 }
-sealed trait ConfluentCacheMap[ S <: Sys[ S ]] extends ConfluentTxMap[ S#Tx, S#Acc ] {
+sealed trait ConfluentCacheMap[ S <: Sys[ S ]] /* extends ConfluentTxMap[ S#Tx, S#Acc ] */ {
+   def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) : Unit
+   def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ]
+
    def isDirty : Boolean
    def flush( suffix: Int )( implicit tx: S#Tx ) : Unit
    def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) : Unit

@@ -29,5 +29,5 @@ import de.sciss.lucre.stm.{TxnWriter, TxnReader}
 
 trait ConfluentTxMap[ Txn, Access ] {
    def put[ A ]( id: Int, path: Access, value: A )( implicit tx: Txn, writer: TxnWriter[ A ]) : Unit
-   def get[ A ]( id: Int, path: Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : A
+   def get[ A ]( id: Int, path: Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : Option[ A ]
 }

@@ -33,14 +33,14 @@
 //   private type MapType[ A ] = IntMap[ LongMap[ Value[ A ]]]
 //   private def EmptyMap[ A ] : MapType[ A ] = IntMap.empty
 //
-////   def apply[ A ]() : ConfluentTxMap[ A ] = new Impl[ A ]
-//   def local[ A ]() : ConfluentTxMap[ InTxn, A ] = new Impl[ InTxnEnd, A ]( TxnLocal( EmptyMap[ A ]))
-//   def ref[ A ]()   : ConfluentTxMap[ InTxn, A ] = new Impl[ InTxn, A ]( Ref( EmptyMap[ A ]))
+////   def apply[ A ]() : ConfluentTxnMap[ A ] = new Impl[ A ]
+//   def local[ A ]() : ConfluentTxnMap[ InTxn, A ] = new Impl[ InTxnEnd, A ]( TxnLocal( EmptyMap[ A ]))
+//   def ref[ A ]()   : ConfluentTxnMap[ InTxn, A ] = new Impl[ InTxn, A ]( Ref( EmptyMap[ A ]))
 //
 //   private val emptyLongMapVal   = LongMap.empty[ Any ]
 //   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 //
-//   private final class Impl[ -Txn <: InTxnEnd, A ]( idMapRef: RefLike[ MapType[ A ], Txn ]) extends ConfluentTxMap[ Txn, A ] {
+//   private final class Impl[ -Txn <: InTxnEnd, A ]( idMapRef: RefLike[ MapType[ A ], Txn ]) extends ConfluentTxnMap[ Txn, A ] {
 ////      private val idMapRef = TxnLocal[ MapType[ A ]]( IntMap.empty )
 //
 //      def put( id: Int, path: PathLike, value: A )( implicit tx: Txn ) {

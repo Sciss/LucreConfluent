@@ -31,13 +31,13 @@ import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
 import concurrent.stm.TMap
 
 object ConfluentCacheMap {
-   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
+   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
       new Impl[ S ]( persistent )
 
    private val emptyLongMapVal   = LongMap.empty[ Any ]
    private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxMap[ S#Tx, S#Acc ])
+   private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ])
    extends ConfluentCacheMap[ S ] {
       private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, _ ]]]
       @volatile private var dirtyVar = false
@@ -89,7 +89,7 @@ object ConfluentCacheMap {
       type A1 = A
    }
 }
-sealed trait ConfluentCacheMap[ S <: Sys[ S ]] /* extends ConfluentTxMap[ S#Tx, S#Acc ] */ {
+sealed trait ConfluentCacheMap[ S <: Sys[ S ]] /* extends ConfluentTxnMap[ S#Tx, S#Acc ] */ {
    def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) : Unit
    def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ]
 

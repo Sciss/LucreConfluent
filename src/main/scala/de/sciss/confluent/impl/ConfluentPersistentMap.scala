@@ -35,14 +35,14 @@ object ConfluentPersistentMap {
    private def EmptyMap[ S <: Sys[ S ], ~ ] : MapType[ S, ~ ] = IntMap.empty
    private type Marked[ S <: Sys[ S ], ~ ] = Ancestor.Map[ S, Int, ~ ]
 
-//   def apply[ A ]() : ConfluentTxMap[ A ] = new Impl[ A ]
-   def apply[ S <: Sys[ S ], A ]() : ConfluentTxMap[ S#Tx, S#Acc ] = new Impl[ S ]
-//   def ref[ S <: Sys[ S ], A ]()   : ConfluentTxMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
+//   def apply[ A ]() : ConfluentTxnMap[ A ] = new Impl[ A ]
+   def apply[ S <: Sys[ S ], A ]() : ConfluentTxnMap[ S#Tx, S#Acc ] = new Impl[ S ]
+//   def ref[ S <: Sys[ S ], A ]()   : ConfluentTxnMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
 
    private val emptyLongMapVal   = LongMap.empty[ Any ]
    private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: Sys[ S ]] extends ConfluentTxMap[ S#Tx, S#Acc ] {
+   private final class Impl[ S <: Sys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {
 //      private val idMapRef = TxnLocal[ MapType[ A ]]( IntMap.empty )
 
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {

@@ -1,5 +1,5 @@
 /*
- *  ConfluentTxMap.scala
+ *  ConfluentTxnMap.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -27,7 +27,7 @@ package de.sciss.confluent
 
 import de.sciss.lucre.stm.{TxnWriter, TxnReader}
 
-trait ConfluentTxMap[ Txn, Access ] {
+trait ConfluentTxnMap[ Txn, Access ] {
    def put[ A ]( id: Int, path: Access, value: A )( implicit tx: Txn, writer: TxnWriter[ A ]) : Unit
    def get[ A ]( id: Int, path: Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : Option[ A ]
 }

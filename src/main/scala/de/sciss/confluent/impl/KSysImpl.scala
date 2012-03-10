@@ -130,10 +130,10 @@ object KSysImpl {
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val id   = alloc( pid )
-//         val res  = new Var[ A ]( id, system, ser )
-//         res.store( init )
-//         res
-         sys.error( "TODO" )
+         val res  = new Var[ A ]( id, system, ser )
+         res.store( init )
+         res
+//         sys.error( "TODO" )
       }
 
       def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = newVar[ Boolean ]( pid, init )
@@ -199,9 +199,7 @@ object KSysImpl {
       protected final def toString( pre: String ) = pre + id // + ": " +
 //         (system.storage.getOrElse( id.id, Map.empty ).map( _._1 )).mkString( ", " )
 
-      final def set( v: A )( implicit tx: S#Tx ) {
-         store( v )
-      }
+      final def set( v: A )( implicit tx: S#Tx ) { store( v )}
 
       final def write( out: DataOutput ) {
          out.writeInt( id.id )
@@ -233,7 +231,7 @@ object KSysImpl {
       final def dispose()( implicit tx: Txn ) {}
    }
 
-   private final class Var[ A ]( val id: ID, protected val system: S, ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   final class Var[ A ] private[KSysImpl]( val id: ID, protected val system: S, ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends KSys.Var[ S, A ] with SourceImpl[ A ] {
 
       override def toString = toString( "Var" )
@@ -254,9 +252,10 @@ object KSysImpl {
    }
 
    final class System private[KSysImpl]() extends KSys[ System ] {
-      type ID  = KSysImpl.ID
-      type Tx  = KSysImpl.Txn
-      type Acc = KSysImpl.Path
+      type ID                    = KSysImpl.ID
+      type Tx                    = KSysImpl.Txn
+      type Acc                   = KSysImpl.Path
+      type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       val manifest = Predef.manifest[ System ]
       private[KSysImpl] val reactionMap : ReactionMap[ S ] = sys.error( "TODO" )

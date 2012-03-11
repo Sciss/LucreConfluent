@@ -37,6 +37,8 @@ import de.sciss.lucre.stm.{InMemory, PersistentStore, TxnWriter, Writer, TxnRead
 object KSysImpl {
    private type S = System
 
+   def apply( store: PersistentStore[ S#Tx ]) : System = new System( store )
+
    final class IDImpl private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
 
@@ -77,12 +79,11 @@ object KSysImpl {
       implicit protected def m: Measure[ Int, (Int, Long) ] = Measure.IndexedSummedIntLong
 
       def foreach( fun: Int => Unit ) {
-         sys.error( "TODO" )
+         // XXX TODO efficient implementation
+         tree.iterator.foreach( fun )
       }
 
       override def toString = mkString( "Path(", ", ", ")" )
-
-//      def size : Int = sys.error( "TODO" )
 
       def test_:+( elem: Int ) : Path = :+( elem )
 
@@ -92,9 +93,8 @@ object KSysImpl {
       private[confluent] def :-|( suffix: Int ) : Path = wrap( tree.init :+ suffix )
 
       def write( out: DataOutput ) {
-//         out.writeInt( path.size )
-//         path.foreach( out.writeInt( _ ))
-         sys.error( "TODO" )
+         out.writeInt( size )
+         foreach( out.writeInt( _ ))
       }
 
       def size : Int = tree.measure._1
@@ -274,14 +274,14 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      def setInit( v: A )( implicit tx: S#Tx ) { tx.system.write( id )( ser.write( v, _ ))}
+      def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
    }
 
    private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.write( id )( ser.write( v, _ ))
+         tx.system.put( id, v )( tx, ser )
       }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
@@ -296,12 +296,12 @@ object KSysImpl {
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
-         tx.system.write( id )( _.writeBoolean( v ))
+         tx.system.put( id, v )( tx, this )
       }
 
       def set( v: Boolean )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.write( id )( _.writeBoolean( v ))
+         tx.system.put( id, v )( tx, this )
       }
 
       def transform( f: Boolean => Boolean )( implicit tx: S#Tx ) { set( f( get ))}
@@ -320,12 +320,12 @@ object KSysImpl {
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
-         tx.system.write( id )( _.writeInt( v ))
+         tx.system.put( id, v )( tx, this )
       }
 
       def set( v: Int )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.write( id )( _.writeInt( v ))
+         tx.system.put( id, v )( tx, this )
       }
 
       def transform( f: Int => Int )( implicit tx: S#Tx ) { set( f( get ))}
@@ -361,12 +361,12 @@ object KSysImpl {
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
-         tx.system.write( id )( _.writeLong( v ))
+         tx.system.put( id,v  )( tx, this )
       }
 
       def set( v: Long )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.write( id )( _.writeLong( v ))
+         tx.system.put( id, v )( tx, this )
       }
 
       def transform( f: Long => Long )( implicit tx: S#Tx ) { set( f( get ))}
@@ -380,16 +380,24 @@ object KSysImpl {
 
    sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class System private[KSysImpl]( store: PersistentStore[ S#Tx ], idCnt0: Int ) extends KSys[ System ] {
+   final class System private[KSysImpl]( store: PersistentStore[ S#Tx ]) extends KSys[ System ] {
       type ID                    = KSysImpl.IDImpl
       type Tx                    = KSysImpl.TxnImpl
       type Acc                   = KSysImpl.Path
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
-      private val idCntVar = ScalaRef( idCnt0 )
+      val manifest               = Predef.manifest[ System ]
+      private val storage        = ConfluentPersistentMap[ S, Any ]()
+      private val map            = ConfluentCacheMap[ S, Any ]( storage )
+
+      private val idCntVar: ScalaRef[ Int ] = ScalaRef {
+         atomic { implicit tx =>
+            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
+         }
+      }
+
 //      private val inMem    = InMemory()
 
-      val manifest = Predef.manifest[ System ]
       private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] = sys.error( "TODO" )
 //         ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
 //         tx.newIntVar( tx.newID(), 0 )
@@ -401,16 +409,13 @@ object KSysImpl {
 
       private[KSysImpl] def newIDValue()( implicit tx: S#Tx ) : Int = {
          implicit val itx = tx.peer
-         val id = idCntVar.get + 1
+         val res = idCntVar.get + 1
 //         logConfig( "new   <" + id + ">" )
-         idCntVar.set( id )
-         // ... and persist XXX
-         sys.error( "TODO" )
-         id
+         idCntVar.set( res )
+         // ... and persist ...
+         store.put( _.writeInt( 0 ))( _.writeInt( res ))
+         res
       }
-
-      private val storage  = ConfluentPersistentMap[ S, Any ]()
-      private val cache    = ConfluentCacheMap[ S, Any ]( storage )
 
       private[KSysImpl] def access[ A ]( id: Int, acc: S#Acc )
                                        ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
@@ -462,10 +467,9 @@ object KSysImpl {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
-      def write( id: S#ID )( valueFun: DataOutput => Unit )( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
+      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
 //         logConfig( "write <" + id + ">" )
-//         store.put( _.writeInt( id ))( valueFun )
+         map.put[ A ]( id.id, id.path, value )
       }
 
 //      def remove( id: S#ID )( implicit tx: S#Tx ) {
@@ -476,7 +480,7 @@ object KSysImpl {
 
       private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
                                                                reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         cache.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
+         map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
       }
    }
 }

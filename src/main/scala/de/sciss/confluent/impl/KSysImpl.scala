@@ -32,7 +32,7 @@ import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike, IndexedSeqLike}
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnExecutor, TxnLocal, InTxn, Ref => ScalaRef}
-import de.sciss.lucre.stm.{PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.{InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -69,7 +69,8 @@ object KSysImpl {
 //   private object PathMeasure extends Measure[ Int, (Int, Long) ]
 
    object Path {
-      def test_empty : Path = new Path( FingerTree.empty( Measure.IndexedSummedIntLong ))
+      def test_empty : Path = empty
+      private[KSysImpl] def empty = new Path( FingerTree.empty( Measure.IndexedSummedIntLong ))
    }
    final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Int ])
    extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Int, Path ] {
@@ -124,7 +125,7 @@ object KSysImpl {
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDCnt()( this ), pid.path )
+      private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val id   = alloc( pid )
@@ -154,7 +155,7 @@ object KSysImpl {
          res
       }
 
-      def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = sys.error( "TODO" ) // new Array[ S#Var[ A ]]( size )
+      def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
@@ -289,9 +290,9 @@ object KSysImpl {
    }
 
    private final class BooleanVar( protected val id: S#ID )
-   extends Var[ Boolean ] with BasicSource {
+   extends Var[ Boolean ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
-         tx.system.read[ Boolean ]( id )( _.readBoolean() )
+         tx.system.get[ Boolean ]( id )( tx, this )
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
@@ -306,12 +307,16 @@ object KSysImpl {
       def transform( f: Boolean => Boolean )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var[Boolean](" + id + ")"
+
+      // ---- TxnSerializer ----
+      def write( v: Boolean, out: DataOutput ) { out.writeBoolean( v )}
+      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Boolean = in.readBoolean()
    }
 
    private final class IntVar( protected val id: S#ID )
-   extends Var[ Int ] with BasicSource {
+   extends Var[ Int ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Int ] {
       def get( implicit tx: S#Tx ) : Int = {
-         tx.system.read[ Int ]( id )( _.readInt() )
+         tx.system.get[ Int ]( id )( tx, this )
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
@@ -326,6 +331,10 @@ object KSysImpl {
       def transform( f: Int => Int )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var[Int](" + id + ")"
+
+      // ---- TxnSerializer ----
+      def write( v: Int, out: DataOutput ) { out.writeInt( v )}
+      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Int = in.readInt()
    }
 
 //   private final class CachedIntVar( protected val id: Int, peer: ScalaRef[ Int ])
@@ -346,9 +355,9 @@ object KSysImpl {
 //   }
 
    private final class LongVar( protected val id: S#ID )
-   extends Var[ Long ] with BasicSource {
+   extends Var[ Long ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Long ] {
       def get( implicit tx: S#Tx ) : Long = {
-         tx.system.read[ Long ]( id )( _.readLong() )
+         tx.system.get[ Long ]( id )( tx, this )
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
@@ -363,6 +372,10 @@ object KSysImpl {
       def transform( f: Long => Long )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var[Long](" + id + ")"
+
+      // ---- TxnSerializer ----
+      def write( v: Long, out: DataOutput ) { out.writeLong( v )}
+      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Long = in.readLong()
    }
 
    sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
@@ -374,12 +387,27 @@ object KSysImpl {
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       private val idCntVar = ScalaRef( idCnt0 )
+//      private val inMem    = InMemory()
 
       val manifest = Predef.manifest[ System ]
-      private[KSysImpl] val reactionMap : ReactionMap[ S ] = sys.error( "TODO" )
+      private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] = sys.error( "TODO" )
+//         ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
+//         tx.newIntVar( tx.newID(), 0 )
+//      })( ctx => inMem.wrap( ctx.peer ))
 
-      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = sys.error( "TODO" )
-      private[KSysImpl] def newIDCnt()( implicit tx: S#Tx ) : Int = sys.error( "TODO" )
+      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
+         new IDImpl( newIDValue(), Path.empty )
+      }
+
+      private[KSysImpl] def newIDValue()( implicit tx: S#Tx ) : Int = {
+         implicit val itx = tx.peer
+         val id = idCntVar.get + 1
+//         logConfig( "new   <" + id + ">" )
+         idCntVar.set( id )
+         // ... and persist XXX
+         sys.error( "TODO" )
+         id
+      }
 
       private val storage  = ConfluentPersistentMap[ S, Any ]()
       private val cache    = ConfluentCacheMap[ S, Any ]( storage )
@@ -434,32 +462,21 @@ object KSysImpl {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
-      def newIDValue()( implicit tx: S#Tx ) : Int = {
-         implicit val itx = tx.peer
-         val id = idCntVar.get + 1
-//         logConfig( "new   <" + id + ">" )
-         idCntVar.set( id )
-         // ... and persist XXX
-         sys.error( "TODO" )
-         id
-      }
-
       def write( id: S#ID )( valueFun: DataOutput => Unit )( implicit tx: S#Tx ) {
          sys.error( "TODO" )
 //         logConfig( "write <" + id + ">" )
 //         store.put( _.writeInt( id ))( valueFun )
       }
 
-      def remove( id: S#ID )( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
-//         logConfig( "remov <" + id + ">" )
-//         store.remove( _.writeInt( id ))
-      }
+//      def remove( id: S#ID )( implicit tx: S#Tx ) {
+//         sys.error( "TODO" )
+////         logConfig( "remov <" + id + ">" )
+////         store.remove( _.writeInt( id ))
+//      }
 
-      def read[ @specialized A ]( id: S#ID )( valueFun: DataInput => A )( implicit tx: S#Tx ) : A = {
-         sys.error( "TODO" )
-//         logConfig( "read  <" + id + ">" )
-//         store.get( _.writeInt( id ))( valueFun ).getOrElse( sys.error( "Key not found " + id ))
+      private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
+                                                               reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+         cache.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
       }
    }
 }

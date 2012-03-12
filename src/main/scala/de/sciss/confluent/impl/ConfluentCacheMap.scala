@@ -27,8 +27,8 @@ package de.sciss.confluent
 package impl
 
 import collection.immutable.LongMap
-import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
 import concurrent.stm.TMap
+import de.sciss.lucre.stm.{TxnSerializer, TxnReader, TxnWriter, Sys}
 
 object ConfluentCacheMap {
    def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
@@ -39,15 +39,15 @@ object ConfluentCacheMap {
 
    private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ])
    extends ConfluentCacheMap[ S ] {
-      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, _ ]]]
+      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Tx, S#Acc, _ ]]]
       @volatile private var dirtyVar = false
 
       def isDirty : Boolean = dirtyVar
 
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          implicit val itx = tx.peer
-         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Acc, _ ]])
-         val mapNew  = mapOld + ((path.sum, Write( path, value, writer )))
+         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Tx, S#Acc, _ ]])
+         val mapNew  = mapOld + ((path.sum, Write( path, value, ser )))
          idMapRef.put( id, mapNew )
          dirtyVar = true
       }
@@ -85,13 +85,13 @@ object ConfluentCacheMap {
       }
    }
 
-   private final case class Write[ Acc, A ]( path: Acc, value: A, writer: TxnWriter[ A ]) {
+   private final case class Write[ Txn, Acc, A ]( path: Acc, value: A, serializer: TxnSerializer[ Txn, Acc, A ]) {
       type A1 = A
    }
 }
-sealed trait ConfluentCacheMap[ S <: Sys[ S ]] /* extends ConfluentTxnMap[ S#Tx, S#Acc ] */ {
-   def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) : Unit
-   def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ]
+sealed trait ConfluentCacheMap[ S <: Sys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {
+//   def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) : Unit
+//   def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ]
 
    def isDirty : Boolean
    def flush( suffix: Int )( implicit tx: S#Tx ) : Unit

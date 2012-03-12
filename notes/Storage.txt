@@ -62,3 +62,91 @@ Map[ Int<id>, Map[ Long<hash>, Write[ V ]]
 where Write[ V ] = (V, S#Acc, TxnSerializer[ S#Tx, S#Acc, V ])
 
 the flushing then just becomes iterating over the map entries, and executing the write method on the serializer, adding the final suffix to the path
+
+::::::::::::::::::
+
+<v0, v0>
+
+full tree
+
+mark tree
+
+- we have the compressed index and path
+- we know how to perform prefix search on its randomised version
+- assume that for space efficiency we distiguish between a
+  field which has only one assignment, and one which has >1
+- the hash map thus points to something like
+
+    Entry = SingleEntry | MarkTree
+
+:::::: tx.newVar ::::::
+
+   res = new VarImpl( id = newID(), path = empty )
+   res.setInit( init )
+      --> system.put( id, path = empty, init )
+         --> cache.put ...
+
+         ...
+   res
+
+-> txn flush
+
+  mittels Hashing.foreachPrefix werden die partial prefixes geschrieben (EntryPre( preSum ))
+
+:::::: vr.get ::::::
+
+dbGetAndResolve
+  (mod1, map1, pre1) = dbMaxPrefix( key, map, dbView )
+  pre1Sz  = pre1.size
+  pre1Sum = pre1.sum
+  if( pre1Sz == 0 ) return None
+  (mod2, map2, res1) = dbGetRefresh( pre1Sum, map1, dbView )
+  res1 match { 
+    case SearchNoKey =>
+      if( pre1Sz == 1 ) None
+      else {
+        pre2Sz  = pre1Sz - 1
+        pre2Sum = pre1.init.sum
+        (mod3, map3, res2) = dbGetRefresh( pre2Sum, map2, dbView )
+        res2.valueOption
+    case s => s.valueOption
+  }
+
+dbMaxPrefix( key, mmap)
+   m = bitCount( path.size )
+   succ = 0
+   allFound = true
+   ij      = 0
+   ijm     = 0
+   i = 1 to m
+      pre  = succ
+      succ = Hashing.prefix( sz, i, m )
+      (onlyOnDisk, map2, found) = dbContainsRefresh( key.take( succ ).sum, mmap
+      if( !found ) {
+        allFound = false
+        ij = succ
+        ijm = pre
+      }
+    }
+
+   if( allFound ) return (mapWasModified?, mmap, key)
+
+   ...
+   ...
+   key.take( ijm + d )
+
+dbGetRefresh( key: Long )
+   map.get( key ) match {
+      case Some( vp @ ValuePre( fullKey ) )  => dbGetRefresh( fullKey, map, dbView ) // retry with full key
+      case Some( vn @ ValueNone ) => SearchNoValue
+      case Some( vf: SoftValueFull[ _ ]) => harden(); SearchValue( ... )
+      case None => // same procedure with underlying store
+
+      
+NOTE: SearchNoValue is probably wrong and should be removed (as it was only associated with Path.empty which would alias to hash 0L for any path?)
+
+::::::::::::::::::
+
+hence, instead of ValueFull we have SingleEntry | MarkTree
+
+...

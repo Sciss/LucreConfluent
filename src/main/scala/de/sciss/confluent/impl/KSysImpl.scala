@@ -92,6 +92,9 @@ object KSysImpl {
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Int ) : Path = wrap( tree.init :+ suffix )
 
+      // XXX TODO should have an efficient method in finger tree
+      private[confluent] def splitIndex : (Path, Int) = (init, last)
+
       def write( out: DataOutput ) {
          out.writeInt( size )
          foreach( out.writeInt( _ ))
@@ -387,8 +390,8 @@ object KSysImpl {
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       val manifest               = Predef.manifest[ System ]
-      private val storage        = ConfluentPersistentMap[ S, Any ]()
-      private val map            = ConfluentCacheMap[ S, Any ]( storage )
+      private val persistent     = ConfluentPersistentMap[ S, Any ]( store )
+      private val map            = ConfluentCacheMap[ S, Any ]( persistent )
 
       private val idCntVar: ScalaRef[ Int ] = ScalaRef {
          atomic { implicit tx =>
@@ -467,7 +470,7 @@ object KSysImpl {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
-      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
+      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "write <" + id + ">" )
          map.put[ A ]( id.id, id.path, value )
       }

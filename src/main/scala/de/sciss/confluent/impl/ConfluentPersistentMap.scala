@@ -28,35 +28,71 @@ package impl
 
 import collection.immutable.{LongMap, IntMap}
 import de.sciss.collection.txn.Ancestor
-import de.sciss.lucre.stm.{TxnReader, TxnWriter, Sys}
+import annotation.switch
+import de.sciss.lucre.stm.{TxnSerializer, PersistentStore, TxnReader, TxnWriter, Sys}
 
 object ConfluentPersistentMap {
-   private type MapType[ S <: Sys[ S ], ~ ] = IntMap[ LongMap[ Entry[ Marked[ S, ~ ]]]]
-   private def EmptyMap[ S <: Sys[ S ], ~ ] : MapType[ S, ~ ] = IntMap.empty
-   private type Marked[ S <: Sys[ S ], ~ ] = Ancestor.Map[ S, Int, ~ ]
 
-//   def apply[ A ]() : ConfluentTxnMap[ A ] = new Impl[ A ]
-   def apply[ S <: Sys[ S ], A ]() : ConfluentTxnMap[ S#Tx, S#Acc ] = new Impl[ S ]
-//   def ref[ S <: Sys[ S ], A ]()   : ConfluentTxnMap[ S#Tx, S#Acc, A ] = new Impl[ S, A ]( Ref( EmptyMap[ S, A ]))
+   def apply[ S <: KSys[ S ], A ]( store: PersistentStore[ S#Tx ]) : ConfluentTxnMap[ S#Tx, S#Acc ] =
+      new Impl[ S ]( store )
 
-   private val emptyLongMapVal   = LongMap.empty[ Any ]
-   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
+//   private val emptyLongMapVal   = LongMap.empty[ Any ]
+//   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: Sys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {
-//      private val idMapRef = TxnLocal[ MapType[ A ]]( IntMap.empty )
+   private final class Impl[ S <: KSys[ S ]]( store: PersistentStore[ S#Tx ])
+   extends ConfluentTxnMap[ S#Tx, S#Acc ] {
 
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) {
-//         idMapRef.transform { idMap =>
-//            val mapOld  = idMap.getOrElse( id, emptyLongMap[ Entry[ A ]])
-//            var mapNew  = mapOld
-//            Hashing.foreachPrefix( path, mapOld.contains ) {
-//               case (key, preSum) =>
-//                  mapNew += ((key, /* if( preSum == 0L ) ValueNone else */ EntryPre( preSum )))
-//            }
-//            mapNew += ((path.sum, EntryFull( value )))
-//            idMap + ((id, mapNew))
-//         }
-         sys.error( "TODO" )
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         val (index, term) = path.splitIndex
+         val indexSum      = index.sum
+         // first, check if the index exists
+//         if( store.contains { out =>
+//            out.writeInt( id )
+//            out.writeLong( indexSum )
+//         })
+         store.flatGet { out =>
+            out.writeInt( id )
+            out.writeLong( indexSum )
+         } { in =>
+            (in.readUnsignedByte(): @switch) match {
+               case 1 =>
+                  val term = in.readInt()
+                  val access : S#Acc = sys.error( "TODO" )
+                  val prev = ser.read( in, access )
+                  Some( EntrySingle( prev ))
+               case 2 =>
+                  val anc : Ancestor.Map[ S, Int, A ] = sys.error( "TODO" )
+                  Some( EntryMark( anc ))
+               case _ => None
+            }
+         } match {
+            case Some( entry ) => sys.error( "TODO" )
+            case _ =>
+         }
+
+         // store the prefixes
+         Hashing.foreachPrefix( index, key => store.contains { out =>
+            out.writeInt( id )
+            out.writeLong( key )
+         }) {
+            // for each key which is the partial sum, we store preSum which is the longest prefix of \tau' in \Pi
+            case (key, preSum) => store.put { out =>
+               out.writeInt(  id )
+               out.writeLong( key )
+            } { out =>
+               out.writeUnsignedByte( 0 ) // aka EntryPre
+               out.writeLong( preSum )
+            }
+         }
+         // then store the full value at the full hash (path.sum)
+         store.put { out =>
+            out.writeInt( id )
+            out.writeLong( indexSum )
+         } { out =>
+            out.writeUnsignedByte( 1 )    // aka EntryFull
+            out.writeInt( term )
+            ser.write( value, out )
+         }
       }
 
       def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ] = {
@@ -74,8 +110,9 @@ sys.error( "TODO" )
       }
    }
 
-   private sealed trait Entry[ +A ]
+   private sealed trait Entry[ S <: Sys[ S ], +A ]
 //   private case object ValueNone extends Value[ Nothing ]
-   private case class EntryPre( /* len: Int, */ hash: Long ) extends Entry[ Nothing ]
-   private case class EntryFull[ A ]( v: A ) extends Entry[ A ]
+   private final case class EntryPre[ S <: Sys[ S ]]( /* len: Int, */ hash: Long ) extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: Sys[ S ], A ]( v: A ) extends Entry[ S, A ]
+   private final case class EntryMark[ S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
 }

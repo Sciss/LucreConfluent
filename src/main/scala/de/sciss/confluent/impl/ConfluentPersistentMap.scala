@@ -57,19 +57,37 @@ object ConfluentPersistentMap {
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
                   val term = in.readInt()
-                  val access : S#Acc = sys.error( "TODO" )
-                  val prev = ser.read( in, access )
-                  Some( EntrySingle( prev ))
+//                  val access : S#Acc = path.init :+ term
+                  val prev = ser.read( in, path )
+                  Some( EntrySingle( term, prev ))
                case 2 =>
-                  val anc : Ancestor.Map[ S, Int, A ] = sys.error( "TODO" )
+                  val full = tx.indexTree( index.term )
+                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
                   Some( EntryMark( anc ))
                case _ => None
             }
          } match {
-            case Some( entry ) => sys.error( "TODO" )
+            case Some( EntrySingle( prevTerm, prev )) =>
+               putSecond[ A ]( id, index, term, value, prevTerm, prev )
+            case Some( EntryMark( anc )) =>
+               putMap[ A ]( id, index, term, value, anc )
             case _ =>
+               putFirst[ A ]( id, index, term, value )
          }
+      }
 
+      private def putMap[ A ]( id: Int, index: S#Acc, term: Int, value: A, anc: Ancestor.Map[ S, Int, A ])
+                             ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         sys.error( "TODO" )
+      }
+
+      private def putSecond[ A ]( id: Int, index: S#Acc, term: Int, value: A, prevTerm: Int, prevValue: A )
+                                ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         sys.error( "TODO" )
+      }
+
+      private def putFirst[ A ]( id: Int, index: S#Acc, term: Int, value: A )
+                               ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          // store the prefixes
          Hashing.foreachPrefix( index, key => store.contains { out =>
             out.writeInt( id )
@@ -87,9 +105,9 @@ object ConfluentPersistentMap {
          // then store the full value at the full hash (path.sum)
          store.put { out =>
             out.writeInt( id )
-            out.writeLong( indexSum )
+            out.writeLong( index.sum )
          } { out =>
-            out.writeUnsignedByte( 1 )    // aka EntryFull
+            out.writeUnsignedByte( 1 )    // aka EntrySingle
             out.writeInt( term )
             ser.write( value, out )
          }
@@ -111,8 +129,7 @@ sys.error( "TODO" )
    }
 
    private sealed trait Entry[ S <: Sys[ S ], +A ]
-//   private case object ValueNone extends Value[ Nothing ]
-   private final case class EntryPre[ S <: Sys[ S ]]( /* len: Int, */ hash: Long ) extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: Sys[ S ], A ]( v: A ) extends Entry[ S, A ]
-   private final case class EntryMark[ S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
+   private final case class EntryPre[    S <: Sys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Int, v: A ) extends Entry[ S, A ]
+   private final case class EntryMark[   S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
 }

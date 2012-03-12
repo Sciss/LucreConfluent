@@ -26,11 +26,14 @@
 package de.sciss.confluent
 
 import de.sciss.lucre.stm.{Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
+import de.sciss.collection.txn.Ancestor
 
 object KSys {
 //   private type S = KSys
 
-   trait Txn[ S <: KSys[ S ]] extends _Txn[ S ]
+   trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
+      def indexTree( index: Int ) : Ancestor.Tree[ S, Int ]
+   }
 
    trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]
 
@@ -43,7 +46,8 @@ object KSys {
       def mkString( prefix: String, sep: String, suffix: String ) : String
       // append element
       private[confluent] def :+( suffix: Int ) : S#Acc
-      private[confluent] def init : S#Acc
+      private[confluent] def index : S#Acc
+      private[confluent] def term: Int
       // replace last element
       private[confluent] def :-|( suffix: Int ) : S#Acc
       private[confluent] def splitIndex: (S#Acc, Int)

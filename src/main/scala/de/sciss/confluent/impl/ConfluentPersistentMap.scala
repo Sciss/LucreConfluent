@@ -33,13 +33,13 @@ import de.sciss.lucre.stm.{TxnSerializer, PersistentStore, TxnReader, TxnWriter,
 
 object ConfluentPersistentMap {
 
-   def apply[ S <: KSys[ S ], A ]( store: PersistentStore[ S#Tx ]) : ConfluentTxnMap[ S#Tx, S#Acc ] =
+   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ) : ConfluentTxnMap[ S#Tx, S#Acc ] =
       new Impl[ S ]( store )
 
 //   private val emptyLongMapVal   = LongMap.empty[ Any ]
 //   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 
-   private final class Impl[ S <: KSys[ S ]]( store: PersistentStore[ S#Tx ])
+   private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
 
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {

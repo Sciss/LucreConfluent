@@ -36,7 +36,7 @@ import de.sciss.lucre.stm.{Durable, PersistentStoreFactory, InMemory, Persistent
 object KSysImpl {
    private type S = System
 
-   def apply( store: PersistentStore[ S#Tx ]) : System = new System( store )
+   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
 
    final class IDImpl private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
@@ -391,7 +391,7 @@ object KSysImpl {
 
    sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ S#Tx, PersistentStore[ S#Tx ]])
+   final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends KSys[ System ] {
       type ID                    = KSysImpl.IDImpl
       type Tx                    = KSysImpl.TxnImpl
@@ -401,7 +401,7 @@ object KSysImpl {
       val manifest               = Predef.manifest[ System ]
       private val eStore         = storeFactory.open( "ephemeral" )
       private val kStore         = storeFactory.open( "confluent" )
-      private val eSystem        = Durable( eStore )
+      private val eSystem        = Durable( eStore ) : Durable
       private val persistent     = ConfluentPersistentMap[ S, Any ]( kStore )
       private val map            = ConfluentCacheMap[ S, Any ]( persistent )
 

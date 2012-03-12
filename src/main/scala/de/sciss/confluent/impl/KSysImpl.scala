@@ -31,7 +31,7 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
-import de.sciss.lucre.stm.{InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.{Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -391,19 +391,23 @@ object KSysImpl {
 
    sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class System private[KSysImpl]( store: PersistentStore[ S#Tx ]) extends KSys[ System ] {
+   final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ S#Tx, PersistentStore[ S#Tx ]])
+   extends KSys[ System ] {
       type ID                    = KSysImpl.IDImpl
       type Tx                    = KSysImpl.TxnImpl
       type Acc                   = KSysImpl.Path
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       val manifest               = Predef.manifest[ System ]
-      private val persistent     = ConfluentPersistentMap[ S, Any ]( store )
+      private val eStore         = storeFactory.open( "ephemeral" )
+      private val kStore         = storeFactory.open( "confluent" )
+      private val eSystem        = Durable( eStore )
+      private val persistent     = ConfluentPersistentMap[ S, Any ]( kStore )
       private val map            = ConfluentCacheMap[ S, Any ]( persistent )
 
       private val idCntVar: ScalaRef[ Int ] = ScalaRef {
          atomic { implicit tx =>
-            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
+            kStore.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
          }
       }
 
@@ -415,7 +419,7 @@ object KSysImpl {
          })( ctx => inMem.wrap( ctx.peer ))
 
 //      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
-//         store.get[ Ancestor.Tree[ S, Int ]] { out =>
+//         kStore.get[ Ancestor.Tree[ S, Int ]] { out =>
 //            sys.error( "TODO" )
 //
 //         } { out =>
@@ -434,7 +438,7 @@ object KSysImpl {
 //         logConfig( "new   <" + id + ">" )
          idCntVar.set( res )
          // ... and persist ...
-         store.put( _.writeInt( 0 ))( _.writeInt( res ))
+         kStore.put( _.writeInt( 0 ))( _.writeInt( res ))
          res
       }
 
@@ -481,10 +485,10 @@ object KSysImpl {
 //      }
 
       def close() {
-         store.close()
+         kStore.close()
       }
 
-      def numRecords( implicit tx: S#Tx ): Int = store.numEntries
+      def numRecords( implicit tx: S#Tx ): Int = kStore.numEntries
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
@@ -496,7 +500,7 @@ object KSysImpl {
 //      def remove( id: S#ID )( implicit tx: S#Tx ) {
 //         sys.error( "TODO" )
 ////         logConfig( "remov <" + id + ">" )
-////         store.remove( _.writeInt( id ))
+////         kStore.remove( _.writeInt( id ))
 //      }
 
       private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,

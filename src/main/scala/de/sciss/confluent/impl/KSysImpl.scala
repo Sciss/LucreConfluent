@@ -29,10 +29,10 @@ package impl
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
-import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike, IndexedSeqLike}
-import collection.immutable.{IntMap, LongMap}
-import concurrent.stm.{TxnExecutor, TxnLocal, InTxn, Ref => ScalaRef}
+import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
+import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
 import de.sciss.lucre.stm.{InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.collection.txn.Ancestor
 
 object KSysImpl {
    private type S = System
@@ -100,6 +100,9 @@ object KSysImpl {
          foreach( out.writeInt( _ ))
       }
 
+      def index : Path = wrap( tree.init )
+      def term : Int = tree.last
+
       def size : Int = tree.measure._1
       def sum : Long = tree.measure._2
 
@@ -127,6 +130,8 @@ object KSysImpl {
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
+
+      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
       private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
@@ -399,12 +404,16 @@ object KSysImpl {
          }
       }
 
-//      private val inMem    = InMemory()
+      private val inMem    = InMemory()
 
-      private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] = sys.error( "TODO" )
-//         ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
-//         tx.newIntVar( tx.newID(), 0 )
-//      })( ctx => inMem.wrap( ctx.peer ))
+      private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
+         ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
+            tx.newIntVar( tx.newID(), 0 )
+         })( ctx => inMem.wrap( ctx.peer ))
+
+      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
+         sys.error( "TODO" )
+      }
 
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
          new IDImpl( newIDValue(), Path.empty )

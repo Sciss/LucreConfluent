@@ -32,7 +32,7 @@ object KSys {
 //   private type S = KSys
 
    trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
-      def indexTree( index: Int ) : Ancestor.Tree[ S, Int ]
+      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ]
    }
 
    trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]

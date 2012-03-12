@@ -34,6 +34,7 @@ object KSys {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
       def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
+      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
    }
 
    trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]

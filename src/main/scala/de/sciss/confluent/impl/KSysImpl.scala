@@ -150,6 +150,10 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
+      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+         sys.error( "TODO" )
+      }
+
       private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {

@@ -1,11 +1,9 @@
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.Sys
-
-trait IndexTree[ S <: Sys[ S ]] {
+trait IndexTree[ S <: KSys[ S ]] {
 
 }
 
-trait IndexMap[ S <: Sys[ S ], A ] {
-
+trait IndexMap[ S <: KSys[ S ], A ] {
+   def add( term: Long, value: A )( implicit tx: S#Tx ) : Unit
 }

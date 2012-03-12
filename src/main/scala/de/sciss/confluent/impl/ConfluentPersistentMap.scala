@@ -63,32 +63,35 @@ object ConfluentPersistentMap {
                case 2 =>
 //                  val full = tx.indexTree( index.term )
 //                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
-                  val m = tx.readIndexMap( index )
-                  Some( EntryMark( m ))
+                  val m = tx.readIndexMap[ A ]( index )
+                  Some( EntryMap( m ))
                case _ => None
             }
          } match {
             case Some( EntrySingle( prevTerm, prev )) =>
-               putSecond[ A ]( id, index, term, value, prevTerm, prev )
-            case Some( EntryMark( m )) =>
-               putMap[ A ]( id, index, term, value, m )
+               putNewMap[ A ]( id, index, term, value, prevTerm, prev )
+            case Some( EntryMap( m )) =>
+               putExitingMap[ A ]( id, index, term, value, m )
             case _ =>
-               putFirst[ A ]( id, index, term, value )
+               putSingle[ A ]( id, index, term, value )
          }
       }
 
-      private def putMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, m: IndexMap[ S, A ])
-                             ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      private def putExitingMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, m: IndexMap[ S, A ])
+                                    ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          sys.error( "TODO" )
       }
 
-      private def putSecond[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
+      private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
                                 ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         sys.error( "TODO" )
+         require( prevTerm != term, "Duplicate flush within same transaction?" )
+         require( prevTerm == index.term, "Expected initial assignment term " + index.term + ", but found " + prevTerm )
+         val m = tx.newIndexMap[ A ]( index, prevValue )
+         m.add( term, value )
       }
 
-      private def putFirst[ A ]( id: Int, index: S#Acc, term: Long, value: A )
-                               ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      private def putSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
+                                ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          // store the prefixes
          Hashing.foreachPrefix( index, key => store.contains { out =>
             out.writeInt( id )
@@ -129,9 +132,8 @@ sys.error( "TODO" )
       }
    }
 
-   private sealed trait Entry[ S <: Sys[ S ], +A ]
-   private final case class EntryPre[    S <: Sys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
-//   private final case class EntryMark[   S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
-   private final case class EntryMark[   S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
+   private sealed trait Entry[ S <: KSys[ S ], +A ]
+   private final case class EntryPre[    S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
+   private final case class EntryMap[   S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }

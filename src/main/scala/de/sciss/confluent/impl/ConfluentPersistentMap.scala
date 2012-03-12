@@ -77,17 +77,17 @@ object ConfluentPersistentMap {
          }
       }
 
-      private def putMap[ A ]( id: Int, index: S#Acc, term: Int, value: A, m: IndexMap[ S, A ])
+      private def putMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, m: IndexMap[ S, A ])
                              ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          sys.error( "TODO" )
       }
 
-      private def putSecond[ A ]( id: Int, index: S#Acc, term: Int, value: A, prevTerm: Int, prevValue: A )
+      private def putSecond[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
                                 ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          sys.error( "TODO" )
       }
 
-      private def putFirst[ A ]( id: Int, index: S#Acc, term: Int, value: A )
+      private def putFirst[ A ]( id: Int, index: S#Acc, term: Long, value: A )
                                ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          // store the prefixes
          Hashing.foreachPrefix( index, key => store.contains { out =>
@@ -109,7 +109,7 @@ object ConfluentPersistentMap {
             out.writeLong( index.sum )
          } { out =>
             out.writeUnsignedByte( 1 )    // aka EntrySingle
-            out.writeInt( term )
+            out.writeLong( term )
             ser.write( value, out )
          }
       }
@@ -131,7 +131,7 @@ sys.error( "TODO" )
 
    private sealed trait Entry[ S <: Sys[ S ], +A ]
    private final case class EntryPre[    S <: Sys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Int, v: A ) extends Entry[ S, A ]
+   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
 //   private final case class EntryMark[   S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
    private final case class EntryMark[   S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }

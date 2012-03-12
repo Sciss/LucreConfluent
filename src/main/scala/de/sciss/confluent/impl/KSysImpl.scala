@@ -69,38 +69,52 @@ object KSysImpl {
 
 //   private object PathMeasure extends Measure[ Int, (Int, Long) ]
 
+   private object PathMeasure extends Measure[ Long, (Int, Long) ] {
+      override def toString = "PathMeasure"
+      val zero = (0, 0L)
+      def apply( c: Long ) = (1, c >> 32)
+      def |+|( a: (Int, Long), b: (Int, Long) ) = ((a._1 + b._1), (a._2 + b._2))
+      def |+|( a: (Int, Long), b: (Int, Long), c: (Int, Long) ) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
+   }
+
    object Path {
       def test_empty : Path = empty
-      private[KSysImpl] def empty = new Path( FingerTree.empty( Measure.IndexedSummedIntLong ))
+      private[KSysImpl] def empty = new Path( FingerTree.empty( PathMeasure ))
    }
-   final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Int ])
-   extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Int, Path ] {
-      implicit protected def m: Measure[ Int, (Int, Long) ] = Measure.IndexedSummedIntLong
 
-      def foreach( fun: Int => Unit ) {
-         // XXX TODO efficient implementation
-         tree.iterator.foreach( fun )
-      }
+   /**
+    * The finger tree has elements of type `Long` where the upper 32 bits are the randomized version,
+    * and the lower 32 bits are the incremental version. The measure is taking the index and running sum
+    * of the tree.
+    */
+   final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Long ])
+   extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
+      implicit protected def m: Measure[ Long, (Int, Long) ] = PathMeasure
+
+//      def foreach( fun: Int => Unit ) {
+//         // XXX TODO efficient implementation
+//         tree.iterator.foreach( fun )
+//      }
 
       override def toString = mkString( "Path(", ", ", ")" )
 
-      def test_:+( elem: Int ) : Path = :+( elem )
+      def test_:+( elem: Long ) : Path = :+( elem )
 
-      private[confluent] def :+( suffix: Int ) : Path = wrap( tree :+ suffix )
-
-      // XXX TODO should have an efficient method in finger tree
-      private[confluent] def :-|( suffix: Int ) : Path = wrap( tree.init :+ suffix )
+      private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def splitIndex : (Path, Int) = (init, last)
+      private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
+
+      // XXX TODO should have an efficient method in finger tree
+      private[confluent] def splitIndex : (Path, Long) = (init, last)
 
       def write( out: DataOutput ) {
          out.writeInt( size )
-         foreach( out.writeInt( _ ))
+         tree.iterator.foreach( out.writeLong )
       }
 
       def index : Path = wrap( tree.init )
-      def term : Int = tree.last
+      def term : Long = tree.last
 
       def size : Int = tree.measure._1
       def sum : Long = tree.measure._2
@@ -115,10 +129,10 @@ object KSysImpl {
 
       def take( n: Int ) : PathLike = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
 
-      protected def wrap( _tree: FingerTree[ (Int, Long), Int ]) : Path = new Path( _tree )
+      protected def wrap( _tree: FingerTree[ (Int, Long), Long ]) : Path = new Path( _tree )
 
       def mkString( prefix: String, sep: String, suffix: String ) : String =
-         tree.iterator.mkString( prefix, sep, suffix )
+         tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
    }
 
    final class TxnImpl private[KSysImpl]( val system: System, val peer: InTxn )
@@ -399,15 +413,15 @@ object KSysImpl {
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       val manifest               = Predef.manifest[ System ]
-      private val eStore         = storeFactory.open( "ephemeral" )
-      private val kStore         = storeFactory.open( "confluent" )
-      private val eSystem        = Durable( eStore ) : Durable
-      private val persistent     = ConfluentPersistentMap[ S, Any ]( kStore )
+      private val store          = storeFactory.open( "data" )
+//      private val kStore         = storeFactory.open( "confluent" )
+      private val eSystem        = Durable( store ) : Durable
+      private val persistent     = ConfluentPersistentMap[ S, Any ]( store )
       private val map            = ConfluentCacheMap[ S, Any ]( persistent )
 
       private val idCntVar: ScalaRef[ Int ] = ScalaRef {
          atomic { implicit tx =>
-            kStore.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
+            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
          }
       }
 
@@ -438,7 +452,7 @@ object KSysImpl {
 //         logConfig( "new   <" + id + ">" )
          idCntVar.set( res )
          // ... and persist ...
-         kStore.put( _.writeInt( 0 ))( _.writeInt( res ))
+         store.put( _.writeInt( 0 ))( _.writeInt( res ))
          res
       }
 
@@ -485,10 +499,10 @@ object KSysImpl {
 //      }
 
       def close() {
-         kStore.close()
+         store.close()
       }
 
-      def numRecords( implicit tx: S#Tx ): Int = kStore.numEntries
+      def numRecords( implicit tx: S#Tx ): Int = store.numEntries
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 

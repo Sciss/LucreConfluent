@@ -1,0 +1,9 @@
+:::::::::: shared store ::::::::::
+
+confluent keys
+<int id><long hash> --> partial or full record
+
+ephemeral keys
+<int id> --> ancestor data structures
+         --> version trees?
+

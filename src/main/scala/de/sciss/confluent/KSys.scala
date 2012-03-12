@@ -25,7 +25,6 @@
 
 package de.sciss.confluent
 
-import de.sciss.collection.txn.Ancestor
 import de.sciss.lucre.stm.{TxnSerializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
 
 object KSys {
@@ -47,12 +46,12 @@ object KSys {
    trait Acc[ S <: KSys[ S ]] extends Writer with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
       // append element
-      private[confluent] def :+( suffix: Int ) : S#Acc
+      private[confluent] def :+( suffix: Long ) : S#Acc
       private[confluent] def index : S#Acc
-      private[confluent] def term: Int
+      private[confluent] def term: Long
       // replace last element
-      private[confluent] def :-|( suffix: Int ) : S#Acc
-      private[confluent] def splitIndex: (S#Acc, Int)
+      private[confluent] def :-|( suffix: Long ) : S#Acc
+      private[confluent] def splitIndex: (S#Acc, Long)
    }
 }
 trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {

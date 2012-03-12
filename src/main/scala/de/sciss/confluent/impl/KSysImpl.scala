@@ -32,7 +32,6 @@ import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
 import de.sciss.lucre.stm.{InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
-import de.sciss.collection.txn.Ancestor
 
 object KSysImpl {
    private type S = System

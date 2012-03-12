@@ -25,14 +25,16 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
 import de.sciss.collection.txn.Ancestor
+import de.sciss.lucre.stm.{TxnSerializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
 
 object KSys {
 //   private type S = KSys
 
    trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
-      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ]
+//      def indexTree( version: Int ) : IndexTree[ S ]
+
+      def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
    }
 
    trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]

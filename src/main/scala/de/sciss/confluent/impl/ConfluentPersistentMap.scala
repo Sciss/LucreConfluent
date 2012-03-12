@@ -61,22 +61,23 @@ object ConfluentPersistentMap {
                   val prev = ser.read( in, path )
                   Some( EntrySingle( term, prev ))
                case 2 =>
-                  val full = tx.indexTree( index.term )
-                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
-                  Some( EntryMark( anc ))
+//                  val full = tx.indexTree( index.term )
+//                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
+                  val m = tx.readIndexMap( index )
+                  Some( EntryMark( m ))
                case _ => None
             }
          } match {
             case Some( EntrySingle( prevTerm, prev )) =>
                putSecond[ A ]( id, index, term, value, prevTerm, prev )
-            case Some( EntryMark( anc )) =>
-               putMap[ A ]( id, index, term, value, anc )
+            case Some( EntryMark( m )) =>
+               putMap[ A ]( id, index, term, value, m )
             case _ =>
                putFirst[ A ]( id, index, term, value )
          }
       }
 
-      private def putMap[ A ]( id: Int, index: S#Acc, term: Int, value: A, anc: Ancestor.Map[ S, Int, A ])
+      private def putMap[ A ]( id: Int, index: S#Acc, term: Int, value: A, m: IndexMap[ S, A ])
                              ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          sys.error( "TODO" )
       }
@@ -131,5 +132,6 @@ sys.error( "TODO" )
    private sealed trait Entry[ S <: Sys[ S ], +A ]
    private final case class EntryPre[    S <: Sys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
    private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Int, v: A ) extends Entry[ S, A ]
-   private final case class EntryMark[   S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
+//   private final case class EntryMark[   S <: Sys[ S ], A ]( t: Ancestor.Map[ S, Int, A ]) extends Entry[ S, A ]
+   private final case class EntryMark[   S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }

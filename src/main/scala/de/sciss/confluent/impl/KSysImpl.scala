@@ -131,7 +131,11 @@ object KSysImpl {
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
+//      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
+
+      def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+         sys.error( "TODO" )
+      }
 
       private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
@@ -411,9 +415,15 @@ object KSysImpl {
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
 
-      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
-         sys.error( "TODO" )
-      }
+//      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
+//         store.get[ Ancestor.Tree[ S, Int ]] { out =>
+//            sys.error( "TODO" )
+//
+//         } { out =>
+//            sys.error( "TODO" )
+//
+//         } getOrElse sys.error( "Trying to access inexisting tree (version " + version + ")" )
+//      }
 
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
          new IDImpl( newIDValue(), Path.empty )

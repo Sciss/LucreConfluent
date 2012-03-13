@@ -25,4 +25,4 @@ val p0 = Path.test_empty
 val p1 = p0 test_:+ rnd.nextInt()
 val p2 = p1 test_:+ rnd.nextInt()
 val p3 = p1 test_:+ rnd.nextInt()
-val m = impl.ConfluentMemoryMap.ref[ String ]()"""
+// val m = impl.ConfluentMemoryMap.ref[ String ]()"""

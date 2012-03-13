@@ -63,7 +63,7 @@ object TxnRandom {
       def nextInt()( implicit tx: InTxn ) : Int = next( 32 )
 
       def nextInt( n: Int )( implicit tx: InTxn ) : Int = {
-         require( n <= 0, "n must be positive" )
+         require( n > 0, "n must be positive" )
 
          if( (n & -n) == n ) {  // n is a power of 2
             return ((n * next( 31 ).toLong) >> 31).toInt

@@ -11,7 +11,7 @@ object Test1 extends App {
 
    val dir     = File.createTempFile( "database", "db" )
    dir.delete()
-   val store   = BerkeleyDB.open( dir )
+   val store   = BerkeleyDB.factory( dir )
    val s       = KSysImpl( store )
 
    object Node {

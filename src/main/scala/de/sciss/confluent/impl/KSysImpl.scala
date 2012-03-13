@@ -135,6 +135,10 @@ object KSysImpl {
          tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
    }
 
+   private sealed trait IndexMapImpl[ A ] extends IndexMap[ S, A ] {
+
+   }
+
    final class TxnImpl private[KSysImpl]( val system: System, val peer: InTxn )
    extends KSys.Txn[ S ] {
 

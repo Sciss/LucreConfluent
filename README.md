@@ -16,7 +16,7 @@ TemporalObjects is an ongoing attempt to build a confluent persistence framework
 
 Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The required snapshot versions of the dependencies [LucreSTM](https://github.com/Sciss/LucreSTM) and [LucreData](https://github.com/Sciss/LucreData) are currently not in any repository, so you need to clone them and export each of them with `sbt publish-local` first.
 
-## creating an IntelliJ IDEA project
+### creating an IntelliJ IDEA project
 
 To develop the sources of TemporalObjects, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
 

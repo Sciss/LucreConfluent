@@ -26,6 +26,7 @@
 package de.sciss.confluent
 
 import de.sciss.lucre.stm.{TxnSerializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
+import de.sciss.lucre.DataInput
 
 object KSys {
 //   private type S = KSys
@@ -33,7 +34,7 @@ object KSys {
    trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
-      def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
+      def readIndexMap[ A ]( in: DataInput, index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ]
    }
 

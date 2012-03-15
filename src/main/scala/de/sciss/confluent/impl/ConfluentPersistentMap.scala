@@ -61,7 +61,7 @@ object ConfluentPersistentMap {
                case 2 =>
 //                  val full = tx.indexTree( index.term )
 //                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
-                  val m = tx.readIndexMap[ A ]( index )
+                  val m = tx.readIndexMap[ A ]( in, index )
                   Some( EntryMap( m ))
                case _ => None
             }
@@ -127,7 +127,7 @@ object ConfluentPersistentMap {
                   val prev = ser.read( in, path )
                   prev
                case 2 =>
-                  val m = tx.readIndexMap[ A ]( index )
+                  val m = tx.readIndexMap[ A ]( in, index )
                   m.nearest( term )
             }
          }

@@ -170,7 +170,7 @@ object KSysImpl {
    final class TxnImpl private[KSysImpl]( val system: System, val peer: InTxn )
    extends KSys.Txn[ S ] {
 
-      private[KSysImpl] lazy val durable: Durable#Tx = system.durable.wrap( peer )
+      private[KSysImpl] implicit lazy val durable: Durable#Tx = system.durable.wrap( peer )
 
       def newID() : S#ID = system.newID()( this )
 
@@ -180,12 +180,28 @@ object KSysImpl {
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
-      private def readIndexTree( in: DataInput, index: S#Acc ) : Ancestor.Tree[ Durable, Long ] =
-         Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
+      private def readIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+         system.store.get { out =>
+            out.writeUnsignedByte( 1 )
+            out.writeInt( term.toInt )
+         } { in =>
+            Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
+         } getOrElse sys.error( "Trying to access inexisting tree " + term )
+      }
 
-      def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
-//         val tree =
-         sys.error( "TODO" )
+      def readIndexMap[ A ]( in: DataInput, index: S#Acc )
+                           ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+         val term = index.term
+         val full = readIndexTree( term )
+         implicit val testSer = new TxnSerializer[ Durable#Tx, Durable#Acc, A ] {
+            def write( v: A, out: DataOutput ) { serializer.write( v, out )}
+            def read( in: DataInput, access: Unit )( implicit tx: Durable#Tx ) : A = {
+//               serializer.read( in, access )
+               sys.error( "TODO" )
+            }
+         }
+         val map = Ancestor.readMap[ Durable, Long, A ]( in, (), full )
+         new IndexMapNew[ A ]( index, map )
       }
 
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {

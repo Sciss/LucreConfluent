@@ -150,6 +150,7 @@ object KSysImpl {
          map.add( (v, value) )( tx.durable )
       }
 
+      // XXX TODO eventually should use caching
       private def termToVertex( term: Long )( implicit tx: S#Tx ) : Ancestor.Vertex[ Durable, Long ] = {
          val vs   = map.full.vertexSerializer
          tx.system.store.get { out =>
@@ -179,12 +180,16 @@ object KSysImpl {
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
+      private def readIndexTree( in: DataInput, index: S#Acc ) : Ancestor.Tree[ Durable, Long ] =
+         Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
+
       def readIndexMap[ A ]( index: S#Acc )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+//         val tree =
          sys.error( "TODO" )
       }
 
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
-
+//         val tree = readIndexTree( ... )
 
          sys.error( "TODO" )
       }

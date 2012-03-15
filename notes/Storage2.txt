@@ -12,3 +12,20 @@ ephemeral keys
       def get( version: K )( implicit tx: S#Tx ) : Option[ V ]
       def nearest( version: K )( implicit tx: S#Tx ) : (K, V)
 
+:::::::::::::
+
+the marked trees are more easy, because we can store
+their ids
+
+the full trees would either follow an id pattern that
+is directly derived from the version id; or there is
+only a root entry, and all other tree id's are
+gathered in memory when opening the databse
+
+a third way would be in the middle -- e.g. store trees
+at <byte cookie><int version-id> so there is no id conflict with the regular underlying Durable system for the full and mark trees
+
+we also need access to instances of Ancester.Vertex; they could be represented by another cookie:
+
+<byte 0><int versionId> --> vertex
+<byte 1><int versionId> --> tree

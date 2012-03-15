@@ -32,6 +32,7 @@ import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
 import de.sciss.lucre.stm.{Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.collection.txn.Ancestor
 
 object KSysImpl {
    private type S = System
@@ -136,11 +137,39 @@ object KSysImpl {
    }
 
    private sealed trait IndexMapImpl[ A ] extends IndexMap[ S, A ] {
+      protected def index: S#Acc
+      protected def map: Ancestor.Map[ Durable, Long, A ]
 
+      final def nearest( term: Long )( implicit tx: S#Tx ) : A = {
+         val v = termToVertex( term )
+         map.nearest( v )( tx.durable )._2
+      }
+
+      final def add( term: Long, value: A )( implicit tx: S#Tx ) {
+         val v = termToVertex( term )
+         map.add( (v, value) )( tx.durable )
+      }
+
+      private def termToVertex( term: Long )( implicit tx: S#Tx ) : Ancestor.Vertex[ Durable, Long ] = {
+         val vs   = map.full.vertexSerializer
+         tx.system.store.get { out =>
+            out.writeUnsignedByte( 0 )
+            out.writeInt( term.toInt )
+         } { in =>
+            val access = index :+ term
+            vs.read( in, access )( tx.durable )
+         } getOrElse sys.error( "Trying to access inexisting vertex " + term )
+      }
    }
+
+   private final class IndexMapNew[ A ]( protected val index: S#Acc,
+                                         protected val map: Ancestor.Map[ Durable, Long, A ])
+   extends IndexMapImpl[ A ]
 
    final class TxnImpl private[KSysImpl]( val system: System, val peer: InTxn )
    extends KSys.Txn[ S ] {
+
+      private[KSysImpl] lazy val durable: Durable#Tx = system.durable.wrap( peer )
 
       def newID() : S#ID = system.newID()( this )
 
@@ -155,8 +184,22 @@ object KSysImpl {
       }
 
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+
+
          sys.error( "TODO" )
       }
+
+//      private[KSysImpl] def readVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+//         val vs   = map.full.vertexSerializer
+//         val v    = tx.system.store.get { out =>
+//            out.writeUnsignedByte( 0 )
+//            out.writeInt( term.toInt )
+//         } { in =>
+//            val access = index :+ term
+//            vs.read( in, access )( tx.durable )
+//         } getOrElse sys.error( "Trying to access inexisting vertex " + term )
+//
+//      }
 
       private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
@@ -421,11 +464,11 @@ object KSysImpl {
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
       val manifest               = Predef.manifest[ System ]
-      private val store          = storeFactory.open( "data" )
+      private[KSysImpl] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
-      private val eSystem        = Durable( store ) : Durable
-      private val persistent     = ConfluentPersistentMap[ S, Any ]( store )
-      private val map            = ConfluentCacheMap[ S, Any ]( persistent )
+      private[KSysImpl] val durable = Durable( store ) : Durable
+      private val persistent        = ConfluentPersistentMap[ S, Any ]( store )
+      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
       private val idCntVar: ScalaRef[ Int ] = ScalaRef {
          atomic { implicit tx =>

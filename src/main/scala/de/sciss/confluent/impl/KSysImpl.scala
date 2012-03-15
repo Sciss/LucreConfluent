@@ -46,8 +46,8 @@ object KSysImpl {
          var h = startHash( 2 )
          val c = startMagicA
          val k = startMagicB
-         h = extendHash( h, id, c, k )
-         h = extendHash( h, path.##, nextMagicA( c ), nextMagicB( k ))
+         h     = extendHash( h, id, c, k )
+         h     = extendHash( h, path.##, nextMagicA( c ), nextMagicB( k ))
          finalizeHash( h )
       }
 
@@ -526,7 +526,7 @@ object KSysImpl {
 //      }
 
       private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
-                                                               reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+                                                               ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
          map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
       }
    }

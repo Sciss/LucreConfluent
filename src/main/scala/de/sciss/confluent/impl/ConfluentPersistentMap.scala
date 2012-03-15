@@ -26,10 +26,8 @@
 package de.sciss.confluent
 package impl
 
-import collection.immutable.{LongMap, IntMap}
-import de.sciss.collection.txn.Ancestor
 import annotation.switch
-import de.sciss.lucre.stm.{TxnSerializer, PersistentStore, TxnReader, TxnWriter, Sys}
+import de.sciss.lucre.stm.{TxnSerializer, PersistentStore}
 
 object ConfluentPersistentMap {
 
@@ -71,15 +69,10 @@ object ConfluentPersistentMap {
             case Some( EntrySingle( prevTerm, prev )) =>
                putNewMap[ A ]( id, index, term, value, prevTerm, prev )
             case Some( EntryMap( m )) =>
-               putExitingMap[ A ]( id, index, term, value, m )
+               m.add( term, value )
             case _ =>
                putSingle[ A ]( id, index, term, value )
          }
-      }
-
-      private def putExitingMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, m: IndexMap[ S, A ])
-                                    ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         sys.error( "TODO" )
       }
 
       private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
@@ -117,23 +110,32 @@ object ConfluentPersistentMap {
          }
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ] = {
-//         val idMap   = idMapRef.get( tx.peer )
-//         val map     = idMap( id )
-sys.error( "TODO" )
-//         map( Hashing.maxPrefixKey( path, map.contains )) match {
-//            case EntryFull( v )      => v
-//            case EntryPre( hash )    => map( hash ) match {
-//               case EntryFull( v )   => v
-//               case _                => sys.error( "Orphaned partial prefix for id " + id + " and path " + path )
-//            }
-////            case ValueNone           => throw new NoSuchElementException( "path not found: " + path )
-//         }
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+         val (index, term) = path.splitIndex
+         val pre = Hashing.maxPrefixKey( index, key => store.contains { out =>
+            out.writeInt( id )
+            out.writeLong( key )
+         })
+         store.get { out =>
+            out.writeInt( id )
+            out.writeLong( pre )
+         } { in =>
+            (in.readUnsignedByte(): @switch) match {
+               case 1 =>
+                  val term2 = in.readInt()
+                  assert( term == term2 )
+                  val prev = ser.read( in, path )
+                  prev
+               case 2 =>
+                  val m = tx.readIndexMap[ A ]( index )
+                  m.nearest( term )
+            }
+         }
       }
    }
 
    private sealed trait Entry[ S <: KSys[ S ], +A ]
-   private final case class EntryPre[    S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
-   private final case class EntryMap[   S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
+   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )         extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A )   extends Entry[ S, A ]
+   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }

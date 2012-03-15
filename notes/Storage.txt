@@ -96,7 +96,7 @@ mark tree
 :::::: vr.get ::::::
 
 dbGetAndResolve
-  (mod1, map1, pre1) = dbMaxPrefix( key, map, dbView )
+  (mod1, map1, pre1) = dbMaxPrefix( key, map, dbView ) // == Hashing.maxPrefixLength
   pre1Sz  = pre1.size
   pre1Sum = pre1.sum
   if( pre1Sz == 0 ) return None

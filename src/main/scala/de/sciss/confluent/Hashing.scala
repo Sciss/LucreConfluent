@@ -127,7 +127,7 @@ object Hashing {
 
    def maxPrefixKey( s: PathLike, contains: Long => Boolean ) : Long = maxPrefixKey( s, s.size, contains )
 
-   @inline private def maxPrefixKey( s: PathLike, sz: Int, contains: Long => Boolean ) : Long = {
+   def maxPrefixKey( s: PathLike, sz: Int, contains: Long => Boolean ) : Long = {
       val pre1Len = maxPrefixLength( s, sz, contains )
       val pre1Sum = s.sumUntil( pre1Len )
       if( contains( pre1Sum )) pre1Sum else s.sumUntil( pre1Len - 1 )

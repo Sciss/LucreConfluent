@@ -7,3 +7,8 @@ ephemeral keys
 <int id> --> ancestor data structures
          --> version trees?
 
+      def add( entry: (K, V) )( implicit tx: S#Tx ) : Boolean
+      def remove( version: K )( implicit tx: S#Tx ) : Boolean
+      def get( version: K )( implicit tx: S#Tx ) : Option[ V ]
+      def nearest( version: K )( implicit tx: S#Tx ) : (K, V)
+

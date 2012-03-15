@@ -52,9 +52,8 @@ object ConfluentCacheMap {
          dirtyVar = true
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
          idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]]
-//            .getOrElse( sys.error( "TODO" )).asInstanceOf[ A ]
       }
 
       def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) {

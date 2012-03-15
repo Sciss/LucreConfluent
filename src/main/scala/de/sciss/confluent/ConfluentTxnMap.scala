@@ -25,10 +25,10 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{TxnSerializer, TxnWriter, TxnReader}
+import de.sciss.lucre.stm.TxnSerializer
 
 
 trait ConfluentTxnMap[ Txn, Access ] {
    def put[ A ]( id: Int, path: Access, value: A )( implicit tx: Txn, serializer: TxnSerializer[ Txn, Access, A ]) : Unit
-   def get[ A ]( id: Int, path: Access )( implicit tx: Txn, reader: TxnReader[ Txn, Access, A ]) : Option[ A ]
+   def get[ A ]( id: Int, path: Access )( implicit tx: Txn, serializer: TxnSerializer[ Txn, Access, A ]) : Option[ A ]
 }

@@ -197,6 +197,7 @@ object KSysImpl {
             def write( v: A, out: DataOutput ) { serializer.write( v, out )}
             def read( in: DataInput, access: Unit )( implicit tx: Durable#Tx ) : A = {
 //               serializer.read( in, access )
+               new DataOutput()
                sys.error( "TODO" )
             }
          }

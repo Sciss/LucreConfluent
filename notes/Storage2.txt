@@ -1,4 +1,4 @@
-:::::::::: shared store ::::::::::
+::::::::::::: shared store :::::::::::::
 
 confluent keys
 <int id><long hash> --> partial or full record
@@ -7,9 +7,9 @@ ephemeral keys
 <int id> --> ancestor data structures
          --> version trees?
 
-      def add( entry: (K, V) )( implicit tx: S#Tx ) : Boolean
-      def remove( version: K )( implicit tx: S#Tx ) : Boolean
-      def get( version: K )( implicit tx: S#Tx ) : Option[ V ]
+      def add( entry: (K, V) )(  implicit tx: S#Tx ) : Boolean
+      def remove( version: K )(  implicit tx: S#Tx ) : Boolean
+      def get( version: K )(     implicit tx: S#Tx ) : Option[ V ]
       def nearest( version: K )( implicit tx: S#Tx ) : (K, V)
 
 :::::::::::::
@@ -29,3 +29,15 @@ we also need access to instances of Ancester.Vertex; they could be represented b
 
 <byte 0><int versionId> --> vertex
 <byte 1><int versionId> --> tree
+
+:::::::::::::
+
+two options for dealing with the Durable <-> KSys
+
+(1) store pre-serialized byte array instead
+(2) store indirectly, by creating a new id int which is stored,
+    and then rerieving, e.g. as <int versionId><int newId>
+
+probably (1) is faster, and creates less fuss. on the other hand, (2) might be faster when considering that e.g. the octree is traversed and a lot of deserialization happens 'on the way' without considering the second order deserialization...
+
+in any case, it sucks for primitives

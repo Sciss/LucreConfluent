@@ -27,7 +27,7 @@ package de.sciss.confluent
 package impl
 
 import annotation.switch
-import de.sciss.lucre.stm.{TxnSerializer, PersistentStore}
+import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
 
 object ConfluentPersistentMap {
 
@@ -40,7 +40,7 @@ object ConfluentPersistentMap {
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
 
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
          val indexSum      = index.sum
          // first, check if the index exists
@@ -56,7 +56,7 @@ object ConfluentPersistentMap {
                case 1 =>
                   val term = in.readInt()
 //                  val access : S#Acc = path.init :+ term
-                  val prev = ser.read( in, path )
+                  val prev = ser.read( in )
                   Some( EntrySingle( term, prev ))
                case 2 =>
 //                  val full = tx.indexTree( index.term )
@@ -76,7 +76,7 @@ object ConfluentPersistentMap {
       }
 
       private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
-                                ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                                ( implicit tx: S#Tx, ser: Serializer[ A ]) {
          require( prevTerm != term, "Duplicate flush within same transaction?" )
          require( prevTerm == index.term, "Expected initial assignment term " + index.term + ", but found " + prevTerm )
          val m = tx.newIndexMap[ A ]( index, prevValue )
@@ -110,7 +110,7 @@ object ConfluentPersistentMap {
          }
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
          val (index, term) = path.splitIndex
          val pre = Hashing.maxPrefixKey( index, key => store.contains { out =>
             out.writeInt( id )
@@ -124,7 +124,7 @@ object ConfluentPersistentMap {
                case 1 =>
                   val term2 = in.readInt()
                   assert( term == term2 )
-                  val prev = ser.read( in, path )
+                  val prev = ser.read( in )
                   prev
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )

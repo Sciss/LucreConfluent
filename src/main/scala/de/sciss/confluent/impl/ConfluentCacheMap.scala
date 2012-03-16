@@ -28,7 +28,7 @@ package impl
 
 import collection.immutable.LongMap
 import concurrent.stm.TMap
-import de.sciss.lucre.stm.{TxnSerializer, TxnReader, TxnWriter, Sys}
+import de.sciss.lucre.stm.{Serializer, Sys}
 
 object ConfluentCacheMap {
    def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
@@ -39,20 +39,20 @@ object ConfluentCacheMap {
 
    private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ])
    extends ConfluentCacheMap[ S ] {
-      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Tx, S#Acc, _ ]]]
+      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, _ ]]]
       @volatile private var dirtyVar = false
 
       def isDirty : Boolean = dirtyVar
 
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          implicit val itx = tx.peer
-         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Tx, S#Acc, _ ]])
-         val mapNew  = mapOld + ((path.sum, Write( path, value, ser )))
+         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Acc, _ ]])
+         val mapNew  = mapOld + ((path.sum, Write[ S#Acc, A ]( path, value, ser )))
          idMapRef.put( id, mapNew )
          dirtyVar = true
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
          idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]]
       }
 
@@ -84,8 +84,8 @@ object ConfluentCacheMap {
       }
    }
 
-   private final case class Write[ Txn, Acc, A ]( path: Acc, value: A, serializer: TxnSerializer[ Txn, Acc, A ]) {
-      type A1 = A
+   private final case class Write[ Acc, A ]( path: Acc, value: A, serializer: Serializer[ A ]) {
+//      type A1 = A
    }
 }
 sealed trait ConfluentCacheMap[ S <: Sys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {

@@ -31,8 +31,8 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
-import de.sciss.lucre.stm.{Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 import de.sciss.collection.txn.Ancestor
+import de.sciss.lucre.stm.{Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -190,22 +190,22 @@ object KSysImpl {
       }
 
       def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                           ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+                           ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val term = index.term
          val full = readIndexTree( term )
-         implicit val testSer = new TxnSerializer[ Durable#Tx, Durable#Acc, A ] {
-            def write( v: A, out: DataOutput ) { serializer.write( v, out )}
-            def read( in: DataInput, access: Unit )( implicit tx: Durable#Tx ) : A = {
-//               serializer.read( in, access )
-               new DataOutput()
-               sys.error( "TODO" )
-            }
-         }
+//         implicit val testSer = new TxnSerializer[ Durable#Tx, Durable#Acc, A ] {
+//            def write( v: A, out: DataOutput ) { serializer.write( v, out )}
+//            def read( in: DataInput, access: Unit )( implicit tx: Durable#Tx ) : A = {
+////               serializer.read( in, access )
+//               new DataOutput()
+//               sys.error( "TODO" )
+//            }
+//         }
          val map = Ancestor.readMap[ Durable, Long, A ]( in, (), full )
          new IndexMapNew[ A ]( index, map )
       }
 
-      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IndexMap[ S, A ] = {
+      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
 //         val tree = readIndexTree( ... )
 
          sys.error( "TODO" )
@@ -227,9 +227,17 @@ object KSysImpl {
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val id   = alloc( pid )
-         val res  = new VarImpl[ A ]( id, ser )
-         res.setInit( init )( this )
-         res
+         ser match {
+            case plain: Serializer[ _ ] =>
+               val res = new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
+               res.setInit( init )( this )
+               res
+
+            case _ =>
+               val res = new VarTxImpl[ A ]( id, ser )
+               res.setInit( init )( this )
+               res
+         }
       }
 
       def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
@@ -305,44 +313,44 @@ object KSysImpl {
       def access[ A ]( source: S#Var[ A ]) : A = sys.error( "TODO" ) // source.access( system.path( this ))( this )
    }
 
-   sealed trait SourceImpl[ A ] {
-      protected def system: S
-      protected def id: S#ID
-
-      protected final def toString( pre: String ) = pre + id // + ": " +
-//         (system.storage.getOrElse( id.id, Map.empty ).map( _._1 )).mkString( ", " )
-
-      final def set( v: A )( implicit tx: S#Tx ) { store( v )}
-
-      final def write( out: DataOutput ) {
-         out.writeInt( id.id )
-      }
-
-      protected def writeValue( v: A, out: DataOutput ) : Unit
-      protected def readValue( in: DataInput, postfix: S#Acc )( implicit tx: S#Tx ) : A
-
-      final def store( v: A ) {
-         val out = new DataOutput()
-         writeValue( v, out )
-         val bytes = out.toByteArray
-//         system.storage += id.id -> (system.storage.getOrElse( id.id,
-//            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
-         sys.error( "TODO" )
-      }
-
-      final def get( implicit tx: S#Tx ) : A = access( id.path )
-
-      def access( acc: S#Acc )( implicit tx: S#Tx ) : A
-
-//      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
-//         val (in, acc1) = system.access( id.id, acc )( tx, ser )
-//         readValue( in, acc1 )
+//   sealed trait SourceImpl[ A ] {
+//      protected def system: S
+//      protected def id: S#ID
+//
+//      protected final def toString( pre: String ) = pre + id // + ": " +
+////         (system.storage.getOrElse( id.id, Map.empty ).map( _._1 )).mkString( ", " )
+//
+//      final def set( v: A )( implicit tx: S#Tx ) { store( v )}
+//
+//      final def write( out: DataOutput ) {
+//         out.writeInt( id.id )
 //      }
-
-      final def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
-
-      final def dispose()( implicit tx: S#Tx ) {}
-   }
+//
+//      protected def writeValue( v: A, out: DataOutput ) : Unit
+//      protected def readValue( in: DataInput, postfix: S#Acc )( implicit tx: S#Tx ) : A
+//
+//      final def store( v: A ) {
+//         val out = new DataOutput()
+//         writeValue( v, out )
+//         val bytes = out.toByteArray
+////         system.storage += id.id -> (system.storage.getOrElse( id.id,
+////            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
+//         sys.error( "TODO" )
+//      }
+//
+//      final def get( implicit tx: S#Tx ) : A = access( id.path )
+//
+//      def access( acc: S#Acc )( implicit tx: S#Tx ) : A
+//
+////      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
+////         val (in, acc1) = system.access( id.id, acc )( tx, ser )
+////         readValue( in, acc1 )
+////      }
+//
+//      final def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
+//
+//      final def dispose()( implicit tx: S#Tx ) {}
+//   }
 
    private sealed trait BasicSource {
       protected def id: S#ID
@@ -364,8 +372,23 @@ object KSysImpl {
    //   private type Obs[ A ]    = Observer[ Txn, Change[ A ]]
    //   private type ObsVar[ A ] = Var[ A ] with State[ S, Change[ A ]]
 
-   private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
-      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+//   private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
+//      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+//
+//      def get( implicit tx: S#Tx ) : A = {
+////         tx.system.read[ A ]( id )( ser.read( _, () ))
+//         sys.error( "TODO" )
+//      }
+//
+//      def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
+//   }
+
+   private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: Serializer[ A ])
+   extends Var[ A ] with BasicSource {
+      def set( v: A )( implicit tx: S#Tx ) {
+//         assertExists()
+         tx.system.put( id, v )( tx, ser )
+      }
 
       def get( implicit tx: S#Tx ) : A = {
 //         tx.system.read[ A ]( id )( ser.read( _, () ))
@@ -373,13 +396,46 @@ object KSysImpl {
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
+
+      def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
+
+      override def toString = "Var(" + id + ")"
    }
 
-   private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends BasicVar[ A ] {
+   private object ByteArraySerializer extends Serializer[ Array[ Byte ]] {
+      def write( v: Array[ Byte ], out: DataOutput ) {
+         out.writeInt( v.length )
+         out.write( v )
+      }
+
+      def read( in: DataInput ) : Array[ Byte ] = {
+         val sz   = in.readInt()
+         val v    = new Array[ Byte ]( sz )
+         in.read( v )
+         v
+      }
+   }
+
+   private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends Var[ A ] with BasicSource {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.put( id, v )( tx, ser )
+         val out  = new DataOutput()
+         ser.write( v, out )
+         val arr  = out.toByteArray
+         tx.system.put( id, arr )( tx, ByteArraySerializer )
+      }
+
+      def get( implicit tx: S#Tx ) : A = {
+//         tx.system.read[ A ]( id )( ser.read( _, () ))
+         sys.error( "TODO" )
+      }
+
+      def setInit( v: A )( implicit tx: S#Tx ) {
+         val out  = new DataOutput()
+         ser.write( v, out )
+         val arr  = out.toByteArray
+         tx.system.put( id, arr )( tx, ByteArraySerializer )
       }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
@@ -388,7 +444,7 @@ object KSysImpl {
    }
 
    private final class BooleanVar( protected val id: S#ID )
-   extends Var[ Boolean ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Boolean ] {
+   extends Var[ Boolean ] with BasicSource with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
          tx.system.get[ Boolean ]( id )( tx, this )
       }
@@ -408,11 +464,11 @@ object KSysImpl {
 
       // ---- TxnSerializer ----
       def write( v: Boolean, out: DataOutput ) { out.writeBoolean( v )}
-      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Boolean = in.readBoolean()
+      def read( in: DataInput ) : Boolean = in.readBoolean()
    }
 
    private final class IntVar( protected val id: S#ID )
-   extends Var[ Int ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Int ] {
+   extends Var[ Int ] with BasicSource with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
          tx.system.get[ Int ]( id )( tx, this )
       }
@@ -432,7 +488,7 @@ object KSysImpl {
 
       // ---- TxnSerializer ----
       def write( v: Int, out: DataOutput ) { out.writeInt( v )}
-      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Int = in.readInt()
+      def read( in: DataInput ) : Int = in.readInt()
    }
 
 //   private final class CachedIntVar( protected val id: Int, peer: ScalaRef[ Int ])
@@ -453,7 +509,7 @@ object KSysImpl {
 //   }
 
    private final class LongVar( protected val id: S#ID )
-   extends Var[ Long ] with BasicSource with TxnSerializer[ S#Tx, S#Acc, Long ] {
+   extends Var[ Long ] with BasicSource with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
          tx.system.get[ Long ]( id )( tx, this )
       }
@@ -473,7 +529,7 @@ object KSysImpl {
 
       // ---- TxnSerializer ----
       def write( v: Long, out: DataOutput ) { out.writeLong( v )}
-      def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Long = in.readLong()
+      def read( in: DataInput ) : Long = in.readLong()
    }
 
    sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
@@ -579,7 +635,7 @@ object KSysImpl {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
-      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
 //         logConfig( "write <" + id + ">" )
          map.put[ A ]( id.id, id.path, value )
       }
@@ -591,7 +647,7 @@ object KSysImpl {
 //      }
 
       private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
-                                                               ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+                                                               ser: Serializer[ A ]) : A = {
          map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
       }
    }

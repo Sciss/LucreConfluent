@@ -220,9 +220,18 @@ object KSysImpl {
          new IndexMapImpl[ A ]( index, map )
       }
 
+      private[KSysImpl] def newIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+         val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
+         system.store.put({ out =>
+            out.writeUnsignedByte( 1 )
+            out.writeInt( term.toInt )
+         })( tree.write )
+         tree
+      }
+
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
-         val full = readIndexTree( index.term )
-         val map  = Ancestor.newMap[ Durable, Long, A ]( full, value )
+         val tree = readIndexTree( index.term )
+         val map  = Ancestor.newMap[ Durable, Long, A ]( tree, value )
          new IndexMapImpl[ A ]( index, map )
       }
 

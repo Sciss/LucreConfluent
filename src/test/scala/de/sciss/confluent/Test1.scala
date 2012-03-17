@@ -40,6 +40,8 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
          value.write( out )
          next.write( out )
       }
+
+      override def toString = "Node" + id
    }
 
 //   implicit def option[ Tx, Acc, A ]( implicit peer: TxnSerializer[ Tx, Acc, A ]) : TxnSerializer[ Tx, Acc, Option[ A ]] =
@@ -51,10 +53,19 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 //         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : S#Var[ A ] = sys.error( "TODO" )
 //      }
 
-   s.atomic { implicit tx =>
+   val access = s.atomic { implicit tx =>
 //      implicit val fuckYou = varSer[ S, Option[ Node ]]
-      val access  = s.root( Option.empty[ Node ])
+      val _access = s.root( Option.empty[ Node ])
       val w0      = Node( 0 )
-      access.set( Some( w0 ))
+      _access.set( Some( w0 ))
+      _access
    }
+
+   val found = s.atomic { implicit tx =>
+      val node = access.get
+      node.map( n => (n.value.get, n.next.get))
+   }
+
+   println( "in v1, we found: " + found )
+   println( "Done." )
 }

@@ -4,7 +4,7 @@ import impl.KSysImpl
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}
-import de.sciss.lucre.stm.{Sys, TxnSerializer, MutableSerializer, Mutable}
+import de.sciss.lucre.stm.{MutableSerializer, Mutable}
 
 object Test1 extends App {
    val dir     = File.createTempFile( "database", "db" )
@@ -45,17 +45,15 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 //   implicit def option[ Tx, Acc, A ]( implicit peer: TxnSerializer[ Tx, Acc, A ]) : TxnSerializer[ Tx, Acc, Option[ A ]] =
 //      sys.error( "TODO" )
 
-   implicit def varSer[ S <: Sys[ S ], A ]( implicit valueSerializer: TxnSerializer[ S#Tx, S#Acc, A ]) : TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] =
-      new TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] {
-         def write( v: S#Var[ A ], out: DataOutput ) { v.write( out )}
-         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : S#Var[ A ] = sys.error( "TODO" )
-      }
+//   implicit def varSer[ S <: Sys[ S ], A ]( implicit valueSerializer: TxnSerializer[ S#Tx, S#Acc, A ]) : TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] =
+//      new TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] {
+//         def write( v: S#Var[ A ], out: DataOutput ) { v.write( out )}
+//         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : S#Var[ A ] = sys.error( "TODO" )
+//      }
 
    s.atomic { implicit tx =>
-      implicit val fuckYou = varSer[ S, Option[ Node ]]
-      val access  = s.root[ S#Var[ Option[ Node ]]] { id =>
-         tx.newVar[ Option[ Node ]]( id, None )
-      }
+//      implicit val fuckYou = varSer[ S, Option[ Node ]]
+      val access  = s.root( Option.empty[ Node ])
       val w0      = Node( 0 )
       access.set( Some( w0 ))
    }

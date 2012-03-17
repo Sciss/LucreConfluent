@@ -71,5 +71,5 @@ trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
     * or provides a newly initialized one via the `init` argument,
     * if no root has been stored yet.
     */
-   def root[ A ]( init: S#ID => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A
+   def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ]
 }

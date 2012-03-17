@@ -33,12 +33,18 @@ import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
 import de.sciss.collection.txn.Ancestor
 import de.sciss.lucre.stm.{Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
-import impl.KSysImpl.IndexMapImpl
 
 object KSysImpl {
    private type S = System
 
    def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
+
+//   private object IDImpl {
+//      def readAndAppend( id: Int, postfix: S#Acc, in: DataInput ) : S#ID = {
+//         val path = Path.readAndAppend( in, postfix )
+//         new IDImpl( id, path )
+//      }
+//   }
 
    final class IDImpl private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
@@ -82,6 +88,27 @@ object KSysImpl {
    object Path {
       def test_empty : Path = empty
       private[KSysImpl] def empty = new Path( FingerTree.empty( PathMeasure ))
+
+      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
+
+      def readAndAppend( in: DataInput, post: S#Acc ) : S#Acc = {
+         var tree = readTree( in )
+         // XXX TODO make this more efficient
+         implicit val m = PathMeasure
+         post.tree.iterator.foreach( tree :+= _ )
+         new Path( tree )
+      }
+
+      private def readTree( in: DataInput ) : FingerTree[ (Int, Long), Long ] = {
+         val sz = in.readInt()
+         // XXX TODO make this more efficient
+         implicit val m = PathMeasure
+         var tree = FingerTree.empty( m )
+         var i = 0; while( i < sz ) {
+            tree :+= in.readLong()
+         i += 1 }
+         tree
+      }
    }
 
    /**
@@ -277,13 +304,22 @@ object KSysImpl {
       def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
          makeVar[ A ]( readSource( in, pid ))
 
-      def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = readVar[ Boolean ]( pid, in )
-      def readIntVar(     pid: S#ID, in: DataInput ) : S#Var[ Int ]     = readVar[ Int ](     pid, in )
-      def readLongVar(    pid: S#ID, in: DataInput ) : S#Var[ Long ]    = readVar[ Long ](    pid, in )
+      def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] =
+         new BooleanVar( readSource( in, pid ))
 
-      def readID( in: DataInput, acc: S#Acc ) : S#ID = sys.error( "TODO" ) // IDImpl.readAndAppend( in.readInt(), acc, in )
+      def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] =
+         new IntVar( readSource( in, pid ))
 
-      def access[ A ]( source: S#Var[ A ]) : A = sys.error( "TODO" ) // source.access( system.path( this ))( this )
+      def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] =
+         new LongVar( readSource( in, pid ))
+
+      def readID( in: DataInput, acc: S#Acc ) : S#ID = {
+         new IDImpl( in.readInt(), Path.readAndAppend( in, acc ))
+      }
+
+      def access[ A ]( source: S#Var[ A ]) : A = {
+         sys.error( "TODO" )  // source.access( system.path( this ))( this )
+      }
    }
 
 //   sealed trait SourceImpl[ A ] {
@@ -342,17 +378,7 @@ object KSysImpl {
 //      }
    }
 
-   //   private type Obs[ A ]    = Observer[ Txn, Change[ A ]]
-   //   private type ObsVar[ A ] = Var[ A ] with State[ S, Change[ A ]]
-
    private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
-//      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
-
-//      def get( implicit tx: S#Tx ) : A = {
-////         tx.system.read[ A ]( id )( ser.read( _, () ))
-//         sys.error( "TODO" )
-//      }
-//
       def setInit( v: A )( implicit tx: S#Tx ) : Unit
    }
 
@@ -363,10 +389,7 @@ object KSysImpl {
          tx.system.put( id, v )( tx, ser )
       }
 
-      def get( implicit tx: S#Tx ) : A = {
-//         tx.system.read[ A ]( id )( ser.read( _, () ))
-         sys.error( "TODO" )
-      }
+      def get( implicit tx: S#Tx ) : A = tx.system.get[ A ]( id )( tx, ser )
 
       def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
 
@@ -400,8 +423,10 @@ object KSysImpl {
       }
 
       def get( implicit tx: S#Tx ) : A = {
-//         tx.system.read[ A ]( id )( ser.read( _, () ))
-         sys.error( "TODO" )
+         val arr     = tx.system.get( id )( tx, ByteArraySerializer )
+         val in      = new DataInput( arr )
+         val access  = id.path   // XXX ???
+         ser.read( in, access )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
@@ -473,7 +498,6 @@ object KSysImpl {
 //      def set( v: Int )( implicit tx: S#Tx ) {
 //         peer.set( v )( tx.peer )
 ////         tx.system.write( id )( _.writeInt( v ))
-//         sys.error( "TODO" )
 //      }
 //
 //      def transform( f: Int => Int )( implicit tx: S#Tx ) { set( f( get ))}
@@ -536,10 +560,8 @@ object KSysImpl {
 
 //      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
 //         kStore.get[ Ancestor.Tree[ S, Int ]] { out =>
-//            sys.error( "TODO" )
 //
 //         } { out =>
-//            sys.error( "TODO" )
 //
 //         } getOrElse sys.error( "Trying to access inexisting tree (version " + version + ")" )
 //      }

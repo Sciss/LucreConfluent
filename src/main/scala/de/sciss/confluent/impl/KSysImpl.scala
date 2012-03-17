@@ -580,7 +580,7 @@ object KSysImpl {
       //         fun( tx, source.get( tx ))
       //      }
 
-      def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =
+      def root[ A ]( init: S#ID => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =
          sys.error( "TODO" )
 
       def close() { store.close()}

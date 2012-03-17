@@ -30,7 +30,6 @@ import annotation.switch
 import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
 
 object ConfluentPersistentMap {
-
    def apply[ S <: KSys[ S ], A ]( store: PersistentStore ) : ConfluentTxnMap[ S#Tx, S#Acc ] =
       new Impl[ S ]( store )
 

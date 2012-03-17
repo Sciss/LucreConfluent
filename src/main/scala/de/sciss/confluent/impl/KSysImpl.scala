@@ -336,7 +336,8 @@ object KSysImpl {
       protected def id: S#ID
 
       final def write( out: DataOutput ) {
-         id.write( out )
+         out.writeInt( id.id )
+//         id.write( out )
       }
 
       /* final */

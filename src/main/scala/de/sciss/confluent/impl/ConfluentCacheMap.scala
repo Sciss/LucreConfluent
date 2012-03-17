@@ -77,7 +77,7 @@ object ConfluentCacheMap {
             val map  = tup1._2
             map.foreach {
                case (_, Write( p, value, writer )) =>
-                  val path    = p.index :-| suffix
+                  val path = p.index :-| suffix
                   persistent.put( id, path, value )( tx, writer )
             }
          }

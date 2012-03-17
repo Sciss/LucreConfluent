@@ -1,0 +1,101 @@
+Walkthrough
+
+:::::: v0 ::::::
+
+root {
+   Some( w0 @ Node( 2, Some( w1 @ Node( 1, None ))))
+}
+
+==
+
+root {
+   val w1 = Node( 1, None )
+   val w0 = Node( 2, Some( w1 ))
+   Some( w0 )
+}
+
+==
+
+creation of w1:
+   w1.id    = tx.newID --> (w1Id, <>)
+   w1.value = tx.newIntVar( w1.id, 1 )
+      // alloc( pid ) --> (w1ValId, <>)
+      // intVar.setInit( 1 )
+      //// system.put( (w1ValId, <>), 1 )
+      ///// map.put( w1ValId, <>, 1 )
+      /////// idMap( w1ValId ) += (<>.sum, Write( <>, 1 ))
+      /////// ***markDirty***
+   w1.next  = tx.newVar[ Option[ Node ]]( w1.id, None )
+      // alloc( pid ) --> (w1NextId, <>)
+      // var.setInit( None )
+      //// system.put( (w1NextId, <>), None )
+      ///// map.put( w1NextId, <>, None )
+      /////// idMap( w1NextId ) += (<>.sum, Write( <>, None ))
+
+creation of w0
+   w0.id    = tx.newID --> (w0Id, <>)
+   w0.value = tx.newIntVar( w0.id, 2 )
+      // alloc( pid ) --> (w0ValId, <>)
+      // intVar.setInit( 2 )
+      //// system.put( (w0ValId, <>), 2 )
+      ///// map.put( w0ValId, <>, 2 )
+      /////// idMap( w0ValId ) += (<>.sum, Write( <>, 2))
+   w0.next  = tx.newVar[ Option[ Node ]]( w0.id, Some( w1 @ <> ))
+      // alloc( pid ) --> (w0NextId, <>)
+      // var.setInit( None )
+      //// system.put( (w0NextId, <>), Some( w1 @ <> ))
+      ///// map.put( w0NextId, <>, Some( w1 @ <> ))
+      /////// idMap( w0NextId ) += (<>.sum, Write( <>, Some( w1 @ <> )))
+
+access write:
+   setInit( Some( w0 @ <> ))
+   // system.put( (rootId, <>), Some( w0 @ <> ))
+   //// map.put( rootId, <>, Some( w0 @ <> ))
+   ///// idMap( rootId ) += (<>.sum, Write( <>, Some( w0 @ <> )))
+
+flush:
+   dirty foreach { write =>
+      pers.put( write.id, write.path.ADJUST, write.value )( tx, write.writer )
+   }
+
+question: do the unadjusted path components in write.value pose any problems?
+again step-by-step:
+
+   pers.put( rootId, <v0, v0>, Some( w0 @ <> ))
+   // eventually: ser.write( Some( w0 @ <> ))
+   //// byte 1 (Some)
+   //// w0.id.write
+   ////// writeInt( w0Id )
+   ////// <>.write --> ***!***
+   //// w0.value.write
+   ////// out.writeInt( w0ValId )
+   //// w0.next.write
+   ////// out.writeInt( w0NextId )
+
+so the answer is: YES (it could)
+
+[[[
+   recall how impl.Confluent is reading variables
+
+      final def get( implicit tx: Txn ) : A = access( id.path )
+
+      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
+         val (in, acc1) = system.access( id.id, acc )
+         readValue( in, acc1 (= suffix) )
+      }
+
+      where system.access finds the longest suffix and returns
+      acc1 = acc.drop( longestSuffixLen )
+]]]
+
+- thus, for example if the longest suffix is the full current path, acc1 is empty,
+  and thus the TxnSerializer's read method gets the empty suffix
+
+- still not clear whether ***!*** is actually problem?
+- i would think that _no_ in the non-melding case, but _yes_ in the melding case
+- because it is imaginable that the missing current version can be
+  gathered from the variable from which it is read (?) -- 
+  question is then if this causes a problem when 'chained'?
+
+- maybe it clears up once we determine who meld versus non-meld is decided
+

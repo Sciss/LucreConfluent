@@ -87,7 +87,8 @@ object KSysImpl {
 
    object Path {
       def test_empty : Path = empty
-      private[KSysImpl] def empty = new Path( FingerTree.empty( PathMeasure ))
+      private[KSysImpl] def empty   = new Path( FingerTree.empty( PathMeasure ))
+      private[KSysImpl] def root    = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 
       def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
 
@@ -382,8 +383,10 @@ object KSysImpl {
       }
    }
 
-   private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends BasicVar[ A ] {
+   private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
+      protected def id: S#ID
+      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          val out  = new DataOutput()
@@ -410,6 +413,12 @@ object KSysImpl {
 
       override def toString = "Var(" + id + ")"
    }
+
+   private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends VarTxLike[ A ]
+
+   private final class RootVar[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends VarTxLike[ A ]
 
    private final class BooleanVar( protected val id: S#ID )
    extends Var[ Boolean ] with BasicSource with Serializer[ Boolean ] {
@@ -580,8 +589,15 @@ object KSysImpl {
       //         fun( tx, source.get( tx ))
       //      }
 
-      def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
-         sys.error( "TODO" )
+      def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         val access  = Path.root
+         val id      = new IDImpl( 1, access )
+         val rootVar = new RootVar[ A ]( id, serializer )
+         if( map.get[ Array[ Byte ]]( id.id, access )( tx, ByteArraySerializer ).isEmpty ) {
+            rootVar.setInit( init )
+         }
+         rootVar
+      }
 
       def close() { store.close()}
 

@@ -26,7 +26,7 @@
 package de.sciss.confluent
 
 import de.sciss.lucre.DataInput
-import de.sciss.lucre.stm.{Serializer, TxnSerializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
+import de.sciss.lucre.stm.{TxnSerializer, Serializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
 
 object KSys {
 //   private type S = KSys
@@ -61,4 +61,15 @@ trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
    type Tx <: KSys.Txn[ S ]
    type ID <: KSys.ID[ S#Tx, S#Acc ]
    type Acc <: KSys.Acc[ S ]
+
+//   type Root
+//
+//   def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A
+
+   /**
+    * Reads the root object representing the stored datastructure,
+    * or provides a newly initialized one via the `init` argument,
+    * if no root has been stored yet.
+    */
+   def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A
 }

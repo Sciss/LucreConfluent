@@ -301,7 +301,7 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      private def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
+      private[KSysImpl] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
          ser match {
             case plain: Serializer[ _ ] =>
                new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
@@ -330,45 +330,6 @@ object KSysImpl {
          sys.error( "TODO" )  // source.access( system.path( this ))( this )
       }
    }
-
-//   sealed trait SourceImpl[ A ] {
-//      protected def system: S
-//      protected def id: S#ID
-//
-//      protected final def toString( pre: String ) = pre + id // + ": " +
-////         (system.storage.getOrElse( id.id, Map.empty ).map( _._1 )).mkString( ", " )
-//
-//      final def set( v: A )( implicit tx: S#Tx ) { store( v )}
-//
-//      final def write( out: DataOutput ) {
-//         out.writeInt( id.id )
-//      }
-//
-//      protected def writeValue( v: A, out: DataOutput ) : Unit
-//      protected def readValue( in: DataInput, postfix: S#Acc )( implicit tx: S#Tx ) : A
-//
-//      final def store( v: A ) {
-//         val out = new DataOutput()
-//         writeValue( v, out )
-//         val bytes = out.toByteArray
-////         system.storage += id.id -> (system.storage.getOrElse( id.id,
-////            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
-//         sys.error( "TODO" )
-//      }
-//
-//      final def get( implicit tx: S#Tx ) : A = access( id.path )
-//
-//      def access( acc: S#Acc )( implicit tx: S#Tx ) : A
-//
-////      final def access( acc: S#Acc )( implicit tx: Txn ) : A = {
-////         val (in, acc1) = system.access( id.id, acc )( tx, ser )
-////         readValue( in, acc1 )
-////      }
-//
-//      final def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
-//
-//      final def dispose()( implicit tx: S#Tx ) {}
-//   }
 
    private sealed trait BasicSource {
       protected def id: S#ID
@@ -554,11 +515,16 @@ object KSysImpl {
       private val persistent        = ConfluentPersistentMap[ S, Any ]( store )
       private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
-      private val idCntVar: ScalaRef[ Int ] = ScalaRef {
+      // XXX TODO should be persistent, e.g. use CachedIntVar again
+      private val idCntVar : ScalaRef[ Int ] = ScalaRef {
          atomic { implicit tx =>
             store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
          }
       }
+
+//      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
+//         var res = tx.makeVar
+//      }
 
       private val inMem    = InMemory()
 
@@ -566,14 +532,6 @@ object KSysImpl {
          ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
-
-//      private[KSysImpl] def indexTree( version: Int )( implicit tx: S#Tx ) : Ancestor.Tree[ S, Int ] = {
-//         kStore.get[ Ancestor.Tree[ S, Int ]] { out =>
-//
-//         } { out =>
-//
-//         } getOrElse sys.error( "Trying to access inexisting tree (version " + version + ")" )
-//      }
 
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
          new IDImpl( newIDValue(), Path.empty )
@@ -613,6 +571,8 @@ object KSysImpl {
       def atomic[ A ]( fun: S#Tx => A ): A =
          TxnExecutor.defaultAtomic( itx => fun( new TxnImpl( this, itx )))
 
+//      def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A = atomic[ A ]( fun( _ )( rootVar ))
+
       //      def atomicAccess[ A ]( fun: (S#Tx, S#Acc) => A ) : A =
       //         TxnExecutor.defaultAtomic( itx => fun( new TxnImpl( this, itx ), () ))
 
@@ -620,20 +580,10 @@ object KSysImpl {
       //         fun( tx, source.get( tx ))
       //      }
 
-//      def debugListUserRecords()( implicit tx: S#Tx ): Seq[ ID ] = {
-//         val b    = Seq.newBuilder[ ID ]
-//         val cnt  = idCntVar.get
-//         var i    = 1;
-//         while( i <= cnt ) {
-//            if( exists( i )) b += new IDImpl( i )
-//            i += 1
-//         }
-//         b.result()
-//      }
+      def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =
+         sys.error( "TODO" )
 
-      def close() {
-         store.close()
-      }
+      def close() { store.close()}
 
       def numRecords( implicit tx: S#Tx ): Int = store.numEntries
 

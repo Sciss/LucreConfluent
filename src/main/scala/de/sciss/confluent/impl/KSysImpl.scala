@@ -202,18 +202,9 @@ object KSysImpl {
       private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val id   = alloc( pid )
-         ser match {
-            case plain: Serializer[ _ ] =>
-               val res = new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
-               res.setInit( init )( this )
-               res
-
-            case _ =>
-               val res = new VarTxImpl[ A ]( id, ser )
-               res.setInit( init )( this )
-               res
-         }
+         val res = makeVar[ A ]( alloc( pid ))
+         res.setInit( init )( this )
+         res
       }
 
       def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
@@ -274,11 +265,17 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val id = readSource( in, pid )
-//         new Var( id, system, ser )
-         sys.error( "TODO" )
+      private def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
+         ser match {
+            case plain: Serializer[ _ ] =>
+               new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
+            case _ =>
+               new VarTxImpl[ A ]( id, ser )
+         }
       }
+
+      def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
+         makeVar[ A ]( readSource( in, pid ))
 
       def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = readVar[ Boolean ]( pid, in )
       def readIntVar(     pid: S#ID, in: DataInput ) : S#Var[ Int ]     = readVar[ Int ](     pid, in )
@@ -348,19 +345,19 @@ object KSysImpl {
    //   private type Obs[ A ]    = Observer[ Txn, Change[ A ]]
    //   private type ObsVar[ A ] = Var[ A ] with State[ S, Change[ A ]]
 
-//   private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
+   private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
 //      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
-//
+
 //      def get( implicit tx: S#Tx ) : A = {
 ////         tx.system.read[ A ]( id )( ser.read( _, () ))
 //         sys.error( "TODO" )
 //      }
 //
-//      def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
-//   }
+      def setInit( v: A )( implicit tx: S#Tx ) : Unit
+   }
 
    private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: Serializer[ A ])
-   extends Var[ A ] with BasicSource {
+   extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          tx.system.put( id, v )( tx, ser )
@@ -393,7 +390,7 @@ object KSysImpl {
    }
 
    private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends Var[ A ] with BasicSource {
+   extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          val out  = new DataOutput()

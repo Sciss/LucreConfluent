@@ -66,6 +66,8 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       node.map( n => (n.value.get, n.next.get))
    }
 
+   // v1 : "Invert order of input linked list"
+
    println( "in v1, we found: " + found )
    println( "Done." )
 }

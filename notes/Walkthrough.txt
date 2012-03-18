@@ -99,3 +99,131 @@ so the answer is: YES (it could)
 
 - maybe it clears up once we determine who meld versus non-meld is decided
 
+:::::::::::::::::::::::::::::
+
+// v1 : "Invert order of input linked list"
+
+read access at <v0, v0> -->
+   we will find (<v0, v0>, Some( w0 @ <> ))
+   longest prefix has length 2, but we could pre.drop( (longest - 1) & ~1 ), yielding w0 @ <v0, v0>
+
+   read (w0 @ <v0, v0>).next, we find (<>, Some( w1 @ <> ))
+   thus the suffix pre.drop( (longest - 1) & ~1 ) is empty, but w0's accessed path is <v0, v0>, so
+   it yields Some( w1 @ <v0, v0> )
+
+   read (w1 @ <v0, v0>).next, we find None
+
+   w0 assign next
+   w0.next.set( None )
+      //// system.put( (w0NextId, <v0, v0>), None )
+      ///// map.put( w0NextId, <v0, v0>, None )
+      /////// idMap( w0NextId ) += (<v0, v0>.sum, Write( <v0, v0>, None ))
+// WHICH WILL BE RESOLVED AS                      Write( <v0, v1>, None ))
+
+   w1 assign next
+   w1.next.set( Some( w0 @ <v0, v0> ))
+      //// system.put( (w1NextId, <v0, v0>), Some( w0 @ <v0, v0> ))
+      ///// map.put( w1NextId, <v0, v0>, Some( w0 @ <v0, v0> ))
+      /////// idMap( w1NextId ) += (<v0, v0>.sum, Write( <v0, v0>, Some( w0 @ <v0, v0> )))
+// WHICH WILL BE RESOLVED AS                      Write( <v0, v1>, Some( w0 @ <v0, v0> ))
+
+   access.set( Some( w1 @ <v0, v0> ))
+   // system.put( (rootId, <v0, v0>), Some( w1 @ <v0, v0> ))
+   //// map.put( rootId, <v0, v0>, Some( w1 @ <v0, v0> ))
+   ///// idMap( rootId ) += (<v0, v0>.sum, Write( <v0, v0>, Some( w1 @ <v0, v0> )))
+// WHICH WILL BE RESOLVED AS               Write( <v0, v1>, Some( w1 @ <v0, v0> ))
+
+:::::::::::::::::::::::::::::
+
+// v2 : "Delete first node of list, allocate new node x=1, concatenate to input list"
+
+read access at <v0, v0> -->
+   we will find (<v0, v0>, Some( w0 @ <> ))
+   longest prefix has length 2, but we could pre.drop( (longest - 1) & ~1 ), yielding w0 @ <v0, v0>
+
+   read (w0 @ <v0, v0>).next, we find (<>, Some( w1 @ <> ))
+   thus the suffix pre.drop( (longest - 1) & ~1 ) is empty, but w0's accessed path is <v0, v0>, so
+   it yields Some( w1 @ <v0, v0> )
+
+   read (w1 @ <v0, v0>).next, we find None
+
+creation of w2:
+   w2.id    = tx.newID --> (w2Id, <>)
+   w2.value = tx.newIntVar( w2.id, 1 )
+      // alloc( pid ) --> (w2ValId, <>)
+      // intVar.setInit( 1 )
+      //// system.put( (w2ValId, <>), 1 )
+      ///// map.put( w2ValId, <>, 1 )
+      /////// idMap( w2ValId ) += (<>.sum, Write( <>, 1 ))
+      /////// ***markDirty***
+// WHICH WILL BE RESOLVED AS               Write( <v2, v2>, 1 )
+// !!! NOTE, IT'S PROBABLY OK AS WELL:     Write( <>, 1 ) !!!
+
+   w1 assign next
+   w1.next.set( Some( w2 @ <> ))
+      //// system.put( (w1NextId, <v0, v0>), Some( w2 @ <> ))
+      ///// map.put( w1NextId, <v0, v0>, Some( w2 @ <> ))
+      /////// idMap( w1NextId ) += (<v0, v0>.sum, Write( <v0, v0>, Some( w2 @ <> )))
+// WHICH WILL BE RESOLVED AS                      Write( <v0, v2>, Some( w2 @ <> ))
+
+   access.set( Some( w1 @ <v0, v0> ))
+   // system.put( (rootId, <v0, v0>), Some( w1 @ <v0, v0> ))
+   //// map.put( rootId, <v0, v0>, Some( w1 @ <v0, v0> ))
+   ///// idMap( rootId ) += (<v0, v0>.sum, Write( <v0, v0>, Some( w1 @ <v0, v0> )))
+// WHICH WILL BE RESOLVED AS               Write( <v0, v2>, Some( w1 @ <v0, v0> ))
+
+:::::::::::::::::::::::::::::
+
+// v3 : "Add +2 to all elements of right list. Concatenate left and right lists"
+
+read access at <v0, v2> -->
+   we will find (<v0, v2>, Some( w1 @ <v0, v0> ))
+   and through whatever mechanism yield w1 @ <v0, v2>
+
+read access at <v0, v1> -->
+   we will find (<v0, v1>, Some( w1 @ <v0, v0> ))
+   and through whatever mechanism yield w1 @ <v0, v1>
+
+   (w1 @ <v0, v2>).value.transform( _ + 2 )   // translates to set( get + 2 )
+      //// system.put( (w1ValId, <v0, v2>), 3 )
+      ///// map.put( w1ValId, <>, 3 )
+      /////// idMap( w1ValId ) += (<v0, v2>.sum, Write( <v0, v2>, 3 ))
+      /////// ***markDirty***
+// WHICH WILL BE RESOLVED AS                     Write( <v0, v2, v3, v3>, 3 ))
+// AND NOT                                       Write( <v0, v3>, 3 ))
+
+read (w1 @ <v0, v2>).next
+   we will find (<v0, v2>, Some( w2 @ <> ))
+   and through whatever mechanism yield w1 @ <v2, v2>
+
+   (w2 @ <v2, v2>).value.transform( _ + 2 )
+      //// system.put( (w2ValId, <v2, v2>), 3 )
+      ///// map.put( w2ValId, <v2, v2>, 3 )
+      /////// idMap( w2ValId ) += (<v2, v2>.sum, Write( <v2, v2>, 3 ))
+// WHICH WILL BE RESOLVED AS                     Write( <v2, v2, v3, v3>, 3 )
+// AND NOT                                       Write( <v2, v3>, 3 )
+
+read (w1 @ <v0, v1>).next
+   we will find (<v0, v1>, Some( w0 @ <v0, v0> ))
+   and through whatever mechanism yield w0 @ <v0, v1>
+
+read (w0 @ <v0, v1>).next
+   we will find None
+
+(w0 @ <v0, v1>).next.set( Some( w1 @ <v0, v2> ))
+      //// system.put( (w0NextId, <v0, v1>), Some( w1 @ <v0, v2> ))
+      ///// map.put( w0NextId, <v0, v1>, Some( w1 @ <v0, v2> ))
+      /////// idMap( w0NextId ) += (<v0, v1>.sum, Write( <v0, v1>, Some( w1 @ <v0, v2> )))
+// WHICH WILL BE RESOLVED AS                      Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> )
+// AND NOT                                        Write( <v0, v3>, Some( w1 @ <v0, v2> )
+
+IMPLICIT:
+   access.set( Some( w1 @ <v0, v1> ))
+   // system.put( (rootId, <v0, v1>), Some( w1 @ <v0, v1> ))
+   //// map.put( rootId, <v0, v1>, Some( w1 @ <v0, v1> ))
+   ///// idMap( rootId ) += (<v0, v1>.sum, Write( <v0, v1>, Some( w1 @ <v0, v1> )))
+// WHICH WILL BE RESOLVED AS               Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v1> ))
+// AND NOT                                 Write( <v0, v3>, Some( w1 @ <v0, v1> ))
+
+----- so how do we detect the meld here, yielding the desired resolved writes?
+

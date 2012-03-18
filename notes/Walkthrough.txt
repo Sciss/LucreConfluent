@@ -226,4 +226,38 @@ IMPLICIT:
 // AND NOT                                 Write( <v0, v3>, Some( w1 @ <v0, v1> ))
 
 ----- so how do we detect the meld here, yielding the desired resolved writes?
+-> in this case, it would be detecting that idMap( w0Id ) has writes for different terminals of the same tree (v0, v1 versus v0, v2)
+-> but is this always the case?
+-> that is to say, can we construct a meld case, where a node appears twice, but only one of its two variants has entries in the write map?
+
+let's try: say we re-construct v3 wihtout adding +2 to the right list:
+
+:::::::::::::::::::::::::::::
+
+// v3 : "Concatenate left and right lists"
+
+read access at <v0, v2> -->
+   we will find (<v0, v2>, Some( w1 @ <v0, v0> ))
+   and through whatever mechanism yield w1 @ <v0, v2>
+
+read access at <v0, v1> -->
+   we will find (<v0, v1>, Some( w1 @ <v0, v0> ))
+   and through whatever mechanism yield w1 @ <v0, v1>
+
+(w0 @ <v0, v1>).next.set( Some( w1 @ <v0, v2> ))
+      //// system.put( (w0NextId, <v0, v1>), Some( w1 @ <v0, v2> ))
+      ///// map.put( w0NextId, <v0, v1>, Some( w1 @ <v0, v2> ))
+      /////// idMap( w0NextId ) += (<v0, v1>.sum, Write( <v0, v1>, Some( w1 @ <v0, v2> )))
+// WHICH WILL BE RESOLVED EITHER AS               Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> )
+// OR                                             Write( <v0, v3>, Some( w1 @ <v0, v2> )
+
+IMPLICIT:
+   access.set( Some( w1 @ <v0, v1> ))
+   // system.put( (rootId, <v0, v1>), Some( w1 @ <v0, v1> ))
+   //// map.put( rootId, <v0, v1>, Some( w1 @ <v0, v1> ))
+   ///// idMap( rootId ) += (<v0, v1>.sum, Write( <v0, v1>, Some( w1 @ <v0, v1> )))
+// WHICH WILL BE RESOLVED EITHER AS        Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v1> ))
+// OR                                      Write( <v0, v3>, Some( w1 @ <v0, v1> ))
+
+----- now let's try to traverse the list with extended and non-extended paths
 

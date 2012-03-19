@@ -34,6 +34,7 @@ import de.sciss.collection.txn.Ancestor
 import de.sciss.lucre.stm.{Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
+import TemporalObjects.logConfig
 
 object KSysImpl {
    private type S = System
@@ -216,14 +217,19 @@ object KSysImpl {
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val dirty = TxnLocal( init = {
+         logConfig( "txn dirty" )
          ScalaTxn.beforeCommit( _ => flush() )( peer )
          false
       })
-      private val meld  = TxnLocal( false )
+      private val meld  = TxnLocal( init = {
+         logConfig( "txn meld" )
+         false
+      })
 //      @volatile var inFlush = false
 
       private def flush() {
          val outTerm       = system.newVersionID( this )
+         logConfig( "txn flush - term = " + outTerm )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( meld.get( peer )) {
             system.setLastPath( inAccess.addNewTree( outTerm ))( this )
@@ -238,12 +244,17 @@ object KSysImpl {
             map.foreach {
                case (_, Write( p, value, writer )) =>
                   val path = extendPath( p )
+                  logConfig( "txn flush write " + value + " @ " + path )
                   persistent.put( id, path, value )( this, writer )
             }
          }
       }
 
-      private[KSysImpl] implicit lazy val durable: Durable#Tx = system.durable.wrap( peer )
+      private[KSysImpl] implicit lazy val durable: Durable#Tx = {
+         logConfig( "txn durable" )
+         system.durable.wrap( peer )
+      }
+
 //      @volatile private var newVersionID = 0L
 //      private[KSysImpl] def newVersionID : Long = {
 //         val res = newVersionIDVar
@@ -251,13 +262,18 @@ object KSysImpl {
 //         res
 //      }
 
-      def newID() : S#ID = new IDImpl( system.newIDValue()( this ), inAccess.seminal )
+      def newID() : S#ID = {
+         val res = new IDImpl( system.newIDValue()( this ), inAccess.seminal )
+         logConfig( "txn newID " + res )
+         res
+      }
 
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
 
       private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+         logConfig( "txn get " + id )
          val id1  = id.id
          val path = id.path
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
@@ -268,6 +284,7 @@ object KSysImpl {
       }
 
       private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+         logConfig( "txn put " + id )
          cache.transform( mapMap => {
             val id1     = id.id
             val path    = id.path
@@ -316,6 +333,7 @@ object KSysImpl {
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
+         logConfig( "txn newVar " + res + " - init = " + init )
          res.setInit( init )( this )
          res
       }
@@ -323,6 +341,7 @@ object KSysImpl {
       def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
          val id   = alloc( pid )
          val res  = new BooleanVar( id )
+         logConfig( "txn newVar " + res + " - init = " + init )
          res.setInit( init )( this )
          res
       }
@@ -330,6 +349,7 @@ object KSysImpl {
       def newIntVar( pid: S#ID, init: Int ) : S#Var[ Int ] = {
          val id   = alloc( pid )
          val res  = new IntVar( id )
+         logConfig( "txn newVar " + res + " - init = " + init )
          res.setInit( init )( this )
          res
       }
@@ -337,6 +357,7 @@ object KSysImpl {
       def newLongVar( pid: S#ID, init: Long ) : S#Var[ Long ] = {
          val id   = alloc( pid )
          val res  = new LongVar( id )
+         logConfig( "txn newVar " + res + " - init = " + init )
          res.setInit( init )( this )
          res
       }
@@ -387,20 +408,34 @@ object KSysImpl {
          }
       }
 
-      def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
-         makeVar[ A ]( readSource( in, pid ))
+      def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         val res = makeVar[ A ]( readSource( in, pid ))
+         logConfig( "txn readVar " + res )
+         res
+      }
 
-      def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] =
-         new BooleanVar( readSource( in, pid ))
+      def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
+         val res = new BooleanVar( readSource( in, pid ))
+         logConfig( "txn readVar " + res )
+         res
+      }
 
-      def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] =
-         new IntVar( readSource( in, pid ))
+      def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] = {
+         val res = new IntVar( readSource( in, pid ))
+         logConfig( "txn readVar " + res )
+         res
+      }
 
-      def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] =
-         new LongVar( readSource( in, pid ))
+      def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] = {
+         val res = new LongVar( readSource( in, pid ))
+         logConfig( "txn readVar " + res )
+         res
+      }
 
       def readID( in: DataInput, acc: S#Acc ) : S#ID = {
-         new IDImpl( in.readInt(), Path.readAndAppend( in, acc ))
+         val res = new IDImpl( in.readInt(), Path.readAndAppend( in, acc ))
+         logConfig( "txn readID " + res )
+         res
       }
 
       def access[ A ]( source: S#Var[ A ]) : A = {
@@ -671,6 +706,7 @@ object KSysImpl {
          TxnExecutor.defaultAtomic { implicit itx =>
             // XXX TODO
             val last                   = lastAccess.get
+            logConfig( "atomic - input access = " )
 //            val (lastIndex, lastTerm)  = last.splitIndex
 //            val lastTree               = lastIndex.term
             fun( new TxnImpl( this, last, itx ))

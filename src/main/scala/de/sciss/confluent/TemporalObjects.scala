@@ -55,6 +55,6 @@ object TemporalObjects {
 
    @elidable(CONFIG) private[confluent] def logConfig( what: String ) {
 //      log.info( what )
-      println( logHeader.format( new Date() ) + what )
+      Console.out.println( logHeader.format( new Date() ) + what )
    }
 }

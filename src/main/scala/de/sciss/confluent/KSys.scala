@@ -54,6 +54,8 @@ object KSys {
       // replace last element
       private[confluent] def :-|( suffix: Long ) : S#Acc
       private[confluent] def splitIndex: (S#Acc, Long)
+      // drop initial elements
+      private[confluent] def drop( num: Int ): S#Acc
    }
 }
 trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {

@@ -93,26 +93,41 @@ object KSysImpl {
       private[KSysImpl] def root    = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
-      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
+//      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
 
-      def readAndAppend( in: DataInput, post: S#Acc ) : S#Acc = {
-         var tree = readTree( in )
+      def readAndAppend( in: DataInput, acc: S#Acc ) : S#Acc = {
          // XXX TODO make this more efficient
          implicit val m = PathMeasure
-         post.tree.iterator.foreach( tree :+= _ )
+         val szm        = in.readInt() - 2
+         var tree       = FingerTree.empty( m )
+         var i = 0; while( i < szm ) {
+            tree      :+= in.readLong()
+         i += 1 }
+         val lastTree   = in.readLong()
+         val lastTerm   = in.readLong()
+         val accIter    = acc.tree.iterator
+         val writeTree  = accIter.next()
+         val writeTerm  = accIter.next()
+         if( writeTree != lastTree ) { // meld
+            tree      :+= lastTree
+            tree      :+= lastTerm
+         }
+         tree         :+= writeTree
+         tree         :+= writeTerm
+         accIter.foreach( tree :+= _ )
          new Path( tree )
       }
 
-      private def readTree( in: DataInput ) : FingerTree[ (Int, Long), Long ] = {
-         val sz = in.readInt()
-         // XXX TODO make this more efficient
-         implicit val m = PathMeasure
-         var tree = FingerTree.empty( m )
-         var i = 0; while( i < sz ) {
-            tree :+= in.readLong()
-         i += 1 }
-         tree
-      }
+//      private def readTree( in: DataInput ) : FingerTree[ (Int, Long), Long ] = {
+//         val sz = in.readInt()
+//         // XXX TODO make this more efficient
+//         implicit val m = PathMeasure
+//         var tree = FingerTree.empty( m )
+//         var i = 0; while( i < sz ) {
+//            tree :+= in.readLong()
+//         i += 1 }
+//         tree
+//      }
    }
 
    /**
@@ -149,6 +164,15 @@ object KSysImpl {
 
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
+
+      // XXX TODO should have an efficient method in finger tree
+      private[confluent] def drop( n: Int ) : Path = {
+         var res = tree
+         var i = 0; while( i < n ) {
+            res = res.tail
+         i += 1 }
+         wrap( res )
+      }
 
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def splitIndex : (Path, Long) = (init, last)
@@ -217,7 +241,8 @@ object KSysImpl {
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val markDirty = TxnLocal( init = {
-         logConfig( "*** txn dirty ***" )
+//         logConfig( Console.CYAN + "txn dirty" + Console.RESET )
+         logConfig( "....... txn dirty ......." )
          ScalaTxn.beforeCommit( _ => flush() )( peer )
          ()
       })
@@ -229,7 +254,8 @@ object KSysImpl {
 
       private def flush() {
          val outTerm       = system.newVersionID( this )
-         logConfig( "txn flush - term = " + outTerm.toInt )
+//         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
+         logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( meld.get( peer )) {
             system.setLastPath( inAccess.addNewTree( outTerm ))( this )
@@ -278,6 +304,17 @@ object KSysImpl {
          val path = id.path
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
             system.persistent.get[ A ]( id1, path )( this, ser )
+         ).getOrElse(
+            sys.error( "No value for " + id )
+         )
+      }
+
+      private[KSysImpl] def getWithPrefix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
+         logConfig( "txn get' " + id )
+         val id1  = id.id
+         val path = id.path
+         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( w => (path.seminal, w.value) ))
+            .asInstanceOf[ Option[ (S#Acc, A) ]].orElse( system.persistent.getWithPrefix[ A ]( id1, path )( this, ser )
          ).getOrElse(
             sys.error( "No value for " + id )
          )
@@ -514,6 +551,7 @@ object KSysImpl {
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
          val arr     = tx.get( id )( ByteArraySerializer )
+         sys.error( "need tx.getWithPrefix here" )
          val in      = new DataInput( arr )
          val access  = id.path   // XXX ???
          ser.read( in, access )
@@ -538,6 +576,8 @@ object KSysImpl {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
       }
+
+      override def toString = "Access"
 
       private def id( implicit tx: S#Tx ) : S#ID = new IDImpl( id1, tx.inAccess )
 
@@ -739,7 +779,7 @@ object KSysImpl {
          TxnExecutor.defaultAtomic { implicit itx =>
             // XXX TODO
             val last                   = lastAccess.get
-            logConfig( "atomic - input access = " + last )
+            logConfig( "::::::: atomic - input access = " + last + " :::::::")
 //            val (lastIndex, lastTerm)  = last.splitIndex
 //            val lastTree               = lastIndex.term
             fun( new TxnImpl( this, last, itx ))

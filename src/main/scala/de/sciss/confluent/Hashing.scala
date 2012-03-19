@@ -133,6 +133,13 @@ object Hashing {
       if( contains( pre1Sum )) pre1Sum else s.sumUntil( pre1Len - 1 )
    }
 
+   def maxPrefixLength( s: PathLike, contains: Long => Boolean ) : Int = {
+      val sz      = s.size
+      val pre1Len = maxPrefixLength( s, sz, contains )
+      val pre1Sum = s.sumUntil( pre1Len )
+      if( contains( pre1Sum )) pre1Len else pre1Len - 1
+   }
+
 //   private def maxPrefix1( s: PathLike, contains: Long => Boolean ) : PathLike =
    private def maxPrefixLength( s: PathLike, sz: Int, contains: Long => Boolean ) : Int = {
 //      val sz      = s.size

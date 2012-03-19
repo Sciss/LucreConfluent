@@ -550,10 +550,8 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val arr     = tx.get( id )( ByteArraySerializer )
-         sys.error( "need tx.getWithPrefix here" )
+         val (access, arr) = tx.getWithPrefix( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
-         val access  = id.path   // XXX ???
          ser.read( in, access )
       }
 

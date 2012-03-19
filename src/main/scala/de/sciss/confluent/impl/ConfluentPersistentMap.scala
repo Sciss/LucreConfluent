@@ -53,7 +53,7 @@ object ConfluentPersistentMap {
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
-                  val term = in.readInt()
+                  val term = in.readLong()
 //                  val access : S#Acc = path.init :+ term
                   val prev = ser.read( in )
                   Some( EntrySingle( term, prev ))
@@ -121,8 +121,8 @@ object ConfluentPersistentMap {
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
-                  val term2 = in.readInt()
-                  assert( term == term2 )
+                  val term2 = in.readLong()
+                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
                   val prev = ser.read( in )
                   prev
                case 2 =>

@@ -216,10 +216,10 @@ object KSysImpl {
    final class TxnImpl private[KSysImpl]( val system: S, inAccess: Path, val peer: InTxn )
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
-      private val dirty = TxnLocal( init = {
-         logConfig( "txn dirty" )
+      private val markDirty = TxnLocal( init = {
+         logConfig( "*** txn dirty ***" )
          ScalaTxn.beforeCommit( _ => flush() )( peer )
-         false
+         ()
       })
       private val meld  = TxnLocal( init = {
          logConfig( "txn meld" )
@@ -229,7 +229,7 @@ object KSysImpl {
 
       private def flush() {
          val outTerm       = system.newVersionID( this )
-         logConfig( "txn flush - term = " + outTerm )
+         logConfig( "txn flush - term = " + outTerm.toInt )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( meld.get( peer )) {
             system.setLastPath( inAccess.addNewTree( outTerm ))( this )
@@ -284,7 +284,7 @@ object KSysImpl {
       }
 
       private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
-         logConfig( "txn put " + id )
+//         logConfig( "txn put " + id )
          cache.transform( mapMap => {
             val id1     = id.id
             val path    = id.path
@@ -292,7 +292,7 @@ object KSysImpl {
             val mapNew  = mapOld + ((path.sum, Write( path, value, ser )))
             mapMap + ((id1, mapNew))
          })( peer )
-         dirty.set( true )( peer )
+         markDirty()( peer )
       }
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
@@ -333,7 +333,7 @@ object KSysImpl {
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
-         logConfig( "txn newVar " + res + " - init = " + init )
+         logConfig( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -341,7 +341,7 @@ object KSysImpl {
       def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
          val id   = alloc( pid )
          val res  = new BooleanVar( id )
-         logConfig( "txn newVar " + res + " - init = " + init )
+         logConfig( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -349,7 +349,7 @@ object KSysImpl {
       def newIntVar( pid: S#ID, init: Int ) : S#Var[ Int ] = {
          val id   = alloc( pid )
          val res  = new IntVar( id )
-         logConfig( "txn newVar " + res + " - init = " + init )
+         logConfig( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -357,7 +357,7 @@ object KSysImpl {
       def newLongVar( pid: S#ID, init: Long ) : S#Var[ Long ] = {
          val id   = alloc( pid )
          val res  = new LongVar( id )
-         logConfig( "txn newVar " + res + " - init = " + init )
+         logConfig( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -469,12 +469,17 @@ object KSysImpl {
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
+         logConfig( this.toString + " set " + v )
          tx.put( id, v )( ser )
       }
 
-      def get( implicit tx: S#Tx ) : A = tx.get[ A ]( id )( ser )
+      def get( implicit tx: S#Tx ) : A = {
+         logConfig( this.toString + " get" )
+         tx.get[ A ]( id )( ser )
+      }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " setInit " + v )
          tx.put( id, v )( ser )
       }
 
@@ -503,6 +508,7 @@ object KSysImpl {
 
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
+         logConfig( this.toString + " set " + v )
          val out  = new DataOutput()
          ser.write( v, out )
          val arr  = out.toByteArray
@@ -510,6 +516,7 @@ object KSysImpl {
       }
 
       def get( implicit tx: S#Tx ) : A = {
+         logConfig( this.toString + " get" )
          val arr     = tx.get( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
          val access  = id.path   // XXX ???
@@ -517,6 +524,7 @@ object KSysImpl {
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " setInit " + v )
          val out  = new DataOutput()
          ser.write( v, out )
          val arr  = out.toByteArray
@@ -537,15 +545,18 @@ object KSysImpl {
    private final class BooleanVar( protected val id: S#ID )
    extends Var[ Boolean ] with BasicSource with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
+         logConfig( this.toString + " get" )
          tx.get[ Boolean ]( id )( this )
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " setInit " + v )
          tx.put( id, v )( this )
       }
 
       def set( v: Boolean )( implicit tx: S#Tx ) {
 //         assertExists()
+         logConfig( this.toString + " set " + v )
          tx.put( id, v )( this )
       }
 
@@ -561,15 +572,18 @@ object KSysImpl {
    private final class IntVar( protected val id: S#ID )
    extends Var[ Int ] with BasicSource with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
+         logConfig( this.toString + " get" )
          tx.get[ Int ]( id )( this )
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " setInit " + v )
          tx.put( id, v )( this )
       }
 
       def set( v: Int )( implicit tx: S#Tx ) {
 //         assertExists()
+         logConfig( this.toString + " set " + v )
          tx.put( id, v )( this )
       }
 
@@ -601,15 +615,18 @@ object KSysImpl {
    private final class LongVar( protected val id: S#ID )
    extends Var[ Long ] with BasicSource with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
+         logConfig( this.toString + " get" )
          tx.get[ Long ]( id )( this )
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " setInit " + v )
          tx.put( id, v )( this )
       }
 
       def set( v: Long )( implicit tx: S#Tx ) {
 //         assertExists()
+         logConfig( this.toString + " set " + v )
          tx.put( id, v )( this )
       }
 

@@ -218,6 +218,10 @@ object KSysImpl {
          val v = tx.readTreeVertex( map.full, index, term )
          map.add( (v, value) )( tx.durable )
       }
+
+      def write( out: DataOutput ) {
+         map.write( out )
+      }
    }
 
    private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
@@ -384,7 +388,6 @@ object KSysImpl {
       final def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val tree = readIndexTree( index.term )
          val map  = Ancestor.newMap[ Durable, Long, A ]( tree, value )
-         sys.error( "NEED TO WRITE NEW MAP" )
          new IndexMapImpl[ A ]( index, map )
       }
 

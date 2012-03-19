@@ -40,15 +40,9 @@ object ConfluentPersistentMap {
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
-         val indexSum      = index.sum
-         // first, check if the index exists
-//         if( store.contains { out =>
-//            out.writeInt( id )
-//            out.writeLong( indexSum )
-//         })
          store.flatGet { out =>
             out.writeInt( id )
-            out.writeLong( indexSum )
+            out.writeLong( index.sum )
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
@@ -69,7 +63,7 @@ object ConfluentPersistentMap {
             case Some( EntryMap( m )) =>
                m.add( term, value )
             case _ =>
-               putSingle[ A ]( id, index, term, value )
+               putNewSingle[ A ]( id, index, term, value )
          }
       }
 
@@ -77,13 +71,23 @@ object ConfluentPersistentMap {
                                 ( implicit tx: S#Tx, ser: Serializer[ A ]) {
          require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
          require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
+         // create new map with previous value
          val m = tx.newIndexMap[ A ]( index, prevValue )
+         // store the full value at the full hash (path.sum)
+         store.put { out =>
+            out.writeInt( id )
+            out.writeLong( index.sum )
+         } { out =>
+            out.writeUnsignedByte( 2 )    // aka map entry
+            m.write( out )
+         }
+         // then add the new value
          m.add( term, value )
       }
 
-      private def putSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
-                                ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         // store the prefixes
+      private def putNewSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
+                                   ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         // stores the prefixes
          Hashing.foreachPrefix( index, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )
@@ -93,11 +97,12 @@ object ConfluentPersistentMap {
                out.writeInt(  id )
                out.writeLong( key )
             } { out =>
-               out.writeUnsignedByte( 0 ) // aka EntryPre
+               out.writeUnsignedByte( 0 ) // aka single entry
                out.writeLong( preSum )
             }
          }
-         // then store the full value at the full hash (path.sum)
+
+         // store the full value at the full hash (path.sum)
          store.put { out =>
             out.writeInt( id )
             out.writeLong( index.sum )

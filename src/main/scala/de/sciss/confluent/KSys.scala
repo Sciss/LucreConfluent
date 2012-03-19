@@ -25,8 +25,8 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.DataInput
 import de.sciss.lucre.stm.{TxnSerializer, Serializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
+import de.sciss.lucre.{DataOutput, DataInput}
 
 object KSys {
 //   private type S = KSys

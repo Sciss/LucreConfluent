@@ -75,8 +75,8 @@ object ConfluentPersistentMap {
 
       private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
                                 ( implicit tx: S#Tx, ser: Serializer[ A ]) {
-         require( prevTerm != term, "Duplicate flush within same transaction?" )
-         require( prevTerm == index.term, "Expected initial assignment term " + index.term + ", but found " + prevTerm )
+         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
+         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          val m = tx.newIndexMap[ A ]( index, prevValue )
          m.add( term, value )
       }

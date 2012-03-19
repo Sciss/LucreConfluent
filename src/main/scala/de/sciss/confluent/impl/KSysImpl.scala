@@ -162,6 +162,8 @@ object KSysImpl {
          wrap( FingerTree( _init.term, term ))
       }
 
+      private[KSysImpl] def indexTerm : Long = tree.init.last
+
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
 
@@ -208,25 +210,13 @@ object KSysImpl {
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
       def nearest( term: Long )( implicit tx: S#Tx ) : A = {
-         val v = termToVertex( term )
+         val v = tx.readTreeVertex( map.full, index, term )
          map.nearest( v )( tx.durable )._2
       }
 
       def add( term: Long, value: A )( implicit tx: S#Tx ) {
-         val v = termToVertex( term )
+         val v = tx.readTreeVertex( map.full, index, term )
          map.add( (v, value) )( tx.durable )
-      }
-
-      // XXX TODO eventually should use caching
-      private def termToVertex( term: Long )( implicit tx: S#Tx ) : Ancestor.Vertex[ Durable, Long ] = {
-         val vs   = map.full.vertexSerializer
-         tx.system.store.get { out =>
-            out.writeUnsignedByte( 0 )
-            out.writeInt( term.toInt )
-         } { in =>
-            val access = index :+ term
-            vs.read( in, access )( tx.durable )
-         } getOrElse sys.error( "Trying to access inexisting vertex " + term )
       }
    }
 
@@ -251,17 +241,21 @@ object KSysImpl {
       })
 //      @volatile var inFlush = false
 
-      protected def writeVersion() : Long
+      protected def flushNewTree() : Long
+      protected def flushOldTree() : Long
 
       private def flush() {
-         val outTerm       = writeVersion()
+         val isMeld        = meld.get( peer )
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
-         logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
          val persistent    = system.persistent
-         val extendPath: Path => Path = if( meld.get( peer )) {
+         val extendPath: Path => Path = if( isMeld ) {
+            val outTerm       = flushNewTree()
+            logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
             system.setLastPath( inputAccess.addNewTree( outTerm ))( this )
             _.addNewTree( outTerm )
          } else {
+            val outTerm       = flushOldTree()
+            logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
             system.setLastPath( inputAccess.addOldTree( outTerm ))( this )
             _.addOldTree( outTerm )
          }
@@ -277,7 +271,7 @@ object KSysImpl {
          }
       }
 
-      private[KSysImpl] implicit lazy val durable: Durable#Tx = {
+      final private[KSysImpl] implicit lazy val durable: Durable#Tx = {
          logConfig( "txn durable" )
          system.durable.wrap( peer )
       }
@@ -289,17 +283,39 @@ object KSysImpl {
 //         res
 //      }
 
-      def newID() : S#ID = {
+      final def newID() : S#ID = {
          val res = new ID( system.newIDValue()( this ), inputAccess.seminal )
          logConfig( "txn newID " + res )
          res
       }
 
+      // XXX TODO eventually should use caching
+      final private[KSysImpl] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ],
+                                                  index: S#Acc, term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+//         val root = tree.root
+//         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
+         system.store.get { out =>
+            out.writeUnsignedByte( 0 )
+            out.writeInt( term.toInt )
+         } { in =>
+            val access = index :+ term
+            tree.vertexSerializer.read( in, access )( durable )
+         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
+      }
+
+      final private[KSysImpl] def writeTreeVertex( tree: Ancestor.Tree[ Durable, Long ],
+                                                   v: Ancestor.Vertex[ Durable, Long ]) {
+         system.store.put( out => {
+            out.writeUnsignedByte( 0 )
+            out.writeInt( v.version.toInt )
+         })( tree.vertexSerializer.write( v, _ ))
+      }
+
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
-      def reactionMap : ReactionMap[ S ] = system.reactionMap
+      final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+      final private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
          logConfig( "txn get " + id )
          val id1  = id.id
          val path = id.path
@@ -310,7 +326,7 @@ object KSysImpl {
          )
       }
 
-      private[KSysImpl] def getWithPrefix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
+      final private[KSysImpl] def getWithPrefix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
@@ -321,7 +337,7 @@ object KSysImpl {
          )
       }
 
-      private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+      final private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
 //         logConfig( "txn put " + id )
          cache.transform( mapMap => {
             val id1     = id.id
@@ -335,48 +351,52 @@ object KSysImpl {
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
-      private def readIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
-         system.store.get { out =>
+      final protected def readIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+         val tree = system.store.get { out =>
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          } { in =>
             Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
          } getOrElse sys.error( "Trying to access inexisting tree " + term.toInt )
+
+         tree
       }
 
-      def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                           ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+      final def readIndexMap[ A ]( in: DataInput, index: S#Acc )
+                                 ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val term = index.term
          val full = readIndexTree( term )
          val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), full )
          new IndexMapImpl[ A ]( index, map )
       }
 
-      private[KSysImpl] def newIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+      final private[KSysImpl] def newIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+         logConfig( "txn new tree " + term.toInt )
          val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
-         system.store.put({ out =>
+         system.store.put( out => {
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          })( tree.write )
+         writeTreeVertex( tree, tree.root )
          tree
       }
 
-      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+      final def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val tree = readIndexTree( index.term )
          val map  = Ancestor.newMap[ Durable, Long, A ]( tree, value )
          new IndexMapImpl[ A ]( index, map )
       }
 
-      private def alloc( pid: S#ID ) : S#ID = new ID( system.newIDValue()( this ), pid.path )
+      @inline private def alloc( pid: S#ID ) : S#ID = new ID( system.newIDValue()( this ), pid.path )
 
-      def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+      final def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
          logConfig( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
 
-      def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
+      final def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
          val id   = alloc( pid )
          val res  = new BooleanVar( id )
          logConfig( "txn newVar " + res ) // + " - init = " + init
@@ -384,7 +404,7 @@ object KSysImpl {
          res
       }
 
-      def newIntVar( pid: S#ID, init: Int ) : S#Var[ Int ] = {
+      final def newIntVar( pid: S#ID, init: Int ) : S#Var[ Int ] = {
          val id   = alloc( pid )
          val res  = new IntVar( id )
          logConfig( "txn newVar " + res ) // + " - init = " + init
@@ -392,7 +412,7 @@ object KSysImpl {
          res
       }
 
-      def newLongVar( pid: S#ID, init: Long ) : S#Var[ Long ] = {
+      final def newLongVar( pid: S#ID, init: Long ) : S#Var[ Long ] = {
          val id   = alloc( pid )
          val res  = new LongVar( id )
          logConfig( "txn newVar " + res ) // + " - init = " + init
@@ -400,20 +420,20 @@ object KSysImpl {
          res
       }
 
-      def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
+      final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
          new ID( id, pid.path )
       }
 
-      def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
 //         val (in, acc) = system.access( id.id, parent.path )( this )
 //         reader.read( in, acc )( this )
          sys.error( "TODO" )
       }
 
-      def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit writer: TxnWriter[ A ]) {
+      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit writer: TxnWriter[ A ]) {
          val out = new DataOutput()
          writer.write( value, out )
 //         val bytes = out.toByteArray
@@ -422,13 +442,13 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      def readVal[ A ]( id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+      final def readVal[ A ]( id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
 //         val (in, acc) = system.access( id.id, id.path )( this )
 //         reader.read( in, acc )( this )
          sys.error( "TODO" )
       }
 
-      def writeVal( id: S#ID, value: Writer ) {
+      final def writeVal( id: S#ID, value: Writer ) {
          val out = new DataOutput()
          value.write( out )
 //         val bytes = out.toByteArray
@@ -437,7 +457,7 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      private[KSysImpl] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
+      final private[KSysImpl] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
          ser match {
             case plain: Serializer[ _ ] =>
                new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
@@ -446,37 +466,37 @@ object KSysImpl {
          }
       }
 
-      def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+      final def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( readSource( in, pid ))
          logConfig( "txn readVar " + res )
          res
       }
 
-      def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
+      final def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
          val res = new BooleanVar( readSource( in, pid ))
          logConfig( "txn readVar " + res )
          res
       }
 
-      def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] = {
+      final def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] = {
          val res = new IntVar( readSource( in, pid ))
          logConfig( "txn readVar " + res )
          res
       }
 
-      def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] = {
+      final def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] = {
          val res = new LongVar( readSource( in, pid ))
          logConfig( "txn readVar " + res )
          res
       }
 
-      def readID( in: DataInput, acc: S#Acc ) : S#ID = {
+      final def readID( in: DataInput, acc: S#Acc ) : S#ID = {
          val res = new ID( in.readInt(), Path.readAndAppend( in, acc ))
          logConfig( "txn readID " + res )
          res
       }
 
-      def access[ A ]( source: S#Var[ A ]) : A = {
+      final def access[ A ]( source: S#Var[ A ]) : A = {
          sys.error( "TODO" )  // source.access( system.path( this ))( this )
       }
    }
@@ -484,14 +504,28 @@ object KSysImpl {
    private final class TxnImpl( val system: S, val inputAccess: Path, val peer: InTxn ) extends Txn {
       override def toString = "Txn" + inputAccess
 
-      protected def writeVersion() : Long = system.newVersionID( this )
+      protected def flushOldTree() : Long = {
+         val childTerm  = system.newVersionID( this )
+         val (index, parentTerm) = inputAccess.splitIndex
+         val tree       = readIndexTree( index.term )
+         val parent     = readTreeVertex( tree, index, parentTerm )
+         val child      = tree.insertChild( parent, childTerm )
+         writeTreeVertex( tree, child )
+         childTerm
+      }
+      protected def flushNewTree() : Long = {
+         val term = system.newVersionID( this )
+         newIndexTree( term )
+         term
+      }
    }
 
    private final class RootTxn( val system: S, val peer: InTxn ) extends Txn {
       val inputAccess = Path.root
       override def toString = "RootTxn"
 
-      protected def writeVersion() : Long = inputAccess.term
+      protected def flushOldTree() : Long = inputAccess.term
+      protected def flushNewTree() : Long = sys.error( "Cannot meld in the root version" )
    }
 
    private sealed trait BasicVar[ A ] extends Var[ A ] {
@@ -791,7 +825,7 @@ object KSysImpl {
          TxnExecutor.defaultAtomic { implicit itx =>
             // XXX TODO
             val last                   = lastAccess.get
-            logConfig( "::::::: atomic - input access = " + last + " :::::::")
+            logConfig( "::::::: atomic - input access = " + last + " :::::::" )
 //            val (lastIndex, lastTerm)  = last.splitIndex
 //            val lastTree               = lastIndex.term
             fun( new TxnImpl( this, last, itx ))
@@ -814,11 +848,14 @@ object KSysImpl {
 
       def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
+         logConfig( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
             implicit val tx = new RootTxn( this, itx )
-            val rootVar = new RootVar[ A ]( 1, serializer )
-            if( persistent.get[ Array[ Byte ]]( 1, tx.inputAccess )( tx, ByteArraySerializer ).isEmpty ) {
+            val rootVar    = new RootVar[ A ]( 1, serializer )
+            val rootPath   = tx.inputAccess
+            if( persistent.get[ Array[ Byte ]]( 1, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
+               tx.newIndexTree( rootPath.term )
             }
             rootVar
          }

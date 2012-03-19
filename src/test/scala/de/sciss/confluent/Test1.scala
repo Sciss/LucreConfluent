@@ -58,8 +58,9 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       Some( w0 )
    }
 
+   println( "list after writing v0:" )
    val res0 = s.atomic { implicit tx => toList( access.get )}
-   println( "list after writing v0: " + res0 )
+   println( res0 )
    println()
 
    // v1 : "Invert order of input linked list"
@@ -78,8 +79,9 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       }
    }
 
+   println( "list after writing v1:" )
    val res1 = s.atomic { implicit tx => toList( access.get )}
-   println( "list after writing v1: " + res1 )
+   println( res1 )
    println()
 
    println( "Done." )

@@ -31,12 +31,12 @@ import java.util.{Locale, Date}
 import java.text.SimpleDateFormat
 
 object TemporalObjects {
-   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
-
    val name          = "TemporalObjects"
    val version       = 0.30
    val copyright     = "(C)opyright 2009-2012 Hanns Holger Rutz"
    val isSnapshot    = true
+
+   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
 
    def versionString = {
       val s = (version + 0.001).toString.substring( 0, 4 )
@@ -54,7 +54,6 @@ object TemporalObjects {
    }
 
    @elidable(CONFIG) private[confluent] def logConfig( what: String ) {
-//      log.info( what )
       Console.out.println( logHeader.format( new Date() ) + what )
    }
 }

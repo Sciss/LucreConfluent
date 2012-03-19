@@ -265,7 +265,7 @@ object KSysImpl {
             map.foreach {
                case (_, Write( p, value, writer )) =>
                   val path = extendPath( p )
-                  logConfig( "txn flush write " + value + " @ " + path )
+                  logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ", ", ">" ))
                   persistent.put( id, path, value )( this, writer )
             }
          }
@@ -643,9 +643,8 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val arr     = tx.get( id )( ByteArraySerializer )
+         val (access, arr) = tx.getWithPrefix( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
-         val access  = id.path   // XXX ???
          ser.read( in, access )
       }
 

@@ -124,7 +124,7 @@ object ConfluentPersistentMap {
                   // XXX TODO this assertion is wrong. We need to replace store.get by store.flatGet.
                   // if the terms match, we have Some result. If not, we need to ask the index tree if
                   // term2 is ancestor of term. If so, we have Some result, if not we have None.
-                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
+//                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
                   val prev = ser.read( in )
                   prev
                case 2 =>
@@ -134,7 +134,7 @@ object ConfluentPersistentMap {
          }
       }
 
-      def getWithPrefix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A)] = {
+      def getWithPrefix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
          val (index, term) = path.splitIndex
          // preLen will be odd, as we only write to tree indices, and not terms
          val preLen = Hashing.maxPrefixLength( index, key => store.contains { out =>
@@ -154,7 +154,7 @@ object ConfluentPersistentMap {
                   // XXX TODO this assertion is wrong. We need to replace store.get by store.flatGet.
                   // if the terms match, we have Some result. If not, we need to ask the index tree if
                   // term2 is ancestor of term. If so, we have Some result, if not we have None.
-                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
+//                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
                   val prev = ser.read( in )
                   (pre, prev)
                case 2 =>

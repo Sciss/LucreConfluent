@@ -59,7 +59,10 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    }
 
    println( "list after writing v0:" )
-   val res0 = s.atomic { implicit tx => toList( access.get )}
+   val res0 = s.atomic { implicit tx =>
+      val node = access.get
+      toList( node )
+   }
    println( res0 )
    println()
 
@@ -75,12 +78,16 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 
             case _ => node
          }
-         no.map( reverse )
+         val newHead = no.map( reverse )
+         newHead
       }
    }
 
    println( "list after writing v1:" )
-   val res1 = s.atomic { implicit tx => toList( access.get )}
+   val res1 = s.atomic { implicit tx =>
+      val node = access.get
+      toList( node )
+   }
    println( res1 )
    println()
 

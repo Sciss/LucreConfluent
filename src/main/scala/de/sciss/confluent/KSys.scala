@@ -36,6 +36,8 @@ object KSys {
 
       def readIndexMap[ A ]( in: DataInput, index: S#Acc )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
       def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+
+      def inputAccess: S#Acc
    }
 
    trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]

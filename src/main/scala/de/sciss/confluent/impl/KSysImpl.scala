@@ -41,14 +41,14 @@ object KSysImpl {
 
    def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
 
-//   private object IDImpl {
+//   private object ID {
 //      def readAndAppend( id: Int, postfix: S#Acc, in: DataInput ) : S#ID = {
 //         val path = Path.readAndAppend( in, postfix )
-//         new IDImpl( id, path )
+//         new ID( id, path )
 //      }
 //   }
 
-   final class IDImpl private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
+   final class ID private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
 
       override def hashCode = {
@@ -237,8 +237,7 @@ object KSysImpl {
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
-   final class TxnImpl private[KSysImpl]( val system: S, val inputAccess: Path, val peer: InTxn )
-   extends KSys.Txn[ S ] {
+   sealed trait Txn extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val markDirty = TxnLocal( init = {
 //         logConfig( Console.CYAN + "txn dirty" + Console.RESET )
@@ -289,7 +288,7 @@ object KSysImpl {
 //      }
 
       def newID() : S#ID = {
-         val res = new IDImpl( system.newIDValue()( this ), inputAccess.seminal )
+         val res = new ID( system.newIDValue()( this ), inputAccess.seminal )
          logConfig( "txn newID " + res )
          res
       }
@@ -366,7 +365,7 @@ object KSysImpl {
          new IndexMapImpl[ A ]( index, map )
       }
 
-      private def alloc( pid: S#ID ) : S#ID = new IDImpl( system.newIDValue()( this ), pid.path )
+      private def alloc( pid: S#ID ) : S#ID = new ID( system.newIDValue()( this ), pid.path )
 
       def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
@@ -403,7 +402,7 @@ object KSysImpl {
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
-         new IDImpl( id, pid.path )
+         new ID( id, pid.path )
       }
 
       def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
@@ -415,7 +414,7 @@ object KSysImpl {
       def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit writer: TxnWriter[ A ]) {
          val out = new DataOutput()
          writer.write( value, out )
-         val bytes = out.toByteArray
+//         val bytes = out.toByteArray
 //         system.storage += id.id -> (system.storage.getOrElse( id.id,
 //            Map.empty[ S#Acc, Array[ Byte ]]) + (parent.path -> bytes))
          sys.error( "TODO" )
@@ -430,7 +429,7 @@ object KSysImpl {
       def writeVal( id: S#ID, value: Writer ) {
          val out = new DataOutput()
          value.write( out )
-         val bytes = out.toByteArray
+//         val bytes = out.toByteArray
 //         system.storage += id.id -> (system.storage.getOrElse( id.id,
 //            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
          sys.error( "TODO" )
@@ -470,7 +469,7 @@ object KSysImpl {
       }
 
       def readID( in: DataInput, acc: S#Acc ) : S#ID = {
-         val res = new IDImpl( in.readInt(), Path.readAndAppend( in, acc ))
+         val res = new ID( in.readInt(), Path.readAndAppend( in, acc ))
          logConfig( "txn readID " + res )
          res
       }
@@ -478,6 +477,15 @@ object KSysImpl {
       def access[ A ]( source: S#Var[ A ]) : A = {
          sys.error( "TODO" )  // source.access( system.path( this ))( this )
       }
+   }
+
+   private final class TxnImpl( val system: S, val inputAccess: Path, val peer: InTxn ) extends Txn {
+      override def toString = "Txn" + inputAccess
+   }
+
+   private final class TxnRoot( val system: S, val peer: InTxn ) extends Txn {
+      val inputAccess = Path.root
+      override def toString = "RootTxn"
    }
 
    private sealed trait BasicVar[ A ] extends Var[ A ] {
@@ -577,7 +585,7 @@ object KSysImpl {
 
       override def toString = "Access"
 
-      private def id( implicit tx: S#Tx ) : S#ID = new IDImpl( id1, tx.inputAccess )
+      private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )
@@ -697,8 +705,8 @@ object KSysImpl {
 
    final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends KSys[ System ] {
-      type ID                    = KSysImpl.IDImpl
-      type Tx                    = KSysImpl.TxnImpl
+      type ID                    = KSysImpl.ID
+      type Tx                    = KSysImpl.Txn
       type Acc                   = KSysImpl.Path
       type Var[ @specialized A ] = KSysImpl.Var[ A ]
 
@@ -713,15 +721,15 @@ object KSysImpl {
 //         var res = tx.makeVar
 //      }
 
-      private val inMem    = InMemory()
+      private val inMem : InMemory = InMemory()
 
       private val versionRandom  = TxnRandom( 0L )
       private val versionLinear  = ScalaRef( 0 )
-      private val lastAccess     = ScalaRef( Path.root )
+      private val lastAccess     = ScalaRef( Path.root ) // XXX TODO dirty dirty
 
       // XXX TODO should be persistent, e.g. use CachedIntVar again
       private val idCntVar : ScalaRef[ Int ] = ScalaRef {
-         atomic { implicit tx =>
+         inMem.atomic { implicit tx =>
             store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
          }
       }
@@ -739,7 +747,7 @@ object KSysImpl {
       }
 
 //      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
-//         new IDImpl( newIDValue(), Path.empty )
+//         new ID( newIDValue(), Path.empty )
 //      }
 
       private[KSysImpl] def newIDValue()( implicit tx: S#Tx ) : Int = {
@@ -792,7 +800,7 @@ object KSysImpl {
 //      def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A = atomic[ A ]( fun( _ )( rootVar ))
 
       //      def atomicAccess[ A ]( fun: (S#Tx, S#Acc) => A ) : A =
-      //         TxnExecutor.defaultAtomic( itx => fun( new TxnImpl( this, itx ), () ))
+      //         TxnExecutor.defaultAtomic( itx => fun( new Txn( this, itx ), () ))
 
       //      def atomicAccess[ A, B ]( source: S#Var[ A ])( fun: (S#Tx, A) => B ) : B = atomic { tx =>
       //         fun( tx, source.get( tx ))
@@ -800,7 +808,7 @@ object KSysImpl {
 
       def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val access  = Path.root
-//         val id      = new IDImpl( 1, access )
+//         val id      = new ID( 1, access )
          val rootVar = new RootVar[ A ]( 1, serializer )
          if( persistent.get[ Array[ Byte ]]( 1, access )( tx, ByteArraySerializer ).isEmpty ) {
             rootVar.setInit( init )

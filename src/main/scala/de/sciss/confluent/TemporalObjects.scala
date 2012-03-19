@@ -1,5 +1,5 @@
 /*
- *  ConfluentCacheMap.scala
+ *  TemporalObjects.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.

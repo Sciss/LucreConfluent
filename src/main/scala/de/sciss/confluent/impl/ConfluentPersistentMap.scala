@@ -122,6 +122,9 @@ object ConfluentPersistentMap {
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
                   val term2 = in.readLong()
+                  // XXX TODO this assertion is wrong. We need to replace store.get by store.flatGet.
+                  // if the terms match, we have Some result. If not, we need to ask the index tree if
+                  // term2 is ancestor of term. If so, we have Some result, if not we have None.
                   assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
                   val prev = ser.read( in )
                   prev

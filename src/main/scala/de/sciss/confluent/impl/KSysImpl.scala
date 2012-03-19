@@ -222,7 +222,7 @@ object KSysImpl {
          ()
       })
       private val meld  = TxnLocal( init = {
-         logConfig( "txn meld" )
+//         logConfig( "txn meld" )
          false
       })
 //      @volatile var inFlush = false
@@ -479,7 +479,7 @@ object KSysImpl {
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " setInit " + v )
+         logConfig( this.toString + " ini " + v )
          tx.put( id, v )( ser )
       }
 
@@ -524,7 +524,7 @@ object KSysImpl {
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " setInit " + v )
+         logConfig( this.toString + " ini " + v )
          val out  = new DataOutput()
          ser.write( v, out )
          val arr  = out.toByteArray
@@ -550,7 +550,7 @@ object KSysImpl {
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " setInit " + v )
+         logConfig( this.toString + " ini " + v )
          tx.put( id, v )( this )
       }
 
@@ -577,7 +577,7 @@ object KSysImpl {
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " setInit " + v )
+         logConfig( this.toString + " ini " + v )
          tx.put( id, v )( this )
       }
 
@@ -620,7 +620,7 @@ object KSysImpl {
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " setInit " + v )
+         logConfig( this.toString + " ini " + v )
          tx.put( id, v )( this )
       }
 
@@ -723,7 +723,7 @@ object KSysImpl {
          TxnExecutor.defaultAtomic { implicit itx =>
             // XXX TODO
             val last                   = lastAccess.get
-            logConfig( "atomic - input access = " )
+            logConfig( "atomic - input access = " + last )
 //            val (lastIndex, lastTerm)  = last.splitIndex
 //            val lastTree               = lastIndex.term
             fun( new TxnImpl( this, last, itx ))

@@ -51,23 +51,36 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 
    // v0 : "Allocate nodes w0, w1, with x=2 and x=1, concatenate them"
 
-   val access = s.atomic { implicit tx =>
-      s.root[ Option[ Node ]] {
-         val w0      = Node( 2 )
-         val w1      = Node( 1 )
-         w0.next.set( Some( w1 ))
-         Some( w0 )
+   val access = s.root[ Option[ Node ]] { implicit tx =>
+      val w0      = Node( 2 )
+      val w1      = Node( 1 )
+      w0.next.set( Some( w1 ))
+      Some( w0 )
+   }
+
+   val res0 = s.atomic { implicit tx => toList( access.get )}
+   println( "list after writing v0: " + res0 )
+   println()
+
+   // v1 : "Invert order of input linked list"
+
+   s.atomic { implicit tx =>
+      access.transform { no =>
+         def reverse( node: Node ) : Node = node.next.get match {
+            case Some( pred ) =>
+               val res = reverse( pred )
+               pred.next.set( Some( node ))
+               res
+
+            case _ => node
+         }
+         no.map( reverse )
       }
    }
 
-   val found = s.atomic { implicit tx =>
-      val node = access.get
-      toList( node )
-   }
-
-   println( "in v0, we found: " + found )
-
-   // v1 : "Invert order of input linked list"
+   val res1 = s.atomic { implicit tx => toList( access.get )}
+   println( "list after writing v1: " + res1 )
+   println()
 
    println( "Done." )
 }

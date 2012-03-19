@@ -251,8 +251,10 @@ object KSysImpl {
       })
 //      @volatile var inFlush = false
 
+      protected def writeVersion() : Long
+
       private def flush() {
-         val outTerm       = system.newVersionID( this )
+         val outTerm       = writeVersion()
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
          logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
          val persistent    = system.persistent
@@ -339,7 +341,7 @@ object KSysImpl {
             out.writeInt( term.toInt )
          } { in =>
             Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
-         } getOrElse sys.error( "Trying to access inexisting tree " + term )
+         } getOrElse sys.error( "Trying to access inexisting tree " + term.toInt )
       }
 
       def readIndexMap[ A ]( in: DataInput, index: S#Acc )
@@ -481,11 +483,15 @@ object KSysImpl {
 
    private final class TxnImpl( val system: S, val inputAccess: Path, val peer: InTxn ) extends Txn {
       override def toString = "Txn" + inputAccess
+
+      protected def writeVersion() : Long = system.newVersionID( this )
    }
 
-   private final class TxnRoot( val system: S, val peer: InTxn ) extends Txn {
+   private final class RootTxn( val system: S, val peer: InTxn ) extends Txn {
       val inputAccess = Path.root
       override def toString = "RootTxn"
+
+      protected def writeVersion() : Long = inputAccess.term
    }
 
    private sealed trait BasicVar[ A ] extends Var[ A ] {
@@ -806,14 +812,16 @@ object KSysImpl {
       //         fun( tx, source.get( tx ))
       //      }
 
-      def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val access  = Path.root
-//         val id      = new ID( 1, access )
-         val rootVar = new RootVar[ A ]( 1, serializer )
-         if( persistent.get[ Array[ Byte ]]( 1, access )( tx, ByteArraySerializer ).isEmpty ) {
-            rootVar.setInit( init )
+      def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
+         TxnExecutor.defaultAtomic { itx =>
+            implicit val tx = new RootTxn( this, itx )
+            val rootVar = new RootVar[ A ]( 1, serializer )
+            if( persistent.get[ Array[ Byte ]]( 1, tx.inputAccess )( tx, ByteArraySerializer ).isEmpty ) {
+               rootVar.setInit( init( tx ))
+            }
+            rootVar
          }
-         rootVar
       }
 
       def close() { store.close()}

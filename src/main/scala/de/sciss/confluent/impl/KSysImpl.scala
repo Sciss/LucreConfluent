@@ -571,6 +571,12 @@ object KSysImpl {
 
    private object ByteArraySerializer extends Serializer[ Array[ Byte ]] {
       def write( v: Array[ Byte ], out: DataOutput ) {
+//if( v == null ) {
+//   println( "ARRAY IS NULL" )
+//}
+//if( out == null ) {
+//   println( "OUT IS NULL" )
+//}
          out.writeInt( v.length )
          out.write( v )
       }

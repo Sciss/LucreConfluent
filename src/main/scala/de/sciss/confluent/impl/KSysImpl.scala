@@ -90,6 +90,7 @@ object KSysImpl {
       def test_empty : Path = empty
       private[KSysImpl] def empty   = new Path( FingerTree.empty( PathMeasure ))
       private[KSysImpl] def root    = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
+//      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
       def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
 
@@ -132,6 +133,18 @@ object KSysImpl {
       def test_:+( elem: Long ) : Path = :+( elem )
 
       private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
+
+      private[KSysImpl] def addNewTree( term: Long ) : Path = wrap( tree :+ term :+ term )
+
+      private[KSysImpl] def addOldTree( term: Long ) : Path = {
+         require( !tree.isEmpty )
+         wrap( tree.init :+ term )
+      }
+
+      private[KSysImpl] def seminal : Path = {
+         val (_init, term) = splitIndex
+         wrap( FingerTree( _init.term, term ))
+      }
 
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
@@ -199,7 +212,7 @@ object KSysImpl {
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
-   final class TxnImpl private[KSysImpl]( val system: S, val peer: InTxn )
+   final class TxnImpl private[KSysImpl]( val system: S, inAccess: Path, val peer: InTxn )
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val dirty = TxnLocal( init = {
@@ -207,35 +220,38 @@ object KSysImpl {
          false
       })
       private val meld  = TxnLocal( false )
-      @volatile var inFlush = false
+//      @volatile var inFlush = false
 
       private def flush() {
-         newVersionID   = system.newVersionID( this )
-         inFlush        = true
-         if( meld.get( peer )) {
-            flushOldTree()
+         val outTerm       = system.newVersionID( this )
+         val persistent    = system.persistent
+         val extendPath: Path => Path = if( meld.get( peer )) {
+            system.setLastPath( inAccess.addNewTree( outTerm ))( this )
+            _.addNewTree( outTerm )
          } else {
-            flushNewTree()
+            system.setLastPath( inAccess.addOldTree( outTerm ))( this )
+            _.addOldTree( outTerm )
+         }
+         cache.get( peer ).foreach { tup1 =>
+            val id   = tup1._1
+            val map  = tup1._2
+            map.foreach {
+               case (_, Write( p, value, writer )) =>
+                  val path = extendPath( p )
+                  persistent.put( id, path, value )( this, writer )
+            }
          }
       }
 
-      private def flushOldTree() {
-         sys.error( "TODO" )
-      }
-
-      private def flushNewTree() {
-         sys.error( "TODO" )
-      }
-
       private[KSysImpl] implicit lazy val durable: Durable#Tx = system.durable.wrap( peer )
-      @volatile private var newVersionID = 0L
+//      @volatile private var newVersionID = 0L
 //      private[KSysImpl] def newVersionID : Long = {
 //         val res = newVersionIDVar
 //         if( res == 0L ) sys.error( "Trying to write S#ID before transaction committed" )
 //         res
 //      }
 
-      def newID() : S#ID = system.newID()( this )
+      def newID() : S#ID = new IDImpl( system.newIDValue()( this ), inAccess.seminal )
 
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
@@ -602,6 +618,7 @@ object KSysImpl {
 
       private val versionRandom  = TxnRandom( 0L )
       private val versionLinear  = ScalaRef( 0 )
+      private val lastAccess     = ScalaRef( Path.root )
 
       private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
          ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
@@ -610,14 +627,14 @@ object KSysImpl {
 
       private[KSysImpl] def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val itx = tx.peer
-         val lin  = versionLinear.get
-         versionLinear.set( lin + 1 )
+         val lin  = versionLinear.get + 1
+         versionLinear.set( lin )
          (versionRandom.nextInt().toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
       }
 
-      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
-         new IDImpl( newIDValue(), Path.empty )
-      }
+//      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
+//         new IDImpl( newIDValue(), Path.empty )
+//      }
 
       private[KSysImpl] def newIDValue()( implicit tx: S#Tx ) : Int = {
          implicit val itx = tx.peer
@@ -650,8 +667,20 @@ object KSysImpl {
 //         (in, acc.drop( bestLen ))
       }
 
-      def atomic[ A ]( fun: S#Tx => A ): A =
-         TxnExecutor.defaultAtomic( itx => fun( new TxnImpl( this, itx )))
+      def atomic[ A ]( fun: S#Tx => A ): A = {
+         TxnExecutor.defaultAtomic { implicit itx =>
+            // XXX TODO
+            val last                   = lastAccess.get
+//            val (lastIndex, lastTerm)  = last.splitIndex
+//            val lastTree               = lastIndex.term
+            fun( new TxnImpl( this, last, itx ))
+         }
+      }
+
+      // XXX TODO
+      private[KSysImpl] def setLastPath( p: Path )( implicit tx: S#Tx ) {
+         lastAccess.set( p )( tx.peer )
+      }
 
 //      def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A = atomic[ A ]( fun( _ )( rootVar ))
 

@@ -237,7 +237,7 @@ object KSysImpl {
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
-   final class TxnImpl private[KSysImpl]( val system: S, private[KSysImpl] val inAccess: Path, val peer: InTxn )
+   final class TxnImpl private[KSysImpl]( val system: S, val inputAccess: Path, val peer: InTxn )
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val markDirty = TxnLocal( init = {
@@ -258,10 +258,10 @@ object KSysImpl {
          logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( meld.get( peer )) {
-            system.setLastPath( inAccess.addNewTree( outTerm ))( this )
+            system.setLastPath( inputAccess.addNewTree( outTerm ))( this )
             _.addNewTree( outTerm )
          } else {
-            system.setLastPath( inAccess.addOldTree( outTerm ))( this )
+            system.setLastPath( inputAccess.addOldTree( outTerm ))( this )
             _.addOldTree( outTerm )
          }
          cache.get( peer ).foreach { tup1 =>
@@ -289,7 +289,7 @@ object KSysImpl {
 //      }
 
       def newID() : S#ID = {
-         val res = new IDImpl( system.newIDValue()( this ), inAccess.seminal )
+         val res = new IDImpl( system.newIDValue()( this ), inputAccess.seminal )
          logConfig( "txn newID " + res )
          res
       }
@@ -577,7 +577,7 @@ object KSysImpl {
 
       override def toString = "Access"
 
-      private def id( implicit tx: S#Tx ) : S#ID = new IDImpl( id1, tx.inAccess )
+      private def id( implicit tx: S#Tx ) : S#ID = new IDImpl( id1, tx.inputAccess )
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )

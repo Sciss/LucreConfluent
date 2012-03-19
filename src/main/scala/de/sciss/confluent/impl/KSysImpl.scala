@@ -30,9 +30,10 @@ import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
-import concurrent.stm.{TxnExecutor, InTxn, Ref => ScalaRef}
 import de.sciss.collection.txn.Ancestor
 import de.sciss.lucre.stm.{Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import collection.immutable.{IntMap, LongMap}
+import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 
 object KSysImpl {
    private type S = System
@@ -191,12 +192,48 @@ object KSysImpl {
       }
    }
 
+   private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
+
+   private val emptyLongMapVal      = LongMap.empty[ Any ]
+   private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
+   private val emptyIntMapVal       = IntMap.empty[ Any ]
+   private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
+
    final class TxnImpl private[KSysImpl]( val system: S, val peer: InTxn )
-   extends KSys.Txn[ S ] with ConfluentCacheMap[ S ] {
+   extends KSys.Txn[ S ] {
+      private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
+      private val dirty = TxnLocal( init = {
+         ScalaTxn.beforeCommit( _ => flush() )( peer )
+         false
+      })
+      private val meld  = TxnLocal( false )
+      @volatile var inFlush = false
+
+      private def flush() {
+         newVersionID   = system.newVersionID( this )
+         inFlush        = true
+         if( meld.get( peer )) {
+            flushOldTree()
+         } else {
+            flushNewTree()
+         }
+      }
+
+      private def flushOldTree() {
+         sys.error( "TODO" )
+      }
+
+      private def flushNewTree() {
+         sys.error( "TODO" )
+      }
 
       private[KSysImpl] implicit lazy val durable: Durable#Tx = system.durable.wrap( peer )
-
-      protected def persistent : ConfluentTxnMap[ S#Tx, S#Acc ] = system.persistent
+      @volatile private var newVersionID = 0L
+//      private[KSysImpl] def newVersionID : Long = {
+//         val res = newVersionIDVar
+//         if( res == 0L ) sys.error( "Trying to write S#ID before transaction committed" )
+//         res
+//      }
 
       def newID() : S#ID = system.newID()( this )
 
@@ -204,13 +241,25 @@ object KSysImpl {
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A =
-         get( id.id, id.path )( this, ser ).getOrElse(
+      private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+         val id1  = id.id
+         val path = id.path
+         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
+            system.persistent.get[ A ]( id1, path )( this, ser )
+         ).getOrElse(
             sys.error( "No value for " + id )
          )
+      }
 
       private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
-         put[ A ]( id.id, id.path, value )( this, ser )
+         cache.transform( mapMap => {
+            val id1     = id.id
+            val path    = id.path
+            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ Write[ _ ]])
+            val mapNew  = mapOld + ((path.sum, Write( path, value, ser )))
+            mapMap + ((id1, mapNew))
+         })( peer )
+         dirty.set( true )( peer )
       }
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
@@ -551,10 +600,20 @@ object KSysImpl {
 
       private val inMem    = InMemory()
 
+      private val versionRandom  = TxnRandom( 0L )
+      private val versionLinear  = ScalaRef( 0 )
+
       private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
          ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
+
+      private[KSysImpl] def newVersionID( implicit tx: S#Tx ) : Long = {
+         implicit val itx = tx.peer
+         val lin  = versionLinear.get
+         versionLinear.set( lin + 1 )
+         (versionRandom.nextInt().toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
+      }
 
       private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
          new IDImpl( newIDValue(), Path.empty )

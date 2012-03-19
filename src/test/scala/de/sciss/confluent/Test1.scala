@@ -44,30 +44,30 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       override def toString = "Node" + id
    }
 
-//   implicit def option[ Tx, Acc, A ]( implicit peer: TxnSerializer[ Tx, Acc, A ]) : TxnSerializer[ Tx, Acc, Option[ A ]] =
-//      sys.error( "TODO" )
+   def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ Int ] = next match {
+      case Some( n ) => n.value.get :: toList( n.next.get )
+      case _ => Nil
+   }
 
-//   implicit def varSer[ S <: Sys[ S ], A ]( implicit valueSerializer: TxnSerializer[ S#Tx, S#Acc, A ]) : TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] =
-//      new TxnSerializer[ S#Tx, S#Acc, S#Var[ A ]] {
-//         def write( v: S#Var[ A ], out: DataOutput ) { v.write( out )}
-//         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : S#Var[ A ] = sys.error( "TODO" )
-//      }
+   // v0 : "Allocate nodes w0, w1, with x=2 and x=1, concatenate them"
 
    val access = s.atomic { implicit tx =>
-//      implicit val fuckYou = varSer[ S, Option[ Node ]]
-      val _access = s.root( Option.empty[ Node ])
-      val w0      = Node( 0 )
-      _access.set( Some( w0 ))
-      _access
+      s.root[ Option[ Node ]] {
+         val w0      = Node( 2 )
+         val w1      = Node( 1 )
+         w0.next.set( Some( w1 ))
+         Some( w0 )
+      }
    }
 
    val found = s.atomic { implicit tx =>
       val node = access.get
-      node.map( n => (n.value.get, n.next.get))
+      toList( node )
    }
+
+   println( "in v0, we found: " + found )
 
    // v1 : "Invert order of input linked list"
 
-   println( "in v1, we found: " + found )
    println( "Done." )
 }

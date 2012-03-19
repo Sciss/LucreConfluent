@@ -603,13 +603,6 @@ object KSysImpl {
       private[KSysImpl] val persistent = ConfluentPersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
-      // XXX TODO should be persistent, e.g. use CachedIntVar again
-      private val idCntVar : ScalaRef[ Int ] = ScalaRef {
-         atomic { implicit tx =>
-            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
-         }
-      }
-
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
 //         var res = tx.makeVar
 //      }
@@ -619,6 +612,13 @@ object KSysImpl {
       private val versionRandom  = TxnRandom( 0L )
       private val versionLinear  = ScalaRef( 0 )
       private val lastAccess     = ScalaRef( Path.root )
+
+      // XXX TODO should be persistent, e.g. use CachedIntVar again
+      private val idCntVar : ScalaRef[ Int ] = ScalaRef {
+         atomic { implicit tx =>
+            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
+         }
+      }
 
       private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
          ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>

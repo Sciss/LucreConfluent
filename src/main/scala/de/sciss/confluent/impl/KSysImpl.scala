@@ -213,7 +213,7 @@ object KSysImpl {
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
-   final class TxnImpl private[KSysImpl]( val system: S, inAccess: Path, val peer: InTxn )
+   final class TxnImpl private[KSysImpl]( val system: S, private[KSysImpl] val inAccess: Path, val peer: InTxn )
    extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val markDirty = TxnLocal( init = {
@@ -443,26 +443,24 @@ object KSysImpl {
       }
    }
 
-   private sealed trait BasicSource {
+   private sealed trait BasicVar[ A ] extends Var[ A ] {
       protected def id: S#ID
+
+//      @elidable(CONFIG) protected final def assertExists()(implicit tx: Txn) {
+//         require(tx.system.exists(id), "trying to write disposed ref " + id)
+//      }
 
       final def write( out: DataOutput ) {
          out.writeInt( id.id )
 //         id.write( out )
       }
 
-      /* final */
-      def dispose()( implicit tx: S#Tx ) {
+      final def dispose()( implicit tx: S#Tx ) {
          id.dispose()
       }
 
-//      @elidable(CONFIG) protected final def assertExists()(implicit tx: Txn) {
-//         require(tx.system.exists(id), "trying to write disposed ref " + id)
-//      }
-   }
-
-   private sealed trait BasicVar[ A ] extends Var[ A ] with BasicSource {
       def setInit( v: A )( implicit tx: S#Tx ) : Unit
+      final def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
    }
 
    private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: Serializer[ A ])
@@ -482,8 +480,6 @@ object KSysImpl {
          logConfig( this.toString + " ini " + v )
          tx.put( id, v )( ser )
       }
-
-      def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var(" + id + ")"
    }
@@ -531,19 +527,45 @@ object KSysImpl {
          tx.put( id, arr )( ByteArraySerializer )
       }
 
-      def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
-
       override def toString = "Var(" + id + ")"
    }
 
    private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends VarTxLike[ A ]
 
-   private final class RootVar[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends VarTxLike[ A ]
+   private final class RootVar[ A ]( id1: Int, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends Var[ A ] {
+      def setInit( v: A )( implicit tx: S#Tx ) {
+         set( v ) // XXX could add require( tx.inAccess == Path.root )
+      }
+
+      private def id( implicit tx: S#Tx ) : S#ID = new IDImpl( id1, tx.inAccess )
+
+      def set( v: A )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " set " + v )
+         val out  = new DataOutput()
+         ser.write( v, out )
+         val arr  = out.toByteArray
+         tx.put( id, arr )( ByteArraySerializer )
+      }
+
+      def get( implicit tx: S#Tx ) : A = {
+         logConfig( this.toString + " get" )
+         val arr     = tx.get( id )( ByteArraySerializer )
+         val in      = new DataInput( arr )
+         val access  = id.path   // XXX ???
+         ser.read( in, access )
+      }
+
+      def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
+
+      def write( out: DataOutput ) { sys.error( "Unsupported Operation -- access.write" )}
+
+      def dispose()( implicit tx: S#Tx ) {}
+   }
 
    private final class BooleanVar( protected val id: S#ID )
-   extends Var[ Boolean ] with BasicSource with Serializer[ Boolean ] {
+   extends BasicVar[ Boolean ] with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
          logConfig( this.toString + " get" )
          tx.get[ Boolean ]( id )( this )
@@ -560,8 +582,6 @@ object KSysImpl {
          tx.put( id, v )( this )
       }
 
-      def transform( f: Boolean => Boolean )( implicit tx: S#Tx ) { set( f( get ))}
-
       override def toString = "Var[Boolean](" + id + ")"
 
       // ---- TxnSerializer ----
@@ -570,7 +590,7 @@ object KSysImpl {
    }
 
    private final class IntVar( protected val id: S#ID )
-   extends Var[ Int ] with BasicSource with Serializer[ Int ] {
+   extends BasicVar[ Int ] with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
          logConfig( this.toString + " get" )
          tx.get[ Int ]( id )( this )
@@ -586,8 +606,6 @@ object KSysImpl {
          logConfig( this.toString + " set " + v )
          tx.put( id, v )( this )
       }
-
-      def transform( f: Int => Int )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var[Int](" + id + ")"
 
@@ -613,7 +631,7 @@ object KSysImpl {
 //   }
 
    private final class LongVar( protected val id: S#ID )
-   extends Var[ Long ] with BasicSource with Serializer[ Long ] {
+   extends BasicVar[ Long ] with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
          logConfig( this.toString + " get" )
          tx.get[ Long ]( id )( this )
@@ -629,8 +647,6 @@ object KSysImpl {
          logConfig( this.toString + " set " + v )
          tx.put( id, v )( this )
       }
-
-      def transform( f: Long => Long )( implicit tx: S#Tx ) { set( f( get ))}
 
       override def toString = "Var[Long](" + id + ")"
 
@@ -746,9 +762,9 @@ object KSysImpl {
 
       def root[ A ]( init: => A )( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val access  = Path.root
-         val id      = new IDImpl( 1, access )
-         val rootVar = new RootVar[ A ]( id, serializer )
-         if( persistent.get[ Array[ Byte ]]( id.id, access )( tx, ByteArraySerializer ).isEmpty ) {
+//         val id      = new IDImpl( 1, access )
+         val rootVar = new RootVar[ A ]( 1, serializer )
+         if( persistent.get[ Array[ Byte ]]( 1, access )( tx, ByteArraySerializer ).isEmpty ) {
             rootVar.setInit( init )
          }
          rootVar

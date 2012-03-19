@@ -69,6 +69,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    // v1 : "Invert order of input linked list"
 
    s.atomic { implicit tx =>
+      // urrgh, this got pretty ugly. but well, it does its job...
       access.transform { no =>
          def reverse( node: Node ) : Node = node.next.get match {
             case Some( pred ) =>
@@ -78,7 +79,11 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 
             case _ => node
          }
-         val newHead = no.map( reverse )
+         val newHead = no.map { n =>
+            val res = reverse( n )
+            n.next.set( None )
+            res
+         }
          newHead
       }
    }

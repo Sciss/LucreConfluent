@@ -214,10 +214,10 @@ read (w0 @ <v0, v1>).next
       //// system.put( (w0NextId, <v0, v1>), Some( w1 @ <v0, v2> ))
       ///// map.put( w0NextId, <v0, v1>, Some( w1 @ <v0, v2> ))
       /////// idMap( w0NextId ) += (<v0, v1>.sum, Write( <v0, v1>, Some( w1 @ <v0, v2> )))
-// WHICH WILL BE RESOLVED AS                      Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> )
-// AND NOT                                        Write( <v0, v3>, Some( w1 @ <v0, v2> )
+// WHICH WILL BE RESOLVED AS                      Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> ))
+// AND NOT                                        Write( <v0, v3>, Some( w1 @ <v0, v2> ))
 
-IMPLICIT:
+IMPLICIT:   // actually this isn't needed???
    access.set( Some( w1 @ <v0, v1> ))
    // system.put( (rootId, <v0, v1>), Some( w1 @ <v0, v1> ))
    //// map.put( rootId, <v0, v1>, Some( w1 @ <v0, v1> ))
@@ -251,7 +251,7 @@ read access at <v0, v1> -->
 // WHICH WILL BE RESOLVED EITHER AS               Write( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> )
 // OR                                             Write( <v0, v3>, Some( w1 @ <v0, v2> )
 
-IMPLICIT:
+IMPLICIT:   // actually this isn't needed???
    access.set( Some( w1 @ <v0, v1> ))
    // system.put( (rootId, <v0, v1>), Some( w1 @ <v0, v1> ))
    //// map.put( rootId, <v0, v1>, Some( w1 @ <v0, v1> ))
@@ -261,3 +261,124 @@ IMPLICIT:
 
 ----- now let's try to traverse the list with extended and non-extended paths
 
+the expected sequence is w1/1, w0/2, w1/1, w2/1
+
+read access at <v0, v3>
+--> wooop, the 'implicit' access.set was indeed needed! otherwise we'd have v1 and v2 as possible candidates?
+; but well, let's assume for a moment, we stick to the non-expanded path, and we'll have v1 as nearest ancestor of v3!
+
+so we'd have w1 @ <v0, v3>
+
+    w1.x    --> 1
+    w1.next --> ...
+	it would depend on whether v1 was created before or after v2. so FAILURE
+
+:::::::::::::::::::::::::::::
+
+so the path extension is crucial, and we need to be able to detect the meld.
+- difficult, because var.set(...) doesn't know whether the value is mutable or not.
+(1) could have an overly pessimistic approach -- whenever another version is accessed, we assume the meld
+  (without verifying that that version is actually written anywhere)
+  --> disadvantage: could lead to unnessesary expansions
+(2) could have a re-write, e.g. when detecting an id.write that would require a meld, re-do the whole
+  cached Write seq
+  --> disadvantage: could slow down the write phase unnessarily
+
+a transparent solution could be roughly as follows:
+- we would have a meld { ... } to gather objects from another version.
+- we rely on the these objects being written to a variable, ending up in the Write seq cache....
+- if not, the writing instance would need to declare those objects somehow?
+
+:::::::::::::::::::::::::::::
+
+Is (2) feasible? -- re-executing the flush?
+- it consists basically of a chain of persistent.put call
+- so the question is only, what remains in the 'wrong' writes, do they cause any problems (do they need to be undone)?
+
+For the moment, let us assume the pessimistic approach - a meld is assumed as soon as an independant access is performed in a txn
+
+:::::::::::::::::::::::::::::
+
+ok, then assume the expanded paths in v3, perform traversal:
+
+read access yields w1 @ <v0, v1, v3, v3>
+   x = 1
+next -> we will find (<v0, v1>, Some( w0 @ <v0, v0> ))
+   and through whatever mechanism yield w0 @ <v0, v1, v3, v3>
+   x = 2
+next -> we will find ( <v0, v1, v3, v3>, Some( w1 @ <v0, v2> ))
+   and through whatever mechanism yield w1 @ <v0, v2, v3, v3>
+   x = 3
+next -> we will find ( <v0, v2>, Some( w2 @ <> ))
+   and through whatever mechanism yield w2 @ <v2, v2, v3, v3>
+   x = 3
+
+ok
+
+:::::::::::::::::::::::::::::
+
+thus, so far we have
+(originating id --> longest prefix --> stored value's path --> substituted path)
+
+<v0, v0> --> <v0, v0> --> <> --> <v0, v0>
+suffix = <>
+prefix.term = <v0>
+stored is empty --> duplicate prefix.term = <v0, v0>
+                    plus suffix <> --> <v0, v0>
+
+<v0, v2> --> <v0, v2> --> <v0, v0> --> <v0, v2>
+suffix = <>
+prefix.term = <v2>
+stored is <v0, v0> --> replace term = <v0, v2>
+                       plus suffix <> --> <v0, v2>
+
+<v0, v1> --> <v0, v1> --> <v0, v0> --> <v0, v1>
+suffix = <>
+prefix.term = <v1>
+stored is <v0, v0> --> replace term = <v0, v1>
+                       plus suffix <> --> <v0, v1>
+
+<v0, v2> --> <v0, v2> --> <> --> <v2, v2>
+suffix = <>
+prefix.term = <v2>
+stored is empty --> duplicate prefix.term = <v2, v2>
+                    plus suffix <> --> <v2, v2>
+
+<v0, v1, v3, v3> --> <v0, v1 --> <v0, v0> --> <v0, v1, v3, v3>
+suffix = <v3, v3>
+prefix.term = <v1>
+stored is <v0, v0> --> replace term = <v0, v1>
+                       plus suffix <v3, v3> --> <v0, v1, v3, v3>
+
+<v0, v1, v3, v3> --> <v0, v1, v3, v3> --> <v0, v2> --> <v0, v2, v3, v3>
+suffix = <>
+prefix.term = <v3>
+stored is <v0, v2> --> replace term = <v0, v3>
+                       plus suffix --> <v0, v3> OUCH
+solution? stored doubleterm is <v0, v2>, prefix.doubleterm = <v3, v3>. 
+doubleterm's head elements don't match --> hence add doubleterm (instead of replace term), thus: <v0, v2, v3, v3>
+
+<v0, v2, v3, v3> --> <v0, v2> --> <> --> <v2, v2, v3, v3>
+suffix = <v3, v3>
+prefix.term = <v2>
+stored is empty --> duplicate prefix.term = <v2, v2>
+                    plus suffix <v3, v3> --> <v2, v2, v3, v3>
+
+I still wonder if it wouldn't be easier to just add the resolved current version's suffix when flushing
+
+:::::::::::::::::::::::::::::
+
+the next steps:
+
+- remove `dirty` from cache map -- it's redundant with idMapRef.isEmpty
+- idMapRef clearly needs to be TxnLocal
+- thus, the best would be if indeed Txn would _mix in_ the cache map
+- then we can decide whether idMapRef has to be wrapped in TxnLocal at all,
+  maybe it just needs to be thread safe somehow, e.g. as java.util.concurrent.ConcurrentHashMap ?
+(but as long as Txn are single threaded, we can assume that there will only be concurrent Txns,
+ each carrying their own idMapRef -- they would in any case be independant, because two Txns
+ mean we end up with two new version vertices. And then concurrency is only an issue in flush,
+ and there we would have collisions handled by the db)
+- that is to say, a Txn is created like this: TxnExecutor.defaultAtomic { tx => Txn( tx ); ... }
+  and hence when a Txn is retried, its idMapRef will be empty again, so it should be fine to
+  just store a plain map in the Txn.

@@ -166,7 +166,7 @@ object KSysImpl {
    }
 
    private final class IndexMapImpl[ A ]( protected val index: S#Acc,
-                                         protected val map: Ancestor.Map[ Durable, Long, A ])
+                                          protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
       def nearest( term: Long )( implicit tx: S#Tx ) : A = {
          val v = termToVertex( term )

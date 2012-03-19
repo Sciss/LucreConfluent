@@ -191,16 +191,27 @@ object KSysImpl {
       }
    }
 
-   final class TxnImpl private[KSysImpl]( val system: System, val peer: InTxn )
-   extends KSys.Txn[ S ] {
+   final class TxnImpl private[KSysImpl]( val system: S, val peer: InTxn )
+   extends KSys.Txn[ S ] with ConfluentCacheMap[ S ] {
 
       private[KSysImpl] implicit lazy val durable: Durable#Tx = system.durable.wrap( peer )
+
+      protected def persistent : ConfluentTxnMap[ S#Tx, S#Acc ] = system.persistent
 
       def newID() : S#ID = system.newID()( this )
 
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
       def reactionMap : ReactionMap[ S ] = system.reactionMap
+
+      private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A =
+         get( id.id, id.path )( this, ser ).getOrElse(
+            sys.error( "No value for " + id )
+         )
+
+      private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+         put[ A ]( id.id, id.path, value )( this, ser )
+      }
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
@@ -358,12 +369,14 @@ object KSysImpl {
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.put( id, v )( tx, ser )
+         tx.put( id, v )( ser )
       }
 
-      def get( implicit tx: S#Tx ) : A = tx.system.get[ A ]( id )( tx, ser )
+      def get( implicit tx: S#Tx ) : A = tx.get[ A ]( id )( ser )
 
-      def setInit( v: A )( implicit tx: S#Tx ) { tx.system.put( id, v )( tx, ser )}
+      def setInit( v: A )( implicit tx: S#Tx ) {
+         tx.put( id, v )( ser )
+      }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
 
@@ -393,11 +406,11 @@ object KSysImpl {
          val out  = new DataOutput()
          ser.write( v, out )
          val arr  = out.toByteArray
-         tx.system.put( id, arr )( tx, ByteArraySerializer )
+         tx.put( id, arr )( ByteArraySerializer )
       }
 
       def get( implicit tx: S#Tx ) : A = {
-         val arr     = tx.system.get( id )( tx, ByteArraySerializer )
+         val arr     = tx.get( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
          val access  = id.path   // XXX ???
          ser.read( in, access )
@@ -407,7 +420,7 @@ object KSysImpl {
          val out  = new DataOutput()
          ser.write( v, out )
          val arr  = out.toByteArray
-         tx.system.put( id, arr )( tx, ByteArraySerializer )
+         tx.put( id, arr )( ByteArraySerializer )
       }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
@@ -424,16 +437,16 @@ object KSysImpl {
    private final class BooleanVar( protected val id: S#ID )
    extends Var[ Boolean ] with BasicSource with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
-         tx.system.get[ Boolean ]( id )( tx, this )
+         tx.get[ Boolean ]( id )( this )
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
-         tx.system.put( id, v )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def set( v: Boolean )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.put( id, v )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def transform( f: Boolean => Boolean )( implicit tx: S#Tx ) { set( f( get ))}
@@ -448,16 +461,16 @@ object KSysImpl {
    private final class IntVar( protected val id: S#ID )
    extends Var[ Int ] with BasicSource with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
-         tx.system.get[ Int ]( id )( tx, this )
+         tx.get[ Int ]( id )( this )
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
-         tx.system.put( id, v )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def set( v: Int )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.put( id, v )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def transform( f: Int => Int )( implicit tx: S#Tx ) { set( f( get ))}
@@ -488,16 +501,16 @@ object KSysImpl {
    private final class LongVar( protected val id: S#ID )
    extends Var[ Long ] with BasicSource with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
-         tx.system.get[ Long ]( id )( tx, this )
+         tx.get[ Long ]( id )( this )
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
-         tx.system.put( id,v  )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def set( v: Long )( implicit tx: S#Tx ) {
 //         assertExists()
-         tx.system.put( id, v )( tx, this )
+         tx.put( id, v )( this )
       }
 
       def transform( f: Long => Long )( implicit tx: S#Tx ) { set( f( get ))}
@@ -521,9 +534,9 @@ object KSysImpl {
       val manifest               = Predef.manifest[ System ]
       private[KSysImpl] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
-      private[KSysImpl] val durable = Durable( store ) : Durable
-      private val persistent        = ConfluentPersistentMap[ S, Any ]( store )
-      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
+      private[KSysImpl] val durable    = Durable( store ) : Durable
+      private[KSysImpl] val persistent = ConfluentPersistentMap[ S, Any ]( store )
+//      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
       // XXX TODO should be persistent, e.g. use CachedIntVar again
       private val idCntVar : ScalaRef[ Int ] = ScalaRef {
@@ -594,7 +607,7 @@ object KSysImpl {
          val access  = Path.root
          val id      = new IDImpl( 1, access )
          val rootVar = new RootVar[ A ]( id, serializer )
-         if( map.get[ Array[ Byte ]]( id.id, access )( tx, ByteArraySerializer ).isEmpty ) {
+         if( persistent.get[ Array[ Byte ]]( id.id, access )( tx, ByteArraySerializer ).isEmpty ) {
             rootVar.setInit( init )
          }
          rootVar
@@ -606,10 +619,10 @@ object KSysImpl {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
 
-      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
-//         logConfig( "write <" + id + ">" )
-         map.put[ A ]( id.id, id.path, value )
-      }
+//      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+////         logConfig( "write <" + id + ">" )
+//         map.put[ A ]( id.id, id.path, value )
+//      }
 
 //      def remove( id: S#ID )( implicit tx: S#Tx ) {
 //         sys.error( "TODO" )
@@ -617,9 +630,9 @@ object KSysImpl {
 ////         kStore.remove( _.writeInt( id ))
 //      }
 
-      private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
-                                                               ser: Serializer[ A ]) : A = {
-         map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
-      }
+//      private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
+//                                                               ser: Serializer[ A ]) : A = {
+//         map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
+//      }
    }
 }

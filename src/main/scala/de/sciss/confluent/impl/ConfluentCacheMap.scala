@@ -26,73 +26,58 @@
 package de.sciss.confluent
 package impl
 
-import collection.immutable.LongMap
 import concurrent.stm.TMap
 import de.sciss.lucre.stm.{Serializer, Sys}
+import collection.immutable.{IntMap, LongMap}
 
 object ConfluentCacheMap {
-   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
-      new Impl[ S ]( persistent )
+//   def apply[ S <: KSys[ S ], A ]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ]) : ConfluentCacheMap[ S ] =
+//      new Impl[ S ]( persistent )
 
-   private val emptyLongMapVal   = LongMap.empty[ Any ]
-   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
-
-   private final class Impl[ S <: KSys[ S ]]( persistent: ConfluentTxnMap[ S#Tx, S#Acc ])
-   extends ConfluentCacheMap[ S ] {
-      private val idMapRef = TMap.empty[ Int, LongMap[ Write[ S#Acc, _ ]]]
-      @volatile private var dirtyVar = false
-
-      def isDirty : Boolean = dirtyVar
-
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
-         implicit val itx = tx.peer
-         val mapOld  = idMapRef.get( id ).getOrElse( emptyLongMap[ Write[ S#Acc, _ ]])
-         val mapNew  = mapOld + ((path.sum, Write[ S#Acc, A ]( path, value, ser )))
-         idMapRef.put( id, mapNew )
-         dirtyVar = true
-      }
-
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
-         idMapRef.get( id )( tx.peer ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]]
-      }
-
-      def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) {
-         implicit val itx = tx.peer
-         if( dirtyVar ) idMapRef.foreach { tup1 =>
-            val id   = tup1._1
-            val map  = tup1._2
-            map.foreach {
-               case (_, Write( p, value, writer )) =>
-                  var path = p.index
-                  suffix.foreach( path :+= _ )
-                  persistent.put( id, path, value )( tx, writer )
-            }
-         }
-      }
-
-      def flush( suffix: Int )( implicit tx: S#Tx ) {
-         implicit val itx = tx.peer
-         if( dirtyVar ) idMapRef.foreach { tup1 =>
-            val id   = tup1._1
-            val map  = tup1._2
-            map.foreach {
-               case (_, Write( p, value, writer )) =>
-                  val path = p.index :-| suffix
-                  persistent.put( id, path, value )( tx, writer )
-            }
-         }
-      }
-   }
+   private val emptyLongMapVal      = LongMap.empty[ Any ]
+   private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
+   private val emptyIntMapVal       = IntMap.empty[ Any ]
+   private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
    private final case class Write[ Acc, A ]( path: Acc, value: A, serializer: Serializer[ A ]) {
 //      type A1 = A
    }
 }
-sealed trait ConfluentCacheMap[ S <: Sys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {
-//   def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, writer: TxnWriter[ A ]) : Unit
-//   def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : Option[ A ]
+trait ConfluentCacheMap[ S <: KSys[ S ]] extends ConfluentTxnMap[ S#Tx, S#Acc ] {
+   import ConfluentCacheMap._
 
-   def isDirty : Boolean
-   def flush( suffix: Int )( implicit tx: S#Tx ) : Unit
-   def flush( suffix: Traversable[ Int ])( implicit tx: S#Tx ) : Unit
+   protected def persistent: ConfluentTxnMap[ S#Tx, S#Acc ]
+
+   private var idMapRef = emptyIntMap[ LongMap[ Write[ S#Acc, _ ]]]
+
+   protected def clear() {
+      idMapRef = emptyIntMap
+   }
+
+   final def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+      val mapOld  = idMapRef.getOrElse( id, emptyLongMap[ Write[ S#Acc, _ ]])
+      val mapNew  = mapOld + ((path.sum, Write[ S#Acc, A ]( path, value, ser )))
+      idMapRef += ((id, mapNew))
+//      dirtyVar = true
+   }
+
+   final def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+      idMapRef.get( id ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
+         persistent.get[ A ]( id, path )
+      )
+   }
+
+   private def flush( implicit tx: S#Tx ) {
+//      implicit val itx = tx.peer
+//      idMapRef.foreach { tup1 =>
+//         val id   = tup1._1
+//         val map  = tup1._2
+//         map.foreach {
+//            case (_, Write( p, value, writer )) =>
+//               var path = p.index
+//               suffix.foreach( path :+= _ )
+//               persistent.put( id, path, value )( tx, writer )
+//         }
+//      }
+   }
 }

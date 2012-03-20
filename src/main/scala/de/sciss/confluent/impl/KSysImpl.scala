@@ -481,25 +481,25 @@ object KSysImpl {
 
       final def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( readSource( in, pid ))
-         logConfig( "txn readVar " + res )
+         logConfig( "txn read " + res )
          res
       }
 
       final def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
          val res = new BooleanVar( readSource( in, pid ))
-         logConfig( "txn readVar " + res )
+         logConfig( "txn read " + res )
          res
       }
 
       final def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] = {
          val res = new IntVar( readSource( in, pid ))
-         logConfig( "txn readVar " + res )
+         logConfig( "txn read " + res )
          res
       }
 
       final def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] = {
          val res = new LongVar( readSource( in, pid ))
-         logConfig( "txn readVar " + res )
+         logConfig( "txn read " + res )
          res
       }
 

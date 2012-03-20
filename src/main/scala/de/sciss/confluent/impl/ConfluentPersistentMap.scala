@@ -164,7 +164,7 @@ object ConfluentPersistentMap {
                   (pre, prev)
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )
-                  (pre, m.nearest( term ))
+                  (pre, m.nearest( term ))   // XXX TODO this is wrong -- the search term needs to be of the current tree!!
             }
          }
       }

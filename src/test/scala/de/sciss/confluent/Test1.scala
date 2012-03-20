@@ -46,7 +46,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
          next.write( out )
       }
 
-      override def toString = "Node" + id
+      override def toString = "Node(" + name + ", " + id + ")"
    }
 
    def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {

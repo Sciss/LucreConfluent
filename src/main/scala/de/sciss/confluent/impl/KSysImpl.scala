@@ -344,12 +344,12 @@ object KSysImpl {
          )
       }
 
-      final private[KSysImpl] def getWithPrefix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
+      final private[KSysImpl] def getWithSuffix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( w => (path.seminal, w.value) ))
-            .asInstanceOf[ Option[ (S#Acc, A) ]].orElse( system.persistent.getWithPrefix[ A ]( id1, path )( this, ser )
+            .asInstanceOf[ Option[ (S#Acc, A) ]].orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser )
          ).getOrElse(
             sys.error( "No value for " + id )
          )
@@ -622,7 +622,7 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val (access, arr) = tx.getWithPrefix( id )( ByteArraySerializer )
+         val (access, arr) = tx.getWithSuffix( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
          ser.read( in, access )
       }
@@ -654,7 +654,7 @@ object KSysImpl {
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " meld " + from )
          val idm  = new ID( id1, from )
-         val (access, arr) = tx.getWithPrefix( idm )( ByteArraySerializer )
+         val (access, arr) = tx.getWithSuffix( idm )( ByteArraySerializer )
          val in      = new DataInput( arr )
          tx.addInputTree( from.indexTerm )
          ser.read( in, access )
@@ -670,7 +670,7 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val (access, arr) = tx.getWithPrefix( id )( ByteArraySerializer )
+         val (access, arr) = tx.getWithSuffix( id )( ByteArraySerializer )
          val in      = new DataInput( arr )
          ser.read( in, access )
       }

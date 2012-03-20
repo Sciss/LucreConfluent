@@ -113,13 +113,28 @@ object ConfluentPersistentMap {
          }
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
-         val (index, term) = path.splitIndex
-         val preSum = Hashing.maxPrefixKey( index, key => store.contains { out =>
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] =
+         getWithPrefixLen[ A, Option[ A ]]( id, path )( (_, opt) => opt )
+
+      def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] =
+         getWithPrefixLen[ A, Option[ (S#Acc, A) ]]( id, path )( (preLen, opt) => opt.map( res => (path.drop( preLen - 1 ), res) ))
+
+      private def getWithPrefixLen[ A, B ]( id: Int, path: S#Acc )
+                                          ( fun: (Int, Option[ A ]) => B )
+                                          ( implicit tx: S#Tx, ser: Serializer[ A ]) : B = {
+         val (maxIndex, maxTerm) = path.splitIndex
+         // preLen will be odd, as we only write to tree indices, and not terms
+         val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )
          })
-         store.get { out =>
+         val (index, term) = if( preLen == maxIndex.size ) {   // maximum prefix lies in last tree
+            (maxIndex, maxTerm)
+         } else {                                              // prefix lies in other tree
+            maxIndex.splitIndexAt( preLen )
+         }
+         val preSum  = index.sum
+         val res = store.get { out =>
             out.writeInt( id )
             out.writeLong( preSum )
          } { in =>
@@ -134,44 +149,10 @@ object ConfluentPersistentMap {
                   prev
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )
-                  m.nearest( term )
+                  m.nearest( term )   // XXX TODO this is wrong -- the search term needs to be of the current tree!!
             }
          }
-      }
-
-      def getWithPrefix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
-         val (maxIndex, maxTerm) = path.splitIndex
-         // preLen will be odd, as we only write to tree indices, and not terms
-         val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
-            out.writeInt( id )
-            out.writeLong( key )
-         })
-         val (index, term) = if( preLen == maxIndex.size ) {   // maximum prefix lies in last tree
-            (maxIndex, maxTerm)
-         } else {                                              // prefix lies in other tree
-            maxIndex.splitIndexAt( preLen )
-         }
-         val preSum  = index.sum
-         // this will include the tree index found, as well as the exit version in the search path
-         val pre     = path.drop( preLen - 1 )
-         store.get { out =>
-            out.writeInt( id )
-            out.writeLong( preSum )
-         } { in =>
-            (in.readUnsignedByte(): @switch) match {
-               case 1 =>
-                  val term2 = in.readLong()
-                  // XXX TODO this assertion is wrong. We need to replace store.get by store.flatGet.
-                  // if the terms match, we have Some result. If not, we need to ask the index tree if
-                  // term2 is ancestor of term. If so, we have Some result, if not we have None.
-//                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
-                  val prev = ser.read( in )
-                  (pre, prev)
-               case 2 =>
-                  val m = tx.readIndexMap[ A ]( in, index )
-                  (pre, m.nearest( term ))   // XXX TODO this is wrong -- the search term needs to be of the current tree!!
-            }
-         }
+         fun( preLen, res )
       }
    }
 

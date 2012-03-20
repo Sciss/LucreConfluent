@@ -25,10 +25,24 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{Serializer, TxnSerializer}
+import de.sciss.lucre.stm.Serializer
 
 trait ConfluentTxnMap[ Txn, Access ] {
    def put[ A ]( id: Int, path: Access, value: A )( implicit tx: Txn, serializer: Serializer[ A ]) : Unit
    def get[ A ]( id: Int, path: Access )( implicit tx: Txn, serializer: Serializer[ A ]) : Option[ A ]
-   def getWithPrefix[ A ]( id: Int, path: Access )( implicit tx: Txn, serializer: Serializer[ A ]) : Option[ (Access, A) ]
+
+   /**
+    * Finds the most recent value for an entity `id` with respect to version `path`.
+    *
+    * @param id         the identifier for the object
+    * @param path       the path through which the object has been accessed (the version at which it is read)
+    * @param tx         the transaction within which the access is performed
+    * @param serializer the serializer used to store the entity's values
+    * @tparam A         the type of values stored with the entity
+    * @return           `None` if no value was found, otherwise a `Some` of the tuple consisting of the
+    *                   suffix and the value. The suffix is the access path minus the prefix at which the
+    *                   value was found. However, the suffix overlaps the prefix in that it begins with the
+    *                   tree entering/exiting tuple at which the value was found.
+    */
+   def getWithSuffix[ A ]( id: Int, path: Access )( implicit tx: Txn, serializer: Serializer[ A ]) : Option[ (Access, A) ]
 }

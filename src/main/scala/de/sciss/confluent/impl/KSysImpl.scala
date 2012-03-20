@@ -146,6 +146,20 @@ object KSysImpl {
 
       override def toString = mkString( "Path(", ", ", ")" )
 
+      override def hashCode = {
+         import MurmurHash._
+         val m = sum
+         var h = startHash( 2 )
+         val c = startMagicA
+         val k = startMagicB
+         h     = extendHash( h, (m >> 32).toInt, c, k )
+         h     = extendHash( h, m.toInt, nextMagicA( c ), nextMagicB( k ))
+         finalizeHash( h )
+      }
+
+      override def equals( that: Any ) : Boolean =
+         that.isInstanceOf[ PathLike ] && (that.asInstanceOf[ PathLike ].sum == sum)
+
       def test_:+( elem: Long ) : Path = :+( elem )
 
       private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
@@ -238,6 +252,8 @@ object KSysImpl {
       def dispose()( implicit tx: Durable#Tx ) {
          tree.dispose()
       }
+
+      override def toString = "IndexTree<v=" + term.toInt + ", l=" + level + ">"
    }
 
    private final class IndexMapImpl[ A ]( protected val index: S#Acc,
@@ -267,7 +283,7 @@ object KSysImpl {
 
 
 
-   private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ IndexTree ]) {
+   private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
       def isMeld : Boolean = highestTrees.size > 1
       def outputLevel : Int = if( isMeld ) highestLevel + 1 else highestLevel
 
@@ -276,14 +292,15 @@ object KSysImpl {
        * highest level, or if it has the same level but was not recorded in the set
        * of highest trees.
        */
-      def isRelevant( tree: IndexTree ) : Boolean = {
-         val tlvl = tree.level
-         tlvl > highestLevel || (tlvl == highestLevel && !highestTrees.contains( tree ))
+      def isRelevant( level: Int, seminal: S#Acc ) : Boolean = {
+         level > highestLevel || (level == highestLevel && !highestTrees.contains( seminal ))
       }
 
-      def add( tree: IndexTree ) : MeldInfo = {
-         if( isRelevant( tree )) MeldInfo( tree.level, highestTrees + tree ) else this
+      def add( level: Int, seminal: S#Acc ) : MeldInfo = {
+         if( isRelevant( level, seminal )) MeldInfo( level, highestTrees + seminal ) else this
       }
+
+      def isEmpty : Boolean = highestLevel < 0
    }
    private val emptyMeldInfo = MeldInfo( -1, Set.empty )
 
@@ -373,9 +390,20 @@ object KSysImpl {
 
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      final private[KSysImpl] def addInputTree( term: Long ) {
-         val tree = readIndexTree( term )
-         meld.transform( _ add tree )( peer )
+      final private[KSysImpl] def addInputVersion( path: S#Acc ) {
+         val sem1 = path.seminal
+         val sem2 = inputAccess.seminal
+         if( sem1 == sem2 ) return
+         meld.transform( m => {
+            if( sem1 == sem2 ) m else {
+               val tree1 = readIndexTree( sem1.head )
+               val m1 = if( m.isEmpty ) {
+                  val tree2 = readIndexTree( sem2.head )
+                  m.add( tree2.level, sem2 )
+               } else m
+               m1.add( tree1.level, sem1 )
+            }
+         })( peer )
       }
 
       final private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
@@ -702,7 +730,7 @@ object KSysImpl {
          val idm  = new ID( id1, from )
          val (access, arr) = tx.getWithSuffix( idm )( ByteArraySerializer )
          val in      = new DataInput( arr )
-         tx.addInputTree( from.indexTerm )
+         tx.addInputVersion( from )
          ser.read( in, access )
       }
 

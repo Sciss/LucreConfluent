@@ -140,13 +140,18 @@ object ConfluentPersistentMap {
       }
 
       def getWithPrefix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
-         val (index, term) = path.splitIndex
+         val (maxIndex, maxTerm) = path.splitIndex
          // preLen will be odd, as we only write to tree indices, and not terms
-         val preLen = Hashing.maxPrefixLength( index, key => store.contains { out =>
+         val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )
          })
-         val preSum  = index.sumUntil( preLen )
+         val (index, term) = if( preLen == maxIndex.size ) {   // maximum prefix lies in last tree
+            (maxIndex, maxTerm)
+         } else {                                              // prefix lies in other tree
+            maxIndex.splitIndexAt( preLen )
+         }
+         val preSum  = index.sum
          // this will include the tree index found, as well as the exit version in the search path
          val pre     = path.drop( preLen - 1 )
          store.get { out =>

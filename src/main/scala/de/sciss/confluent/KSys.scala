@@ -55,7 +55,15 @@ object KSys {
       private[confluent] def term: Long
       // replace last element
       private[confluent] def :-|( suffix: Long ) : S#Acc
+      // split off last term, return index (init) and that last term
       private[confluent] def splitIndex: (S#Acc, Long)
+      // split an index and term at a given point. that is
+      // return the `idx` first elements of the path, and the one
+      // following (the one found when applying `idx`).
+      // although not enforced, `idx` should be an odd number,
+      // greater than zero and less than `size`.
+      private[confluent] def splitIndexAt( idx: Int ): (S#Acc, Long)
+
       // drop initial elements
       private[confluent] def drop( num: Int ): S#Acc
    }

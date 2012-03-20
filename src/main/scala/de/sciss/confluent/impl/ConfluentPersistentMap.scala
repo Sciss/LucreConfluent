@@ -46,10 +46,10 @@ object ConfluentPersistentMap {
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
-                  val term = in.readLong()
+//                  val term = in.readLong()
 //                  val access : S#Acc = path.init :+ term
                   val prev = ser.read( in )
-                  Some( EntrySingle( term, prev ))
+                  Some( EntrySingle( /* term, */ prev ))
                case 2 =>
 //                  val full = tx.indexTree( index.term )
 //                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
@@ -58,8 +58,8 @@ object ConfluentPersistentMap {
                case _ => None
             }
          } match {
-            case Some( EntrySingle( prevTerm, prev )) =>
-               putNewMap[ A ]( id, index, term, value, prevTerm, prev )
+            case Some( EntrySingle( /* prevTerm, */ prev )) =>
+               putNewMap[ A ]( id, index, term, value, /* prevTerm, */ prev )
             case Some( EntryMap( m )) =>
                m.add( term, value )
             case _ =>
@@ -67,10 +67,10 @@ object ConfluentPersistentMap {
          }
       }
 
-      private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
+      private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, /* prevTerm: Long, */ prevValue: A )
                                 ( implicit tx: S#Tx, ser: Serializer[ A ]) {
-         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
-         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
+//         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
+//         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          // create new map with previous value
          val m = tx.newIndexMap[ A ]( index, prevValue )
          // store the full value at the full hash (path.sum)
@@ -108,7 +108,7 @@ object ConfluentPersistentMap {
             out.writeLong( index.sum )
          } { out =>
             out.writeUnsignedByte( 1 )    // aka EntrySingle
-            out.writeLong( term )
+//            out.writeLong( term )
             ser.write( value, out )
          }
       }
@@ -140,11 +140,22 @@ object ConfluentPersistentMap {
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
-                  val term2 = in.readLong()
-                  // XXX TODO this assertion is wrong. We need to replace store.get by store.flatGet.
+//                  val term2 = in.readLong()
+                  // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
                   // if the terms match, we have Some result. If not, we need to ask the index tree if
                   // term2 is ancestor of term. If so, we have Some result, if not we have None.
 //                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
+
+                  // --- ADDENDUM: I believe we do not need to store `term2` at all, it simply doesn't
+                  // matter. Given a correct variable system, there is no notion of uninitialised values.
+                  // Therefore, we cannot end up in this case without the previous stored value being
+                  // correctly the nearest ancestor of the search term. For example, say the index tree
+                  // is v0, and the variable was created in v2. Then there is no way that we try to
+                  // read that variable with v0. The value stored here is always the initialisation.
+                  // If there was a second assignment for the same index tree, we'd have found an
+                  // entry map, and we can safely _coerce_ the previous value to be the map's
+                  // _root_ value.
+
                   val prev = ser.read( in )
                   prev
                case 2 =>
@@ -157,7 +168,7 @@ object ConfluentPersistentMap {
    }
 
    private sealed trait Entry[ S <: KSys[ S ], +A ]
-   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )         extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A )   extends Entry[ S, A ]
-   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
+   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )             extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: KSys[ S ], A ]( /* term: Long, */ v: A ) extends Entry[ S, A ]
+   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ])     extends Entry[ S, A ]
 }

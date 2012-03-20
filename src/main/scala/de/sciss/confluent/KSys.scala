@@ -40,7 +40,7 @@ object KSys {
       def inputAccess: S#Acc
    }
 
-   trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]
+//   trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]
 
    trait ID[ Txn, Acc ] extends Identifier[ Txn ] {
       def id: Int
@@ -61,7 +61,7 @@ object KSys {
    }
 }
 trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
-   type Var[ @specialized A ] <: KSys.Var[ S, A ]
+//   type Var[ @specialized A ] <: KSys.Var[ S, A ]
    type Tx <: KSys.Txn[ S ]
    type ID <: KSys.ID[ S#Tx, S#Acc ]
    type Acc <: KSys.Acc[ S ]
@@ -75,5 +75,5 @@ trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
     * or provides a newly initialized one via the `init` argument,
     * if no root has been stored yet.
     */
-   def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ]
+   def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Access[ S, A ]
 }

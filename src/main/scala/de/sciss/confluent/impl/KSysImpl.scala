@@ -31,10 +31,10 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
-import de.sciss.lucre.stm.{Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
+import de.sciss.lucre.stm.{Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -255,12 +255,12 @@ object KSysImpl {
          val extendPath: Path => Path = if( isMeld ) {
             val outTerm       = flushNewTree()
             logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
-            system.setLastPath( inputAccess.addNewTree( outTerm ))( this )
+            system.setLastPath( inputAccess.addNewTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
             _.addNewTree( outTerm )
          } else {
             val outTerm       = flushOldTree()
             logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
-            system.setLastPath( inputAccess.addOldTree( outTerm ))( this )
+            system.setLastPath( inputAccess.addOldTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
             _.addOldTree( outTerm )
          }
          cache.get( peer ).foreach { tup1 =>
@@ -532,7 +532,7 @@ object KSysImpl {
       protected def flushNewTree() : Long = sys.error( "Cannot meld in the root version" )
    }
 
-   private sealed trait BasicVar[ A ] extends Var[ A ] {
+   private sealed trait BasicVar[ A ] extends STMVar[ S#Tx, A ] {
       protected def id: S#ID
 
 //      @elidable(CONFIG) protected final def assertExists()(implicit tx: Txn) {
@@ -628,7 +628,7 @@ object KSysImpl {
    extends VarTxLike[ A ]
 
    private final class RootVar[ A ]( id1: Int, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends Var[ A ] {
+   extends Access[ S, A ] {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
       }
@@ -636,6 +636,8 @@ object KSysImpl {
       override def toString = "Access"
 
       private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
+
+      def meld( fom: S#Acc )( implicit tx: S#Tx ) : A = sys.error( "TODO" )
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )
@@ -750,14 +752,15 @@ object KSysImpl {
       def read( in: DataInput ) : Long = in.readLong()
    }
 
-   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
+//   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
    final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends KSys[ System ] {
       type ID                    = KSysImpl.ID
       type Tx                    = KSysImpl.Txn
       type Acc                   = KSysImpl.Path
-      type Var[ @specialized A ] = KSysImpl.Var[ A ]
+//      type Var[ @specialized A ] = KSysImpl.Var[ A ]
+      type Var[ @specialized A ] = STMVar[ Tx, A ]
 
       val manifest               = Predef.manifest[ System ]
       private[KSysImpl] val store  = storeFactory.open( "data" )
@@ -855,7 +858,7 @@ object KSysImpl {
       //         fun( tx, source.get( tx ))
       //      }
 
-      def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+      def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Access[ S, A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
          logConfig( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>

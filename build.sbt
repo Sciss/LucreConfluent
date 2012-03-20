@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 
 retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+scalacOptions ++= Seq( "-deprecation", "-unchecked", /* "-Xelide-below", "INFO" */ ) // elide debug logging!
 
 initialCommands in console := """import de.sciss.confluent._
 import impl.KSysImpl.Path

@@ -90,9 +90,9 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    }
 
    println( "list after writing v1:" )
-   val res1 = s.atomic { implicit tx =>
+   val (v1, res1) = s.atomic { implicit tx =>
       val node = access.get
-      toList( node )
+      tx.inputAccess -> toList( node )
    }
    println( res1 )
    println()
@@ -123,9 +123,9 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    }
 
    println( "list after writing v2:" )
-   val res2 = s.atomic { implicit tx =>
+   val (v2, res2) = s.atomic { implicit tx =>
       val node = access.get
-      toList( node )
+      tx.inputAccess -> toList( node )
    }
    println( res2 )
    println()

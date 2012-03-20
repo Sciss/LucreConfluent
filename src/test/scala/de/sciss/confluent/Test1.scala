@@ -19,18 +19,21 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       implicit object ser extends MutableSerializer[ S, Node ] {
          def readData( in: DataInput, _id: S#ID )( implicit tx: S#Tx ) : Node = new Node {
             val id      = _id
+            val name    = in.readString()
             val value   = tx.readIntVar( id, in )
             val next    = tx.readVar[ Option[ Node ]]( id, in )
          }
       }
 
-      def apply( init: Int )( implicit tx: S#Tx ) : Node = new Node {
+      def apply( _name: String, init: Int )( implicit tx: S#Tx ) : Node = new Node {
          val id      = tx.newID()
+         val name    = _name
          val value   = tx.newIntVar( id, init )
          val next    = tx.newVar[ Option[ Node ]]( id, None )
       }
    }
    trait Node extends Mutable[ S ] {
+      def name: String
       def value: S#Var[ Int ]
       def next: S#Var[ Option[ Node ]]
       protected def disposeData()( implicit tx: S#Tx ) {
@@ -38,6 +41,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
          next.dispose()
       }
       protected def writeData( out: DataOutput ) {
+         out.writeString( name )
          value.write( out )
          next.write( out )
       }
@@ -45,26 +49,26 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       override def toString = "Node" + id
    }
 
-   def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ Int ] = next match {
-      case Some( n ) => n.value.get :: toList( n.next.get )
+   def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {
+      case Some( n ) => (n.name, n.value.get) :: toList( n.next.get )
       case _ => Nil
    }
 
    // v0 : "Allocate nodes w0, w1, with x=2 and x=1, concatenate them"
 
    val access = s.root[ Option[ Node ]] { implicit tx =>
-      val w0      = Node( 2 )
-      val w1      = Node( 1 )
+      val w0      = Node( "w0", 2 )
+      val w1      = Node( "w1", 1 )
       w0.next.set( Some( w1 ))
       Some( w0 )
    }
 
    println( "list after writing v0:" )
-   val res0 = s.atomic { implicit tx =>
+   val (v0, res0) = s.atomic { implicit tx =>
       val node = access.get
-      toList( node )
+      (tx.inputAccess, toList( node ))
    }
-   println( res0 )
+   println( "@ " + v0 + " -> " + res0 )
    println()
 
    // v1 : "Invert order of input linked list"
@@ -94,7 +98,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( res1 )
+   println( "@ " + v1 + " -> " + res1 )
    println()
 
    // XXX time warp
@@ -111,7 +115,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
             @tailrec def step( last: Node ) {
                last.next.get match {
                   case None =>
-                     last.next.set( Some( Node( 3 )))
+                     last.next.set( Some( Node( "w2", 3 )))
                   case Some( n1 ) => step( n1 )
                }
             }
@@ -127,8 +131,39 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( res2 )
+   println( "@ " + v2 + " -> " + res2 )
    println()
+
+   // XXX time warp
+   s1.atomic( s1.setLastPath( v1.asInstanceOf[ KSysImpl.Path ])( _ ))
+
+   // v3: "Add +2 to all elements of right list. Concatenate left and right lists"
+   s.atomic { implicit tx =>
+      val right = access.meld( v2 )
+      @tailrec def concat( pred: Node, tail: Option[ Node ]) {
+         pred.next.get match {
+            case None => pred.next.set( tail )
+            case Some( succ ) => concat( succ, tail )
+         }
+      }
+      @tailrec def inc( pred: Option[ Node ], amount: Int ) {
+         pred match {
+            case None =>
+            case Some( n ) =>
+               n.value.transform( _ + amount )
+               inc( n.next.get, amount )
+         }
+      }
+      inc( right, 2 )
+      access.get.foreach( concat( _, right ))
+   }
+
+   println( "list after writing v3:" )
+   val (v3, res3) = s.atomic { implicit tx =>
+      val node = access.get
+      tx.inputAccess -> toList( node )
+   }
+   println( "@ " + v3 + " -> " + res3 )
 
    println( "Done." )
 }

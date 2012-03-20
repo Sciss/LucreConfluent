@@ -162,7 +162,11 @@ object KSysImpl {
          wrap( FingerTree( _init.term, term ))
       }
 
-      private[KSysImpl] def indexTerm : Long = tree.init.last
+      // XXX TODO should have an efficient method in finger tree
+      private[KSysImpl] def indexTerm : Long = {
+         tree.init.last
+//         val idx = size - 2; tree.find1( _._1 > idx ) ???
+      }
 
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
@@ -318,6 +322,11 @@ object KSysImpl {
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
 
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
+
+      final private[KSysImpl] def addInputTree( term: Long ) {
+         // XXX TODO
+         meld.swap( true )( peer )
+      }
 
       final private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
          logConfig( "txn get " + id )
@@ -637,7 +646,14 @@ object KSysImpl {
 
       private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
 
-      def meld( fom: S#Acc )( implicit tx: S#Tx ) : A = sys.error( "TODO" )
+      def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
+         logConfig( this.toString + " meld " + from )
+         val idm  = new ID( id1, from )
+         val (access, arr) = tx.getWithPrefix( idm )( ByteArraySerializer )
+         val in      = new DataInput( arr )
+         tx.addInputTree( from.indexTerm )
+         ser.read( in, access )
+      }
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )

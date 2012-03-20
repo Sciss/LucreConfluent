@@ -89,8 +89,8 @@ object KSysImpl {
 
    object Path {
       def test_empty : Path = empty
-      private[KSysImpl] def empty   = new Path( FingerTree.empty( PathMeasure ))
-      private[KSysImpl] def root    = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
+      private[KSysImpl] def empty      = new Path( FingerTree.empty( PathMeasure ))
+      /* private[KSysImpl] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
 //      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
@@ -842,7 +842,7 @@ object KSysImpl {
       }
 
       // XXX TODO
-      private[KSysImpl] def setLastPath( p: Path )( implicit tx: S#Tx ) {
+      /* private[KSysImpl] */ def setLastPath( p: Path )( implicit tx: S#Tx ) {
          lastAccess.set( p )( tx.peer )
       }
 

@@ -5,6 +5,7 @@ import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}
 import de.sciss.lucre.stm.{MutableSerializer, Mutable}
+import annotation.tailrec
 
 object Test1 extends App {
    val dir     = File.createTempFile( "database", "db" )
@@ -94,6 +95,39 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       toList( node )
    }
    println( res1 )
+   println()
+
+   // XXX time warp
+   val s1 = s.asInstanceOf[ KSysImpl.System ]
+   s1.atomic( s1.setLastPath( KSysImpl.Path.root )( _ ))
+
+   // v2: "Delete first node of list, allocate new node x=1, concatenate to input list"
+   // --> use a variant to better verify the results: set x=3 instead
+
+   s.atomic { implicit tx =>
+      access.transform {
+         case Some( n ) =>
+            val res = n.next.get
+            @tailrec def step( last: Node ) {
+               last.next.get match {
+                  case None =>
+                     last.next.set( Some( Node( 3 )))
+                  case Some( n1 ) => step( n1 )
+               }
+            }
+            step( n )
+            res
+
+         case none => none
+      }
+   }
+
+   println( "list after writing v2:" )
+   val res2 = s.atomic { implicit tx =>
+      val node = access.get
+      toList( node )
+   }
+   println( res2 )
    println()
 
    println( "Done." )

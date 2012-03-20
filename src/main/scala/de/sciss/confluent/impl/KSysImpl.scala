@@ -267,7 +267,25 @@ object KSysImpl {
 
 
 
-   private final case class MeldInfo( inputTrees: Set[ IndexTree ])
+   private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ IndexTree ]) {
+      def isMeld : Boolean = highestTrees.size > 1
+      def outputLevel : Int = if( isMeld ) highestLevel + 1 else highestLevel
+
+      /**
+       * An input tree is relevant if its level is higher than the currently observed
+       * highest level, or if it has the same level but was not recorded in the set
+       * of highest trees.
+       */
+      def isRelevant( tree: IndexTree ) : Boolean = {
+         val tlvl = tree.level
+         tlvl > highestLevel || (tlvl == highestLevel && !highestTrees.contains( tree ))
+      }
+
+      def add( tree: IndexTree ) : MeldInfo = {
+         if( isRelevant( tree )) MeldInfo( tree.level, highestTrees + tree ) else this
+      }
+   }
+   private val emptyMeldInfo = MeldInfo( -1, Set.empty )
 
    sealed trait Txn extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
@@ -277,21 +295,19 @@ object KSysImpl {
          ScalaTxn.beforeCommit( _ => flush() )( peer )
          ()
       })
-      private val meld  = TxnLocal( init = {
-//         logConfig( "txn meld" )
-         false
-      })
+      private val meld  = TxnLocal( emptyMeldInfo )
 //      @volatile var inFlush = false
 
       protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
 
       private def flush() {
-         val isMeld        = meld.get( peer )
+         val meldInfo      = meld.get( peer )
+         val isMeld        = meldInfo.isMeld
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( isMeld ) {
-            val outTerm       = flushNewTree( 0 ) // XXX TODO level
+            val outTerm       = flushNewTree( meldInfo.outputLevel )
             logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
             system.setLastPath( inputAccess.addNewTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
             _.addNewTree( outTerm )
@@ -358,8 +374,8 @@ object KSysImpl {
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
       final private[KSysImpl] def addInputTree( term: Long ) {
-         // XXX TODO
-         meld.swap( true )( peer )
+         val tree = readIndexTree( term )
+         meld.transform( _ add tree )( peer )
       }
 
       final private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {

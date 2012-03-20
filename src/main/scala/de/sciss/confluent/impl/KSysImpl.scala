@@ -34,7 +34,7 @@ import de.sciss.collection.txn.Ancestor
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.stm.{Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.{Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -215,6 +215,31 @@ object KSysImpl {
          tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
    }
 
+   sealed trait IndexTree extends Writer with Disposable[ Durable#Tx ] {
+      def tree: Ancestor.Tree[ Durable, Long ]
+      def level: Int
+      def term: Long
+   }
+
+   private final class IndexTreeImpl( val tree: Ancestor.Tree[ Durable, Long ], val level: Int )
+   extends IndexTree {
+      override def hashCode : Int = term.toInt
+      def term: Long = tree.root.version
+
+      override def equals( that: Any ) : Boolean = {
+         that.isInstanceOf[ IndexTree ] && (term == that.asInstanceOf[ IndexTree ].term)
+      }
+
+      def write( out: DataOutput ) {
+         tree.write( out )
+         out.writeInt( level )
+      }
+
+      def dispose()( implicit tx: Durable#Tx ) {
+         tree.dispose()
+      }
+   }
+
    private final class IndexMapImpl[ A ]( protected val index: S#Acc,
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
@@ -240,6 +265,10 @@ object KSysImpl {
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
+
+
+   private final case class MeldInfo( inputTrees: Set[ IndexTree ])
+
    sealed trait Txn extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
       private val markDirty = TxnLocal( init = {
@@ -254,7 +283,7 @@ object KSysImpl {
       })
 //      @volatile var inFlush = false
 
-      protected def flushNewTree() : Long
+      protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
 
       private def flush() {
@@ -262,7 +291,7 @@ object KSysImpl {
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
          val persistent    = system.persistent
          val extendPath: Path => Path = if( isMeld ) {
-            val outTerm       = flushNewTree()
+            val outTerm       = flushNewTree( 0 ) // XXX TODO level
             logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
             system.setLastPath( inputAccess.addNewTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
             _.addNewTree( outTerm )
@@ -303,8 +332,8 @@ object KSysImpl {
       }
 
       // XXX TODO eventually should use caching
-      final private[KSysImpl] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ],
-                                                  index: S#Acc, term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+      final private[KSysImpl] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
+                                                  term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
 //         val root = tree.root
 //         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
          system.store.get { out =>
@@ -369,39 +398,40 @@ object KSysImpl {
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
-      final protected def readIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
-         val tree = system.store.get { out =>
+      final protected def readIndexTree( term: Long ) : IndexTree = {
+         system.store.get { out =>
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          } { in =>
-            Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
+            val tree    = Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
+            val level   = in.readInt()
+            new IndexTreeImpl( tree, level )
          } getOrElse sys.error( "Trying to access inexisting tree " + term.toInt )
-
-         tree
       }
 
       final def readIndexMap[ A ]( in: DataInput, index: S#Acc )
                                  ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val term = index.term
-         val full = readIndexTree( term )
-         val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), full )
+         val tree = readIndexTree( term )
+         val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
          new IndexMapImpl[ A ]( index, map )
       }
 
-      final private[KSysImpl] def newIndexTree( term: Long ) : Ancestor.Tree[ Durable, Long ] = {
+      final private[KSysImpl] def newIndexTree( term: Long, level: Int ) : IndexTree = {
          logConfig( "txn new tree " + term.toInt )
          val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
+         val res  = new IndexTreeImpl( tree, level )
          system.store.put( out => {
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
-         })( tree.write )
+         })( res.write )
          writeTreeVertex( tree, tree.root )
-         tree
+         res
       }
 
       final def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val tree = readIndexTree( index.term )
-         val map  = Ancestor.newMap[ Durable, Long, A ]( tree, value )
+         val map  = Ancestor.newMap[ Durable, Long, A ]( tree.tree, value )
          new IndexMapImpl[ A ]( index, map )
       }
 
@@ -525,15 +555,15 @@ object KSysImpl {
       protected def flushOldTree() : Long = {
          val childTerm  = system.newVersionID( this )
          val (index, parentTerm) = inputAccess.splitIndex
-         val tree       = readIndexTree( index.term )
+         val tree       = readIndexTree( index.term ).tree
          val parent     = readTreeVertex( tree, index, parentTerm )
          val child      = tree.insertChild( parent, childTerm )
          writeTreeVertex( tree, child )
          childTerm
       }
-      protected def flushNewTree() : Long = {
+      protected def flushNewTree( level: Int ) : Long = {
          val term = system.newVersionID( this )
-         newIndexTree( term )
+         newIndexTree( term, level )
          term
       }
    }
@@ -543,7 +573,7 @@ object KSysImpl {
       override def toString = "RootTxn"
 
       protected def flushOldTree() : Long = inputAccess.term
-      protected def flushNewTree() : Long = sys.error( "Cannot meld in the root version" )
+      protected def flushNewTree( level: Int ) : Long = sys.error( "Cannot meld in the root version" )
    }
 
    private sealed trait BasicVar[ A ] extends STMVar[ S#Tx, A ] {
@@ -888,7 +918,7 @@ object KSysImpl {
             val rootPath   = tx.inputAccess
             if( persistent.get[ Array[ Byte ]]( 1, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
-               tx.newIndexTree( rootPath.term )
+               tx.newIndexTree( rootPath.term, 0 )
             }
             rootVar
          }

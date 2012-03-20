@@ -138,6 +138,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    s1.atomic( s1.setLastPath( v1.asInstanceOf[ KSysImpl.Path ])( _ ))
 
    // v3: "Add +2 to all elements of right list. Concatenate left and right lists"
+
    s.atomic { implicit tx =>
       val right = access.meld( v2 )
       @tailrec def concat( pred: Node, tail: Option[ Node ]) {
@@ -165,5 +166,25 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    }
    println( "@ " + v3 + " -> " + res3 )
 
-   println( "Done." )
+   // v4: "Concatenate Left and Right Lists"
+
+   s.atomic { implicit tx =>
+      val right = access.meld( v2 )
+      @tailrec def concat( pred: Node, tail: Option[ Node ]) {
+         pred.next.get match {
+            case None => pred.next.set( tail )
+            case Some( succ ) => concat( succ, tail )
+         }
+      }
+      access.get.foreach( concat( _, right ))
+   }
+
+   println( "list after writing v4:" )
+   val (v4, res4) = s.atomic { implicit tx =>
+      val node = access.get
+      tx.inputAccess -> toList( node )
+   }
+   println( "@ " + v4 + " -> " + res4 )
+
+   println( "\nDone." )
 }

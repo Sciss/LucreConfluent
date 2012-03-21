@@ -47,6 +47,11 @@ object KSys {
       def path: Acc
    }
 
+//   final class Vertex( val version: Int, val hash: Int, val level: Int ) {
+//      override def hashCode : Int = hash
+//      override def equals
+//   }
+
    trait Acc[ S <: KSys[ S ]] extends Writer with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
 

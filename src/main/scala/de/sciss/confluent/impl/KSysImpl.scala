@@ -95,7 +95,36 @@ object KSysImpl {
 
 //      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
 
-      def readAndAppend( in: DataInput, acc: S#Acc ) : S#Acc = {
+      def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
+         implicit val m = PathMeasure
+         val sz         = in.readInt()
+         val accIter    = acc.tree.iterator
+         val _          = accIter.next()
+         val writeTerm  = accIter.next()
+         var tree       = FingerTree.empty( m )
+         if( sz == 0 ) {
+            // entity was created in the terminal version
+            tree = writeTerm +: writeTerm +: tree   // XXX TODO should have FingerTree.two
+         } else {
+            val szm        = sz - 1
+            var i = 0; while( i < szm ) {
+               tree      :+= in.readLong()
+            i += 1 }
+            val lastTerm   = in.readLong()
+            val oldLevel   = tx.readTreeVertexLevel( lastTerm )
+            val newLevel   = tx.readTreeVertexLevel( writeTerm )
+
+            if( oldLevel != newLevel ) {
+               tree      :+= lastTerm
+               tree      :+= writeTerm
+            }
+            tree         :+= writeTerm
+         }
+         accIter.foreach( tree :+= _ )
+         new Path( tree )
+      }
+
+      private def readAndAppendOLD( in: DataInput, acc: S#Acc ) : S#Acc = {
          // XXX TODO make this more efficient
          implicit val m = PathMeasure
          val sz         = in.readInt()
@@ -160,18 +189,33 @@ object KSysImpl {
 
       private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
 
-      private[KSysImpl] def addNewTree( term: Long ) : Path = {
-         wrap( tree :+ term :+ term )
-      }
+//      private[KSysImpl] def addNewTree( term: Long ) : Path = {
+//         wrap( tree :+ term :+ term )
+//      }
+//
+//      private[KSysImpl] def addOldTree( term: Long ) : Path = {
+////         require( !tree.isEmpty )
+////         wrap( tree.init :+ term )
+//         wrap( if( tree.isEmpty ) {
+//            term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
+//         } else {
+//            tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
+//         })
+//      }
 
-      private[KSysImpl] def addOldTree( term: Long ) : Path = {
-//         require( !tree.isEmpty )
-//         wrap( tree.init :+ term )
-         wrap( if( tree.isEmpty ) {
+      private[KSysImpl] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
+         val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
          } else {
-            tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
-         })
+            val oldLevel   = tx.readTreeVertexLevel( this.term )
+            val newLevel   = tx.readTreeVertexLevel( term )
+            if( oldLevel == newLevel ) {
+               tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
+            } else {
+               tree :+ term :+ term
+            }
+         }
+         wrap( t )
       }
 
       private[KSysImpl] def seminal : Path = {
@@ -263,12 +307,12 @@ object KSysImpl {
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
       def nearest( term: Long )( implicit tx: S#Tx ) : A = {
-         val v = tx.readTreeVertex( map.full, index, term )
+         val v = tx.readTreeVertex( map.full, index, term )._1
          map.nearest( v )( tx.durable )._2
       }
 
       def add( term: Long, value: A )( implicit tx: S#Tx ) {
-         val v = tx.readTreeVertex( map.full, index, term )
+         val v = tx.readTreeVertex( map.full, index, term )._1
          map.add( (v, value) )( tx.durable )
       }
 
@@ -326,23 +370,19 @@ object KSysImpl {
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
          val persistent    = system.persistent
-         val extendPath: Path => Path = if( newTree ) {
-            val outTerm       = flushNewTree( meldInfo.outputLevel )
-            logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
-            system.setLastPath( inputAccess.addNewTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
-            _.addNewTree( outTerm )
+         val outTerm = if( newTree ) {
+            flushNewTree( meldInfo.outputLevel )
          } else {
-            val outTerm       = flushOldTree()
-            logConfig( "::::::: txn flush - term = " + outTerm.toInt + " :::::::" )
-            system.setLastPath( inputAccess.addOldTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
-            _.addOldTree( outTerm )
+            flushOldTree()
          }
+         logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
+         system.setLastPath( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
          cache.get( peer ).foreach { tup1 =>
             val id   = tup1._1
             val map  = tup1._2
             map.foreach {
                case (_, Write( p, value, writer )) =>
-                  val path = extendPath( p )
+                  val path = p.addTerm( outTerm )( this )
                   logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ", ", ">" ))
                   persistent.put( id, path, value )( this, writer )
             }
@@ -369,24 +409,37 @@ object KSysImpl {
 
       // XXX TODO eventually should use caching
       final private[KSysImpl] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
-                                                  term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+                                                  term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int) = {
 //         val root = tree.root
 //         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
          system.store.get { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( term.toInt )
          } { in =>
-            val access = index :+ term
-            tree.vertexSerializer.read( in, access )( durable )
+            val access  = index :+ term
+            val level   = in.readInt()
+            val v       = tree.vertexSerializer.read( in, access )( durable )
+            (v, level)
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      final private[KSysImpl] def writeTreeVertex( tree: Ancestor.Tree[ Durable, Long ],
-                                                   v: Ancestor.Vertex[ Durable, Long ]) {
-         system.store.put( out => {
+      final private[KSysImpl] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) {
+         system.store.put { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( v.version.toInt )
-         })( tree.vertexSerializer.write( v, _ ))
+         } { out =>
+            out.writeInt( tree.level )
+            tree.tree.vertexSerializer.write( v, out )
+         }
+      }
+
+      final private[KSysImpl] def readTreeVertexLevel( term: Long ) : Int = {
+         system.store.get { out =>
+            out.writeUnsignedByte( 0 )
+            out.writeInt( term.toInt )
+         } { in =>
+            in.readInt()
+         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
       override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
@@ -445,7 +498,7 @@ object KSysImpl {
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
-      final protected def readIndexTree( term: Long ) : IndexTree = {
+      final private[KSysImpl] def readIndexTree( term: Long ) : IndexTree = {
          system.store.get { out =>
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
@@ -472,7 +525,7 @@ object KSysImpl {
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          })( res.write )
-         writeTreeVertex( tree, tree.root )
+         writeTreeVertex( res, tree.root )
          res
       }
 
@@ -586,7 +639,7 @@ object KSysImpl {
       }
 
       final def readID( in: DataInput, acc: S#Acc ) : S#ID = {
-         val res = new ID( in.readInt(), Path.readAndAppend( in, acc ))
+         val res = new ID( in.readInt(), Path.readAndAppend( in, acc )( this ))
          logConfig( "txn readID " + res )
          res
       }
@@ -602,9 +655,9 @@ object KSysImpl {
       protected def flushOldTree() : Long = {
          val childTerm  = system.newVersionID( this )
          val (index, parentTerm) = inputAccess.splitIndex
-         val tree       = readIndexTree( index.term ).tree
-         val parent     = readTreeVertex( tree, index, parentTerm )
-         val child      = tree.insertChild( parent, childTerm )
+         val tree       = readIndexTree( index.term )
+         val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
+         val child      = tree.tree.insertChild( parent, childTerm )
          writeTreeVertex( tree, child )
          childTerm
       }

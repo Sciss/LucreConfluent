@@ -164,11 +164,18 @@ object KSysImpl {
 
       private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
 
-      private[KSysImpl] def addNewTree( term: Long ) : Path = wrap( tree :+ term :+ term )
+      private[KSysImpl] def addNewTree( term: Long ) : Path = {
+         wrap( tree :+ term :+ term )
+      }
 
       private[KSysImpl] def addOldTree( term: Long ) : Path = {
-         require( !tree.isEmpty )
-         wrap( tree.init :+ term )
+//         require( !tree.isEmpty )
+//         wrap( tree.init :+ term )
+         wrap( if( tree.isEmpty ) {
+            term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
+         } else {
+            tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
+         })
       }
 
       private[KSysImpl] def seminal : Path = {
@@ -359,7 +366,7 @@ object KSysImpl {
 //      }
 
       final def newID() : S#ID = {
-         val res = new ID( system.newIDValue()( this ), inputAccess.seminal )
+         val res = new ID( system.newIDValue()( this ), Path.empty )
          logConfig( "txn newID " + res )
          res
       }

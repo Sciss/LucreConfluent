@@ -292,3 +292,8 @@ and therefore, the correct write must be
 [20 Mar 2012, 18:22'36.443] Confluent - txn flush write [B@3da1c42f for <1 @ 0, 1>	-> N -> Some(Node(w1, <5 @ 0,0>))
 
 where 'N' is information inserted by persistent.put, while the peer serializer needs to pessimistically write the full accessed path 0,0
+
+:::::::::::
+
+Isn't the M / N mark implicit included in the write path? Any path where the term and index version are the same must come from a new tree, or not?
+That is, a value found under such an entry is either newly created in that version (stored path is empty), or was imported from a previous tree (path is non-empty). Therefore, it suffices (again) to store the term (as was done before with `term2`).

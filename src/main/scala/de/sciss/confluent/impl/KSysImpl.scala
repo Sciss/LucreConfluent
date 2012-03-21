@@ -284,8 +284,8 @@ object KSysImpl {
 
 
    private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
-      def isMeld : Boolean = highestTrees.size > 1
-      def outputLevel : Int = if( isMeld ) highestLevel + 1 else highestLevel
+      def requiresNewTree : Boolean = highestTrees.size > 1
+      def outputLevel : Int = if( requiresNewTree ) highestLevel + 1 else highestLevel
 
       /**
        * An input tree is relevant if its level is higher than the currently observed
@@ -320,10 +320,10 @@ object KSysImpl {
 
       private def flush() {
          val meldInfo      = meld.get( peer )
-         val isMeld        = meldInfo.isMeld
+         val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
          val persistent    = system.persistent
-         val extendPath: Path => Path = if( isMeld ) {
+         val extendPath: Path => Path = if( newTree ) {
             val outTerm       = flushNewTree( meldInfo.outputLevel )
             logConfig( "::::::: txn flush - meld term = " + outTerm.toInt + " :::::::" )
             system.setLastPath( inputAccess.addNewTree( outTerm ))( this ) // XXX TODO last path would depend on value written to inputAccess?
@@ -341,7 +341,7 @@ object KSysImpl {
                case (_, Write( p, value, writer )) =>
                   val path = extendPath( p )
                   logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ", ", ">" ))
-                  persistent.put( id, path, value )( this, writer )
+                  persistent.put( id, path, newTree, value )( this, writer )
             }
          }
       }

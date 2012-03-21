@@ -38,9 +38,9 @@ object ConfluentPersistentMap {
 
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
-      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+      def put[ A ]( id: Int, path: S#Acc, newTree: Boolean, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
-         store.flatGet { out =>
+         val e = store.flatGet { out =>
             out.writeInt( id )
             out.writeLong( index.sum )
          } { in =>
@@ -57,8 +57,11 @@ object ConfluentPersistentMap {
                   Some( EntryMap( m ))
                case _ => None
             }
-         } match {
+         }
+         if( e.isDefined ) assert( !newTree )   // if this is a new tree, it's impossible that there are previously stored values
+         e match {
             case Some( EntrySingle( /* prevTerm, */ prev )) =>
+               assert( !newTree )   // if this is a new tree, it's impossible that there are previously stored values
                putNewMap[ A ]( id, index, term, value, /* prevTerm, */ prev )
             case Some( EntryMap( m )) =>
                m.add( term, value )

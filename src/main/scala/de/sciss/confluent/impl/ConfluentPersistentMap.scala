@@ -60,7 +60,7 @@ object ConfluentPersistentMap {
             // if there is a single entry, construct a new ancestor.map with the
             // entry's value taken as root value
             case Some( EntrySingle( prev )) =>
-               putNewMap[ A ]( id, index, term, value, prev )
+               putFullMap[ A ]( id, index, term, value, prev )
             // if there is an existing map, simply add the new value to it
             case Some( EntryMap( m )) =>
                m.add( term, value )
@@ -71,7 +71,8 @@ object ConfluentPersistentMap {
                // of the entity, e.g. path == <term, term>; or the entity was
                // re-written in the tree root, hence path.suffix == <term, term>)
                if( term == index.term ) {
-                  putNewSingle[ A ]( id, index, term, value )
+                  putPartials( id, index )
+                  putFullSingle[ A ]( id, index, term, value )
                // otherwise, we must read the root value for the entity, and then
                // construct a new map containing that root value along with the
                // new value
@@ -79,14 +80,14 @@ object ConfluentPersistentMap {
                   val prev = get[ A ]( id, path ).getOrElse(
                      sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
                   )
-                  sys.error( "Huhuuuuu. Need prefixes" )
-                  putNewMap[ A ]( id, index, term, value, prev )
+                  putPartials( id, index )
+                  putFullMap[ A ]( id, index, term, value, prev )
                }
          }
       }
 
-      private def putNewMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, /* prevTerm: Long, */ prevValue: A )
-                                ( implicit tx: S#Tx, ser: Serializer[ A ]) {
+      private def putFullMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, /* prevTerm: Long, */ prevValue: A )
+                                 ( implicit tx: S#Tx, ser: Serializer[ A ]) {
 //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
 //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          // create new map with previous value
@@ -103,9 +104,8 @@ object ConfluentPersistentMap {
          m.add( term, value )
       }
 
-      private def putNewSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
-                                   ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         // stores the prefixes
+      // stores the prefixes
+      private def putPartials( id: Int, index: S#Acc )( implicit tx: S#Tx ) {
          Hashing.foreachPrefix( index, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )
@@ -115,17 +115,20 @@ object ConfluentPersistentMap {
                out.writeInt(  id )
                out.writeLong( key )
             } { out =>
-               out.writeUnsignedByte( 0 ) // aka single entry
+               out.writeUnsignedByte( 0 ) // aka entry pre
                out.writeLong( preSum )
             }
          }
+      }
 
-         // store the full value at the full hash (path.sum)
+      // store the full value at the full hash (path.sum)
+      private def putFullSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
+                                    ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          store.put { out =>
             out.writeInt( id )
             out.writeLong( index.sum )
          } { out =>
-            out.writeUnsignedByte( 1 )    // aka EntrySingle
+            out.writeUnsignedByte( 1 )    // aka entry single
 //            out.writeLong( term )
             ser.write( value, out )
          }

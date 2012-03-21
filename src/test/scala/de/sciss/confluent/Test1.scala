@@ -191,14 +191,14 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    }
    println( "@ " + v4 + " -> " + res4 + "\n" )
 
-   s.atomic { implicit tx =>
-      val first   = access.get.get
-      val second  = first.next.get.get
-      val third   = second.next.get.get
-      val forth   = third.next.get.get
-      val fifth   = forth.next.get.get
-      println( "Aqui" )
-   }
+//   s.atomic { implicit tx =>
+//      val first   = access.get.get
+//      val second  = first.next.get.get
+//      val third   = second.next.get.get
+//      val forth   = third.next.get.get
+//      val fifth   = forth.next.get.get
+//      println( "Aqui" )
+//   }
 
    println( "Done." )
 }

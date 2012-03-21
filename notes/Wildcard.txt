@@ -621,3 +621,46 @@ list after writing v4:
 [21 Mar 2012, 19:49'51.437] Confluent - Var(<10 @ 2,2,4,4>) get
 [21 Mar 2012, 19:49'51.437] Confluent - txn get' <10 @ 2,2,4,4>
 @ Path(0, 1, 3, 4) -> List((w1,1), (w0,2), (w1,1), (w2,3))
+
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+ok, with the missing partials being written, we're back to infinite loop :-(
+
+[21 Mar 2012, 23:39'58.962] Confluent - ::::::: txn flush - term = 4 :::::::
+[21 Mar 2012, 23:39'58.963] Confluent - txn flush write [B@774d921a for <10 @ 2,2,3,4>
+
+list after writing v4:
+[21 Mar 2012, 23:39'58.990] Confluent - ::::::: atomic - input access = Path(0, 1, 3, 4) :::::::
+[21 Mar 2012, 23:39'58.990] Confluent - Access get
+[21 Mar 2012, 23:39'58.990] Confluent - txn get' <1 @ 0,1,3,4>
+[21 Mar 2012, 23:39'58.991] Confluent - txn durable
+[21 Mar 2012, 23:39'58.993] Confluent - txn readID <5 @ 0,1,3,4>		= w1
+[21 Mar 2012, 23:39'58.993] Confluent - txn read Var[Int](<6 @ 0,1,3,4>)
+[21 Mar 2012, 23:39'58.993] Confluent - txn read Var(<7 @ 0,1,3,4>)
+[21 Mar 2012, 23:39'58.993] Confluent - Var[Int](<6 @ 0,1,3,4>) get
+[21 Mar 2012, 23:39'58.993] Confluent - txn get <6 @ 0,1,3,4>
+[21 Mar 2012, 23:39'58.994] Confluent - Var(<7 @ 0,1,3,4>) get
+[21 Mar 2012, 23:39'58.994] Confluent - txn get' <7 @ 0,1,3,4>
+[21 Mar 2012, 23:39'58.996] Confluent - txn readID <2 @ 0,1,3,4>		= w0
+[21 Mar 2012, 23:39'58.996] Confluent - txn read Var[Int](<3 @ 0,1,3,4>)
+[21 Mar 2012, 23:39'58.996] Confluent - txn read Var(<4 @ 0,1,3,4>)
+[21 Mar 2012, 23:39'58.997] Confluent - Var[Int](<3 @ 0,1,3,4>) get
+[21 Mar 2012, 23:39'58.997] Confluent - txn get <3 @ 0,1,3,4>
+[21 Mar 2012, 23:39'58.997] Confluent - Var(<4 @ 0,1,3,4>) get
+[21 Mar 2012, 23:39'58.997] Confluent - txn get' <4 @ 0,1,3,4>
+[21 Mar 2012, 23:39'58.998] Confluent - txn readID <5 @ 0,2,3,4>		= w1
+[21 Mar 2012, 23:39'58.998] Confluent - txn read Var[Int](<6 @ 0,2,3,4>)
+[21 Mar 2012, 23:39'58.998] Confluent - txn read Var(<7 @ 0,2,3,4>)
+[21 Mar 2012, 23:39'58.998] Confluent - Var[Int](<6 @ 0,2,3,4>) get
+[21 Mar 2012, 23:39'58.998] Confluent - txn get <6 @ 0,2,3,4>
+[21 Mar 2012, 23:39'58.999] Confluent - Var(<7 @ 0,2,3,4>) get
+[21 Mar 2012, 23:39'58.999] Confluent - txn get' <7 @ 0,2,3,4>
+[21 Mar 2012, 23:39'59.001] Confluent - txn readID <8 @ 2,2,3,4>		= w2
+[21 Mar 2012, 23:39'59.001] Confluent - txn read Var[Int](<9 @ 2,2,3,4>)
+[21 Mar 2012, 23:39'59.001] Confluent - txn read Var(<10 @ 2,2,3,4>)
+[21 Mar 2012, 23:39'59.001] Confluent - Var[Int](<9 @ 2,2,3,4>) get
+[21 Mar 2012, 23:39'59.001] Confluent - txn get <9 @ 2,2,3,4>
+[21 Mar 2012, 23:39'59.001] Confluent - Var(<10 @ 2,2,3,4>) get
+[21 Mar 2012, 23:39'59.002] Confluent - txn get' <10 @ 2,2,3,4>			OK
+[21 Mar 2012, 23:39'59.003] Confluent - txn readID <5 @ 0,2,3,4>		= w1 NOT OK -- ought to be  @ 0,2,4,4 ....
+...

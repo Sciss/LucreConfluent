@@ -73,7 +73,9 @@ object KSys {
       // following (the one found when applying `idx`).
       // although not enforced, `idx` should be an odd number,
       // greater than zero and less than `size`.
-      private[confluent] def splitIndexAt( idx: Int ): (S#Acc, Long)
+      private[confluent] def splitAtIndex( idx: Int ): (S#Acc, Long)
+
+      private[confluent] def splitAtSum( hash: Long ): (S#Acc, Long)
 
       // drop initial elements
       private[confluent] def drop( num: Int ): S#Acc

@@ -130,16 +130,20 @@ object ConfluentPersistentMap {
          }
       }
 
-      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] =
-         getWithPrefixLen[ A, Option[ A ]]( id, path )( (_, opt) => opt )
+      def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+         val (maxIndex, maxTerm) = path.splitIndex
+         getWithPrefixLen[ A, Option[ A ]]( id, maxIndex, maxTerm )( (_, opt) => opt )
+      }
 
-      def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] =
-         getWithPrefixLen[ A, Option[ (S#Acc, A) ]]( id, path )( (preLen, opt) => opt.map( res => (path.drop( preLen - 1 ), res) ))
+      def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
+         val (maxIndex, maxTerm) = path.splitIndex
+         getWithPrefixLen[ A, Option[ (S#Acc, A) ]]( id, maxIndex, maxTerm )( (preLen, opt) => opt.map( res => (path.drop( preLen - 1 ), res) ))
+      }
 
-      private def getWithPrefixLen[ A, B ]( id: Int, path: S#Acc )
+      private def getWithPrefixLen[ A, B ]( id: Int, maxIndex: S#Acc, maxTerm: Long )
                                           ( fun: (Int, Option[ A ]) => B )
                                           ( implicit tx: S#Tx, ser: Serializer[ A ]) : B = {
-         val (maxIndex, maxTerm) = path.splitIndex
+//         val (maxIndex, maxTerm) = path.splitIndex
          // preLen will be odd, as we only write to tree indices, and not terms
          // XXX TODO : not necessarily, if we find a partial prefix!!! This case (value will read cookie 0)
          // is not yet implemented!!!
@@ -150,14 +154,18 @@ object ConfluentPersistentMap {
          val (index, term) = if( preLen == maxIndex.size ) {   // maximum prefix lies in last tree
             (maxIndex, maxTerm)
          } else {                                              // prefix lies in other tree
-            maxIndex.splitIndexAt( preLen )
+            maxIndex.splitAtIndex( preLen )
          }
          val preSum  = index.sum
-         val res = store.get { out =>
+         store.get { out =>
             out.writeInt( id )
             out.writeLong( preSum )
          } { in =>
             (in.readUnsignedByte(): @switch) match {
+               case 0 =>   // partial hash
+                  val hash = in.readLong()
+                  EntryPre[ S ]( hash )
+
                case 1 =>
 //                  val term2 = in.readLong()
                   // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
@@ -176,13 +184,20 @@ object ConfluentPersistentMap {
                   // _root_ value.
 
                   val prev = ser.read( in )
-                  prev
+                  EntrySingle[ S, A ]( prev )
+
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )
-                  m.nearest( term )   // XXX TODO this is wrong -- the search term needs to be of the current tree!!
+                  EntryMap[ S, A ]( m )
             }
+         } match {
+            case Some( EntrySingle( prev ))  => fun( preLen, Some( prev ))
+            case Some( EntryMap( m ))        => fun( preLen, Some( m.nearest( term )))
+            case Some( EntryPre( hash ))     =>
+               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+               getWithPrefixLen( id, fullIndex, fullTerm )( fun )
+            case None                        => fun( preLen, None )
          }
-         fun( preLen, res )
       }
    }
 

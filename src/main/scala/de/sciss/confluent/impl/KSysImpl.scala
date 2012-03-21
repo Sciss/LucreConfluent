@@ -244,8 +244,13 @@ object KSysImpl {
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def splitIndex : (Path, Long) = (init, last)
 
-      private[confluent] def splitIndexAt( idx: Int ) : (Path, Long) = {
+      private[confluent] def splitAtIndex( idx: Int ) : (Path, Long) = {
          val tup = tree.split1( _._1 > idx )
+         (wrap( tup._1 ), tup._2)
+      }
+
+      private[confluent] def splitAtSum( hash: Long ) : (Path, Long) = {
+         val tup = tree.split1( _._2 > hash )
          (wrap( tup._1 ), tup._2)
       }
 

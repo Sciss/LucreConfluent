@@ -341,7 +341,7 @@ object KSysImpl {
                case (_, Write( p, value, writer )) =>
                   val path = extendPath( p )
                   logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ", ", ">" ))
-                  persistent.put( id, path, newTree, value )( this, writer )
+                  persistent.put( id, path, value )( this, writer )
             }
          }
       }

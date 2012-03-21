@@ -297,3 +297,18 @@ where 'N' is information inserted by persistent.put, while the peer serializer n
 
 Isn't the M / N mark implicit included in the write path? Any path where the term and index version are the same must come from a new tree, or not?
 That is, a value found under such an entry is either newly created in that version (stored path is empty), or was imported from a previous tree (path is non-empty). Therefore, it suffices (again) to store the term (as was done before with `term2`).
+
+:::::::::::
+
+There is another issue now:
+Imagine the sequence: v0 : allocate w0, x = 0
+v0 -> v1: set x = 1
+v0 -> v2: set x = 2
+v0 -> v1 -> v3: concat with v0 -> v2 (new tree v3)
+v3 -> v4 : set x = 3
+
+this would yield to a single entry put at <v0, v1, v3, v4>. a read at <v0, v1, v3, v3> would find index <v0, v1, v3> and read the value of v4, although it should find the last assignment before, which is the one from v1 (x = 1).
+
+therefore, in the case of no existing entry for the write index in persistent.put -- we must first check if this corresponds to the root version or not. If it is the root version, use single entry, otherwise, read previous value and create a two entry map straight away.
+
+Where root version means (_!_) not necessarily that the terminal version corresponds to a tree, bu rather that indexTerm == term (therefore covering the case that the node was created in the same transaction as the write, allowing us to treat the stored value as a quasi-root value)

@@ -38,35 +38,49 @@ object ConfluentPersistentMap {
 
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
-      def put[ A ]( id: Int, path: S#Acc, newTree: Boolean, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+      def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
-         val e = store.flatGet { out =>
+         // first we need to see if anything has already been written to the index of the write path
+         store.flatGet { out =>
             out.writeInt( id )
             out.writeLong( index.sum )
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
-//                  val term = in.readLong()
-//                  val access : S#Acc = path.init :+ term
+                  // a single 'root' value is found. extract it for successive re-write.
                   val prev = ser.read( in )
-                  Some( EntrySingle( /* term, */ prev ))
+                  Some( EntrySingle( prev ))
                case 2 =>
-//                  val full = tx.indexTree( index.term )
-//                  val anc : Ancestor.Map[ S, Int, A ] = Ancestor.readMap[ S, Int, A ]( in, path, full )
+                  // there is already a map found
                   val m = tx.readIndexMap[ A ]( in, index )
                   Some( EntryMap( m ))
-               case _ => None
+               case _ => None  // this would be a partial hash which we don't use
             }
-         }
-         if( e.isDefined ) assert( !newTree )   // if this is a new tree, it's impossible that there are previously stored values
-         e match {
-            case Some( EntrySingle( /* prevTerm, */ prev )) =>
-               assert( !newTree )   // if this is a new tree, it's impossible that there are previously stored values
-               putNewMap[ A ]( id, index, term, value, /* prevTerm, */ prev )
+         } match { // with the previous entry read, react as follows:
+            // if there is a single entry, construct a new ancestor.map with the
+            // entry's value taken as root value
+            case Some( EntrySingle( prev )) =>
+               putNewMap[ A ]( id, index, term, value, prev )
+            // if there is an existing map, simply add the new value to it
             case Some( EntryMap( m )) =>
                m.add( term, value )
+            // if there is no previous entry...
             case _ =>
-               putNewSingle[ A ]( id, index, term, value )
+               // we may write a single entry if and only if the value can be seen
+               // as a root value (the write path corresponds to the construction
+               // of the entity, e.g. path == <term, term>; or the entity was
+               // re-written in the tree root, hence path.suffix == <term, term>)
+               if( term == index.term ) {
+                  putNewSingle[ A ]( id, index, term, value )
+               // otherwise, we must read the root value for the entity, and then
+               // construct a new map containing that root value along with the
+               // new value
+               } else {
+                  val prev = get[ A ]( id, path ).getOrElse(
+                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
+                  )
+                  putNewMap[ A ]( id, index, term, value, prev )
+               }
          }
       }
 

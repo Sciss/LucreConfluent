@@ -36,9 +36,7 @@ import de.sciss.lucre.stm.Serializer
  */
 trait ConfluentTxnMap[ Txn, Access ] {
    /**
-    * Stores a new value for a given write path. This requires to pass in information about the
-    * meld state (path expanding state) of the transaction, thus it will most likely be called
-    * from the txn commit phase.
+    * Stores a new value for a given write path.
     *
     * The serializer given is _non_transactional. This is because this trait bridges confluent
     * and ephemeral world (it may use a durable backend, but the data structures used for
@@ -49,17 +47,12 @@ trait ConfluentTxnMap[ Txn, Access ] {
     *
     * @param id         the identifier for the object
     * @param path       the path through which the object has been accessed (the version at which it is read)
-    * @param newTree    whether the path terminates in a newly constructed tree (`true`) or not (`false`).
-    *                   Since transactionally serialized values will have been serialized already into an
-    *                   intermediate format (e.g. byte array), they cannot extend any included path information,
-    *                   so it is up to this map to annotate writes accordingly, so that information is
-    *                   available when retrieving the values at a later point.
     * @param value      the value to store
     * @param tx         the transaction within which the access is performed
     * @param serializer the serializer used to store the entity's values
     * @tparam A         the type of values stored with the entity
     */
-   def put[ A ]( id: Int, path: Access, newTree: Boolean, value: A )( implicit tx: Txn, serializer: Serializer[ A ]) : Unit
+   def put[ A ]( id: Int, path: Access, value: A )( implicit tx: Txn, serializer: Serializer[ A ]) : Unit
 
    /**
     * Finds the most recent value for an entity `id` with respect to version `path`.

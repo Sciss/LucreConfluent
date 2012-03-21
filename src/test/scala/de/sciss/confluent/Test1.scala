@@ -56,6 +56,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 
    // v0 : "Allocate nodes w0, w1, with x=2 and x=1, concatenate them"
 
+   println( ":::: v0 ::::" )
    val access = s.root[ Option[ Node ]] { implicit tx =>
       val w0      = Node( "w0", 2 )
       val w1      = Node( "w1", 1 )
@@ -63,16 +64,17 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       Some( w0 )
    }
 
-   println( "list after writing v0:" )
+   println( "\nlist after writing v0:" )
    val (v0, res0) = s.atomic { implicit tx =>
       val node = access.get
       (tx.inputAccess, toList( node ))
    }
-   println( "@ " + v0 + " -> " + res0 )
+   println( "@ " + v0 + " -> " + res0 + "\n" )
    println()
 
    // v1 : "Invert order of input linked list"
 
+   println( ":::: v1 ::::" )
    s.atomic { implicit tx =>
       // urrgh, this got pretty ugly. but well, it does its job...
       access.transform { no =>
@@ -93,12 +95,12 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       }
    }
 
-   println( "list after writing v1:" )
+   println( "\nlist after writing v1:" )
    val (v1, res1) = s.atomic { implicit tx =>
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( "@ " + v1 + " -> " + res1 )
+   println( "@ " + v1 + " -> " + res1 + "\n" )
    println()
 
    // XXX time warp
@@ -108,6 +110,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
    // v2: "Delete first node of list, allocate new node x=1, concatenate to input list"
    // --> use a variant to better verify the results: set x=3 instead
 
+   println( ":::: v2 ::::" )
    s.atomic { implicit tx =>
       access.transform {
          case Some( n ) =>
@@ -126,12 +129,12 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       }
    }
 
-   println( "list after writing v2:" )
+   println( "\nlist after writing v2:" )
    val (v2, res2) = s.atomic { implicit tx =>
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( "@ " + v2 + " -> " + res2 )
+   println( "@ " + v2 + " -> " + res2 + "\n" )
    println()
 
    // XXX time warp
@@ -139,6 +142,7 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
 
    // v3: "Add +2 to all elements of right list. Concatenate left and right lists"
 
+   println( ":::: v3 ::::" )
    s.atomic { implicit tx =>
       val right = access.meld( v2 )
       @tailrec def concat( pred: Node, tail: Option[ Node ]) {
@@ -159,15 +163,16 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       access.get.foreach( concat( _, right ))
    }
 
-   println( "list after writing v3:" )
+   println( "\nlist after writing v3:" )
    val (v3, res3) = s.atomic { implicit tx =>
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( "@ " + v3 + " -> " + res3 )
+   println( "@ " + v3 + " -> " + res3 + "\n" )
 
    // v4: "Concatenate Left and Right Lists"
 
+   println( ":::: v4 ::::" )
    s.atomic { implicit tx =>
       val right = access.meld( v2 )
       @tailrec def concat( pred: Node, tail: Option[ Node ]) {
@@ -179,12 +184,21 @@ class Test1[ S <: KSys[ S ]]( s: S ) {
       access.get.foreach( concat( _, right ))
    }
 
-   println( "list after writing v4:" )
+   println( "\nlist after writing v4:" )
    val (v4, res4) = s.atomic { implicit tx =>
       val node = access.get
       tx.inputAccess -> toList( node )
    }
-   println( "@ " + v4 + " -> " + res4 )
+   println( "@ " + v4 + " -> " + res4 + "\n" )
 
-   println( "\nDone." )
+   s.atomic { implicit tx =>
+      val first   = access.get.get
+      val second  = first.next.get.get
+      val third   = second.next.get.get
+      val forth   = third.next.get.get
+      val fifth   = forth.next.get.get
+      println( "Aqui" )
+   }
+
+   println( "Done." )
 }

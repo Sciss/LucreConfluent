@@ -99,7 +99,7 @@ object KSysImpl {
          implicit val m = PathMeasure
          val sz         = in.readInt()
          val accIter    = acc.tree.iterator
-         val _          = accIter.next()
+         val writeTree  = accIter.next()
          val writeTerm  = accIter.next()
          var tree       = FingerTree.empty( m )
          if( sz == 0 ) {
@@ -116,7 +116,7 @@ object KSysImpl {
 
             if( oldLevel != newLevel ) {
                tree      :+= lastTerm
-               tree      :+= writeTerm
+               tree      :+= writeTree // writeTerm
             }
             tree         :+= writeTerm
          }
@@ -388,7 +388,7 @@ object KSysImpl {
             map.foreach {
                case (_, Write( p, value, writer )) =>
                   val path = p.addTerm( outTerm )( this )
-                  logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ", ", ">" ))
+                  logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ",", ">" ))
                   persistent.put( id, path, value )( this, writer )
             }
          }

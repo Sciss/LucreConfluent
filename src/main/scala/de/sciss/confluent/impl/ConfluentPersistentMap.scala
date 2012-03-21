@@ -79,6 +79,7 @@ object ConfluentPersistentMap {
                   val prev = get[ A ]( id, path ).getOrElse(
                      sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
                   )
+                  sys.error( "Huhuuuuu. Need prefixes" )
                   putNewMap[ A ]( id, index, term, value, prev )
                }
          }

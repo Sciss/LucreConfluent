@@ -49,14 +49,20 @@ object KSys {
 
    trait Acc[ S <: KSys[ S ]] extends Writer with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
-      // append element
-      private[confluent] def :+( suffix: Long ) : S#Acc
+
+//      // append element
+//      private[confluent] def :+( suffix: Long ) : S#Acc
+
       private[confluent] def index : S#Acc
+
       private[confluent] def term: Long
-      // replace last element
-      private[confluent] def :-|( suffix: Long ) : S#Acc
+
+//      // replace last element
+//      private[confluent] def :-|( suffix: Long ) : S#Acc
+
       // split off last term, return index (init) and that last term
       private[confluent] def splitIndex: (S#Acc, Long)
+
       // split an index and term at a given point. that is
       // return the `idx` first elements of the path, and the one
       // following (the one found when applying `idx`).

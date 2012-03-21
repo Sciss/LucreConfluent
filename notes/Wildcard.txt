@@ -312,3 +312,27 @@ this would yield to a single entry put at <v0, v1, v3, v4>. a read at <v0, v1, v
 therefore, in the case of no existing entry for the write index in persistent.put -- we must first check if this corresponds to the root version or not. If it is the root version, use single entry, otherwise, read previous value and create a two entry map straight away.
 
 Where root version means (_!_) not necessarily that the terminal version corresponds to a tree, bu rather that indexTerm == term (therefore covering the case that the node was created in the same transaction as the write, allowing us to treat the stored value as a quasi-root value)
+
+:::::::::::
+
+- in a way readAndAppend and addNew/OldTree need to perform the same steps
+- but it seems we definitely need the level information for this operation; comparing tree-index-terms doesn't help, we need to compare the levels!
+- it raises the question whether the level should be part of the vertex in each path -- which means we need to give up Long and introduce a custom 96-bit (3 Ints) type :-(
+- other maybe it is sufficient to store it once in Path (i.e. the level of the last vertex). This would save space and be nicer, but what happens to ops like .take, .tail and so forth -- we would need to relax the return type (maybe just PathLike?)
+- we do need drop...
+- we could... (bit adventurous...)
+   - distinguish between Path and Index as different _wrapping_ instances
+   - have both finger trees whose elements carry <e, t> _pairs_
+   - (an Index would then have a dummy t with random = 0 so it doesn't contribute in Hashing._)
+
+:::::::::::
+
+on the other hand...
+- level information could be saved with persistent.put
+  - that is to say. we could return a level (for the prefix found) and a PathLike from getWithSuffix, instead of a Path?
+
+- there is at least one mistake in getWithPrefixLen -- partial prefixes (cookie 0) are not resolved. they need to be!
+
+:::::::::::
+
+before starting any of these adventures, the best approach would be to make sure that it actually works; by reading the level information in readAndAppend and addNewTree/addOldTree brute force from the store.

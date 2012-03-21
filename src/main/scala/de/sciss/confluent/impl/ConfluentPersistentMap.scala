@@ -141,6 +141,8 @@ object ConfluentPersistentMap {
                                           ( implicit tx: S#Tx, ser: Serializer[ A ]) : B = {
          val (maxIndex, maxTerm) = path.splitIndex
          // preLen will be odd, as we only write to tree indices, and not terms
+         // XXX TODO : not necessarily, if we find a partial prefix!!! This case (value will read cookie 0)
+         // is not yet implemented!!!
          val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )

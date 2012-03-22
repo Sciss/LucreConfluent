@@ -724,3 +724,40 @@ Because the corresponding _write_ for ((( X ))) was:
 So if we manage to store and retrieve that term, hopefully the whole thing works correctly.
 
 Feierabend.
+
+::::::::::::::::::::::::::::::::
+
+list after writing v4:
+[22 Mar 2012, 14:40'56.403] Confluent - ::::::: atomic - input access = Path(0, 1, 3, 4) :::::::
+[22 Mar 2012, 14:40'56.403] Confluent - Access get
+[22 Mar 2012, 14:40'56.403] Confluent - txn get' <1 @ 0,1,3,4>
+[22 Mar 2012, 14:40'56.404] Confluent - txn durable
+[22 Mar 2012, 14:40'56.405] Confluent - txn readID <5 @ 0,1,3,4>		= w1
+[22 Mar 2012, 14:40'56.405] Confluent - txn read Var[Int](<6 @ 0,1,3,4>)
+[22 Mar 2012, 14:40'56.405] Confluent - txn read Var(<7 @ 0,1,3,4>)
+[22 Mar 2012, 14:40'56.405] Confluent - Var[Int](<6 @ 0,1,3,4>) get
+[22 Mar 2012, 14:40'56.405] Confluent - txn get <6 @ 0,1,3,4>
+[22 Mar 2012, 14:40'56.406] Confluent - Var(<7 @ 0,1,3,4>) get
+[22 Mar 2012, 14:40'56.406] Confluent - txn get' <7 @ 0,1,3,4>
+[22 Mar 2012, 14:40'56.408] Confluent - txn readID <2 @ 0,1,3,4>		= w0
+[22 Mar 2012, 14:40'56.408] Confluent - txn read Var[Int](<3 @ 0,1,3,4>)
+[22 Mar 2012, 14:40'56.408] Confluent - txn read Var(<4 @ 0,1,3,4>)
+[22 Mar 2012, 14:40'56.408] Confluent - Var[Int](<3 @ 0,1,3,4>) get
+[22 Mar 2012, 14:40'56.408] Confluent - txn get <3 @ 0,1,3,4>
+[22 Mar 2012, 14:40'56.408] Confluent - Var(<4 @ 0,1,3,4>) get
+[22 Mar 2012, 14:40'56.408] Confluent - txn get' <4 @ 0,1,3,4>
+[22 Mar 2012, 14:40'56.409] Confluent - txn readID <5 @ 0,2,3,3>		= w1 -- WRONG
+[22 Mar 2012, 14:40'56.409] Confluent - txn read Var[Int](<6 @ 0,2,3,3>)
+[22 Mar 2012, 14:40'56.409] Confluent - txn read Var(<7 @ 0,2,3,3>)
+[22 Mar 2012, 14:40'56.409] Confluent - Var[Int](<6 @ 0,2,3,3>) get
+[22 Mar 2012, 14:40'56.409] Confluent - txn get <6 @ 0,2,3,3>
+[22 Mar 2012, 14:40'56.410] Confluent - Var(<7 @ 0,2,3,3>) get
+[22 Mar 2012, 14:40'56.410] Confluent - txn get' <7 @ 0,2,3,3>
+[22 Mar 2012, 14:40'56.412] Confluent - txn readID <8 @ 2,2,3,3>
+[22 Mar 2012, 14:40'56.412] Confluent - txn read Var[Int](<9 @ 2,2,3,3>)
+[22 Mar 2012, 14:40'56.412] Confluent - txn read Var(<10 @ 2,2,3,3>)
+[22 Mar 2012, 14:40'56.412] Confluent - Var[Int](<9 @ 2,2,3,3>) get
+[22 Mar 2012, 14:40'56.412] Confluent - txn get <9 @ 2,2,3,3>
+[22 Mar 2012, 14:40'56.412] Confluent - Var(<10 @ 2,2,3,3>) get
+[22 Mar 2012, 14:40'56.412] Confluent - txn get' <10 @ 2,2,3,3>
+@ Path(0, 1, 3, 4) -> List((w1,1), (w0,2), (w1,3), (w2,5))

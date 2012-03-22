@@ -143,8 +143,9 @@ object ConfluentPersistentMap {
 
       def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
          val (maxIndex, maxTerm) = path.splitIndex
-         getWithPrefixLen[ A, (S#Acc, A) ]( id, maxIndex, maxTerm )( (preLen, term, value) =>
-            (path.dropAndReplaceHead( preLen, term ), value)
+         getWithPrefixLen[ A, (S#Acc, A) ]( id, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
+//            (path.dropAndReplaceHead( preLen, writeTerm ), value)
+            (writeTerm +: path.drop( preLen ), value)
          )
       }
 

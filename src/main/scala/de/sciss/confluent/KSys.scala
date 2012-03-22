@@ -58,6 +58,9 @@ object KSys {
 //      // append element
 //      private[confluent] def :+( suffix: Long ) : S#Acc
 
+      // prepend element
+      private[confluent] def +:( suffix: Long ) : S#Acc
+
       private[confluent] def index : S#Acc
 
       private[confluent] def term: Long

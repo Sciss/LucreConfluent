@@ -98,14 +98,19 @@ object KSysImpl {
       def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
          val sz         = in.readInt()
-         val accTree    = acc.tree
-//         val accIter    = acc.tree.iterator
-//         val writeTree  = accIter.next()
-         val writeTerm  = accTree.head // accIter.next()
+//         val accTree    = acc.tree
+         val accIter    = acc.tree.iterator
+         val writeTerm  = accIter.next()
+         val readTerm   = accIter.next()
          var tree       = FingerTree.empty( m )
          if( sz == 0 ) {
             // entity was created in the terminal version
-            tree = writeTerm +: writeTerm +: tree   // XXX TODO should have FingerTree.two
+            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+            // XXX is this correct? i would think that still
+            // we need to compare tree levels? -- if writeTerm level != readTerm level,
+            // wouldn't we instead need <write, write, read, read> ?
+            // --> NO, they would always have the same level, because
+            // the write path begins with the read path (they share the same initial version)
          } else {
             val szm        = sz - 1
             var i = 0; while( i < szm ) {
@@ -117,11 +122,11 @@ object KSysImpl {
 
             if( oldLevel != newLevel ) {
                tree      :+= lastTerm
-               tree      :+= writeTerm // writeTree
+               tree      :+= writeTerm
             }
-            tree         :+= writeTerm
+            tree         :+= readTerm
          }
-         val accIter = accTree.tail.iterator // XXX TODO finger tree should have concatenation
+//         val accIter = accTree.tail.iterator // XXX TODO finger tree should have concatenation
          accIter.foreach( tree :+= _ )
          new Path( tree )
       }
@@ -159,7 +164,9 @@ object KSysImpl {
 
       def test_:+( elem: Long ) : Path = :+( elem )
 
-      private[confluent] def :+( suffix: Long ) : Path = wrap( tree :+ suffix )
+      private[confluent] def :+( last: Long ) : Path = wrap( tree :+ last )
+
+      private[confluent] def +:( head: Long ) : Path = wrap( head +: tree )
 
 //      private[KSysImpl] def addNewTree( term: Long ) : Path = {
 //         wrap( tree :+ term :+ term )

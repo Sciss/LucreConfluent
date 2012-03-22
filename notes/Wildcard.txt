@@ -629,6 +629,7 @@ ok, with the missing partials being written, we're back to infinite loop :-(
 [21 Mar 2012, 23:39'58.962] Confluent - ::::::: txn flush - term = 4 :::::::
 [21 Mar 2012, 23:39'58.963] Confluent - txn flush write [B@774d921a for <10 @ 2,2,3,4>
 
+((( A )))
 list after writing v4:
 [21 Mar 2012, 23:39'58.990] Confluent - ::::::: atomic - input access = Path(0, 1, 3, 4) :::::::
 [21 Mar 2012, 23:39'58.990] Confluent - Access get
@@ -664,3 +665,62 @@ list after writing v4:
 [21 Mar 2012, 23:39'59.002] Confluent - txn get' <10 @ 2,2,3,4>			OK
 [21 Mar 2012, 23:39'59.003] Confluent - txn readID <5 @ 0,2,3,4>		= w1 NOT OK -- ought to be  @ 0,2,4,4 ....
 ...
+
+if we change writeTree for writeTerm in readAndAppend:
+
+((( B )))
+list after writing v4:
+[21 Mar 2012, 23:46'14.934] Confluent - ::::::: atomic - input access = Path(0, 1, 3, 4) :::::::
+[21 Mar 2012, 23:46'14.934] Confluent - Access get
+[21 Mar 2012, 23:46'14.934] Confluent - txn get' <1 @ 0,1,3,4>
+[21 Mar 2012, 23:46'14.935] Confluent - txn durable
+[21 Mar 2012, 23:46'14.936] Confluent - txn readID <5 @ 0,1,3,4>		= w1
+[21 Mar 2012, 23:46'14.936] Confluent - txn read Var[Int](<6 @ 0,1,3,4>)
+[21 Mar 2012, 23:46'14.936] Confluent - txn read Var(<7 @ 0,1,3,4>)
+[21 Mar 2012, 23:46'14.936] Confluent - Var[Int](<6 @ 0,1,3,4>) get
+[21 Mar 2012, 23:46'14.936] Confluent - txn get <6 @ 0,1,3,4>
+[21 Mar 2012, 23:46'14.936] Confluent - Var(<7 @ 0,1,3,4>) get
+[21 Mar 2012, 23:46'14.937] Confluent - txn get' <7 @ 0,1,3,4>
+[21 Mar 2012, 23:46'14.938] Confluent - txn readID <2 @ 0,1,3,4>		= w0
+[21 Mar 2012, 23:46'14.938] Confluent - txn read Var[Int](<3 @ 0,1,3,4>)
+[21 Mar 2012, 23:46'14.938] Confluent - txn read Var(<4 @ 0,1,3,4>)
+[21 Mar 2012, 23:46'14.938] Confluent - Var[Int](<3 @ 0,1,3,4>) get
+[21 Mar 2012, 23:46'14.938] Confluent - txn get <3 @ 0,1,3,4>
+[21 Mar 2012, 23:46'14.939] Confluent - Var(<4 @ 0,1,3,4>) get
+[21 Mar 2012, 23:46'14.939] Confluent - txn get' <4 @ 0,1,3,4>
+[21 Mar 2012, 23:46'14.939] Confluent - txn readID <5 @ 0,2,4,4>		= w1 -- wrong ((( X )))
+[21 Mar 2012, 23:46'14.939] Confluent - txn read Var[Int](<6 @ 0,2,4,4>)
+[21 Mar 2012, 23:46'14.939] Confluent - txn read Var(<7 @ 0,2,4,4>)
+[21 Mar 2012, 23:46'14.939] Confluent - Var[Int](<6 @ 0,2,4,4>) get
+[21 Mar 2012, 23:46'14.939] Confluent - txn get <6 @ 0,2,4,4>
+[21 Mar 2012, 23:46'14.941] Confluent - Var(<7 @ 0,2,4,4>) get
+[21 Mar 2012, 23:46'14.941] Confluent - txn get' <7 @ 0,2,4,4>
+[21 Mar 2012, 23:46'14.942] Confluent - txn readID <8 @ 2,2,4,4>
+[21 Mar 2012, 23:46'14.942] Confluent - txn read Var[Int](<9 @ 2,2,4,4>)
+[21 Mar 2012, 23:46'14.942] Confluent - txn read Var(<10 @ 2,2,4,4>)
+[21 Mar 2012, 23:46'14.942] Confluent - Var[Int](<9 @ 2,2,4,4>) get
+[21 Mar 2012, 23:46'14.942] Confluent - txn get <9 @ 2,2,4,4>
+[21 Mar 2012, 23:46'14.943] Confluent - Var(<10 @ 2,2,4,4>) get
+[21 Mar 2012, 23:46'14.943] Confluent - txn get' <10 @ 2,2,4,4>
+@ Path(0, 1, 3, 4) -> List((w1,1), (w0,2), (w1,1), (w2,3))
+
+It appears that the problem can only be solved if the access path in path.meld is modified??
+
+In the full path method, the following assignments are correct:
+<w0 @ 0,1,3>.next = <w1 @ 0,2,3>
+<w2 @ 2,3,4>.next = <w1 @ 0,2,4>
+
+Expressed as compressed paths these would be. And the we add the known paths to show the dilemma:
+<w0 @ 0,1,3,3>.next = <w1 @ 0,2,3,3> / known <w1 @ 0,2> ++ <*>
+<w2 @ 2,2,3,4>.next = <w1 @ 0,2,4,4> / known <w1 @ 0,2> ++ <*>
+            ^
+
+it seems though that the writeTerm approach is correct. The problem in ((( X ))) may arise because we do not use the _written_ term in readAndAppend but the _accessed term (not the found _found_ in get, but the one _provided_ when calling get).
+
+Because the corresponding _write_ for ((( X ))) was:
+[21 Mar 2012, 23:46'14.879] Confluent - txn flush write [B@3fbfbfb8 for <4 @ 0,1,3,3>
+--> term is 3 not 4 !!
+
+So if we manage to store and retrieve that term, hopefully the whole thing works correctly.
+
+Feierabend.

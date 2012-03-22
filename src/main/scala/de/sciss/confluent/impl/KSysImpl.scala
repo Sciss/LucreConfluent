@@ -116,39 +116,9 @@ object KSysImpl {
 
             if( oldLevel != newLevel ) {
                tree      :+= lastTerm
-               tree      :+= writeTree // writeTerm
+               tree      :+= writeTerm // writeTree
             }
             tree         :+= writeTerm
-         }
-         accIter.foreach( tree :+= _ )
-         new Path( tree )
-      }
-
-      private def readAndAppendOLD( in: DataInput, acc: S#Acc ) : S#Acc = {
-         // XXX TODO make this more efficient
-         implicit val m = PathMeasure
-         val sz         = in.readInt()
-         val accIter    = acc.tree.iterator
-         val writeTree  = accIter.next()
-         val writeTerm  = accIter.next()
-         var tree       = FingerTree.empty( m )
-         if( sz == 0 ) {
-            // entity was created in the terminal version
-            tree = writeTerm +: writeTerm +: tree   // XXX TODO should have FingerTree.two
-         } else {
-            val szm        = sz - 2
-            var i = 0; while( i < szm ) {
-               tree      :+= in.readLong()
-            i += 1 }
-            val lastTree   = in.readLong()
-            val lastTerm   = in.readLong()
-            tree         :+= lastTree
-            if( writeTree == lastTree ) { // old tree - just replace the term
-
-            } else {                      // new tree - add the last term and the new version
-               tree      :+= lastTree
-               tree      :+= lastTerm
-            }
          }
          accIter.foreach( tree :+= _ )
          new Path( tree )

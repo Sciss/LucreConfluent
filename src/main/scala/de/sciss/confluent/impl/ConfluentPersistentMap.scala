@@ -26,8 +26,8 @@
 package de.sciss.confluent
 package impl
 
-import annotation.switch
 import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
+import annotation.switch
 
 object ConfluentPersistentMap {
    def apply[ S <: KSys[ S ], A ]( store: PersistentStore ) : ConfluentTxnMap[ S#Tx, S#Acc ] =
@@ -48,8 +48,9 @@ object ConfluentPersistentMap {
             (in.readUnsignedByte(): @switch) match {
                case 1 =>
                   // a single 'root' value is found. extract it for successive re-write.
-                  val prev = ser.read( in )
-                  Some( EntrySingle( prev ))
+                  val term2   = in.readLong()
+                  val prev    = ser.read( in )
+                  Some( EntrySingle( term2, prev ))
                case 2 =>
                   // there is already a map found
                   val m = tx.readIndexMap[ A ]( in, index )
@@ -59,8 +60,8 @@ object ConfluentPersistentMap {
          } match { // with the previous entry read, react as follows:
             // if there is a single entry, construct a new ancestor.map with the
             // entry's value taken as root value
-            case Some( EntrySingle( prev )) =>
-               putFullMap[ A ]( id, index, term, value, prev )
+            case Some( EntrySingle( prevTerm, prevValue )) =>
+               putFullMap[ A ]( id, index, term, value, prevTerm, prevValue )
             // if there is an existing map, simply add the new value to it
             case Some( EntryMap( m )) =>
                m.add( term, value )
@@ -70,27 +71,29 @@ object ConfluentPersistentMap {
                // as a root value (the write path corresponds to the construction
                // of the entity, e.g. path == <term, term>; or the entity was
                // re-written in the tree root, hence path.suffix == <term, term>)
-               if( term == index.term ) {
+               val indexTerm = index.term
+               if( term == indexTerm ) {
                   putPartials( id, index )
                   putFullSingle[ A ]( id, index, term, value )
                // otherwise, we must read the root value for the entity, and then
                // construct a new map containing that root value along with the
                // new value
                } else {
-                  val prev = get[ A ]( id, path ).getOrElse(
+                  val prevValue = get[ A ]( id, path ).getOrElse(
                      sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
                   )
                   putPartials( id, index )
-                  putFullMap[ A ]( id, index, term, value, prev )
+                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
                }
          }
       }
 
-      private def putFullMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, /* prevTerm: Long, */ prevValue: A )
+      private def putFullMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
                                  ( implicit tx: S#Tx, ser: Serializer[ A ]) {
 //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
 //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          // create new map with previous value
+sys.error( "TODO: prevTerm" )
          val m = tx.newIndexMap[ A ]( index, prevValue )
          // store the full value at the full hash (path.sum)
          store.put { out =>
@@ -129,28 +132,26 @@ object ConfluentPersistentMap {
             out.writeLong( index.sum )
          } { out =>
             out.writeUnsignedByte( 1 )    // aka entry single
-//            out.writeLong( term )
+            out.writeLong( term )
             ser.write( value, out )
          }
       }
 
       def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
          val (maxIndex, maxTerm) = path.splitIndex
-         getWithPrefixLen[ A, Option[ A ]]( id, maxIndex, maxTerm )( (_, opt) => opt )
+         getWithPrefixLen[ A, A ]( id, maxIndex, maxTerm )( (_, _, value) => value )
       }
 
       def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
          val (maxIndex, maxTerm) = path.splitIndex
-         getWithPrefixLen[ A, Option[ (S#Acc, A) ]]( id, maxIndex, maxTerm )( (preLen, opt) => opt.map( res => (path.drop( preLen - 1 ), res) ))
+         getWithPrefixLen[ A, (S#Acc, A) ]( id, maxIndex, maxTerm )( (preLen, term, value) =>
+            (path.dropAndReplaceHead( preLen, term ), value)
+         )
       }
 
       private def getWithPrefixLen[ A, B ]( id: Int, maxIndex: S#Acc, maxTerm: Long )
-                                          ( fun: (Int, Option[ A ]) => B )
-                                          ( implicit tx: S#Tx, ser: Serializer[ A ]) : B = {
-//         val (maxIndex, maxTerm) = path.splitIndex
-         // preLen will be odd, as we only write to tree indices, and not terms
-         // XXX TODO : not necessarily, if we find a partial prefix!!! This case (value will read cookie 0)
-         // is not yet implemented!!!
+                                          ( fun: (Int, Long, A) => B )
+                                          ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
          val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
             out.writeInt( id )
             out.writeLong( key )
@@ -161,17 +162,18 @@ object ConfluentPersistentMap {
             maxIndex.splitAtIndex( preLen )
          }
          val preSum  = index.sum
-         store.get { out =>
+         store.flatGet { out =>
             out.writeInt( id )
             out.writeLong( preSum )
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 0 =>   // partial hash
                   val hash = in.readLong()
-                  EntryPre[ S ]( hash )
+//                  EntryPre[ S ]( hash )
+                  val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+                  getWithPrefixLen( id, fullIndex, fullTerm )( fun )
 
                case 1 =>
-//                  val term2 = in.readLong()
                   // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
                   // if the terms match, we have Some result. If not, we need to ask the index tree if
                   // term2 is ancestor of term. If so, we have Some result, if not we have None.
@@ -187,26 +189,23 @@ object ConfluentPersistentMap {
                   // entry map, and we can safely _coerce_ the previous value to be the map's
                   // _root_ value.
 
-                  val prev = ser.read( in )
-                  EntrySingle[ S, A ]( prev )
+                  val term2 = in.readLong()
+                  val value = ser.read( in )
+//                  EntrySingle[ S, A ]( term2, value )
+                  Some( fun( preLen, term2, value ))
 
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )
-                  EntryMap[ S, A ]( m )
+//                  EntryMap[ S, A ]( m )
+                  val (term2, value) = m.nearest( term )
+                  Some( fun( preLen, term2, value ))
             }
-         } match {
-            case Some( EntrySingle( prev ))  => fun( preLen, Some( prev ))
-            case Some( EntryMap( m ))        => fun( preLen, Some( m.nearest( term )))
-            case Some( EntryPre( hash ))     =>
-               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-               getWithPrefixLen( id, fullIndex, fullTerm )( fun )
-            case None                        => fun( preLen, None )
          }
       }
    }
 
    private sealed trait Entry[ S <: KSys[ S ], +A ]
-   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )             extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: KSys[ S ], A ]( /* term: Long, */ v: A ) extends Entry[ S, A ]
-   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ])     extends Entry[ S, A ]
+   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )          extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A )    extends Entry[ S, A ]
+   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ])  extends Entry[ S, A ]
 }

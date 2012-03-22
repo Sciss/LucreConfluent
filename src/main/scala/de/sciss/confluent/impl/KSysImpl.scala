@@ -89,7 +89,7 @@ object KSysImpl {
 
    object Path {
       def test_empty : Path = empty
-      private[KSysImpl] def empty      = new Path( FingerTree.empty( PathMeasure ))
+      private[KSysImpl] val empty      = new Path( FingerTree.empty( PathMeasure ))
       /* private[KSysImpl] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
@@ -98,9 +98,10 @@ object KSysImpl {
       def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
          val sz         = in.readInt()
-         val accIter    = acc.tree.iterator
-         val writeTree  = accIter.next()
-         val writeTerm  = accIter.next()
+         val accTree    = acc.tree
+//         val accIter    = acc.tree.iterator
+//         val writeTree  = accIter.next()
+         val writeTerm  = accTree.head // accIter.next()
          var tree       = FingerTree.empty( m )
          if( sz == 0 ) {
             // entity was created in the terminal version
@@ -120,6 +121,7 @@ object KSysImpl {
             }
             tree         :+= writeTerm
          }
+         val accIter = accTree.tail.iterator // XXX TODO finger tree should have concatenation
          accIter.foreach( tree :+= _ )
          new Path( tree )
       }
@@ -173,6 +175,11 @@ object KSysImpl {
 //         })
 //      }
 
+      /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : Path = {
+         val (_, _, right) = tree.split1( _._1 > dropLen )
+         wrap( newHead +: right )
+      }
+
       private[KSysImpl] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
          val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
@@ -203,12 +210,17 @@ object KSysImpl {
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def drop( n: Int ) : Path = {
-         var res = tree
-         var i = 0; while( i < n ) {
-            res = res.tail
-         i += 1 }
-         wrap( res )
+      /* private[confluent] */ def drop( n: Int ) : Path = {
+//         var res = tree
+//         var i = 0; while( i < n ) {
+//            res = res.tail
+//         i += 1 }
+         if( n <= 0 ) return this
+         if( n >= size ) return Path.empty
+         val nm = n - 1
+         if( nm == 0 ) return wrap( tree.tail )
+         val (_ ,_, right) = tree.split1( _._1 > nm )
+         wrap( right )
       }
 
       // XXX TODO should have an efficient method in finger tree
@@ -281,9 +293,10 @@ object KSysImpl {
    private final class IndexMapImpl[ A ]( protected val index: S#Acc,
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
-      def nearest( term: Long )( implicit tx: S#Tx ) : A = {
+      def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
          val v = tx.readTreeVertex( map.full, index, term )._1
-         map.nearest( v )( tx.durable )._2
+         val (v2, value) = map.nearest( v )( tx.durable )
+         (v2.version, value)
       }
 
       def add( term: Long, value: A )( implicit tx: S#Tx ) {

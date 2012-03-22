@@ -25,8 +25,8 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{TxnSerializer, Serializer, Writer, Identifier, Sys, Txn => _Txn, Var => _Var}
-import de.sciss.lucre.{DataOutput, DataInput}
+import de.sciss.lucre.stm.{TxnSerializer, Serializer, Writer, Identifier, Sys, Txn => _Txn}
+import de.sciss.lucre.DataInput
 
 object KSys {
 //   private type S = KSys
@@ -76,6 +76,8 @@ object KSys {
       private[confluent] def splitAtIndex( idx: Int ): (S#Acc, Long)
 
       private[confluent] def splitAtSum( hash: Long ): (S#Acc, Long)
+
+      private[confluent] def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc
 
       // drop initial elements
       private[confluent] def drop( num: Int ): S#Acc

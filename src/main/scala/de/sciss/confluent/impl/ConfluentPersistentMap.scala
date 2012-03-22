@@ -93,8 +93,7 @@ object ConfluentPersistentMap {
 //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
 //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          // create new map with previous value
-sys.error( "TODO: prevTerm" )
-         val m = tx.newIndexMap[ A ]( index, prevValue )
+         val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
          // store the full value at the full hash (path.sum)
          store.put { out =>
             out.writeInt( id )

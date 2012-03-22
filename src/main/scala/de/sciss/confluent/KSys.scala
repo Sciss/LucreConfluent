@@ -35,7 +35,7 @@ object KSys {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
       def readIndexMap[ A ]( in: DataInput, index: S#Acc )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
-      def newIndexMap[ A ]( index: S#Acc, value: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+      def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
 
       def inputAccess: S#Acc
    }

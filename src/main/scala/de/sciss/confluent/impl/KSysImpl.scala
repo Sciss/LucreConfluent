@@ -934,13 +934,13 @@ object KSysImpl {
 
       // XXX TODO should be persistent, e.g. use CachedIntVar again
       private val idCntVar : ScalaRef[ Int ] = ScalaRef {
-         inMem.atomic { implicit tx =>
+         inMem.step { implicit tx =>
             store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
          }
       }
 
       private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
-         ReactionMap[ S, InMemory ]( inMem.atomic { implicit tx =>
+         ReactionMap[ S, InMemory ]( inMem.step { implicit tx =>
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
 

@@ -1,7 +1,5 @@
 ## TemporalObjects
 
-__Note:__ see tag v0.14 for the example using actual audio file regions and sonogram view. The current version is a rework based on a new modularisation.
-
 ### statement
 
 TemporalObjects is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt).
@@ -14,7 +12,17 @@ TemporalObjects is an ongoing attempt to build a confluent persistence framework
 
 ### requirements / installation
 
-Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The required snapshot versions of the dependencies [LucreSTM](https://github.com/Sciss/LucreSTM) and [LucreData](https://github.com/Sciss/LucreData) are currently not in any repository, so you need to clone them and export each of them with `sbt publish-local` first.
+Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The dependencies, [LucreSTM](https://github.com/Sciss/LucreSTM) and  [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt. Due to a bug in sbt publishing of [LucreData](https://github.com/Sciss/LucreData) is currently a pita, so this project you need to clone yourself and perform a `publish-local` on it first.
+
+## linking to TemporalObjects
+
+The following dependency is necessary:
+
+    "de.sciss" %% "temporalobjects" % "0.30"
+
+### previous versions / tags
+
+__Note:__ see tag v0.14 for the example using actual audio file regions and sonogram view. The current version is a rework based on a new modularisation.
 
 ### creating an IntelliJ IDEA project
 

@@ -1,29 +1,28 @@
 name := "TemporalObjects"
 
-version := "0.30-SNAPSHOT"
+version := "0.30"
 
 organization := "de.sciss"
+
+description := "Confluent persistence and quasi-retroactive / fluent references for Scala"
+
+homepage := Some( url( "https://github.com/Sciss/TemporalObjects" ))
+
+licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
 scalaVersion := "2.9.1"
 
 resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "fingertree" % "0.20-SNAPSHOT",
-   "de.sciss" %% "lucredata-txn" % "0.21-SNAPSHOT",
+   "de.sciss" %% "fingertree" % "0.20",
+   "de.sciss" %% "lucredata-txn" % "0.21",
    "org.scalatest" %% "scalatest" % "1.7.1" % "test"
 )
 
 retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked" ) // "-Xelide-below", "INFO" // elide debug logging!
+scalacOptions ++= Seq( "-deprecation", "-unchecked", "-Xelide-below", "INFO" ) // elide debug logging!
 
 initialCommands in console := """import de.sciss.confluent._
-import impl.KSysImpl.Path
-import concurrent.stm.TxnExecutor.{defaultAtomic => atomic}
-val rnd = new util.Random( 0L )
-val p0 = Path.test_empty
-val p1 = p0 test_:+ rnd.nextInt()
-val p2 = p1 test_:+ rnd.nextInt()
-val p3 = p1 test_:+ rnd.nextInt()
-// val m = impl.ConfluentMemoryMap.ref[ String ]()"""
+"""

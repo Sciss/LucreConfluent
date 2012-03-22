@@ -41,7 +41,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v0, res0) = s.atomic { implicit tx =>
+         val (_, res0) = s.atomic { implicit tx =>
             val node = access.get
             (tx.inputAccess, toList( node ))
          }

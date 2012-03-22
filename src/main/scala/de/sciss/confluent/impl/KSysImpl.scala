@@ -519,9 +519,14 @@ object KSysImpl {
 
       final def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
                                 ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
-         val tree = readIndexTree( index.term )
-         sys.error( "TODO: use rootTerm" )
-         val map  = Ancestor.newMap[ Durable, Long, A ]( tree.tree, rootValue )
+         val tree       = readIndexTree( index.term )
+         val full       = tree.tree
+         val rootVertex = if( rootTerm == tree.term ) {
+            full.root
+         } else {
+            readTreeVertex( full, index, rootTerm )._1
+         }
+         val map  = Ancestor.newMap[ Durable, Long, A ]( full, rootVertex, rootValue )
          new IndexMapImpl[ A ]( index, map )
       }
 

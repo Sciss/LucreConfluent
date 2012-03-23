@@ -1,6 +1,6 @@
 package de.sciss.confluent
 
-import de.sciss.lucre.stm
+import de.sciss.lucre.{DataOutput, stm}
 import stm.{Sys, Txn}
 
 trait ProjectionTest {
@@ -44,4 +44,26 @@ trait ProjectionTest {
 //   def txUpCastFails[ S <: KTempLike[ S ]]( x: BiTemp#Var[ Int ])( implicit tx: S#Tx ) {
 ////      x.set( 33 )
 //   }
+
+   def test3[ S <: Sys[ S ], Time ]( dynVar: stm.Var[ Time, Int ])( implicit tx: S#Tx, dynView: S#Tx => Time ) {
+      dynVar.transform( _ + 33 )( tx )
+   }
+
+   trait PCursor[ +Tx ] {
+      def time: Double
+      def peer: Tx
+   }
+
+   class DynamicVar[ -Tx, A ] extends stm.Var[ PCursor[ Tx ], A ] {
+      def get( implicit tx: PCursor[ Tx ]) : A = getAt( tx.time )( tx.peer )
+      def getAt( time: Double )( implicit tx: Tx ) : A = sys.error( "Gagaismo" )
+
+      def transform( fun: A => A )( implicit tx: PCursor[ Tx ]) { set( fun( get ))}
+
+      def set( v: A )( implicit tx: PCursor[ Tx ]) { setAt( tx.time, v )( tx.peer )}
+      def setAt( time: Double, v: A )( implicit tx: Tx ) { sys.error( "Lalaismo" )}
+
+      def dispose()( implicit tx: PCursor[ Tx ]) {}
+      def write( out: DataOutput ) {}
+   }
 }

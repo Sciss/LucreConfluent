@@ -34,7 +34,7 @@ import de.sciss.collection.txn.Ancestor
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.stm.{Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
 
 object KSysImpl {
    private type S = System
@@ -371,7 +371,7 @@ object KSysImpl {
             flushOldTree()
          }
          logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
-         system.setLastPath( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
+         system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
          cache.get( peer ).foreach { tup1 =>
             val id   = tup1._1
             val map  = tup1._2
@@ -908,7 +908,7 @@ object KSysImpl {
 //   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
    final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ PersistentStore ])
-   extends KSys[ System ] {
+   extends KSys[ System ] with Cursor[ System ] {
       type ID                    = KSysImpl.ID
       type Tx                    = KSysImpl.Txn
       type Acc                   = KSysImpl.Path
@@ -986,7 +986,7 @@ object KSysImpl {
 //         (in, acc.drop( bestLen ))
       }
 
-      def atomic[ A ]( fun: S#Tx => A ): A = {
+      def step[ A ]( fun: S#Tx => A ): A = {
          TxnExecutor.defaultAtomic { implicit itx =>
             // XXX TODO
             val last                   = lastAccess.get
@@ -998,9 +998,11 @@ object KSysImpl {
       }
 
       // XXX TODO
-      /* private[KSysImpl] */ def setLastPath( p: Path )( implicit tx: S#Tx ) {
+      /* private[KSysImpl] */ def position_=( p: Path )( implicit tx: S#Tx ) {
          lastAccess.set( p )( tx.peer )
       }
+
+      def position( implicit tx: S#Tx ) : Path = lastAccess.get( tx.peer )
 
 //      def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A = atomic[ A ]( fun( _ )( rootVar ))
 

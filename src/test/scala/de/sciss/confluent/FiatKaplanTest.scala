@@ -24,7 +24,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
 
       def timeWarp( path: Sys#Acc ) {
          val s1 = s.asInstanceOf[ KSysImpl.System ]   // XXX ugly
-         s1.atomic( s1.setLastPath( path )( _ ))
+         s1.step( s1.position_=( path )( _ ))
       }
 
       it( "should yield the same sequences as those in Fiat/Kaplan fig. 3" ) {
@@ -41,7 +41,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res0) = s.atomic { implicit tx =>
+         val (_, res0) = s.step { implicit tx =>
             val node = access.get
             (tx.inputAccess, toList( node ))
          }
@@ -53,7 +53,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          ///////////////////////////// v1 /////////////////////////////
 
          given( "v1 : Invert order of input linked list" )
-         s.atomic { implicit tx =>
+         s.step { implicit tx =>
             // urrgh, this got pretty ugly. but well, it does its job...
             access.transform { no =>
                def reverse( node: Node ) : Node = node.next.get match {
@@ -74,7 +74,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v1, res1) = s.atomic { implicit tx =>
+         val (v1, res1) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -88,7 +88,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          // --> use a variant to better verify the results: set x=3 instead
          given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
          timeWarp( KSysImpl.Path.root )
-         s.atomic { implicit tx =>
+         s.step { implicit tx =>
             access.transform {
                case Some( n ) =>
                   val res = n.next.get
@@ -107,7 +107,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v2, res2) = s.atomic { implicit tx =>
+         val (v2, res2) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -120,7 +120,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
 
          given( "v3: Add +2 to all elements of right list. Concatenate left and right lists" )
          timeWarp( v1 )
-         s.atomic { implicit tx =>
+         s.step { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
                pred.next.get match {
@@ -141,7 +141,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res3) = s.atomic { implicit tx =>
+         val (_, res3) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -153,7 +153,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          ///////////////////////////// v4 /////////////////////////////
 
          given( "v4: Concatenate Left and Right Lists" )
-         s.atomic { implicit tx =>
+         s.step { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
                pred.next.get match {
@@ -165,7 +165,7 @@ class  FiatKaplanTest extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res4) = s.atomic { implicit tx =>
+         val (_, res4) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }

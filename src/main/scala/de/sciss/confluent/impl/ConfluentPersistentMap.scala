@@ -79,11 +79,32 @@ object ConfluentPersistentMap {
                // construct a new map containing that root value along with the
                // new value
                } else {
-                  val prevValue = get[ A ]( id, path ).getOrElse(
-                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
-                  )
-                  putPartials( id, index )
-                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
+                  // however, there is a particular case of our unorthodox skip list
+                  // structure -- it allocates new variables while only maintaining one
+                  // main id. this yields perfectly valid structures which cannot be
+                  // accessed other than in the write path, although term and indexTerm
+                  // are _not_ the same. example: insertion in a full leaf -- a new
+                  // branch is created with two down vars which have the tree id's
+                  // index term and the write version's term. their initial value is
+                  // the newly created split leaves, there are no previous values.
+                  //
+                  // we may forbid this behaviour in future versions, but for now let's
+                  // be generous and allow it, by checking _if_ a previous value exists.
+                  // if not -- go again for the full single entry...
+//                  val prevValue = get[ A ]( id, path ).getOrElse(
+//                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
+//                  )
+//                  putPartials( id, index )
+//                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
+                  get[ A ]( id, path ) match {
+                     case Some( prevValue ) =>
+                        putPartials( id, index )
+                        putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
+
+                     case _ =>
+                        putPartials( id, index )
+                        putFullSingle[ A ]( id, index, term, value )
+                  }
                }
          }
       }

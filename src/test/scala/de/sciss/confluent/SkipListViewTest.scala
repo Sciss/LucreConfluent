@@ -13,8 +13,18 @@ object SkipListViewTest extends App with Runnable {
    EventQueue.invokeLater( this )
 
    def run() {
-      val dir              = File.createTempFile( "database", "db" )
-      dir.delete()
+      val dir  = args.headOption match {
+         case Some( "--dbtmp" ) =>
+            val dir  = File.createTempFile( "database", "db" )
+            dir.delete()
+            dir
+
+         case Some( "--db" ) =>
+            new File( new File( sys.props( "user.home" ), "Desktop" ), "skiplist_database" )
+
+         case _ => println( "Invalid arguments: " + args.mkString( " " ))
+            sys.exit( 1 )
+      }
       val store            = BerkeleyDB.factory( dir )
 //      type S               = KSys[ x ] with Cursor[ x ] forSome { type x <: KSys[ x ]}
 //      type S = KSys[ KSysImpl.System ] with Cursor[ KSysImpl.System ]

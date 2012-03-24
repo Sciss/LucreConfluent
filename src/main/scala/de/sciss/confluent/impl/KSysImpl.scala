@@ -105,7 +105,9 @@ object KSysImpl {
          var tree       = FingerTree.empty( m )
          if( sz == 0 ) {
             // entity was created in the terminal version
-            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+//            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+            tree = writeTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+//logConfig( "readAndAppend for " + acc + " finds empty path, yields " + tree )
             // XXX is this correct? i would think that still
             // we need to compare tree levels? -- if writeTerm level != readTerm level,
             // wouldn't we instead need <write, write, read, read> ?

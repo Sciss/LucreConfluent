@@ -37,6 +37,7 @@ object TemporalObjects {
    val isSnapshot    = true
 
    private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
+   var showLog       = true
 
    def versionString = {
       val s = (version + 0.001).toString.substring( 0, 4 )
@@ -53,7 +54,7 @@ object TemporalObjects {
          ". All rights reserved.\n\nThis is a library which cannot be executed directly.\n" )
    }
 
-   @elidable(CONFIG) private[confluent] def logConfig( what: String ) {
-      Console.out.println( logHeader.format( new Date() ) + what )
+   @elidable(CONFIG) private[confluent] def logConfig( what: => String ) {
+      if( showLog ) Console.out.println( logHeader.format( new Date() ) + what )
    }
 }

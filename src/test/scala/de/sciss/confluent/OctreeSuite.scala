@@ -26,7 +26,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val INMEMORY      = true
    val DATABASE      = true
 
-   val n             = 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
+   val n             = 13 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
    val rnd           = new util.Random( 2L ) // ( 12L )

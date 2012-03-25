@@ -22,10 +22,10 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
       import types._
 
-      def timeWarp( path: Sys#Acc ) {
-         val s1 = s.asInstanceOf[ KSysImpl.System ]   // XXX ugly
-         s1.step( s1.position_=( path )( _ ))
-      }
+//      def timeWarp( path: Sys#Acc ) {
+//         val s1 = s.asInstanceOf[ KSysImpl.System ]   // XXX ugly
+//         s1.step( s1.position_=( path )( _ ))
+//      }
 
       it( "should be possible to navigate forward and backward and do updates" ) {
 
@@ -43,22 +43,23 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          given( "v1 : Append a new node w1 with x = 2" )
          s.step { implicit tx =>
             val head    = access.get
-            val newLast = Some( Node( "w1", 2 ))
+            val newLast = Node( "w1", 2 )
             @tailrec def step( last: Node ) {
                last.next.get match {
                   case None =>
-                     last.next.set( newLast )
+                     last.next.set( Some( newLast ))
+                     newLast.prev.set( Some( last ))
                   case Some( n1 ) => step( n1 )
                }
             }
             head match {
                case Some( n ) => step( n )
-               case None => access.set( newLast )
+               case None => access.set( Some( newLast ))
             }
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v1, res1) = s.step { implicit tx =>
+         val (_, res1) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -82,7 +83,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v2, res2) = s.step { implicit tx =>
+         val (_, res2) = s.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -90,6 +91,31 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          val exp2 = List( "w0" -> 3, "w1" -> 4 )
          then( "is should equal " + exp2 )
          assert( res2 === exp2 )
+
+         when( "the result is converted to a plain list going from back to front" )
+         val res2b = s.step { implicit tx =>
+            @tailrec def findLast( n: Node ) : Node = n.next.get match {
+               case None => n
+               case Some( n1 ) => findLast( n1 )
+            }
+            @tailrec def reverseToList( n: Node, res: List[ (String, Int) ]) : List[ (String, Int) ] = {
+               val res1 = (n.name -> n.value.get) :: res
+               n.prev.get match {
+                  case None => res1
+                  case Some( n1 ) => reverseToList( n1, res1 )
+               }
+            }
+
+            access.get match {
+               case Some( n ) =>
+                  reverseToList( findLast( n ), Nil )
+
+               case None => Nil
+            }
+         }
+
+         then( "is should have the same result" )
+         assert( res2b === exp2 )
       }
    }
 

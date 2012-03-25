@@ -27,7 +27,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val INMEMORY      = true
    val DATABASE      = true
 
-   val n             = 29 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
+   val n             = 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
    val rnd           = TxnRandom( 2L ) // ( 12L )
@@ -192,7 +192,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       val szBefore = cursor.step { implicit tx => access.get.size }
 //println( "BEFORE " + t.system.step { implicit tx => t.toList })
 
-TemporalObjects.showLog = true
+//TemporalObjects.showLog = true
 
       val newInT   = cursor.step { implicit tx =>
          val t = access.get

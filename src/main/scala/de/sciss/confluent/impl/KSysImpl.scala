@@ -31,7 +31,7 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
-import collection.immutable.{IntMap, LongMap}
+import collection.immutable.{IntMap, LongMap, IndexedSeq => IIdxSeq}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
@@ -394,6 +394,7 @@ object KSysImpl {
 
    sealed trait Txn extends KSys.Txn[ S ] {
       private val cache = TxnLocal( emptyIntMap[ LongMap[ CacheEntry ]])
+//private val writes = TxnLocal( IIdxSeq.empty[ CacheEntry ])
       private val markDirty = TxnLocal( init = {
 //         logConfig( Console.CYAN + "txn dirty" + Console.RESET )
          logConfig( "....... txn dirty ......." )
@@ -419,15 +420,15 @@ object KSysImpl {
          logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
          system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
          cache.get( peer ).foreach { tup1 =>
-//            val id   = tup1._1
             val map  = tup1._2
             map.foreach { tup2 =>
                val e    = tup2._2
-//               val path = p.addTerm( outTerm )( this )
-//               persistent.put( id, path, value )( this, writer )
                e.flush( outTerm, persistent )( this )
             }
          }
+//         writes.get( peer ).foreach { e =>
+//            e.flush( outTerm, persistent )( this )
+//         }
       }
 
       final private[KSysImpl] implicit lazy val durable: Durable#Tx = {
@@ -553,30 +554,38 @@ object KSysImpl {
 
       final private[KSysImpl] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
+         val e = new TxnCacheEntry( id, value )
          cache.transform( mapMap => {
             val id1     = id.id
             val path    = id.path
             val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
-            val mapNew  = mapOld + (path.sum -> new TxnCacheEntry( id, value ))
+            val mapNew  = mapOld + (path.sum -> e)
             mapMap + ((id1, mapNew))
          })( peer )
+
+//writes.transform( _ :+ e )( peer )
+
          markDirty()( peer )
       }
 
       final private[KSysImpl] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
 //         logConfig( "txn put " + id )
+         val e = new NonTxnCacheEntry( id, value )
          cache.transform( mapMap => {
             val id1     = id.id
             val path    = id.path
             val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
-            val mapNew  = mapOld + (path.sum -> new NonTxnCacheEntry( id, value ))
+            val mapNew  = mapOld + (path.sum -> e)
             mapMap + ((id1, mapNew))
          })( peer )
+
+//writes.transform( _ :+ e )( peer )
+
          markDirty()( peer )
       }
 
       final private[KSysImpl] def dispose( id: S#ID ) {
-         cache.transform( mapMap => mapMap - id.id )( peer )
+         cache.transform( _ - id.id )( peer )
       }
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )

@@ -214,6 +214,8 @@ TemporalObjects.showLog = true
          val t = access.get
          m.filter( e => t.removeAt( e ).isEmpty )
       }
+//      val keptInT = m.filter( e => cursor.step { implicit tx => access.get.removeAt( e ).isEmpty })
+
       val szAfter2 = cursor.step { implicit tx => access.get.size }
       then( "all of the remove operations should return 'Some'" )
       assert( keptInT.isEmpty, keptInT.take( 10 ).toString() )

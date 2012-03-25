@@ -514,19 +514,39 @@ object KSysImpl {
          )
       }
 
-      // returned suffix is writeTerm :: longestPrefixReadTerm :: readSuffix
-      final private[KSysImpl] def getWithSuffix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
+//      // returned suffix is writeTerm :: longestPrefixReadTerm :: readSuffix
+//      final private[KSysImpl] def getWithSuffix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
+//         logConfig( "txn get' " + id )
+//         val id1  = id.id
+//         val path = id.path
+//         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { w =>
+//            val suffix = if( path.isEmpty ) path else {
+//               path.seminal   // XXX TODO ???
+//            }
+//            (suffix, w.value)
+//         }).asInstanceOf[ Option[ (S#Acc, A) ]]
+//            .orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser ))
+//            .getOrElse( sys.error( "No value for " + id ))
+//      }
+
+      final private[KSysImpl] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
-         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { w =>
-            val suffix = if( path.isEmpty ) path else {
-               path.seminal   // XXX TODO ???
+         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { e =>
+            e.value.asInstanceOf[ A ]
+//            val suffix = if( path.isEmpty ) path else {
+//               path.seminal   // XXX TODO ???
+//            }
+//            (suffix, w.value)
+         }).orElse({
+            system.persistent.getWithSuffix[ Array[ Byte ]]( id1, path )( this, ByteArraySerializer ).map { tup =>
+               val access  = tup._1
+               val arr     = tup._2
+               val in      = new DataInput( arr )
+               ser.read( in, access )( this )
             }
-            (suffix, w.value)
-         }).asInstanceOf[ Option[ (S#Acc, A) ]]
-            .orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser ))
-            .getOrElse( sys.error( "No value for " + id ))
+         }).getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[KSysImpl] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
@@ -830,9 +850,10 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val (access, arr) = tx.getWithSuffix( id )( ByteArraySerializer )
-         val in      = new DataInput( arr )
-         ser.read( in, access )
+//         val (access, arr) = tx.getTxn( id )( ByteArraySerializer )
+//         val in      = new DataInput( arr )
+//         ser.read( in, access )
+         tx.getTxn( id )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
@@ -862,10 +883,11 @@ object KSysImpl {
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " meld " + from )
          val idm  = new ID( id1, from )
-         val (access, arr) = tx.getWithSuffix( idm )( ByteArraySerializer )
-         val in      = new DataInput( arr )
+//         val (access, arr) = tx.getTxn( idm )( ByteArraySerializer )
+//         val in      = new DataInput( arr )
          tx.addInputVersion( from )
-         ser.read( in, access )
+//         ser.read( in, access )
+         tx.getTxn( idm )
       }
 
       def set( v: A )( implicit tx: S#Tx ) {
@@ -878,9 +900,10 @@ object KSysImpl {
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         val (access, arr) = tx.getWithSuffix( id )( ByteArraySerializer )
-         val in      = new DataInput( arr )
-         ser.read( in, access )
+//         val (access, arr) = tx.getTxn( id )( ByteArraySerializer )
+//         val in      = new DataInput( arr )
+//         ser.read( in, access )
+         tx.getTxn( id )
       }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}

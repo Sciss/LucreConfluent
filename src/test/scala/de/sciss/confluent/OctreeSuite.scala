@@ -8,7 +8,7 @@ import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.stm.{Cursor, Sys}
 import de.sciss.collection.geom.Space.ThreeDim
-import de.sciss.collection.txn.{DeterministicSkipOctree, SkipOctree, SpaceSerializers}
+import de.sciss.collection.txn.{DeterministicSkipOctree, SpaceSerializers}
 import de.sciss.collection.geom._
 
 /**
@@ -26,12 +26,15 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val INMEMORY      = true
    val DATABASE      = true
 
-   val n             = 13 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
+   val n             = 29 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
    val rnd           = new util.Random( 2L ) // ( 12L )
 
    val cube          = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
+
+   // make sure we don't look tens of thousands of actions
+   TemporalObjects.showLog = false
 
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {

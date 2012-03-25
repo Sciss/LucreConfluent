@@ -323,14 +323,49 @@ object KSysImpl {
       }
    }
 
+   /**
+    * Instances of `CacheEntry` are stored for each variable write in a transaction. They
+    * are flushed at the commit to the persistent store. There are two sub types, a
+    * transactional and a non-transactional one. A non-transactional cache entry can deserialize
+    * the value without transactional context, e.g. this is true for all primitive types.
+    * A transactional entry is backed by a `TxnSerializer`. To be saved in the store which uses
+    * a sub system (`Durable`), serialization is a two-step process, using an intermediate
+    * binary representation.
+    */
+   private sealed trait CacheEntry {
+      def id: S#ID
+      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) : Unit
+      def value: Any
+   }
+   private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
+   extends CacheEntry {
+      override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
+
+      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
+         val pathOut = id.path.addTerm( outTerm )
+         store.put( id.id, pathOut, value )
+      }
+   }
+   private final class TxnCacheEntry[ A ]( val id: S#ID, val value: A )
+                                         ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends CacheEntry {
+      override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
+
+      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
+         val pathOut = id.path.addTerm( outTerm )
+         val out     = new DataOutput()
+         serializer.write( value, out )
+         val arr     = out.toByteArray
+         store.put( id.id, pathOut, arr )( tx, ByteArraySerializer )
+      }
+   }
+
    private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
 
    private val emptyLongMapVal      = LongMap.empty[ Any ]
    private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
    private val emptyIntMapVal       = IntMap.empty[ Any ]
    private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
-
-
 
    private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
       def requiresNewTree : Boolean = highestTrees.size > 1
@@ -946,7 +981,7 @@ object KSysImpl {
       private[KSysImpl] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
       private[KSysImpl] val durable    = Durable( store ) : Durable
-      private[KSysImpl] val persistent = ConfluentPersistentMap[ S, Any ]( store )
+      private[KSysImpl] val persistent : ConfluentTxnMap[ S#Tx, S#Acc ] = ConfluentPersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>

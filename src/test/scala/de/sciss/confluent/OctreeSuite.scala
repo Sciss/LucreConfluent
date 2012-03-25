@@ -27,7 +27,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val INMEMORY      = true
    val DATABASE      = true
 
-   val n             = 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
+   val n             = 31 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
    val rnd           = TxnRandom( 2L ) // ( 12L )
@@ -79,6 +79,9 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       given( "a randomly filled structure" )
 
       for( i <- 0 until n ) {
+//         if( i == n - 1 ) {
+//            println( "here" )
+//         }
          m += cursor.step { implicit tx =>
             val k = pointFun( tx.peer )( 0x7FFFFFFF )
             access.get += k
@@ -210,6 +213,9 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       assert( szBefore == szAfter, "t had size " + szBefore + " before, but now reports " + szAfter )
 
       when( "all elements of the independently maintained map are removed from t" )
+
+TemporalObjects.showLog = true
+
       val keptInT  = cursor.step { implicit tx =>
          val t = access.get
          m.filter( e => t.removeAt( e ).isEmpty )

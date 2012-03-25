@@ -70,7 +70,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v2 /////////////////////////////
 
          given( "v2 : Increment all nodes by 2" )
-         timeWarp( KSysImpl.Path.root )
+//         timeWarp( KSysImpl.Path.root )
          s.step { implicit tx =>
             @tailrec def step( last: Option[ Node ]) { last match {
                case None =>

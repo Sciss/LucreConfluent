@@ -16,7 +16,7 @@ import de.sciss.collection.txn.TotalOrder
 class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
    val MONITOR_LABELING = false
 
-   val NUM              = 3 // 0x10000 // 0x80000  // 0x200000
+   val NUM              = 0x8000 // 0x10000 // 0x80000  // 0x200000
    val RND_SEED         = 0L
 
       // make sure we don't look tens of thousands of actions

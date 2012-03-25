@@ -99,37 +99,42 @@ object KSysImpl {
          implicit val m = PathMeasure
          val sz         = in.readInt()
 //         val accTree    = acc.tree
-         val accIter    = acc.tree.iterator
-         val writeTerm  = accIter.next()
-         val readTerm   = accIter.next()
          var tree       = FingerTree.empty( m )
-         if( sz == 0 ) {
-            // entity was created in the terminal version
-//            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
-            tree = writeTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
-//logConfig( "readAndAppend for " + acc + " finds empty path, yields " + tree )
-            // XXX is this correct? i would think that still
-            // we need to compare tree levels? -- if writeTerm level != readTerm level,
-            // wouldn't we instead need <write, write, read, read> ?
-            // --> NO, they would always have the same level, because
-            // the write path begins with the read path (they share the same initial version)
-         } else {
-            val szm        = sz - 1
-            var i = 0; while( i < szm ) {
+         val accIter    = acc.tree.iterator
+         if( accIter.isEmpty ) {
+            var i = 0; while( i < sz ) {
                tree      :+= in.readLong()
             i += 1 }
-            val lastTerm   = in.readLong()
-            val oldLevel   = tx.readTreeVertexLevel( lastTerm )
-            val newLevel   = tx.readTreeVertexLevel( writeTerm )
+         } else {
+            val writeTerm  = accIter.next()
+            val readTerm   = accIter.next()
+            if( sz == 0 ) {
+               // entity was created in the terminal version
+   //            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+               tree = writeTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
+   //logConfig( "readAndAppend for " + acc + " finds empty path, yields " + tree )
+               // XXX is this correct? i would think that still
+               // we need to compare tree levels? -- if writeTerm level != readTerm level,
+               // wouldn't we instead need <write, write, read, read> ?
+               // --> NO, they would always have the same level, because
+               // the write path begins with the read path (they share the same initial version)
+            } else {
+               val szm        = sz - 1
+               var i = 0; while( i < szm ) {
+                  tree      :+= in.readLong()
+               i += 1 }
+               val lastTerm   = in.readLong()
+               val oldLevel   = tx.readTreeVertexLevel( lastTerm )
+               val newLevel   = tx.readTreeVertexLevel( writeTerm )
 
-            if( oldLevel != newLevel ) {
-               tree      :+= lastTerm
-               tree      :+= writeTerm
+               if( oldLevel != newLevel ) {
+                  tree      :+= lastTerm
+                  tree      :+= writeTerm
+               }
+               tree         :+= readTerm
             }
-            tree         :+= readTerm
+            accIter.foreach( tree :+= _ )
          }
-//         val accIter = accTree.tail.iterator // XXX TODO finger tree should have concatenation
-         accIter.foreach( tree :+= _ )
          new Path( tree )
       }
    }
@@ -472,15 +477,19 @@ object KSysImpl {
          )
       }
 
+      // returned suffix is writeTerm :: longestPrefixReadTerm :: readSuffix
       final private[KSysImpl] def getWithSuffix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
-         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( w => (path.seminal, w.value) ))
-            .asInstanceOf[ Option[ (S#Acc, A) ]].orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser )
-         ).getOrElse(
-            sys.error( "No value for " + id )
-         )
+         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { w =>
+            val suffix = if( path.isEmpty ) path else {
+               path.seminal   // XXX TODO ???
+            }
+            (suffix, w.value)
+         }).asInstanceOf[ Option[ (S#Acc, A) ]]
+            .orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser ))
+            .getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {

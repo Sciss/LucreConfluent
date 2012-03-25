@@ -343,6 +343,7 @@ object KSysImpl {
 
       def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
+         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          store.put( id.id, pathOut, value )
       }
    }
@@ -353,6 +354,7 @@ object KSysImpl {
 
       def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
+         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          val out     = new DataOutput()
          serializer.write( value, out )
          val arr     = out.toByteArray
@@ -360,7 +362,7 @@ object KSysImpl {
       }
    }
 
-   private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
+//   private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
 
    private val emptyLongMapVal      = LongMap.empty[ Any ]
    private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
@@ -389,7 +391,7 @@ object KSysImpl {
    private val emptyMeldInfo = MeldInfo( -1, Set.empty )
 
    sealed trait Txn extends KSys.Txn[ S ] {
-      private val cache = TxnLocal( emptyIntMap[ LongMap[ Write[ _ ]]])
+      private val cache = TxnLocal( emptyIntMap[ LongMap[ CacheEntry ]])
       private val markDirty = TxnLocal( init = {
 //         logConfig( Console.CYAN + "txn dirty" + Console.RESET )
          logConfig( "....... txn dirty ......." )
@@ -415,13 +417,13 @@ object KSysImpl {
          logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
          system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
          cache.get( peer ).foreach { tup1 =>
-            val id   = tup1._1
+//            val id   = tup1._1
             val map  = tup1._2
-            map.foreach {
-               case (_, Write( p, value, writer )) =>
-                  val path = p.addTerm( outTerm )( this )
-                  logConfig( "txn flush write " + value + " for " + path.mkString( "<" + id + " @ ", ",", ">" ))
-                  persistent.put( id, path, value )( this, writer )
+            map.foreach { tup2 =>
+               val e    = tup2._2
+//               val path = p.addTerm( outTerm )( this )
+//               persistent.put( id, path, value )( this, writer )
+               e.flush( outTerm, persistent )( this )
             }
          }
       }
@@ -501,7 +503,7 @@ object KSysImpl {
          })( peer )
       }
 
-      final private[KSysImpl] def get[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+      final private[KSysImpl] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
          logConfig( "txn get " + id )
          val id1  = id.id
          val path = id.path
@@ -527,13 +529,25 @@ object KSysImpl {
             .getOrElse( sys.error( "No value for " + id ))
       }
 
-      final private[KSysImpl] def put[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+      final private[KSysImpl] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
          cache.transform( mapMap => {
             val id1     = id.id
             val path    = id.path
-            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ Write[ _ ]])
-            val mapNew  = mapOld + ((path.sum, Write( path, value, ser )))
+            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
+            val mapNew  = mapOld + (path.sum -> new TxnCacheEntry( id, value ))
+            mapMap + ((id1, mapNew))
+         })( peer )
+         markDirty()( peer )
+      }
+
+      final private[KSysImpl] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+//         logConfig( "txn put " + id )
+         cache.transform( mapMap => {
+            val id1     = id.id
+            val path    = id.path
+            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
+            val mapNew  = mapOld + (path.sum -> new NonTxnCacheEntry( id, value ))
             mapMap + ((id1, mapNew))
          })( peer )
          markDirty()( peer )
@@ -765,17 +779,17 @@ object KSysImpl {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-         tx.put( id, v )( ser )
+         tx.putNonTxn( id, v )( ser )
       }
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-         tx.get[ A ]( id )( ser )
+         tx.getNonTxn[ A ]( id )( ser )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-         tx.put( id, v )( ser )
+         tx.putNonTxn( id, v )( ser )
       }
 
       override def toString = "Var(" + id + ")"
@@ -803,15 +817,15 @@ object KSysImpl {
 
    private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
       protected def id: S#ID
-      protected def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+      protected implicit def ser: TxnSerializer[ S#Tx, S#Acc, A ]
 
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-         val out  = new DataOutput()
-         ser.write( v, out )
-         val arr  = out.toByteArray
-         tx.put( id, arr )( ByteArraySerializer )
+//         val out  = new DataOutput()
+//         ser.write( v, out )
+//         val arr  = out.toByteArray
+         tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
@@ -823,10 +837,10 @@ object KSysImpl {
 
       def setInit( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-         val out  = new DataOutput()
-         ser.write( v, out )
-         val arr  = out.toByteArray
-         tx.put( id, arr )( ByteArraySerializer )
+//         val out  = new DataOutput()
+//         ser.write( v, out )
+//         val arr  = out.toByteArray
+         tx.putTxn( id, v )
       }
 
       override def toString = "Var(" + id + ")"
@@ -835,7 +849,7 @@ object KSysImpl {
    private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends VarTxLike[ A ]
 
-   private final class RootVar[ A ]( id1: Int, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   private final class RootVar[ A ]( id1: Int, implicit val ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends Access[ S, A ] {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
@@ -856,10 +870,10 @@ object KSysImpl {
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )
-         val out  = new DataOutput()
-         ser.write( v, out )
-         val arr  = out.toByteArray
-         tx.put( id, arr )( ByteArraySerializer )
+//         val out  = new DataOutput()
+//         ser.write( v, out )
+//         val arr  = out.toByteArray
+         tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
@@ -880,18 +894,18 @@ object KSysImpl {
    extends BasicVar[ Boolean ] with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
          logConfig( this.toString + " get" )
-         tx.get[ Boolean ]( id )( this )
+         tx.getNonTxn[ Boolean ]( id )( this )
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Boolean )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       override def toString = "Var[Boolean](" + id + ")"
@@ -905,18 +919,18 @@ object KSysImpl {
    extends BasicVar[ Int ] with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
          logConfig( this.toString + " get" )
-         tx.get[ Int ]( id )( this )
+         tx.getNonTxn[ Int ]( id )( this )
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Int )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       override def toString = "Var[Int](" + id + ")"
@@ -946,18 +960,18 @@ object KSysImpl {
    extends BasicVar[ Long ] with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
          logConfig( this.toString + " get" )
-         tx.get[ Long ]( id )( this )
+         tx.getNonTxn[ Long ]( id )( this )
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Long )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-         tx.put( id, v )( this )
+         tx.putNonTxn( id, v )( this )
       }
 
       override def toString = "Var[Long](" + id + ")"

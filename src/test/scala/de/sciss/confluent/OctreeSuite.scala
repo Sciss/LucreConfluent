@@ -10,6 +10,7 @@ import de.sciss.lucre.stm.{Cursor, Sys}
 import de.sciss.collection.geom.Space.ThreeDim
 import de.sciss.collection.txn.{DeterministicSkipOctree, SpaceSerializers}
 import de.sciss.collection.geom._
+import concurrent.stm.InTxn
 
 /**
  *
@@ -29,7 +30,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val n             = 29 // 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
-   val rnd           = new util.Random( 2L ) // ( 12L )
+   val rnd           = TxnRandom( 2L ) // ( 12L )
 
    val cube          = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
 
@@ -66,17 +67,23 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-   val pointFun3D = (mask: Int) => Point3D( rnd.nextInt() & mask, rnd.nextInt() & mask, rnd.nextInt() & mask )
+   val pointFun3D = (itx: InTxn) => (mask: Int) => Point3D(
+      rnd.nextInt()( itx ) & mask,
+      rnd.nextInt()( itx ) & mask,
+      rnd.nextInt()( itx ) & mask
+   )
 
    def randFill[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]],
                                                   m: MSet[ D#Point ],
-                                                  pointFun: Int => D#Point )( implicit cursor: Cursor[ S ]) {
+                                                  pointFun: InTxn => Int => D#Point )( implicit cursor: Cursor[ S ]) {
       given( "a randomly filled structure" )
 
       for( i <- 0 until n ) {
-         val k = pointFun( 0x7FFFFFFF )
-         cursor.step { implicit tx => access.get += k }
-         m += k
+         m += cursor.step { implicit tx =>
+            val k = pointFun( tx.peer )( 0x7FFFFFFF )
+            access.get += k
+            k
+         }
       }
    }
 
@@ -162,12 +169,12 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
    def verifyContainsNot[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]],
                                                            m: MSet[ D#Point ],
-                                                           pointFun: Int => D#Point )
+                                                           pointFun: InTxn => Int => D#Point )
                                                          ( implicit cursor: Cursor[ S ]) {
       when( "the structure t is queried for keys not in the independently maintained map m" )
       var testSet = Set.empty[ D#Point ]
       while( testSet.size < 100 ) {
-         val x = pointFun( 0xFFFFFFFF )
+         val x = cursor.step( tx => pointFun( tx.peer )( 0xFFFFFFFF ))
          if( !m.contains( x )) testSet += x
       }
       val inT = cursor.step { implicit tx =>
@@ -208,17 +215,23 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       assert( szAfter2 == 0, szAfter2.toString )
    }
 
-   val queryFun3D = (max: Int, off: Int, ext: Int) =>
-      Cube( rnd.nextInt( max ) - off, rnd.nextInt( max ) - off, rnd.nextInt( max ) - off, rnd.nextInt( ext ))
+   val queryFun3D = (itx: InTxn) => (max: Int, off: Int, ext: Int) =>
+      Cube( rnd.nextInt( max )( itx ) - off,
+            rnd.nextInt( max )( itx ) - off,
+            rnd.nextInt( max )( itx ) - off,
+            rnd.nextInt( ext )( itx ))
 
    val sortFun3D = (p: ThreeDim#PointLike) => (p.x, p.y, p.z)
 
    def verifyRangeSearch[ S <: Sys[ S ], A, D <: Space[ D ], Sort ](
                           access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ],
-                          queryFun: (Int, Int, Int) => QueryShape[ A, D ],
+                          queryFun: InTxn => (Int, Int, Int) => QueryShape[ A, D ],
                           sortFun: D#PointLike => Sort )( implicit ord: math.Ordering[ Sort ], cursor: Cursor[ S ]) {
       when( "the octree is range searched" )
-      val qs = Seq.fill( n2 )( queryFun( 0x7FFFFFFF, 0x40000000, 0x40000000 ))
+      val qs = cursor.step { tx =>
+         val f = queryFun( tx.peer )
+         Seq.fill( n2 )( f( 0x7FFFFFFF, 0x40000000, 0x40000000 ))
+      }
       val rangesT = cursor.step { implicit tx =>
          val t = access.get
          qs.map( q => t.rangeQuery( q ).toSet )
@@ -246,11 +259,14 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
    // JUHUUUUU SPECIALIZATION BROKEN ONCE MORE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    def verifyNN[ S <: Sys[ S ], M, D <: Space[ D ]](
-      access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ], pointFun: Int => D#Point,
+      access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ], pointFun: InTxn => Int => D#Point,
       pointFilter: D#PointLike => Boolean, euclideanDist: DistanceMeasure[ M, D ])( implicit ord: math.Ordering[ M ], cursor: Cursor[ S ]) {
 
       when( "the quadtree is searched for nearest neighbours" )
-      val ps0 = Seq.fill( n2 )( pointFun( 0xFFFFFFFF ))
+      val ps0 = cursor.step { tx =>
+         val f = pointFun( tx.peer )
+         Seq.fill( n2 )( f( 0xFFFFFFFF ))
+      }
       // tricky: this guarantees that there are no 63 bit overflows,
       // while still allowing points outside the root hyperCube to enter the test
       val ps = ps0.filter( pointFilter )

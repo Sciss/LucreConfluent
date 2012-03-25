@@ -116,6 +116,37 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          then( "is should have the same result" )
          assert( res2b === exp2 )
+
+         ///////////////////////////// v3 /////////////////////////////
+
+         given( "v3 : Increment all nodes by 2, going from back to front" )
+//         timeWarp( KSysImpl.Path.root )
+         s.step { implicit tx =>
+            @tailrec def findLast( n: Node ) : Node = n.next.get match {
+               case None => n
+               case Some( n1 ) => findLast( n1 )
+            }
+            @tailrec def step( n: Node ) {
+               n.value.transform( _ + 2 )
+               n.prev.get match {
+                  case None =>
+                  case Some( n1 ) => step( n1 )
+               }
+            }
+            access.get match {
+               case Some( n ) => step( findLast( n ))
+            }
+         }
+
+         when( "the result is converted to a plain list in a new transaction" )
+         val (_, res3) = s.step { implicit tx =>
+            val node = access.get
+            tx.inputAccess -> toList( node )
+         }
+
+         val exp3 = List( "w0" -> 5, "w1" -> 6 )
+         then( "is should equal " + exp3 )
+         assert( res3 === exp3 )
       }
    }
 

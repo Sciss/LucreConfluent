@@ -307,6 +307,8 @@ object KSysImpl {
    private final class IndexMapImpl[ A ]( protected val index: S#Acc,
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
+      override def toString = index.mkString( "IndexMap(<", ",", ">, " + map + ")" )
+
       def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
          val v = tx.readTreeVertex( map.full, index, term )._1
          val (v2, value) = map.nearest( v )( tx.durable )
@@ -573,6 +575,10 @@ object KSysImpl {
          markDirty()( peer )
       }
 
+      final private[KSysImpl] def dispose( id: S#ID ) {
+         cache.transform( mapMap => mapMap - id.id )( peer )
+      }
+
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
       final private[KSysImpl] def readIndexTree( term: Long ) : IndexTree = {
@@ -787,6 +793,7 @@ object KSysImpl {
       }
 
       final def dispose()( implicit tx: S#Tx ) {
+         tx.dispose( id )
          id.dispose()
       }
 

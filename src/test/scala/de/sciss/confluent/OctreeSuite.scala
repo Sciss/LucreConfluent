@@ -191,11 +191,17 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       when( "all elements of the independently maintained map are added again to t" )
       val szBefore = cursor.step { implicit tx => access.get.size }
 //println( "BEFORE " + t.system.step { implicit tx => t.toList })
+
+TemporalObjects.showLog = true
+
       val newInT   = cursor.step { implicit tx =>
          val t = access.get
-         m.take( 1 ).filter( e =>
-         t.update( e ).isEmpty
-      )}
+         val res = m.filter({ e =>
+            t.update( e ).isEmpty
+         })
+//         println( "Aqui" )
+         res
+      }
 //println( "AFTER " + t.system.step { implicit tx => t.toList })
       val szAfter  = cursor.step { implicit tx => access.get.size }
       then( "all of the put operations should return 'Some'" )

@@ -38,6 +38,8 @@ object ConfluentPersistentMap {
 
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
    extends ConfluentTxnMap[ S#Tx, S#Acc ] {
+      override def toString = "ConfluentPersistentMap(" + store + ")"
+
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
          // first we need to see if anything has already been written to the index of the write path

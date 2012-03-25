@@ -135,6 +135,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
             }
             access.get match {
                case Some( n ) => step( findLast( n ))
+               case None =>
             }
          }
 

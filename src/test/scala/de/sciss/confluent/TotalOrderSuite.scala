@@ -16,8 +16,11 @@ import de.sciss.collection.txn.TotalOrder
 class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
    val MONITOR_LABELING = false
 
-   val NUM              = 2 // 0x10000 // 0x80000  // 0x200000
+   val NUM              = 3 // 0x10000 // 0x80000  // 0x200000
    val RND_SEED         = 0L
+
+      // make sure we don't look tens of thousands of actions
+   TemporalObjects.showLog = false
 
    withSys[ KSysImpl.System ]( "Confluent", () => {
       val dir     = File.createTempFile( "totalorder", "_database" )
@@ -70,7 +73,8 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                      def afterRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {}
                   }) */
                }
-               val rnd   = new util.Random( RND_SEED )
+//               val rnd   = new util.Random( RND_SEED )
+               val rnd   = TxnRandom( RND_SEED )
                // would be nice to test maximum possible number of labels
                // but we're running out of heap space ...
                val n     = NUM // 113042 // 3041
@@ -81,7 +85,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                   var coll = Set[ TotalOrder.Set.Entry[ S ]]() // ( e )
                   for( i <- 1 until n ) {
 //if( (i % 1000) == 0 ) println( "i = " + i )
-                     if( rnd.nextBoolean() ) {
+                     if( rnd.nextBoolean()( tx.peer ) ) {
                         e = e.append() // to.insertAfter( e ) // to.insertAfter( i )
                      } else {
                         e = e.prepend() // to.insertBefore( e ) // e.prepend() // to.insertBefore( i )
@@ -129,7 +133,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                   var next = prev
                   while( prev != null ) {
                      next    = next.next.orNull
-                     prev.removeAndDispose()
+                     if( prev != to.root ) prev.removeAndDispose()
                      prev     = next
                   }
 

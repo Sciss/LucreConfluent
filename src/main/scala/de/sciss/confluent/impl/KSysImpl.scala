@@ -413,6 +413,7 @@ object KSysImpl {
             out.writeUnsignedByte( 0 )
             out.writeInt( term.toInt )
          } { in =>
+            in.readInt()   // tree index!
             val access  = index :+ term
             val level   = in.readInt()
             val v       = tree.vertexSerializer.read( in, access )( durable )
@@ -425,6 +426,7 @@ object KSysImpl {
             out.writeUnsignedByte( 0 )
             out.writeInt( v.version.toInt )
          } { out =>
+            out.writeInt( tree.term.toInt )
             out.writeInt( tree.level )
             tree.tree.vertexSerializer.write( v, out )
          }
@@ -496,14 +498,28 @@ object KSysImpl {
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
       final private[KSysImpl] def readIndexTree( term: Long ) : IndexTree = {
-         system.store.get { out =>
+         val st = system.store
+         st.get { out =>
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          } { in =>
             val tree    = Ancestor.readTree[ Durable, Long ]( in, () )( durable, TxnSerializer.Long, _.toInt )
             val level   = in.readInt()
             new IndexTreeImpl( tree, level )
-         } getOrElse sys.error( "Trying to access inexisting tree " + term.toInt )
+         } getOrElse { // sys.error( "Trying to access inexisting tree " + term.toInt )
+
+            // `term` does not form a tree index. it may be a tree vertex, though. thus,
+            // in this conditional step, we try to (partially) read `term` as vertex, thereby retrieving
+            // the underlying tree index, and then retrying with that index (`term2`).
+            st.get { out =>
+               out.writeUnsignedByte( 0 )
+               out.writeInt( term.toInt )
+            } { in =>
+               val term2 = in.readInt()   // tree index!
+               require( term2 != term, "Trying to access inexisting tree " + term.toInt )
+               readIndexTree( term2 )
+            } getOrElse sys.error( "Trying to access inexisting tree " + term.toInt )
+         }
       }
 
       final def readIndexMap[ A ]( in: DataInput, index: S#Acc )

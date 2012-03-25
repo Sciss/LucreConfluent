@@ -33,7 +33,8 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
 
    val SEED          = 0L
 
-   val rnd           = new util.Random( SEED )
+//   val rnd           = new util.Random( SEED )
+   val rnd           = TxnRandom( SEED )
 
    // make sure we don't look tens of thousands of actions
    TemporalObjects.showLog = false
@@ -80,23 +81,18 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
 
    def randFill[ S <: Sys[ S ]]( access: Access[ S, HASkipList[ S, Int ]], s: MSet[ Int ])( implicit cursor: Cursor[ S ]) {
       given( "a randomly filled structure" )
-      for( i <- 0 until NUM1 ) {
-         val x = rnd.nextInt( 0x7FFFFFFF )
-//println( "i = " + i + " ; x = " + x )
-//if( i == 3 ) {
-//   println()
-//}
-         s.add( x )
-//println( "\n\n#" + (i+1) + " added " + x + "\n" )
-//println( atomic { implicit tx => l.debugPrint })
+      val s1 = cursor.step { implicit tx =>
+         implicit val itx = tx.peer
+         Seq.fill( NUM1 )( rnd.nextInt( 0x7FFFFFFF )).toSet
       }
+      s ++= s1
       cursor.step { implicit tx =>
          val l = access.get
-         s.foreach( l.add( _ ))
+         s1.foreach( l.add( _ ))
       }
    }
 
-   def randFill2 : Set[ Int ] = {
+   def randFill2( implicit tx: InTxn ) : Set[ Int ] = {
       given( "a set of random numbers" )
       var res   = Set.empty[ Int ]
       for( i <- 0 until NUM2 ) {
@@ -105,7 +101,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       res
    }
 
-   def randFill3 : Set[ Int ] = {
+   def randFill3( implicit tx: InTxn ) : Set[ Int ] = {
       var res   = Set.empty[ Int ]
       for( i <- 0 until NUM3 ) {
          res += rnd.nextInt( 100 )
@@ -157,7 +153,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       val inL = cursor.step { implicit tx =>
          val l = access.get
          while( testSet.size < 100 ) {
-            val x = rnd.nextInt()
+            val x = rnd.nextInt()( tx.peer )
             if( !s.contains( x )) testSet += x
          }
          testSet.filter( l.contains( _ ))
@@ -233,7 +229,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
                val (_sys, access, cleanUp) = lf( obs )
                implicit val system = _sys
                try {
-                  val s     = randFill2 // randFill3
+                  val s = system.step( tx => randFill2( tx.peer )) // randFill3
                   when( "all the elements of the set are added" )
                   var uppedInsKey = false
                   system.step { implicit tx =>

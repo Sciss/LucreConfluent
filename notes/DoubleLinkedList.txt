@@ -1,0 +1,22 @@
+:::::: v0 ::::::
+
+initialize:
+alloc w0, <w0 @ 0,0>.prev = Nil, <w0 @ 0,0>.next = Nil
+
+:::::: v1 ::::::
+
+append:
+alloc w1; w1.next = Nil
+<w0 @ 0,1>.next = <w1 @ 1,1>
+<w1 @ 1,1>.prev = <w0 @ 0,1>
+
+:::::: traverse forward and backward ::::::
+
+access.read<0,1> --> at <0> finds <w0 @ 0,0> --> yields <w0 @ 0,1>
+<w0 @ 0,1>.next --> at <0> finds <w1 @ 1,1> --> yields <w1 @ 1,1>
+<w1 @ 1,1>.prev --> at <1> finds ...
+
+:::::: v2 ::::::
+
+remove last element
+

@@ -35,7 +35,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {
-         implicit val sys = sysCreator()
+         implicit val sys: S with Cursor[ S ] = sysCreator()
          import SpaceSerializers.{Point3DSerializer, CubeSerializer}
          implicit val pointView = (p: Point3D, _: Any) => p
          implicit val ser = DeterministicSkipOctree.serializer[ S, ThreeDim, Point3D ]

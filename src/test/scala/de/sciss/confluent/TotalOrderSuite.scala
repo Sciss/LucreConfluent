@@ -16,7 +16,7 @@ import de.sciss.collection.txn.TotalOrder
 class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
    val MONITOR_LABELING = false
 
-   val NUM              = 0x10000 // 0x80000  // 0x200000
+   val NUM              = 2 // 0x10000 // 0x80000  // 0x200000
    val RND_SEED         = 0L
 
    withSys[ KSysImpl.System ]( "Confluent", () => {
@@ -117,21 +117,31 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                }
 
                then( "the resulting set should only contain -1" )
-               assert( result == Set( -1 ), result.toString + " -- " + system.step( implicit tx => access.get.tagList( access.get.head )))
+               assert( result == Set( -1 ), result.toString + " -- " + system.step( implicit tx =>
+                  access.get.tagList( access.get.head )
+               ))
 
                when( "the structure is emptied" )
                val sz2 = system.step { implicit tx =>
-//                  set.foreach( _.remove() )
-                  set.foreach( _.removeAndDispose() )
-                  access.get.size
+//                  set.foreach( _.removeAndDispose() )
+                  val to = access.get
+                  var prev = to.head
+                  var next = prev
+                  while( prev != null ) {
+                     next    = next.next.orNull
+                     prev.removeAndDispose()
+                     prev     = next
+                  }
+
+                  to.size
                }
                then( "the order should have size 1" )
                assert( sz2 == 1, "Size is " + sz2 + " and not 1" )
 
-               system.step { implicit tx =>
-//                  set.foreach( _.removeAndDispose() )
-                  access.dispose()
-               }
+//               system.step { implicit tx =>
+////                  set.foreach( _.removeAndDispose() )
+//                  access.dispose()
+//               }
 
             } finally {
                sysCleanUp( system )

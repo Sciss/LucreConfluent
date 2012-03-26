@@ -66,7 +66,7 @@ Usages:
    })
 
    object System {
-      def apply[ S <: Sys[ S ] with Cursor[ S ]]( implicit tx: S#Tx ) : System[ S ] = {
+      def apply[ S <: Sys[ S ] with Cursor[ S ]]() /* ( implicit tx: S#Tx ) */ : System[ S ] = {
          val strings = Strings[ S ]
          val longs   = Longs[ S ]
          val spans   = Spans[ S ]( longs )
@@ -79,7 +79,11 @@ Usages:
       import regions._
       import spans.spanOps
 
-      final class RegionView[ R <: RegionLike ]( rv: S#Var[ R ], id: String ) extends JPanel {
+      def init()( implicit tx: S#Tx ) {
+         spans.init()
+      }
+
+      final class RegionView[ R <: RegionLike ]( access: S#Tx => R, id: String ) extends JPanel {
          private val lay = new GroupLayout( this )
          lay.setAutoCreateContainerGaps( true )
          setLayout( lay )
@@ -126,7 +130,7 @@ Usages:
 //               model( tx, s )
 //            }
             system.step { tx =>
-               model( tx, tx.access( rv ), s )
+               model( tx, access( tx ), s )
             }
          }
 
@@ -135,7 +139,7 @@ Usages:
          }
 
          def connect()( implicit tx: Tx ) {
-            connect( tx.access( rv ))
+            connect( access( tx ))
          }
 
          private def connect( r: R )( implicit tx: Tx ) {
@@ -181,34 +185,36 @@ Usages:
 
    def expressions[ S <: Sys[ S ] with Cursor[ S ]]( tup: (S, () => Unit) ) {
       val (system, cleanUp) = tup
-      val (infra, vs, r3v) = system.step { implicit tx =>
-         val _infra = System[ S ]
-         import _infra._
-         import regions._
-         import strings.stringOps
-         import longs.longOps
-         import spans.spanOps
 
-         val _r1   = EventRegion( "eins", Span(    0L, 10000L ))
-         val _r2   = EventRegion( "zwei", Span( 5000L, 12000L ))
-         val _span3 = spans.Span(
-            _r1.span_#.start_#.min( _r2.span_#.start_#) + -100L,
-            _r1.span_#.stop_#.max(  _r2.span_#.stop_#)  +  100L
-//            _r1.span_#.stop_# // .max( 12000L ))
-         )
-         val _r3   = EventRegion( _r1.name_#.append( "+" ).append( _r2.name_# ), _span3 )
-         val rootID  = tx.newID()
-         val _rvs    = Seq( _r1, _r2, _r3 ).map( tx.newVar( rootID, _ ))
-
-         val _vs = _rvs.zipWithIndex.map {
-   //         case (r, i) => new RegionView( r, "Region #" + (i+1) )
-            case (rv, i) => new RegionView[ EventRegion ]( rv, "Region #" + (i+1) )
-         }
-
-         (_infra, _vs, _rvs.last)
-      }
-
+      val infra = System[ S ]()
       import infra._
+      import regions._
+      val access = system.root { IIdxSeq.empty[ EventRegion ]}
+
+//      val (infra, vs) = system.step { implicit tx =>
+//         import strings.stringOps
+//         import longs.longOps
+//         import spans.spanOps
+//
+//         val _r1   = EventRegion( "eins", Span(    0L, 10000L ))
+//         val _r2   = EventRegion( "zwei", Span( 5000L, 12000L ))
+//         val _span3 = spans.Span(
+//            _r1.span_#.start_#.min( _r2.span_#.start_#) + -100L,
+//            _r1.span_#.stop_#.max(  _r2.span_#.stop_#)  +  100L
+////            _r1.span_#.stop_# // .max( 12000L ))
+//         )
+//         val _r3   = EventRegion( _r1.name_#.append( "+" ).append( _r2.name_# ), _span3 )
+//         val rootID  = tx.newID()
+//         val _rvs    = Seq( _r1, _r2, _r3 ).map( tx.newVar( rootID, _ ))
+//
+//         val _vs = _rvs.zipWithIndex.map {
+//   //         case (r, i) => new RegionView( r, "Region #" + (i+1) )
+//            case (rv, i) => new RegionView[ EventRegion ]( rv, "Region #" + (i+1) )
+//         }
+//
+//         (_infra, _vs, _rvs.last)
+//      }
+
       import event.Change
 
       val f    = frame( "Reaction Test", cleanUp )

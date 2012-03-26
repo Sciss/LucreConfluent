@@ -1,7 +1,5 @@
-package de.sciss.confluent
-
 /*
- *  ConfluentPersistentMap.scala
+ *  PersistentMap.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -25,16 +23,18 @@ package de.sciss.confluent
  *	 contact@sciss.de
  */
 
-import annotation.switch
-import de.sciss.lucre.stm.{Sys, Serializer, TxnSerializer, PersistentStore}
+package de.sciss.confluent
 
-object ConfluentPersistentMap {
-   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ): ConfluentPersistentMap[ S ] =
+import annotation.switch
+import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
+
+object PersistentMap {
+   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ): PersistentMap[ S ] =
       new Impl[ S ]( store )
 
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
-   extends ConfluentPersistentMap[ S ] {
-      override def toString = "ConfluentPersistentMap(" + store + ")"
+   extends PersistentMap[ S ] {
+      override def toString = "PersistentMap(" + store + ")"
 
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
@@ -240,7 +240,7 @@ object ConfluentPersistentMap {
  *
  * @tparam S       the underlying system
  */
-sealed  trait ConfluentPersistentMap[ S <: KSys[ S ]] {
+sealed  trait PersistentMap[ S <: KSys[ S ]] {
    /**
     * Stores a new value for a given write path.
     *

@@ -314,14 +314,14 @@ object Confluent {
     */
    private sealed trait CacheEntry {
       def id: S#ID
-      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) : Unit
       def value: Any
    }
    private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          store.put( id.id, pathOut, value )
@@ -332,7 +332,7 @@ object Confluent {
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -948,7 +948,7 @@ object Confluent {
       private[confluent] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
       private[confluent] val durable    = Durable( store ) : Durable
-      private[confluent] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
+      private[confluent] val persistent : PersistentMap[ S ] = PersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
@@ -1047,7 +1047,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 
    private[confluent] def store : PersistentStore
    private[confluent] def durable : Durable
-   private[confluent] def persistent : ConfluentPersistentMap[ Confluent ]
+   private[confluent] def persistent : PersistentMap[ Confluent ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

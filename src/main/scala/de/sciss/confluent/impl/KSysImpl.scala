@@ -31,7 +31,7 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
-import collection.immutable.{IntMap, LongMap, IndexedSeq => IIdxSeq}
+import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}

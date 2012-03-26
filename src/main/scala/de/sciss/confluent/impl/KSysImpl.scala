@@ -639,19 +639,21 @@ object KSysImpl {
          new ID( id, pid.path )
       }
 
-      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-//         val (in, acc) = system.access( id.id, parent.path )( this )
-//         reader.read( in, acc )( this )
-         sys.error( "TODO" )
+      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+         val schizo = new ID( id.id, parent.path )
+         getTxn[ A ]( schizo )
       }
 
-      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )( implicit writer: TxnWriter[ A ]) {
-         val out = new DataOutput()
-         writer.write( value, out )
-//         val bytes = out.toByteArray
-//         system.storage += id.id -> (system.storage.getOrElse( id.id,
-//            Map.empty[ S#Acc, Array[ Byte ]]) + (parent.path -> bytes))
-         sys.error( "TODO" )
+      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )
+                               ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+//         val out = new DataOutput()
+//         writer.write( value, out )
+////         val bytes = out.toByteArray
+////         system.storage += id.id -> (system.storage.getOrElse( id.id,
+////            Map.empty[ S#Acc, Array[ Byte ]]) + (parent.path -> bytes))
+//         sys.error( "TODO" )
+         val schizo = new ID( id.id, parent.path )
+         putTxn[ A ]( schizo, value )
       }
 
       final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =

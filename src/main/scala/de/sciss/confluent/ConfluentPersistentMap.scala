@@ -1,3 +1,5 @@
+package de.sciss.confluent
+
 /*
  *  ConfluentPersistentMap.scala
  *  (TemporalObjects)
@@ -23,43 +25,40 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.confluent
-package impl
-
-import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
 import annotation.switch
+import de.sciss.lucre.stm.{Sys, Serializer, TxnSerializer, PersistentStore}
 
 object ConfluentPersistentMap {
-   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ) : ConfluentTxnMap[ S#Tx, S#Acc ] =
+   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ): ConfluentPersistentMap[ S ] =
       new Impl[ S ]( store )
 
-//   private val emptyLongMapVal   = LongMap.empty[ Any ]
-//   private def emptyLongMap[ T ] = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
-
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
-   extends ConfluentTxnMap[ S#Tx, S#Acc ] {
+   extends ConfluentPersistentMap[ S ] {
       override def toString = "ConfluentPersistentMap(" + store + ")"
 
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
          // first we need to see if anything has already been written to the index of the write path
-         store.flatGet { out =>
-            out.writeInt( id )
-            out.writeLong( index.sum )
-         } { in =>
-            (in.readUnsignedByte(): @switch) match {
-               case 1 =>
-                  // a single 'root' value is found. extract it for successive re-write.
-                  val term2   = in.readLong()
-                  val prev    = ser.read( in )
-                  Some( EntrySingle( term2, prev ))
-               case 2 =>
-                  // there is already a map found
-                  val m = tx.readIndexMap[ A ]( in, index )
-                  Some( EntryMap( m ))
-               case _ => None  // this would be a partial hash which we don't use
-            }
-         } match { // with the previous entry read, react as follows:
+         store.flatGet {
+            out =>
+               out.writeInt( id )
+               out.writeLong( index.sum )
+         } {
+            in =>
+               (in.readUnsignedByte(): @switch) match {
+                  case 1 =>
+                     // a single 'root' value is found. extract it for successive re-write.
+                     val term2   = in.readLong()
+                     val prev    = ser.read( in )
+                     Some( EntrySingle( term2, prev ))
+                  case 2 =>
+                     // there is already a map found
+                     val m = tx.readIndexMap[ A ]( in, index )
+                     Some( EntryMap( m ))
+                  case _ => None // this would be a partial hash which we don't use
+               }
+         } match {
+            // with the previous entry read, react as follows:
             // if there is a single entry, construct a new ancestor.map with the
             // entry's value taken as root value
             case Some( EntrySingle( prevTerm, prevValue )) =>
@@ -77,9 +76,9 @@ object ConfluentPersistentMap {
                if( term == indexTerm ) {
                   putPartials( id, index )
                   putFullSingle[ A ]( id, index, term, value )
-               // otherwise, we must read the root value for the entity, and then
-               // construct a new map containing that root value along with the
-               // new value
+                  // otherwise, we must read the root value for the entity, and then
+                  // construct a new map containing that root value along with the
+                  // new value
                } else {
                   // however, there is a particular case of our unorthodox skip list
                   // structure -- it allocates new variables while only maintaining one
@@ -93,11 +92,11 @@ object ConfluentPersistentMap {
                   // we may forbid this behaviour in future versions, but for now let's
                   // be generous and allow it, by checking _if_ a previous value exists.
                   // if not -- go again for the full single entry...
-//                  val prevValue = get[ A ]( id, path ).getOrElse(
-//                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
-//                  )
-//                  putPartials( id, index )
-//                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
+                  //                  val prevValue = get[ A ]( id, path ).getOrElse(
+                  //                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
+                  //                  )
+                  //                  putPartials( id, index )
+                  //                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
                   get[ A ]( id, path ) match {
                      case Some( prevValue ) =>
                         putPartials( id, index )
@@ -113,8 +112,8 @@ object ConfluentPersistentMap {
 
       private def putFullMap[ A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long, prevValue: A )
                                  ( implicit tx: S#Tx, ser: Serializer[ A ]) {
-//         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
-//         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
+         //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
+         //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
          // create new map with previous value
          val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
          // store the full value at the full hash (path.sum)
@@ -122,7 +121,7 @@ object ConfluentPersistentMap {
             out.writeInt( id )
             out.writeLong( index.sum )
          } { out =>
-            out.writeUnsignedByte( 2 )    // aka map entry
+            out.writeUnsignedByte( 2 ) // aka map entry
             m.write( out )
          }
          // then add the new value
@@ -137,7 +136,7 @@ object ConfluentPersistentMap {
          }) {
             // for each key which is the partial sum, we store preSum which is the longest prefix of \tau' in \Pi
             case (key, preSum) => store.put { out =>
-               out.writeInt(  id )
+               out.writeInt( id )
                out.writeLong( key )
             } { out =>
                out.writeUnsignedByte( 0 ) // aka entry pre
@@ -150,12 +149,12 @@ object ConfluentPersistentMap {
       private def putFullSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
                                     ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          store.put { out =>
-            out.writeInt( id )
-            out.writeLong( index.sum )
+            out.writeInt(id)
+            out.writeLong(index.sum)
          } { out =>
-            out.writeUnsignedByte( 1 )    // aka entry single
-            out.writeLong( term )
-            ser.write( value, out )
+            out.writeUnsignedByte(1) // aka entry single
+            out.writeLong(term)
+            ser.write(value, out)
          }
       }
 
@@ -167,7 +166,7 @@ object ConfluentPersistentMap {
       def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
          val (maxIndex, maxTerm) = path.splitIndex
          getWithPrefixLen[ A, (S#Acc, A) ]( id, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
-//            (path.dropAndReplaceHead( preLen, writeTerm ), value)
+         //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
             (writeTerm +: path.drop( preLen ), value)
          )
       }
@@ -176,23 +175,25 @@ object ConfluentPersistentMap {
                                           ( fun: (Int, Long, A) => B )
                                           ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
          val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
-            out.writeInt( id )
-            out.writeLong( key )
+            out.writeInt(id)
+            out.writeLong(key)
          })
-         val (index, term) = if( preLen == maxIndex.size ) {   // maximum prefix lies in last tree
+         val (index, term) = if( preLen == maxIndex.size ) {
+            // maximum prefix lies in last tree
             (maxIndex, maxTerm)
-         } else {                                              // prefix lies in other tree
+         } else {
+            // prefix lies in other tree
             maxIndex.splitAtIndex( preLen )
          }
-         val preSum  = index.sum
+         val preSum = index.sum
          store.flatGet { out =>
-            out.writeInt( id )
-            out.writeLong( preSum )
+            out.writeInt(id)
+            out.writeLong(preSum)
          } { in =>
             (in.readUnsignedByte(): @switch) match {
-               case 0 =>   // partial hash
+               case 0 => // partial hash
                   val hash = in.readLong()
-//                  EntryPre[ S ]( hash )
+                  //                  EntryPre[ S ]( hash )
                   val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
                   getWithPrefixLen( id, fullIndex, fullTerm )( fun )
 
@@ -200,7 +201,7 @@ object ConfluentPersistentMap {
                   // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
                   // if the terms match, we have Some result. If not, we need to ask the index tree if
                   // term2 is ancestor of term. If so, we have Some result, if not we have None.
-//                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
+                  //                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
 
                   // --- ADDENDUM: I believe we do not need to store `term2` at all, it simply doesn't
                   // matter. Given a correct variable system, there is no notion of uninitialised values.
@@ -214,12 +215,12 @@ object ConfluentPersistentMap {
 
                   val term2 = in.readLong()
                   val value = ser.read( in )
-//                  EntrySingle[ S, A ]( term2, value )
+                  //                  EntrySingle[ S, A ]( term2, value )
                   Some( fun( preLen, term2, value ))
 
                case 2 =>
                   val m = tx.readIndexMap[ A ]( in, index )
-//                  EntryMap[ S, A ]( m )
+                  //                  EntryMap[ S, A ]( m )
                   val (term2, value) = m.nearest( term )
                   Some( fun( preLen, term2, value ))
             }
@@ -228,7 +229,69 @@ object ConfluentPersistentMap {
    }
 
    private sealed trait Entry[ S <: KSys[ S ], +A ]
-   private final case class EntryPre[    S <: KSys[ S ]](     hash: Long )          extends Entry[ S, Nothing ]
-   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A )    extends Entry[ S, A ]
-   private final case class EntryMap[    S <: KSys[ S ], A ]( m: IndexMap[ S, A ])  extends Entry[ S, A ]
+   private final case class EntryPre[ S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
+   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
+   private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
+}
+
+/**
+ * Interface for persistently storing values. The design now assumes that put is accessed only
+ * after the commit of the transaction has begun, as it requires knowledge about the meld state.
+ *
+ * @tparam S       the underlying system
+ */
+sealed  trait ConfluentPersistentMap[ S <: KSys[ S ]] {
+   /**
+    * Stores a new value for a given write path.
+    *
+    * The serializer given is _non_transactional. This is because this trait bridges confluent
+    * and ephemeral world (it may use a durable backend, but the data structures used for
+    * storing the confluent graph are themselves ephemeral). If the value `A` requires a
+    * transactional serialization, the current approach is to pre-serialize the value into
+    * an appropriate format (e.g. a byte array) before calling into `put`. In that case
+    * the wrapping structure must be de-serialized after calling `get`.
+    *
+    * @param id         the identifier for the object
+    * @param path       the path through which the object has been accessed (the version at which it is read)
+    * @param value      the value to store
+    * @param tx         the transaction within which the access is performed
+    * @param serializer the serializer used to store the entity's values
+    * @tparam A         the type of values stored with the entity
+    */
+   def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Unit
+
+   /**
+    * Finds the most recent value for an entity `id` with respect to version `path`.
+    *
+    * The serializer given is _non_transactional. This is because this trait bridges confluent
+    * and ephemeral world (it may use a durable backend, but the data structures used for
+    * storing the confluent graph are themselves ephemeral). If the value `A` requires a
+    * transactional serialization, the current approach is to pre-serialize the value into
+    * an appropriate format (e.g. a byte array) before calling into `put`. In that case
+    * the wrapping structure must be de-serialized after calling `get`.
+    *
+    * @param id         the identifier for the object
+    * @param path       the path through which the object has been accessed (the version at which it is read)
+    * @param tx         the transaction within which the access is performed
+    * @param serializer the serializer used to store the entity's values
+    * @tparam A         the type of values stored with the entity
+    * @return           `None` if no value was found, otherwise a `Some` of that value.
+    */
+   def get[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ A ]
+
+   /**
+    * Finds the most recent value for an entity `id` with respect to version `path`. If a value is found,
+    * it is return along with a suffix suitable for identifier path actualisation.
+    *
+    * @param id         the identifier for the object
+    * @param path       the path through which the object has been accessed (the version at which it is read)
+    * @param tx         the transaction within which the access is performed
+    * @param serializer the serializer used to store the entity's values
+    * @tparam A         the type of values stored with the entity
+    * @return           `None` if no value was found, otherwise a `Some` of the tuple consisting of the
+    *                   suffix and the value. The suffix is the access path minus the prefix at which the
+    *                   value was found. However, the suffix overlaps the prefix in that it begins with the
+    *                   tree entering/exiting tuple at which the value was found.
+    */
+   def getWithSuffix[ A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ (S#Acc, A) ]
 }

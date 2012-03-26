@@ -34,7 +34,7 @@ import de.sciss.collection.txn.Ancestor
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, Writer, TxnSerializer}
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 
@@ -315,14 +315,14 @@ object KSysImpl {
     */
    private sealed trait CacheEntry {
       def id: S#ID
-      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) : Unit
       def value: Any
    }
    private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          store.put( id.id, pathOut, value )
@@ -333,7 +333,7 @@ object KSysImpl {
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: ConfluentTxnMap[ S#Tx, S#Acc ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: ConfluentPersistentMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -955,7 +955,7 @@ object KSysImpl {
       private[KSysImpl] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
       private[KSysImpl] val durable    = Durable( store ) : Durable
-      private[KSysImpl] val persistent : ConfluentTxnMap[ S#Tx, S#Acc ] = ConfluentPersistentMap[ S, Any ]( store )
+      private[KSysImpl] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>

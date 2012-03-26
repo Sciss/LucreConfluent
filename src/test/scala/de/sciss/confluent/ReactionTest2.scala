@@ -30,11 +30,12 @@ import java.awt.event.{WindowAdapter, WindowEvent, ActionListener, ActionEvent}
 import java.awt.{BorderLayout, Color, Dimension, Graphics2D, Graphics, GridLayout, EventQueue}
 import javax.swing.{AbstractAction, JButton, Box, JComponent, JTextField, BorderFactory, JLabel, GroupLayout, JPanel, WindowConstants, JFrame}
 import collection.mutable.Buffer
-import de.sciss.lucre.stm.{Cursor, Sys}
 import de.sciss.lucre.expr.{Spans, Longs, Strings, Span}
 import collection.immutable.{IndexedSeq => IIdxSeq}
 
-import de.sciss.lucre.{expr, event}
+import concurrent.stm.InTxn
+import de.sciss.lucre.{DataInput, DataOutput, expr, event}
+import de.sciss.lucre.stm.{TxnSerializer, Cursor, Sys}
 import expr.any2stringadd
 
 object ReactionTest2 extends App {
@@ -55,6 +56,8 @@ object ReactionTest2 extends App {
       val s    = KSysImpl.tmp()
       (s, () => s.close())
    }
+
+   TemporalObjects.showLog = false
 
    defer( args.toSeq.take( 2 ) match {
       case Seq( "--coll" )      => collections( tmpSys() )
@@ -363,7 +366,60 @@ Usages:
       f.setVisible( true )
    }
 
-   def collections[ S <: Sys[ S ] with Cursor[ S ]]( tup: (S, () => Unit) ) {
+   class Collections[ S <: Sys[ S ]]( val regions: Regions[ S ]) {
+      private val regionListSer = regions.RegionList.serializer
+
+      object Access {
+         def empty( implicit tx: S#Tx ) : Access = new Access {
+            val id = tx.newID()
+            val count = tx.newIntVar( id, 0 )
+            val collection = regions.RegionList.empty
+         }
+
+         implicit val serializer : TxnSerializer[ S#Tx, S#Acc, Access ] =
+            new TxnSerializer[ S#Tx, S#Acc, Access ] {
+               def write( v: Access, out: DataOutput ) { v.write( out )}
+               def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Access =
+                  Access.read( in, access )
+            }
+
+         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Access = new Access {
+            val id         = tx.readID( in, access )
+            val count      = tx.readIntVar( id, in )
+            val collection = regionListSer.read( in, access )
+         }
+      }
+      sealed trait Access {
+         def id: S#ID
+         def count : S#Var[ Int ]
+         def collection : regions.RegionList
+
+         final def write( out: DataOutput ) {
+            id.write( out )
+            count.write( out )
+            collection.write( out )
+         }
+
+         override def toString = "Collections.Access" + id
+      }
+
+      val rnd = TxnRandom( 1L )
+
+      def newRegion( access: Access )( implicit tx: S#Tx ) : regions.EventRegion = {
+         import regions._
+         implicit val itx = tx.peer
+         val cnt = access.count
+         val c = cnt.get + 1
+         cnt.set( c )
+         val name    = "Region #" + c
+         val len     = rnd.nextInt( 10 ) + 1
+         val start   = rnd.nextInt( 21 - len )
+         val r       = EventRegion( name, Span( start * 44100L, (start + len) * 44100L ))
+         r
+      }
+   }
+
+   def collections[ S <: KSys[ S ] with Cursor[ S ]]( tup: (S, () => Unit) ) {
       val (system, cleanUp) = tup
 
 //      val id = system.atomic { implicit tx => tx.newID() }
@@ -372,24 +428,26 @@ Usages:
 //         tx.newIntVar( id, 0 )
 //      }
 
-      val rnd = new scala.util.Random( 1L )
+      val tr            = new TrackView
+      val infra         = System[ S ]()
+      import infra.{ regions => _regions, _ }
+      val collections   = new Collections[ S ]( _regions )
+      import collections.{Access, newRegion, rnd, regions}
+      import regions._
 
-      def scramble( s: String ) : String = {
+      def scramble( s: String )( implicit itx: InTxn ) : String = {
          val sb = s.toBuffer
          Seq.fill[ Char ]( s.length )( sb.remove( rnd.nextInt( sb.size ))).mkString
       }
 
-      val tr   = new TrackView
 
-      val (infra, cnt, cv) = system.step { implicit tx =>
-         val _infra = System[ S ]
-         import _infra._
-         import regions._
-         val _id  = tx.newID()
-         val _cnt = tx.newIntVar( _id, 0 )
-         val _coll = RegionList.empty
-         val _cv = tx.newVar( tx.newID(), _coll )
-         _coll.changed.reactTx { implicit tx => {
+//      implicit val regionsSer: TxnSerializer[ S#Tx, S#Acc, Regions[ S ]#RegionList ] = regions.RegionList.serializer
+//      implicit val accessSer = CollectionsAccess.serializer[ S ]
+      val access = system.root { implicit tx => Access.empty }
+
+      system.step { implicit tx =>
+         val coll = access.get.collection
+         coll.changed.reactTx { implicit tx => {
             case RegionList.Added( _, idx, r ) =>
                val name    = r.name.value
                val span    = r.span.value
@@ -402,9 +460,10 @@ Usages:
 
             case RegionList.Element( _, changes ) =>
                val viewChanges = changes.map { c =>
+                  val coll = access.get.collection
                   val r = c.r
                   val ti = new TrackItem( /* r.id, */ r.name.value, r.span.value )
-                  val idx = tx.access( _cv ).indexOf( r )
+                  val idx = coll.indexOf( r )
                   (idx, ti)
                }
 
@@ -412,21 +471,6 @@ Usages:
                   viewChanges.foreach { case (idx, ti) => tr.update( idx, ti )}
                }
          }}
-         (_infra, _cnt, _cv)
-      }
-
-      import infra._
-      import regions._
-
-      def newRegion()( implicit tx: S#Tx ) : EventRegion = {
-         val c = cnt.get + 1
-         cnt.set( c )
-         val name    = "Region #" + c
-         val len     = rnd.nextInt( 10 ) + 1
-         val start   = rnd.nextInt( 21 - len )
-         val r       = EventRegion( name, Span( start * 44100L, (start + len) * 44100L ))
-//         println( "Region(" + r.name.value + ", " + r.start.value + ", " + r.stop.value + ")" )
-         r
       }
 
       val f    = frame( "Reaction Test 2", cleanUp )
@@ -434,19 +478,20 @@ Usages:
       val actionPane = Box.createHorizontalBox()
       actionPane.add( button( "Add last" ) {
          system.step { implicit tx =>
-            val coll = tx.access( cv )
-            coll.add( newRegion() )
+            val coll = access.get.collection
+            coll.add( newRegion( access.get ))
          }
       })
       actionPane.add( button( "Remove first" ) {
          system.step { implicit tx =>
-            val coll = tx.access( cv )
+            val coll = access.get.collection
             if( coll.size > 0 ) coll.removeAt( 0 )
          }
       })
       actionPane.add( button( "Random rename" ) {
          system.step { implicit tx =>
-            val coll = tx.access( cv )
+            implicit val itx = tx.peer
+            val coll = access.get.collection
             if( coll.size > 0 ) {
                val r    = coll.apply( rnd.nextInt( coll.size ))
                r.name   = scramble( r.name.value )
@@ -455,7 +500,8 @@ Usages:
       })
       actionPane.add( button( "Random move" ) {
          system.step { implicit tx =>
-            val coll = tx.access( cv )
+            implicit val itx = tx.peer
+            val coll = access.get.collection
             if( coll.size > 0 ) {
                val r       = coll.apply( rnd.nextInt( coll.size ))
                val len     = (r.span.value.length / 44100L).toInt

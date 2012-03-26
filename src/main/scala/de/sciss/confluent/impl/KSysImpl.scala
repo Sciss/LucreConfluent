@@ -41,13 +41,6 @@ object KSysImpl {
 
    def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
 
-//   private object ID {
-//      def readAndAppend( id: Int, postfix: S#Acc, in: DataInput ) : S#ID = {
-//         val path = Path.readAndAppend( in, postfix )
-//         new ID( id, path )
-//      }
-//   }
-
    final class ID private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
 
@@ -77,8 +70,6 @@ object KSysImpl {
       def dispose()( implicit tx: S#Tx ) {}
    }
 
-//   private object PathMeasure extends Measure[ Int, (Int, Long) ]
-
    private object PathMeasure extends Measure[ Long, (Int, Long) ] {
       override def toString = "PathMeasure"
       val zero = (0, 0L)
@@ -92,8 +83,6 @@ object KSysImpl {
       private[KSysImpl] val empty      = new Path( FingerTree.empty( PathMeasure ))
       /* private[KSysImpl] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
-
-//      def read( in: DataInput ) : S#Acc = new Path( readTree( in ))
 
       def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
@@ -148,11 +137,6 @@ object KSysImpl {
    extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
       implicit protected def m: Measure[ Long, (Int, Long) ] = PathMeasure
 
-//      def foreach( fun: Int => Unit ) {
-//         // XXX TODO efficient implementation
-//         tree.iterator.foreach( fun )
-//      }
-
       override def toString = mkString( "Path(", ", ", ")" )
 
       override def hashCode = {
@@ -174,20 +158,6 @@ object KSysImpl {
       private[confluent] def :+( last: Long ) : Path = wrap( tree :+ last )
 
       private[confluent] def +:( head: Long ) : Path = wrap( head +: tree )
-
-//      private[KSysImpl] def addNewTree( term: Long ) : Path = {
-//         wrap( tree :+ term :+ term )
-//      }
-//
-//      private[KSysImpl] def addOldTree( term: Long ) : Path = {
-////         require( !tree.isEmpty )
-////         wrap( tree.init :+ term )
-//         wrap( if( tree.isEmpty ) {
-//            term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
-//         } else {
-//            tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
-//         })
-//      }
 
       /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : Path = {
          val (_, _, right) = tree.split1( _._1 > dropLen )
@@ -364,8 +334,6 @@ object KSysImpl {
       }
    }
 
-//   private final case class Write[ A ]( path: S#Acc, value: A, serializer: Serializer[ A ])
-
    private val emptyLongMapVal      = LongMap.empty[ Any ]
    private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
    private val emptyIntMapVal       = IntMap.empty[ Any ]
@@ -435,13 +403,6 @@ object KSysImpl {
          logConfig( "txn durable" )
          system.durable.wrap( peer )
       }
-
-//      @volatile private var newVersionID = 0L
-//      private[KSysImpl] def newVersionID : Long = {
-//         val res = newVersionIDVar
-//         if( res == 0L ) sys.error( "Trying to write S#ID before transaction committed" )
-//         res
-//      }
 
       final def newID() : S#ID = {
          val res = new ID( system.newIDValue()( this ), Path.empty )
@@ -517,31 +478,12 @@ object KSysImpl {
          )
       }
 
-//      // returned suffix is writeTerm :: longestPrefixReadTerm :: readSuffix
-//      final private[KSysImpl] def getWithSuffix[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : (S#Acc, A) = {
-//         logConfig( "txn get' " + id )
-//         val id1  = id.id
-//         val path = id.path
-//         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { w =>
-//            val suffix = if( path.isEmpty ) path else {
-//               path.seminal   // XXX TODO ???
-//            }
-//            (suffix, w.value)
-//         }).asInstanceOf[ Option[ (S#Acc, A) ]]
-//            .orElse( system.persistent.getWithSuffix[ A ]( id1, path )( this, ser ))
-//            .getOrElse( sys.error( "No value for " + id ))
-//      }
-
       final private[KSysImpl] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { e =>
             e.value.asInstanceOf[ A ]
-//            val suffix = if( path.isEmpty ) path else {
-//               path.seminal   // XXX TODO ???
-//            }
-//            (suffix, w.value)
          }).orElse({
             system.persistent.getWithSuffix[ Array[ Byte ]]( id1, path )( this, ByteArraySerializer ).map { tup =>
                val access  = tup._1
@@ -833,12 +775,6 @@ object KSysImpl {
 
    private object ByteArraySerializer extends Serializer[ Array[ Byte ]] {
       def write( v: Array[ Byte ], out: DataOutput ) {
-//if( v == null ) {
-//   println( "ARRAY IS NULL" )
-//}
-//if( out == null ) {
-//   println( "OUT IS NULL" )
-//}
          out.writeInt( v.length )
          out.write( v )
       }
@@ -858,25 +794,16 @@ object KSysImpl {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
          logConfig( this.toString + " set " + v )
-//         val out  = new DataOutput()
-//         ser.write( v, out )
-//         val arr  = out.toByteArray
          tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-//         val (access, arr) = tx.getTxn( id )( ByteArraySerializer )
-//         val in      = new DataInput( arr )
-//         ser.read( in, access )
          tx.getTxn( id )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " ini " + v )
-//         val out  = new DataOutput()
-//         ser.write( v, out )
-//         val arr  = out.toByteArray
          tx.putTxn( id, v )
       }
 
@@ -899,26 +826,17 @@ object KSysImpl {
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " meld " + from )
          val idm  = new ID( id1, from )
-//         val (access, arr) = tx.getTxn( idm )( ByteArraySerializer )
-//         val in      = new DataInput( arr )
          tx.addInputVersion( from )
-//         ser.read( in, access )
          tx.getTxn( idm )
       }
 
       def set( v: A )( implicit tx: S#Tx ) {
          logConfig( this.toString + " set " + v )
-//         val out  = new DataOutput()
-//         ser.write( v, out )
-//         val arr  = out.toByteArray
          tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
          logConfig( this.toString + " get" )
-//         val (access, arr) = tx.getTxn( id )( ByteArraySerializer )
-//         val in      = new DataInput( arr )
-//         ser.read( in, access )
          tx.getTxn( id )
       }
 
@@ -1119,15 +1037,6 @@ object KSysImpl {
 
       def position( implicit tx: S#Tx ) : Path = lastAccess.get( tx.peer )
 
-//      def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A = atomic[ A ]( fun( _ )( rootVar ))
-
-      //      def atomicAccess[ A ]( fun: (S#Tx, S#Acc) => A ) : A =
-      //         TxnExecutor.defaultAtomic( itx => fun( new Txn( this, itx ), () ))
-
-      //      def atomicAccess[ A, B ]( source: S#Var[ A ])( fun: (S#Tx, A) => B ) : B = atomic { tx =>
-      //         fun( tx, source.get( tx ))
-      //      }
-
       def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Access[ S, A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
          logConfig( "::::::: root :::::::" )
@@ -1148,21 +1057,5 @@ object KSysImpl {
       def numRecords( implicit tx: S#Tx ): Int = store.numEntries
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
-
-//      private[KSysImpl] def put[ @specialized A ]( id: S#ID, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
-////         logConfig( "write <" + id + ">" )
-//         map.put[ A ]( id.id, id.path, value )
-//      }
-
-//      def remove( id: S#ID )( implicit tx: S#Tx ) {
-//         sys.error( "TODO" )
-////         logConfig( "remov <" + id + ">" )
-////         kStore.remove( _.writeInt( id ))
-//      }
-
-//      private[KSysImpl] def get[ @specialized A ]( id: S#ID )( implicit tx: S#Tx,
-//                                                               ser: Serializer[ A ]) : A = {
-//         map.get[ A ]( id.id, id.path ).getOrElse( sys.error( "No value for " + id.id + " at path " + id.path ))
-//      }
    }
 }

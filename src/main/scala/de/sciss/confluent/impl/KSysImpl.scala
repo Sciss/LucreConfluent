@@ -654,19 +654,11 @@ object KSysImpl {
          sys.error( "TODO" )
       }
 
-      final def readVal[ A ]( id: S#ID )( implicit reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-//         val (in, acc) = system.access( id.id, id.path )( this )
-//         reader.read( in, acc )( this )
-         sys.error( "TODO" )
-      }
+      final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =
+         getTxn[ A ]( id )
 
-      final def writeVal( id: S#ID, value: Writer ) {
-         val out = new DataOutput()
-         value.write( out )
-//         val bytes = out.toByteArray
-//         system.storage += id.id -> (system.storage.getOrElse( id.id,
-//            Map.empty[ S#Acc, Array[ Byte ]]) + (id.path -> bytes))
-         sys.error( "TODO" )
+      final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         putTxn[ A ]( id, value )
       }
 
       final private[KSysImpl] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {

@@ -197,6 +197,8 @@ Usages:
          import longs.longOps
          import spans.spanOps
 
+         infra.init()
+
          val _r1   = EventRegion( "eins", Span(    0L, 10000L ))
          val _r2   = EventRegion( "zwei", Span( 5000L, 12000L ))
          val _span3 = spans.Span(

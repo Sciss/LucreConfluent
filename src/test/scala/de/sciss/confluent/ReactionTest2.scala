@@ -399,7 +399,7 @@ Usages:
             collection.write( out )
          }
 
-         override def toString = "Collections.Access" + id
+         override def toString = "Collections.KEntry" + id
       }
 
       val rnd = TxnRandom( 1L )

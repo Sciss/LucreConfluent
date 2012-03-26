@@ -816,12 +816,12 @@ object Confluent {
    extends VarTxLike[ A ]
 
    private final class RootVar[ A ]( id1: Int, implicit val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends Access[ S, A ] {
+   extends KEntry[ S, A ] {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
       }
 
-      override def toString = "Access"
+      override def toString = "Root"
 
       private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
 
@@ -1014,7 +1014,7 @@ object Confluent {
 
       def position( implicit tx: S#Tx ) : Path = lastAccess.get( tx.peer )
 
-      def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Access[ S, A ] = {
+      def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
          logConfig( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
@@ -1029,6 +1029,8 @@ object Confluent {
          }
       }
 
+      def asEntry[ A ]( v: S#Var[ A ]) : S#Entry[ A ] = sys.error( "TODO" )
+
       def close() { store.close()}
 
       def numRecords( implicit tx: S#Tx ): Int = store.numEntries
@@ -1041,6 +1043,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    final type Tx                    = Confluent.Txn
    final type Acc                   = Confluent.Path
    final type Var[ @specialized A ] = STMVar[ Tx, A ]
+   final type Entry[ A ]            = KEntry[ Confluent, A ]
 
    private[confluent] def store : PersistentStore
    private[confluent] def durable : Durable
@@ -1048,6 +1051,4 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]
-
-   def close() : Unit
 }

@@ -91,15 +91,5 @@ trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
    type Tx <: KSys.Txn[ S ]
    type ID <: KSys.ID[ S#Tx, S#Acc ]
    type Acc <: KSys.Acc[ S ]
-
-//   type Root
-//
-//   def t[ A ]( fun: S#Tx => S#Var[ Root ] => A ) : A
-
-   /**
-    * Reads the root object representing the stored datastructure,
-    * or provides a newly initialized one via the `init` argument,
-    * if no root has been stored yet.
-    */
-   def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Access[ S, A ]
+   type Entry[ A ] <: KEntry[ S, A ] // with S#Var[ A ]
 }

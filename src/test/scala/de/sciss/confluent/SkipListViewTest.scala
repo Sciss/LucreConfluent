@@ -40,7 +40,7 @@ object SkipListViewTest extends App with Runnable {
 
 //      println( "We are in " + cursor.step { implicit tx => cursor.position })
 
-      val view = new InteractiveSkipListView[ S ]( access.get( _ ))
+      val view = new InteractiveSkipListView[ S ]( access )
 
       val f    = new JFrame( "SkipList" )
       val cp   = f.getContentPane

@@ -5,11 +5,11 @@ import collection.breakOut
 import collection.mutable.{Set => MSet}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
-import de.sciss.lucre.stm.{Cursor, Sys}
 import de.sciss.collection.geom.Space.ThreeDim
-import de.sciss.collection.txn.{DeterministicSkipOctree, SpaceSerializers}
 import de.sciss.collection.geom._
 import concurrent.stm.InTxn
+import de.sciss.lucre.stm.{Source, Cursor, Sys}
+import de.sciss.collection.txn.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
 
 /**
  *
@@ -72,7 +72,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       rnd.nextInt()( itx ) & mask
    )
 
-   def randFill[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]],
+   def randFill[ S <: Sys[ S ], D <: Space[ D ]]( access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]],
                                                   m: MSet[ D#Point ],
                                                   pointFun: InTxn => Int => D#Point )( implicit cursor: Cursor[ S ]) {
       given( "a randomly filled structure" )
@@ -89,7 +89,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       }
    }
 
-   def verifyConsistency[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]])
+   def verifyConsistency[ S <: Sys[ S ], D <: Space[ D ]]( access: Source[ S#Tx, DeterministicSkipOctree[ S, D, D#Point ]])
                                                          ( implicit cursor: Cursor[ S ]) {
       when( "the internals of the structure are checked" )
       then( "they should be consistent with the underlying algorithm" )
@@ -151,7 +151,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       } while( h != null )
    }
 
-   def verifyElems[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]],
+   def verifyElems[ S <: Sys[ S ], D <: Space[ D ]]( access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]],
                                                      m: MSet[ D#Point ])( implicit cursor: Cursor[ S ]) {
       when( "the structure t is compared to an independently maintained map m" )
       val onlyInM  = cursor.step { implicit tx =>
@@ -169,7 +169,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       assert( szT == szM, "octree has size " + szT + " / map has size " + szM )
    }
 
-   def verifyContainsNot[ S <: Sys[ S ], D <: Space[ D ]]( access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]],
+   def verifyContainsNot[ S <: Sys[ S ], D <: Space[ D ]]( access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]],
                                                            m: MSet[ D#Point ],
                                                            pointFun: InTxn => Int => D#Point )
                                                          ( implicit cursor: Cursor[ S ]) {
@@ -188,7 +188,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    }
 
    def verifyAddRemoveAll[ S <: Sys[ S ], D <: Space[ D ]](
-      access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ])( implicit cursor: Cursor[ S ]) {
+      access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ])( implicit cursor: Cursor[ S ]) {
 
       when( "all elements of the independently maintained map are added again to t" )
       val szBefore = cursor.step { implicit tx => access.get.size }
@@ -237,7 +237,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val sortFun3D = (p: ThreeDim#PointLike) => (p.x, p.y, p.z)
 
    def verifyRangeSearch[ S <: Sys[ S ], A, D <: Space[ D ], Sort ](
-                          access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ],
+                          access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ],
                           queryFun: InTxn => (Int, Int, Int) => QueryShape[ A, D ],
                           sortFun: D#PointLike => Sort )( implicit ord: math.Ordering[ Sort ], cursor: Cursor[ S ]) {
       when( "the octree is range searched" )
@@ -272,7 +272,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
    // JUHUUUUU SPECIALIZATION BROKEN ONCE MORE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    def verifyNN[ S <: Sys[ S ], M, D <: Space[ D ]](
-      access: Access[ S, DeterministicSkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ], pointFun: InTxn => Int => D#Point,
+      access: Source[ S#Tx, SkipOctree[ S, D, D#Point ]], m: MSet[ D#Point ], pointFun: InTxn => Int => D#Point,
       pointFilter: D#PointLike => Boolean, euclideanDist: DistanceMeasure[ M, D ])( implicit ord: math.Ordering[ M ], cursor: Cursor[ S ]) {
 
       when( "the quadtree is searched for nearest neighbours" )
@@ -319,7 +319,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 //   }
 
    def withTree[ S <: Sys[ S ]]( name: String, tf: () => (S with Cursor[ S ],
-      Access[ S, DeterministicSkipOctree[ S, ThreeDim, ThreeDim#Point ]], Boolean => Unit) ) {
+      Source[ S#Tx, DeterministicSkipOctree[ S, ThreeDim, ThreeDim#Point ]], Boolean => Unit) ) {
 
       feature( "The " + name + " octree structure should be consistent" ) {
          info( "Several mass operations on the structure" )

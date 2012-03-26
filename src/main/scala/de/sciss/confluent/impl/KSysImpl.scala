@@ -999,26 +999,26 @@ object KSysImpl {
          res
       }
 
-      private[KSysImpl] def access[ A ]( id: Int, acc: S#Acc )
-                                       ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-         sys.error( "TODO" )
-//
-//
-//         var best: Array[Byte]   = null
-//         var bestLen = 0
-//         val map = storage.getOrElse( id, Map.empty )
-//         map.foreach {
-//            case (path, arr) =>
-//               val len = path.zip( acc ).segmentLength({ case (a, b) => a == b }, 0 )
-//               if( len > bestLen && len == path.size ) {
-//                  best     = arr
-//                  bestLen  = len
-//               }
-//         }
-//         require( best != null, "No value for path " + acc )
-//         val in = new DataInput( best )
-//         (in, acc.drop( bestLen ))
-      }
+//      private[KSysImpl] def access[ A ]( id: Int, acc: S#Acc )
+//                                       ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
+//         sys.error( "TODO" )
+////
+////
+////         var best: Array[Byte]   = null
+////         var bestLen = 0
+////         val map = storage.getOrElse( id, Map.empty )
+////         map.foreach {
+////            case (path, arr) =>
+////               val len = path.zip( acc ).segmentLength({ case (a, b) => a == b }, 0 )
+////               if( len > bestLen && len == path.size ) {
+////                  best     = arr
+////                  bestLen  = len
+////               }
+////         }
+////         require( best != null, "No value for path " + acc )
+////         val in = new DataInput( best )
+////         (in, acc.drop( bestLen ))
+//      }
 
       def step[ A ]( fun: S#Tx => A ): A = {
          TxnExecutor.defaultAtomic { implicit itx =>

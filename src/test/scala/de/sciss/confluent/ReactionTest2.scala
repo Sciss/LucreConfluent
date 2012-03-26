@@ -135,8 +135,8 @@ Usages:
             }
          }
 
-         private def longToModel( n: Long, model: (Tx, Long) => Unit )( implicit system: S ) {
-            system.step { implicit tx => model( tx, n )}
+         private def longToModel( n: Long, model: (Tx, R, Long) => Unit )( implicit system: S ) {
+            system.step { implicit tx => model( tx, access( tx ), n )}
          }
 
          def connect()( implicit tx: Tx ) {
@@ -163,7 +163,7 @@ Usages:
 
             ggStart.addActionListener( new ActionListener {
                def actionPerformed( e: ActionEvent ) {
-                  longToModel( ggStart.getText.toLong, (tx, n) => { implicit val _tx = tx
+                  longToModel( ggStart.getText.toLong, (tx, r, n) => { implicit val _tx = tx
 //                     r.start = n
                      r.span = spans.Span( n, r.span.stop_# )
                   })
@@ -172,7 +172,7 @@ Usages:
 
             ggStop.addActionListener( new ActionListener {
                def actionPerformed( e: ActionEvent ) {
-                  longToModel( ggStop.getText.toLong, (tx, n) => { implicit val _tx = tx
+                  longToModel( ggStop.getText.toLong, (tx, r, n) => { implicit val _tx = tx
 //                     r.stop = n
                      r.span = spans.Span( r.span.start_#, n )
                   })

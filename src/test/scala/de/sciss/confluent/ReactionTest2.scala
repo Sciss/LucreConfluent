@@ -32,6 +32,7 @@ import javax.swing.{AbstractAction, JButton, Box, JComponent, JTextField, Border
 import collection.mutable.Buffer
 import de.sciss.lucre.stm.{Cursor, Sys}
 import de.sciss.lucre.expr.{Spans, Longs, Strings, Span}
+import collection.immutable.{IndexedSeq => IIdxSeq}
 
 import de.sciss.lucre.{expr, event}
 import expr.any2stringadd
@@ -183,37 +184,40 @@ Usages:
 
    def defer( thunk: => Unit ) { EventQueue.invokeLater( new Runnable { def run() { thunk }})}
 
-   def expressions[ S <: Sys[ S ] with Cursor[ S ]]( tup: (S, () => Unit) ) {
+   def expressions[ S <: KSys[ S ] with Cursor[ S ]]( tup: (S, () => Unit) ) {
       val (system, cleanUp) = tup
 
       val infra = System[ S ]()
       import infra._
       import regions._
-      val access = system.root { IIdxSeq.empty[ EventRegion ]}
+      val access = system.root { _ => IIdxSeq.empty[ EventRegion ]}
+
+      system.step { implicit tx =>
+         import strings.stringOps
+         import longs.longOps
+         import spans.spanOps
+
+         val _r1   = EventRegion( "eins", Span(    0L, 10000L ))
+         val _r2   = EventRegion( "zwei", Span( 5000L, 12000L ))
+         val _span3 = spans.Span(
+            _r1.span_#.start_#.min( _r2.span_#.start_#) + -100L,
+            _r1.span_#.stop_#.max(  _r2.span_#.stop_#)  +  100L
+//            _r1.span_#.stop_# // .max( 12000L ))
+         )
+         val _r3   = EventRegion( _r1.name_#.append( "+" ).append( _r2.name_# ), _span3 )
+         access.transform( _ ++ IIdxSeq( _r1, _r2, _r3 ))
+      }
 
 //      val (infra, vs) = system.step { implicit tx =>
-//         import strings.stringOps
-//         import longs.longOps
-//         import spans.spanOps
-//
-//         val _r1   = EventRegion( "eins", Span(    0L, 10000L ))
-//         val _r2   = EventRegion( "zwei", Span( 5000L, 12000L ))
-//         val _span3 = spans.Span(
-//            _r1.span_#.start_#.min( _r2.span_#.start_#) + -100L,
-//            _r1.span_#.stop_#.max(  _r2.span_#.stop_#)  +  100L
-////            _r1.span_#.stop_# // .max( 12000L ))
-//         )
-//         val _r3   = EventRegion( _r1.name_#.append( "+" ).append( _r2.name_# ), _span3 )
-//         val rootID  = tx.newID()
-//         val _rvs    = Seq( _r1, _r2, _r3 ).map( tx.newVar( rootID, _ ))
-//
-//         val _vs = _rvs.zipWithIndex.map {
-//   //         case (r, i) => new RegionView( r, "Region #" + (i+1) )
-//            case (rv, i) => new RegionView[ EventRegion ]( rv, "Region #" + (i+1) )
-//         }
 //
 //         (_infra, _vs, _rvs.last)
 //      }
+
+      val rvs = IIdxSeq.tabulate( 3 ) { i => (tx: S#Tx) => access.get( tx )( i )}
+
+      val vs = rvs.zipWithIndex.map {
+         case (rv, i) => new RegionView[ EventRegion ]( rv, "Region #" + (i+1) )
+      }
 
       import event.Change
 
@@ -224,7 +228,7 @@ Usages:
 
       system.step { implicit tx =>
          vs.foreach( _.connect() )
-         val _r3 = tx.access( r3v )
+         val _r3 = rvs( 2 )( tx )
 //         _r3.renamed.react { case (_, EventRegion.Renamed( _, Change( _, newName ))) =>
 //            println( "Renamed to '" + newName + "'" )
 //         }

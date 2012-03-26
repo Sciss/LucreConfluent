@@ -35,11 +35,20 @@ import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, TxnWriter, Writer, TxnReader, TxnSerializer}
+import de.sciss.lucre.stm.impl.BerkeleyDB
+import java.io.File
 
 object KSysImpl {
    private type S = System
 
    def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
+
+   def tmp() : System = {
+      val dir = File.createTempFile( "confluent_", "db" )
+      dir.delete()
+//      dir.mkdir()
+      new System( BerkeleyDB.factory( dir ))
+   }
 
    final class ID private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )

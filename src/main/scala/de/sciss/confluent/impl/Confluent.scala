@@ -1,5 +1,5 @@
 /*
- *  KSysImpl.scala
+ *  Confluent.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -38,7 +38,7 @@ import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durabl
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 
-object KSysImpl {
+object Confluent {
    private type S = System
 
    def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
@@ -50,7 +50,7 @@ object KSysImpl {
       new System( BerkeleyDB.factory( dir ))
    }
 
-   final class ID private[KSysImpl]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
+   final class ID private[Confluent]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
 //      final def shortString : String = access.mkString( "<", ",", ">" )
 
       override def hashCode = {
@@ -89,9 +89,9 @@ object KSysImpl {
 
    object Path {
       def test_empty : Path = empty
-      private[KSysImpl] val empty      = new Path( FingerTree.empty( PathMeasure ))
-      /* private[KSysImpl] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
-//      private[KSysImpl] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
+      private[Confluent] val empty      = new Path( FingerTree.empty( PathMeasure ))
+      /* private[Confluent] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
+//      private[Confluent] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
       def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
@@ -142,7 +142,7 @@ object KSysImpl {
     * and the lower 32 bits are the incremental version. The measure is taking the index and running sum
     * of the tree.
     */
-   final class Path private[KSysImpl]( protected val tree: FingerTree[ (Int, Long), Long ])
+   final class Path private[Confluent]( protected val tree: FingerTree[ (Int, Long), Long ])
    extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
       implicit protected def m: Measure[ Long, (Int, Long) ] = PathMeasure
 
@@ -173,7 +173,7 @@ object KSysImpl {
          wrap( newHead +: right )
       }
 
-      private[KSysImpl] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
+      private[Confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
          val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
          } else {
@@ -188,13 +188,13 @@ object KSysImpl {
          wrap( t )
       }
 
-      private[KSysImpl] def seminal : Path = {
+      private[Confluent] def seminal : Path = {
          val (_init, term) = splitIndex
          wrap( FingerTree( _init.term, term ))
       }
 
       // XXX TODO should have an efficient method in finger tree
-      private[KSysImpl] def indexTerm : Long = {
+      private[Confluent] def indexTerm : Long = {
          tree.init.last
 //         val idx = size - 2; tree.find1( _._1 > idx ) ???
       }
@@ -408,7 +408,7 @@ object KSysImpl {
 //         }
       }
 
-      final private[KSysImpl] implicit lazy val durable: Durable#Tx = {
+      final private[Confluent] implicit lazy val durable: Durable#Tx = {
          logConfig( "txn durable" )
          system.durable.wrap( peer )
       }
@@ -420,7 +420,7 @@ object KSysImpl {
       }
 
       // XXX TODO eventually should use caching
-      final private[KSysImpl] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
+      final private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
                                                   term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int) = {
 //         val root = tree.root
 //         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
@@ -436,7 +436,7 @@ object KSysImpl {
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      final private[KSysImpl] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) {
+      final private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) {
          system.store.put { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( v.version.toInt )
@@ -447,7 +447,7 @@ object KSysImpl {
          }
       }
 
-      final private[KSysImpl] def readTreeVertexLevel( term: Long ) : Int = {
+      final private[Confluent] def readTreeVertexLevel( term: Long ) : Int = {
          system.store.get { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( term.toInt )
@@ -460,7 +460,7 @@ object KSysImpl {
 
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      final private[KSysImpl] def addInputVersion( path: S#Acc ) {
+      final private[Confluent] def addInputVersion( path: S#Acc ) {
          val sem1 = path.seminal
          val sem2 = inputAccess.seminal
          if( sem1 == sem2 ) return
@@ -476,7 +476,7 @@ object KSysImpl {
          })( peer )
       }
 
-      final private[KSysImpl] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+      final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
          logConfig( "txn get " + id )
          val id1  = id.id
          val path = id.path
@@ -487,7 +487,7 @@ object KSysImpl {
          )
       }
 
-      final private[KSysImpl] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+      final private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
          logConfig( "txn get' " + id )
          val id1  = id.id
          val path = id.path
@@ -503,7 +503,7 @@ object KSysImpl {
          }).getOrElse( sys.error( "No value for " + id ))
       }
 
-      final private[KSysImpl] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      final private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
          val e = new TxnCacheEntry( id, value )
          cache.transform( mapMap => {
@@ -519,7 +519,7 @@ object KSysImpl {
          markDirty()( peer )
       }
 
-      final private[KSysImpl] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+      final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
 //         logConfig( "txn put " + id )
          val e = new NonTxnCacheEntry( id, value )
          cache.transform( mapMap => {
@@ -535,13 +535,13 @@ object KSysImpl {
          markDirty()( peer )
       }
 
-      final private[KSysImpl] def dispose( id: S#ID ) {
+      final private[Confluent] def dispose( id: S#ID ) {
          cache.transform( _ - id.id )( peer )
       }
 
 //      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
 
-      final private[KSysImpl] def readIndexTree( term: Long ) : IndexTree = {
+      final private[Confluent] def readIndexTree( term: Long ) : IndexTree = {
          val st = system.store
          st.get { out =>
             out.writeUnsignedByte( 1 )
@@ -574,7 +574,7 @@ object KSysImpl {
          new IndexMapImpl[ A ]( index, map )
       }
 
-      final private[KSysImpl] def newIndexTree( term: Long, level: Int ) : IndexTree = {
+      final private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree = {
          logConfig( "txn new tree " + term.toInt )
          val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
          val res  = new IndexTreeImpl( tree, level )
@@ -663,7 +663,7 @@ object KSysImpl {
          putTxn[ A ]( id, value )
       }
 
-      final private[KSysImpl] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
+      final private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
          ser match {
             case plain: Serializer[ _ ] =>
                new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
@@ -943,19 +943,19 @@ object KSysImpl {
 
 //   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class System private[KSysImpl]( storeFactory: PersistentStoreFactory[ PersistentStore ])
+   final class System private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends KSys[ System ] with Cursor[ System ] {
-      type ID                    = KSysImpl.ID
-      type Tx                    = KSysImpl.Txn
-      type Acc                   = KSysImpl.Path
-//      type Var[ @specialized A ] = KSysImpl.Var[ A ]
+      type ID                    = Confluent.ID
+      type Tx                    = Confluent.Txn
+      type Acc                   = Confluent.Path
+//      type Var[ @specialized A ] = Confluent.Var[ A ]
       type Var[ @specialized A ] = STMVar[ Tx, A ]
 
       val manifest               = Predef.manifest[ System ]
-      private[KSysImpl] val store  = storeFactory.open( "data" )
+      private[Confluent] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
-      private[KSysImpl] val durable    = Durable( store ) : Durable
-      private[KSysImpl] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
+      private[Confluent] val durable    = Durable( store ) : Durable
+      private[Confluent] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
@@ -975,23 +975,23 @@ object KSysImpl {
          }
       }
 
-      private[KSysImpl] lazy val reactionMap : ReactionMap[ S ] =
+      private[Confluent] lazy val reactionMap : ReactionMap[ S ] =
          ReactionMap[ S, InMemory ]( inMem.step { implicit tx =>
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
 
-      private[KSysImpl] def newVersionID( implicit tx: S#Tx ) : Long = {
+      private[Confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val itx = tx.peer
          val lin  = versionLinear.get + 1
          versionLinear.set( lin )
          (versionRandom.nextInt().toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
       }
 
-//      private[KSysImpl] def newID()( implicit tx: S#Tx ) : ID = {
+//      private[Confluent] def newID()( implicit tx: S#Tx ) : ID = {
 //         new ID( newIDValue(), Path.empty )
 //      }
 
-      private[KSysImpl] def newIDValue()( implicit tx: S#Tx ) : Int = {
+      private[Confluent] def newIDValue()( implicit tx: S#Tx ) : Int = {
          implicit val itx = tx.peer
          val res = idCntVar.get + 1
 //         logConfig( "new   <" + id + ">" )
@@ -1001,7 +1001,7 @@ object KSysImpl {
          res
       }
 
-//      private[KSysImpl] def access[ A ]( id: Int, acc: S#Acc )
+//      private[Confluent] def access[ A ]( id: Int, acc: S#Acc )
 //                                       ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
 //         sys.error( "TODO" )
 ////
@@ -1034,7 +1034,7 @@ object KSysImpl {
       }
 
       // XXX TODO
-      /* private[KSysImpl] */ def position_=( p: Path )( implicit tx: S#Tx ) {
+      /* private[Confluent] */ def position_=( p: Path )( implicit tx: S#Tx ) {
          lastAccess.set( p )( tx.peer )
       }
 

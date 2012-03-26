@@ -25,7 +25,7 @@
 
 package de.sciss.confluent
 
-import impl.KSysImpl
+import impl.Confluent
 import java.awt.event.{WindowAdapter, WindowEvent, ActionListener, ActionEvent}
 import java.awt.{BorderLayout, Color, Dimension, Graphics2D, Graphics, GridLayout, EventQueue}
 import javax.swing.{AbstractAction, JButton, Box, JComponent, JTextField, BorderFactory, JLabel, GroupLayout, JPanel, WindowConstants, JFrame}
@@ -48,12 +48,12 @@ object ReactionTest2 extends App {
 //      (s, () => s.close())
 //   }
 
-   private def tmpSys() : (KSysImpl.System, () => Unit) = {
+   private def tmpSys() : (Confluent.System, () => Unit) = {
 //      val dir  = File.createTempFile( "confluent_", "db" )
 //      dir.delete()
 //      val db   = BerkeleyDB.factory( dir, name )
-//      val s    = KSysImpl( db )
-      val s    = KSysImpl.tmp()
+//      val s    = Confluent( db )
+      val s    = Confluent.tmp()
       (s, () => s.close())
    }
 

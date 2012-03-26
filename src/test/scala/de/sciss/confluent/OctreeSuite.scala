@@ -1,6 +1,6 @@
 package de.sciss.confluent
 
-import impl.KSysImpl
+import impl.Confluent
 import org.scalatest.{FeatureSpec, GivenWhenThen}
 import collection.breakOut
 import collection.mutable.{Set => MSet}
@@ -50,13 +50,13 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       })
    }
 
-   withSys[ KSysImpl.System ]( "Confluent", () => {
+   withSys[ Confluent.System ]( "Confluent", () => {
       val dir     = File.createTempFile( "totalorder", "_database" )
       dir.delete()
       dir.mkdir()
       println( dir.getAbsolutePath )
       val store = BerkeleyDB.factory( dir )
-      val res = KSysImpl( store )
+      val res = Confluent( store )
 //      res.root[ Unit ] { _ => }
       res
    }, (s, success) => {

@@ -1,7 +1,7 @@
 package de.sciss.confluent
 
 import de.sciss.collection.txn.view.InteractiveSkipListView
-import impl.KSysImpl
+import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.stm.{Cursor}
@@ -27,8 +27,8 @@ object SkipListViewTest extends App with Runnable {
       }
       val store            = BerkeleyDB.factory( dir )
 //      type S               = KSys[ x ] with Cursor[ x ] forSome { type x <: KSys[ x ]}
-//      type S = KSys[ KSysImpl.System ] with Cursor[ KSysImpl.System ]
-      implicit val s = KSysImpl( store )
+//      type S = KSys[ Confluent.System ] with Cursor[ Confluent.System ]
+      implicit val s = Confluent( store )
       build( s )
    }
 

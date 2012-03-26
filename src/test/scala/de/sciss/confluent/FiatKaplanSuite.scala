@@ -1,6 +1,6 @@
 package de.sciss.confluent
 
-import impl.KSysImpl
+import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}
@@ -17,13 +17,13 @@ class  FiatKaplanSuite extends FunSpec with GivenWhenThen {
       val dir     = File.createTempFile( "database", "db" )
       dir.delete()
       val store   = BerkeleyDB.factory( dir )
-      val _s      = KSysImpl( store )
+      val _s      = Confluent( store )
       val types   = new Types( _s )
 
       import types._
 
       def timeWarp( path: Sys#Acc ) {
-         val s1 = s.asInstanceOf[ KSysImpl.System ]   // XXX ugly
+         val s1 = s.asInstanceOf[ Confluent.System ]   // XXX ugly
          s1.step( s1.position_=( path )( _ ))
       }
 
@@ -87,7 +87,7 @@ class  FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
          // --> use a variant to better verify the results: set x=3 instead
          given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
-         timeWarp( KSysImpl.Path.root )
+         timeWarp( Confluent.Path.root )
          s.step { implicit tx =>
             access.transform {
                case Some( n ) =>

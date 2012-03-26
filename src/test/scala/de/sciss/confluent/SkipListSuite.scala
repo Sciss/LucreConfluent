@@ -1,6 +1,6 @@
 package de.sciss.confluent
 
-import impl.KSysImpl
+import impl.Confluent
 import scala.collection.immutable.IntMap
 import scala.collection.mutable.{Set => MSet}
 import org.scalatest.{GivenWhenThen, FeatureSpec}
@@ -60,13 +60,13 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       })
    }
 
-   withSys[ KSysImpl.System ]( "Confluent", () => {
+   withSys[ Confluent.System ]( "Confluent", () => {
       val dir     = File.createTempFile( "skiplist", "_database" )
       dir.delete()
       dir.mkdir()
       println( dir.getAbsolutePath )
       val store = BerkeleyDB.factory( dir )
-      val res = KSysImpl( store )
+      val res = Confluent( store )
 //      res.root[ Unit ] { _ => }
       res
    }, s => {

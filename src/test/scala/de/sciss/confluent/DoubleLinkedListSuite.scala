@@ -1,6 +1,6 @@
 package de.sciss.confluent
 
-import impl.KSysImpl
+import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}
@@ -17,13 +17,13 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
       val dir     = File.createTempFile( "database", "db" )
       dir.delete()
       val store   = BerkeleyDB.factory( dir )
-      val _s      = KSysImpl( store )
+      val _s      = Confluent( store )
       val types   = new Types( _s )
 
       import types._
 
 //      def timeWarp( path: Sys#Acc ) {
-//         val s1 = s.asInstanceOf[ KSysImpl.System ]   // XXX ugly
+//         val s1 = s.asInstanceOf[ Confluent.System ]   // XXX ugly
 //         s1.step( s1.position_=( path )( _ ))
 //      }
 
@@ -71,7 +71,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v2 /////////////////////////////
 
          given( "v2 : Increment all nodes by 2" )
-//         timeWarp( KSysImpl.Path.root )
+//         timeWarp( Confluent.Path.root )
          s.step { implicit tx =>
             @tailrec def step( last: Option[ Node ]) { last match {
                case None =>
@@ -120,7 +120,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v3 /////////////////////////////
 
          given( "v3 : Increment all nodes by 2, going from back to front" )
-//         timeWarp( KSysImpl.Path.root )
+//         timeWarp( Confluent.Path.root )
          s.step { implicit tx =>
             @tailrec def findLast( n: Node ) : Node = n.next.get match {
                case None => n

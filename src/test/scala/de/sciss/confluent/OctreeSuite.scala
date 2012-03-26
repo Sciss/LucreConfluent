@@ -95,15 +95,16 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       then( "they should be consistent with the underlying algorithm" )
 
       type Branch = DeterministicSkipOctree[ S, D, D#Point ]#Branch
-      type Leaf   = DeterministicSkipOctree[ S, D, D#Point ]#Leaf
+//      type Leaf   = DeterministicSkipOctree[ S, D, D#Point ]#Leaf
 
-      var (q, h: Branch, numOrthants) = cursor.step { implicit tx =>
-         val t = access.get
-         (t.hyperCube, t.lastTreeImpl, t.numOrthants)
+      val (t, q, h0, numOrthants) = cursor.step { implicit tx =>
+         val _t = access.get
+         (_t, _t.hyperCube, _t.lastTreeImpl, _t.numOrthants)
       }
       var currUnlinkedOcs  = Set.empty[ D#HyperCube ]
       var currPoints       = Set.empty[ D#PointLike ]
       var prevs = 0
+      var h: Branch = h0
       do {
          assert( h.hyperCube == q, "Root level quad is " + h.hyperCube + " while it should be " + q + " in level n - " + prevs )
          val nextUnlinkedOcs  = currUnlinkedOcs
@@ -116,7 +117,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
             var i = 0; while( i < numOrthants ) {
                n.child( i ) match {
-                  case cb: Branch =>
+                  case cb: t.Branch =>
                      val nq = n.hyperCube.orthant( i )
                      val cq = cb.hyperCube
                      assert( nq.contains( cq ), "Node has invalid hyper-cube (" + cq + "), expected: " + nq + assertInfo )
@@ -136,7 +137,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
                      }
                      checkChildren( cb, depth + 1 )
 
-                  case l: Leaf =>
+                  case l: t.Leaf =>
                      currPoints += l.value
 
                   case _ =>

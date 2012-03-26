@@ -1,6 +1,5 @@
 package de.sciss.confluent
 
-import impl.Confluent
 import org.scalatest.{GivenWhenThen, FeatureSpec}
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
@@ -22,7 +21,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
    // make sure we don't look tens of thousands of actions
    TemporalObjects.showLog = false
 
-   withSys[ Confluent.System ]( "Confluent", () => {
+   withSys[ Confluent ]( "Confluent", () => {
       val dir     = File.createTempFile( "totalorder", "_database" )
       dir.delete()
       dir.mkdir()

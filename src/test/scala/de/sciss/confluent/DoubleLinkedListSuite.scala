@@ -1,6 +1,5 @@
 package de.sciss.confluent
 
-import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}

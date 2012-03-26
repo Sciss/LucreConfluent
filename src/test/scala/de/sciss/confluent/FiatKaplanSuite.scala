@@ -1,6 +1,5 @@
 package de.sciss.confluent
 
-import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.{DataInput, DataOutput}
@@ -23,7 +22,7 @@ class  FiatKaplanSuite extends FunSpec with GivenWhenThen {
       import types._
 
       def timeWarp( path: Sys#Acc ) {
-         val s1 = s.asInstanceOf[ Confluent.System ]   // XXX ugly
+         val s1 = s.asInstanceOf[ Confluent ]   // XXX ugly
          s1.step( s1.position_=( path )( _ ))
       }
 

@@ -1,6 +1,5 @@
 package de.sciss.confluent
 
-import impl.Confluent
 import org.scalatest.{FeatureSpec, GivenWhenThen}
 import collection.breakOut
 import collection.mutable.{Set => MSet}
@@ -50,7 +49,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       })
    }
 
-   withSys[ Confluent.System ]( "Confluent", () => {
+   withSys[ Confluent ]( "Confluent", () => {
       val dir     = File.createTempFile( "totalorder", "_database" )
       dir.delete()
       dir.mkdir()

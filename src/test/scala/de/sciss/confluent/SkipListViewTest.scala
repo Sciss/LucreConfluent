@@ -1,7 +1,6 @@
 package de.sciss.confluent
 
 import de.sciss.collection.txn.view.InteractiveSkipListView
-import impl.Confluent
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.stm.{Cursor}

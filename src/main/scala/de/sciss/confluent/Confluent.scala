@@ -24,7 +24,6 @@
  */
 
 package de.sciss.confluent
-package impl
 
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
@@ -39,15 +38,15 @@ import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 
 object Confluent {
-   private type S = System
+   private type S = Confluent
 
-   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : System = new System( storeFactory )
+   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : Confluent = new Impl( storeFactory )
 
-   def tmp() : System = {
+   def tmp() : Confluent = {
       val dir = File.createTempFile( "confluent_", "db" )
       dir.delete()
 //      dir.mkdir()
-      new System( BerkeleyDB.factory( dir ))
+      new Impl( BerkeleyDB.factory( dir ))
    }
 
    final class ID private[Confluent]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
@@ -943,19 +942,13 @@ object Confluent {
 
 //   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class System private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
-   extends KSys[ System ] with Cursor[ System ] {
-      type ID                    = Confluent.ID
-      type Tx                    = Confluent.Txn
-      type Acc                   = Confluent.Path
-//      type Var[ @specialized A ] = Confluent.Var[ A ]
-      type Var[ @specialized A ] = STMVar[ Tx, A ]
-
-      val manifest               = Predef.manifest[ System ]
-      private[Confluent] val store  = storeFactory.open( "data" )
+   final class Impl private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
+   extends Confluent {
+      val manifest               = Predef.manifest[ Confluent ]
+      private[confluent] val store  = storeFactory.open( "data" )
 //      private val kStore         = storeFactory.open( "confluent" )
-      private[Confluent] val durable    = Durable( store ) : Durable
-      private[Confluent] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
+      private[confluent] val durable    = Durable( store ) : Durable
+      private[confluent] val persistent : ConfluentPersistentMap[ S ] = ConfluentPersistentMap[ S, Any ]( store )
 //      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
 
 //      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
@@ -975,12 +968,14 @@ object Confluent {
          }
       }
 
-      private[Confluent] lazy val reactionMap : ReactionMap[ S ] =
+      private[confluent] lazy val reactionMap : ReactionMap[ S ] =
          ReactionMap[ S, InMemory ]( inMem.step { implicit tx =>
             tx.newIntVar( tx.newID(), 0 )
          })( ctx => inMem.wrap( ctx.peer ))
 
-      private[Confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
+      override def toString = "Confluent"
+
+      private[confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val itx = tx.peer
          val lin  = versionLinear.get + 1
          versionLinear.set( lin )
@@ -991,7 +986,7 @@ object Confluent {
 //         new ID( newIDValue(), Path.empty )
 //      }
 
-      private[Confluent] def newIDValue()( implicit tx: S#Tx ) : Int = {
+      private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int = {
          implicit val itx = tx.peer
          val res = idCntVar.get + 1
 //         logConfig( "new   <" + id + ">" )
@@ -1000,27 +995,6 @@ object Confluent {
          store.put( _.writeInt( 0 ))( _.writeInt( res ))
          res
       }
-
-//      private[Confluent] def access[ A ]( id: Int, acc: S#Acc )
-//                                       ( implicit tx: S#Tx, reader: TxnReader[ S#Tx, S#Acc, A ]) : A = {
-//         sys.error( "TODO" )
-////
-////
-////         var best: Array[Byte]   = null
-////         var bestLen = 0
-////         val map = storage.getOrElse( id, Map.empty )
-////         map.foreach {
-////            case (path, arr) =>
-////               val len = path.zip( acc ).segmentLength({ case (a, b) => a == b }, 0 )
-////               if( len > bestLen && len == path.size ) {
-////                  best     = arr
-////                  bestLen  = len
-////               }
-////         }
-////         require( best != null, "No value for path " + acc )
-////         val in = new DataInput( best )
-////         (in, acc.drop( bestLen ))
-//      }
 
       def step[ A ]( fun: S#Tx => A ): A = {
          TxnExecutor.defaultAtomic { implicit itx =>
@@ -1061,4 +1035,19 @@ object Confluent {
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
    }
+}
+sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
+   final type ID                    = Confluent.ID
+   final type Tx                    = Confluent.Txn
+   final type Acc                   = Confluent.Path
+   final type Var[ @specialized A ] = STMVar[ Tx, A ]
+
+   private[confluent] def store : PersistentStore
+   private[confluent] def durable : Durable
+   private[confluent] def persistent : ConfluentPersistentMap[ Confluent ]
+   private[confluent] def newIDValue()( implicit tx: Tx ) : Int
+   private[confluent] def newVersionID( implicit tx: Tx ) : Long
+   private[confluent] def reactionMap : ReactionMap[ Confluent ]
+
+   def close() : Unit
 }

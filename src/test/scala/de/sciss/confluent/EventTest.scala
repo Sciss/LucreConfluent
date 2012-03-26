@@ -1,11 +1,10 @@
 package de.sciss.confluent
 
-import impl.Confluent
 import de.sciss.lucre.event.Bang
 
 object EventTest extends App {
    val system  = Confluent.tmp()
-   type S      = Confluent.System
+   type S      = Confluent
 
    implicit val whyOhWhy = Bang.serializer[ S ]
    val access = system.root { implicit tx => Bang[ S ]}

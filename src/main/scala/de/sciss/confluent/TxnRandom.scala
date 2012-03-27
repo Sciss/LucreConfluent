@@ -64,8 +64,8 @@ object TxnRandom {
    def apply[ S <: Sys[ S ]]( id: S#ID, seed: Long )( implicit tx: S#Tx ) : TxnRandom[ S#Tx ] =
       new SysImpl[ S#Tx ]( tx.newLongVar( id, initialScramble( seed )))
 
-   def wrap[ S <: Sys[ S ]]( peer: Var[ S#Tx, Long ]) : TxnRandom[ S#Tx ] =
-      new SysImpl[ S#Tx ]( peer )
+   def wrap[ Txn ]( peer: Var[ Txn, Long ]) : TxnRandom[ Txn ] =
+      new SysImpl[ Txn ]( peer )
 
    private sealed trait Impl[ Txn ] extends TxnRandom[ Txn ] {
       protected def refSet( seed: Long )( implicit tx: Txn ) : Unit

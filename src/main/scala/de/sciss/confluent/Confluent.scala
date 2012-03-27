@@ -407,10 +407,12 @@ object Confluent {
 //         }
       }
 
-      final private[Confluent] implicit lazy val durable: Durable#Tx = {
-         logConfig( "txn durable" )
-         system.durable.wrap( peer )
-      }
+      private[Confluent] implicit def durable: Durable#Tx
+
+//      final private[Confluent] implicit lazy val durable: Durable#Tx = {
+//         logConfig( "txn durable" )
+//         system.durable.wrap( peer )
+//      }
 
       final def newID() : S#ID = {
          val res = new ID( system.newIDValue()( this ), Path.empty )
@@ -706,7 +708,10 @@ object Confluent {
       }
    }
 
-   private final class TxnImpl( val system: S, val inputAccess: Path, val peer: InTxn ) extends Txn {
+   private final class TxnImpl( val system: S, private[Confluent] val durable: Durable#Tx,
+                                val peer: InTxn, val inputAccess: Path )
+   extends Txn {
+
       override def toString = "Txn" + inputAccess
 
       protected def flushOldTree() : Long = {
@@ -714,7 +719,7 @@ object Confluent {
          val (index, parentTerm) = inputAccess.splitIndex
          val tree       = readIndexTree( index.term )
          val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
-         val child      = tree.tree.insertChild( parent, childTerm )
+         val child      = tree.tree.insertChild( parent, childTerm )( durable )
          writeTreeVertex( tree, child )
          childTerm
       }
@@ -728,6 +733,11 @@ object Confluent {
    private final class RootTxn( val system: S, val peer: InTxn ) extends Txn {
       val inputAccess = Path.root
       override def toString = "RootTxn"
+
+      private[Confluent] implicit lazy val durable: Durable#Tx = {
+         logConfig( "txn durable" )
+         system.durable.wrap( peer )
+      }
 
       protected def flushOldTree() : Long = inputAccess.term
       protected def flushNewTree( level: Int ) : Long = sys.error( "Cannot meld in the root version" )
@@ -940,8 +950,6 @@ object Confluent {
       def read( in: DataInput ) : Long = in.readLong()
    }
 
-   private final class CachedIntVar()
-
    private object GlobalState {
       private val SER_VERSION = 0
 
@@ -1009,63 +1017,52 @@ object Confluent {
          root.get
       }
 
-      private val inMem : InMemory = InMemory()
-      private val versionRandom  = TxnRandom.plain( 0L )
-      private val versionLinear  = ScalaRef( 0 )
-      private val lastAccess     = ScalaRef( Path.root ) // XXX TODO dirty dirty
+//      private val inMem : InMemory = InMemory()
+      private val versionRandom  = TxnRandom.wrap( global.versionRandom )
+//      private val versionLinear  = ScalaRef( 0 )
+//      private val lastAccess     = ScalaRef( Path.root ) // XXX TODO dirty dirty
 
-      // XXX TODO should be persistent, e.g. use CachedIntVar again
-      private val idCntVar : ScalaRef[ Int ] = ScalaRef {
-         inMem.step { implicit tx =>
-            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
-         }
-      }
+//      private val idCntVar : ScalaRef[ Int ] = ScalaRef {
+//         inMem.step { implicit tx =>
+//            store.get[ Int ]( _.writeInt( 0 ))( _.readInt() ).getOrElse( 1 ) // 0 is the idCnt var itself !
+//         }
+//      }
 
-      private[confluent] lazy val reactionMap : ReactionMap[ S ] =
-         ReactionMap[ S, InMemory ]( inMem.step { implicit tx =>
-            tx.newIntVar( tx.newID(), 0 )
-         })( ctx => inMem.wrap( ctx.peer ))
+      private[confluent] /* lazy */ val reactionMap : ReactionMap[ S ] =
+         ReactionMap[ S, Durable ]( global.reactCnt )( _.durable )
 
       override def toString = "Confluent"
 
       private[confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
-         implicit val itx = tx.peer
-         val lin  = versionLinear.get + 1
-         versionLinear.set( lin )
+         implicit val dtx = tx.durable
+         val lin  = global.versionLinear.get + 1
+         global.versionLinear.set( lin )
          (versionRandom.nextInt().toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
       }
 
-//      private[Confluent] def newID()( implicit tx: S#Tx ) : ID = {
-//         new ID( newIDValue(), Path.empty )
-//      }
-
       private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int = {
-         implicit val itx = tx.peer
-         val res = idCntVar.get + 1
+         implicit val dtx = tx.durable
+         val res = global.idCnt.get + 1
 //         logConfig( "new   <" + id + ">" )
-         idCntVar.set( res )
-         // ... and persist ...
-         store.put( _.writeInt( 0 ))( _.writeInt( res ))
+         global.idCnt.set( res )
          res
       }
 
       def step[ A ]( fun: S#Tx => A ): A = {
          TxnExecutor.defaultAtomic { implicit itx =>
-            // XXX TODO
-            val last                   = lastAccess.get
+            implicit val dtx = durable.wrap( itx )
+            val last = global.lastAccess.get
             logConfig( "::::::: atomic - input access = " + last + " :::::::" )
-//            val (lastIndex, lastTerm)  = last.splitIndex
-//            val lastTree               = lastIndex.term
-            fun( new TxnImpl( this, last, itx ))
+            fun( new TxnImpl( this, dtx, itx, last ))
          }
       }
 
       // XXX TODO
       /* private[Confluent] */ def position_=( p: Path )( implicit tx: S#Tx ) {
-         lastAccess.set( p )( tx.peer )
+         global.lastAccess.set( p )( tx.durable )
       }
 
-      def position( implicit tx: S#Tx ) : Path = lastAccess.get( tx.peer )
+      def position( implicit tx: S#Tx ) : Path = global.lastAccess.get( tx.durable )
 
       def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )

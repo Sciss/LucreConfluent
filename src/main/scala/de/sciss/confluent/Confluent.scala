@@ -940,6 +940,56 @@ object Confluent {
       def read( in: DataInput ) : Long = in.readLong()
    }
 
+   private final class CachedIntVar()
+
+   private object GlobalState {
+      private val SER_VERSION = 0
+
+      implicit object PathSerializer extends TxnSerializer[ Durable#Tx, Durable#Acc, Path ] {
+         def write( v: Path, out: DataOutput ) {
+            v.write( out )
+         }
+
+         def read( in: DataInput, acc: Durable#Acc )( implicit tx: Durable#Tx ) : Path = {
+            implicit val m = PathMeasure
+            val sz         = in.readInt()
+            var tree       = FingerTree.empty( m )
+            var i = 0; while( i < sz ) {
+               tree :+= in.readLong()
+            i += 1 }
+            new Path( tree )
+         }
+      }
+
+      implicit object Serializer extends TxnSerializer[ Durable#Tx, Durable#Acc, GlobalState ] {
+         def write( v: GlobalState, out: DataOutput ) {
+            import v._
+            out.writeUnsignedByte( SER_VERSION )
+            idCnt.write( out )
+            reactCnt.write( out )
+            versionLinear.write( out )
+            versionRandom.write( out )
+            lastAccess.write( out )
+         }
+
+         def read( in: DataInput, acc: Durable#Acc )( implicit tx: Durable#Tx ) : GlobalState = {
+            val serVer        = in.readUnsignedByte()
+            require( serVer == SER_VERSION, "Incompatible serialized version. Found " + serVer + " but require " + SER_VERSION )
+            val idCnt         = tx.readCachedIntVar( in )
+            val reactCnt      = tx.readCachedIntVar( in )
+            val versionLinear = tx.readCachedIntVar( in )
+            val versionRandom = tx.readCachedLongVar( in )
+            val lastAccess    = tx.readCachedVar[ Path ]( in )
+            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess )
+         }
+      }
+   }
+   private final case class GlobalState(
+      idCnt: Durable#Var[ Int ], reactCnt: Durable#Var[ Int ],
+      versionLinear: Durable#Var[ Int ], versionRandom: Durable#Var[ Long ],
+      lastAccess: Durable#Var[ Path ]
+   )
+
    private final class System( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends Confluent {
       val manifest                        = Predef.manifest[ Confluent ]
@@ -947,8 +997,19 @@ object Confluent {
       private[confluent] val durable      = Durable( store ) : Durable
       private[confluent] val persistent   = PersistentMap[ S, Any ]( store )
 
-      private val inMem : InMemory = InMemory()
+      private val global = durable.step { implicit tx =>
+         val root = durable.root { implicit tx =>
+            val idCnt         = tx.newCachedIntVar( 0 )
+            val reactCnt      = tx.newCachedIntVar( 0 )
+            val versionLinear = tx.newCachedIntVar( 0 )
+            val versionRandom = tx.newCachedLongVar( 0L )
+            val lastAccess    = tx.newCachedVar[ Path ]( Path.root )( GlobalState.PathSerializer )
+            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess )
+         }
+         root.get
+      }
 
+      private val inMem : InMemory = InMemory()
       private val versionRandom  = TxnRandom.plain( 0L )
       private val versionLinear  = ScalaRef( 0 )
       private val lastAccess     = ScalaRef( Path.root ) // XXX TODO dirty dirty
@@ -1011,9 +1072,9 @@ object Confluent {
          logConfig( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
             implicit val tx = new RootTxn( this, itx )
-            val rootVar    = new RootVar[ A ]( 1, serializer )
+            val rootVar    = new RootVar[ A ]( 0, serializer )
             val rootPath   = tx.inputAccess
-            if( persistent.get[ Array[ Byte ]]( 1, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
+            if( persistent.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
                tx.newIndexTree( rootPath.term, 0 )
             }

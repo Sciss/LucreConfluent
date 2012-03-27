@@ -29,7 +29,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val n             = 0x800 // too slow -- 0x1000    // tree size ;  0xE0    // 0x4000 is the maximum acceptable speed
    val n2            = n >> 3    // 0x1000    // range query and nn
 
-   val rnd           = TxnRandom( 2L ) // ( 12L )
+   val rnd           = TxnRandom.plain( 2L ) // ( 12L )
 
    val cube          = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
 

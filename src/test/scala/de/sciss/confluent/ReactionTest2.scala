@@ -402,7 +402,7 @@ Usages:
          override def toString = "Collections.KEntry" + id
       }
 
-      val rnd = TxnRandom( 1L )
+      val rnd = TxnRandom.plain( 1L )
 
       def newRegion( access: Access )( implicit tx: S#Tx ) : regions.EventRegion = {
          import regions._

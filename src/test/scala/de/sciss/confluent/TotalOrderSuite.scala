@@ -73,13 +73,13 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                   }) */
                }
 //               val rnd   = new util.Random( RND_SEED )
-               val rnd   = TxnRandom( RND_SEED )
+               val rnd   = TxnRandom.plain( RND_SEED )
                // would be nice to test maximum possible number of labels
                // but we're running out of heap space ...
                val n     = NUM // 113042 // 3041
       //        to        = to.append() // ( 0 )
 
-               val set = system.step { implicit tx =>
+               /* val set = */ system.step { implicit tx =>
                   var e = access.get.root
                   var coll = Set[ TotalOrder.Set.Entry[ S ]]() // ( e )
                   for( i <- 1 until n ) {

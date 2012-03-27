@@ -33,7 +33,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
    val SEED          = 0L
 
 //   val rnd           = new util.Random( SEED )
-   val rnd           = TxnRandom( SEED )
+   val rnd           = TxnRandom.plain( SEED )
 
    // make sure we don't look tens of thousands of actions
    TemporalObjects.showLog = false

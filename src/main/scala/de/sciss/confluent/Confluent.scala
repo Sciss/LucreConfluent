@@ -940,9 +940,7 @@ object Confluent {
       def read( in: DataInput ) : Long = in.readLong()
    }
 
-//   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
-
-   final class System private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
+   private final class System( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends Confluent {
       val manifest                        = Predef.manifest[ Confluent ]
       private[confluent] val store        = storeFactory.open( "data" )
@@ -951,7 +949,7 @@ object Confluent {
 
       private val inMem : InMemory = InMemory()
 
-      private val versionRandom  = TxnRandom( 0L )
+      private val versionRandom  = TxnRandom.plain( 0L )
       private val versionLinear  = ScalaRef( 0 )
       private val lastAccess     = ScalaRef( Path.root ) // XXX TODO dirty dirty
 

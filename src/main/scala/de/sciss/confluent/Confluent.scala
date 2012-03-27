@@ -40,13 +40,13 @@ import java.io.File
 object Confluent {
    private type S = Confluent
 
-   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : Confluent = new Impl( storeFactory )
+   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : Confluent = new System( storeFactory )
 
    def tmp() : Confluent = {
       val dir = File.createTempFile( "confluent_", "db" )
       dir.delete()
 //      dir.mkdir()
-      new Impl( BerkeleyDB.factory( dir ))
+      new System( BerkeleyDB.factory( dir ))
    }
 
    final class ID private[Confluent]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
@@ -942,18 +942,12 @@ object Confluent {
 
 //   sealed trait Var[ @specialized A ] extends KSys.Var[ S, A ]
 
-   final class Impl private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
+   final class System private[Confluent]( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends Confluent {
-      val manifest               = Predef.manifest[ Confluent ]
-      private[confluent] val store  = storeFactory.open( "data" )
-//      private val kStore         = storeFactory.open( "confluent" )
-      private[confluent] val durable    = Durable( store ) : Durable
-      private[confluent] val persistent : PersistentMap[ S ] = PersistentMap[ S, Any ]( store )
-//      private val map               = ConfluentCacheMap[ S, Any ]( persistent )
-
-//      private val rootVar : S#Var[ Root ] = atomic { implicit tx =>
-//         var res = tx.makeVar
-//      }
+      val manifest                        = Predef.manifest[ Confluent ]
+      private[confluent] val store        = storeFactory.open( "data" )
+      private[confluent] val durable      = Durable( store ) : Durable
+      private[confluent] val persistent   = PersistentMap[ S, Any ]( store )
 
       private val inMem : InMemory = InMemory()
 

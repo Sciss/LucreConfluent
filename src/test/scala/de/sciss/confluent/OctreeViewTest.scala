@@ -45,7 +45,7 @@ object OctreeViewTest extends App with Runnable {
             Square( sz, sz, sz ), skipGap = 1 )
       }
       val model = new InteractiveSkipOctreePanel.Model2D[ S ](
-         cursor, access, { () => println( "(Consistency not checked)" )}
+         cursor, access, { () => println( "(Consistency not checked)" )} /*, nTimes = 2 */
       )
 
       val view = new InteractiveSkipOctreePanel( model )

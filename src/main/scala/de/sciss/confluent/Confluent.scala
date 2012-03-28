@@ -78,6 +78,18 @@ object Confluent {
       def dispose()( implicit tx: S#Tx ) {}
    }
 
+   private object IDOrdering extends Ordering[ S#ID ] {
+      def compare( a: S#ID, b: S#ID ) : Int = {
+         val aid = a.id
+         val bid = b.id
+         if( aid < bid ) -1 else if( aid > bid ) 1 else {
+            val ahash   = a.path.sum
+            val bhash   = b.path.sum
+            if( ahash < bhash ) -1 else if( ahash > bhash ) 1 else 0
+         }
+      }
+   }
+
    private object PathMeasure extends Measure[ Long, (Int, Long) ] {
       override def toString = "PathMeasure"
       val zero = (0, 0L)
@@ -1001,6 +1013,8 @@ object Confluent {
    private final class System( storeFactory: PersistentStoreFactory[ PersistentStore ])
    extends Confluent {
       val manifest                        = Predef.manifest[ Confluent ]
+      def idOrdering : Ordering[ S#ID ]   = IDOrdering
+
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
       private[confluent] val persistent   = PersistentMap[ S, Any ]( store )

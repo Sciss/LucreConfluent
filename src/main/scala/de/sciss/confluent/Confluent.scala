@@ -31,9 +31,9 @@ import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
 import collection.immutable.{IntMap, LongMap}
-import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Ref => ScalaRef, Txn => ScalaTxn}
+import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, InMemory, PersistentStore, Writer, TxnSerializer}
+import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, PersistentStore, Writer, TxnSerializer}
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 

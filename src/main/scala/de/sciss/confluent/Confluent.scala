@@ -647,8 +647,11 @@ object Confluent {
 
       final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
-      final def newIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] =
-         new IDMapImpl[ A ]( system.newIDValue()( this ))
+      final def newIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
+         val id   = system.newIDValue()( this )
+         val map  = PersistentMap.newLongMap[ Confluent ]( system.store )
+         new IDMapImpl[ A ]( id, map )
+      }
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
@@ -814,25 +817,41 @@ object Confluent {
       }
    }
 
-   private final class IDMapImpl[ A ]( id: Int )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   private final class IDMapImpl[ A ]( mapID: Int, map: PersistentMap[ Confluent, Long ])
+                                     ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
    extends IdentifierMap[ S#Tx, S#ID, A ] {
+      private val nid = mapID.toLong << 32
+
       def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
-         sys.error( "TODO" )
-      }
-      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
-         sys.error( "TODO" )
-      }
-      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
-      }
-      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
-         sys.error( "TODO" )
-      }
-      def remove( id: S#ID )( implicit tx: S#Tx ) {
-         sys.error( "TODO" )
+         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
+         map.getWithSuffix( key, id.path )( tx, ByteArraySerializer ).map { tup =>
+            val access  = tup._1
+            val arr     = tup._2
+            val in      = new DataInput( arr )
+            serializer.read( in, access )
+         }
       }
 
-      override def toString = "IdentifierMap<" + id + ">"
+      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
+         get( id ).getOrElse( default )
+      }
+
+      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
+         val key  = nid | (id.id.toLong & 0xFFFFFFFFL)
+         val out  = new DataOutput()
+         serializer.write( value, out )
+         val arr  = out.toByteArray
+         // XXX TODO -- id.path might be empty or change its term at the end of the commit?
+         map.put( key, id.path, arr )( tx, ByteArraySerializer )
+      }
+      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
+         get( id ).isDefined  // XXX TODO more efficient implementation
+      }
+      def remove( id: S#ID )( implicit tx: S#Tx ) {
+println( "WARNING: IDMap.remove : not yet implemented" )
+      }
+
+      override def toString = "IdentifierMap<" + mapID + ">"
    }
 
    private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {

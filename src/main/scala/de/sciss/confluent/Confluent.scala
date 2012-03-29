@@ -184,7 +184,7 @@ object Confluent {
          wrap( newHead +: right )
       }
 
-      private[Confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
+      private[confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
          val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
          } else {
@@ -803,20 +803,6 @@ object Confluent {
       override def toString = "Var(" + id + ")"
    }
 
-   private object ByteArraySerializer extends Serializer[ Array[ Byte ]] {
-      def write( v: Array[ Byte ], out: DataOutput ) {
-         out.writeInt( v.length )
-         out.write( v )
-      }
-
-      def read( in: DataInput ) : Array[ Byte ] = {
-         val sz   = in.readInt()
-         val v    = new Array[ Byte ]( sz )
-         in.read( v )
-         v
-      }
-   }
-
    private final class IDMapImpl[ A ]( mapID: Int, map: PersistentMap[ Confluent, Long ])
                                      ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
    extends IdentifierMap[ S#Tx, S#ID, A ] {
@@ -1060,7 +1046,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
-      private[confluent] val varMap   = PersistentMap.newIntMap[ S ]( store )
+      private[confluent] val varMap       = PersistentMap.newIntMap[ S ]( store )
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>

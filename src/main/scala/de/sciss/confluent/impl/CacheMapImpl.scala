@@ -30,7 +30,7 @@ import de.sciss.lucre.stm.{TxnSerializer, Serializer}
 import collection.immutable.LongMap
 import concurrent.stm.{TxnLocal, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.{DataOutput}
+import de.sciss.lucre.{DataInput, DataOutput}
 
 object CacheMapImpl {
    /**
@@ -78,22 +78,42 @@ object CacheMapImpl {
    private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 }
 
+/**
+ * A cache map puts an in-memory transaction local cache in front of a persistent store. Entries written
+ * during the transaction are held in this cache for fast retrieval. But the cache serves a second purpose:
+ * In the confluent system, the write paths are incomplete during the transaction, as it is not known in
+ * advance whether a meld forces a new index tree to be generated or not. In this case, the implementation
+ * needs to gather this information during the transaction, and when the flush is performed, the new
+ * terminal version is appended before writing the cached entries to the persistent store.
+ *
+ * @tparam S   the underlying system
+ * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
+ */
 trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    import CacheMapImpl._
 
-   private val markDirty   = TxnLocal( false )
-   private val cache       = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K ]]]])
+   private val markDirtyFlag  = TxnLocal( false )
+   private val cache          = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K ]]]])
 
    // ---- abstract ----
 
+//   /**
+//    * This is called when the transaction is about to be committed and the cache is actually dirty.
+//    * Implementations will typically generate a term value and then invoke `flushCache( term )`
+//    * which takes care of performing all writes
+//    *
+//    * @param tx   the transaction which is about to be completed
+//    */
+//   protected def flushCache()( implicit tx: S#Tx ) : Unit
+
    /**
-    * This is called when the transaction is about to be committed and the cache is actually dirty.
-    * Implementations will typically generate a term value and then invoke `flushCache( term )`
-    * which takes care of performing all writes
+    * This is called when the first dirty `put` operation in the current transaction is performed.
+    * Implementations will typically install a before-commit handler which eventually generates a
+    * term value and then invokes `flushCache( term )` which takes care of performing all writes.
     *
-    * @param tx   the transaction which is about to be completed
+    * @param tx   the transaction associated with the dirty cache.
     */
-   protected def flushCache()( implicit tx: S#Tx ) : Unit
+   protected def markDirty()( implicit tx: S#Tx ) : Unit
 
    /**
     * The persistent map to which the data is flushed or from which it is retrieved when not residing in cache.
@@ -109,16 +129,72 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
 
    // ---- implementation ----
 
+   /**
+    * Stores an entry in the cache for which 'only' a transactional serializer exists.
+    *
+    * If this is the first cache write for the current transaction, a before-commit handler is
+    * installed which will call into the abstract method `flushCache()`.
+    *
+    * @param key        key at which the entry will be stored
+    * @param path       write path when persisting
+    * @param value      value to be stored (entry)
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    */
    final protected def putCacheTxn[ A ]( key: K, path: S#Acc, value: A )
-                                       ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                                       ( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
       putCache( new TxnEntry( key, path, value ))
    }
 
+   /**
+    * Stores an entry in the cache for which a non-transactional serializer exists.
+    *
+    * If this is the first cache write for the current transaction, a before-commit handler is
+    * installed which will call into the abstract method `flushCache()`.
+    *
+    * @param key        key at which the entry will be stored
+    * @param path       write path when persisting
+    * @param value      value to be stored (entry)
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    */
    final protected def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )
-                                          ( implicit tx: S#Tx, ser: Serializer[ A ]) {
+                                          ( implicit tx: S#Tx, serializer: Serializer[ A ]) {
       putCache( new NonTxnEntry( key, path, value ))
    }
 
+   final protected def getCacheTxn[ A ]( key: K, path: S#Acc )
+                                       ( implicit tx: S#Tx,
+                                         serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
+      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map { e =>
+         e.value.asInstanceOf[ A ]
+      }).orElse({
+         persistent.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
+            val access  = tup._1
+            val arr     = tup._2
+            val in      = new DataInput( arr )
+            serializer.read( in, access )
+         }
+      }) // .getOrElse( sys.error( "No value for " + id ))
+   }
+
+   final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
+                                                                   serializer: Serializer[ A ]) : Option[ A ] = {
+      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
+         persistent.get[ A ]( key, path )
+      ) // .getOrElse( sys.error( "No value for " + id ))
+   }
+
+   /**
+    * Removes an entry from the cache, and only the cache. This will not affect any
+    * values also persisted to `persistent`! If the cache does not contain an entry
+    * at the given `key`, this method simply returns.
+    *
+    * @param key        key at which the entry is stored
+    * @param tx         the current transaction
+    */
    final protected def removeCache( key: K )( implicit tx: S#Tx ) {
       cache.transform( _ - key )( tx.peer )
    }
@@ -131,10 +207,19 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
          mapMap + ((e.key, mapNew))
       })
 
-      if( !markDirty.swap( true )) ScalaTxn.beforeCommit( _ => flushCache() )
+      if( !markDirtyFlag.swap( true )) markDirty() // ScalaTxn.beforeCommit( _ => flushCache() )
    }
 
-   final protected def flushCache( term: Long )( implicit tx: S#Tx ) {
+   /**
+    * This method should be invoked from the implementations flush hook after it has
+    * determined the terminal version at which the entries in the cache are written
+    * to the persistent store. If this method is not called, the cache will just
+    * vanish and not be written out to the `persistent` store.
+    *
+    * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
+    * @param tx      the current transaction (should be in commit or right-before commit phase)
+    */
+   final def flushCache( term: Long )( implicit tx: S#Tx ) {
       val p = persistent
       cache.get( tx.peer ).foreach { tup1 =>
          val map  = tup1._2

@@ -985,7 +985,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             val idCnt         = tx.newCachedIntVar( 0 )
             val reactCnt      = tx.newCachedIntVar( 0 )
             val versionLinear = tx.newCachedIntVar( 0 )
-            val versionRandom = tx.newCachedLongVar( 0L )
+            val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
             val lastAccess    = tx.newCachedVar[ Path ]( Path.root )( GlobalState.PathSerializer )
             GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess )
          }
@@ -1012,7 +1012,11 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          implicit val dtx = tx.durable
          val lin  = global.versionLinear.get + 1
          global.versionLinear.set( lin )
-         (versionRandom.nextInt().toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
+         var rnd = 0
+         do {
+            rnd = versionRandom.nextInt()
+         } while( rnd == 0 )
+         (rnd.toLong << 32) | (lin.toLong & 0xFFFFFFFFL)
       }
 
       private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int = {

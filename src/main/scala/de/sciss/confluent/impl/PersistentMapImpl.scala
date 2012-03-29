@@ -47,6 +47,9 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
 
    final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       val (index, term) = path.splitIndex
+//if( key == 0 ) {
+//   println( "::::: put. write path = index " + index + "; term = " + term + "; sum = " + index.sum )
+//}
       // first we need to see if anything has already been written to the index of the write path
       store.flatGet { out =>
          writeKey( key, out ) // out.writeInt( key )
@@ -72,6 +75,9 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
             putFullMap[ A ]( key, index, term, value, prevTerm, prevValue )
          // if there is an existing map, simply add the new value to it
          case Some( EntryMap( m )) =>
+//if( key == 0 ) {
+//   println( "::::: adding to existing map " + m )
+//}
             m.add( term, value )
          // if there is no previous entry...
          case _ =>
@@ -124,6 +130,9 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
       // create new map with previous value
       val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
+//if( key == 0 ) {
+//   println( "::::: full map. index = " + index + "; term = " + term + "; sum = " + index.sum + "; m = " + m )
+//}
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
@@ -137,12 +146,21 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
 
    // stores the prefixes
    private def putPartials( key: K, index: S#Acc )( implicit tx: S#Tx ) {
-      Hashing.foreachPrefix( index, hash => store.contains { out =>
-         writeKey( key, out ) // out.writeInt( key )
-         out.writeLong( hash )
+      Hashing.foreachPrefix( index, hash => {
+         val res = store.contains { out =>
+            writeKey( key, out ) // out.writeInt( key )
+            out.writeLong( hash )
+         }
+//if( key == 0 ) {
+//   println( "::::: partial; test contains " + hash + "; index = " + index + "; result = " + res )
+//}
+         res
       }) {
          // for each key which is the partial sum, we store preSum which is the longest prefix of \tau' in \Pi
          case (hash, preSum) => store.put { out =>
+//if( key == 0 ) {
+//   println( "::::: partial; store hash = " + hash + "; preSum = " + preSum )
+//}
             writeKey( key, out ) // out.writeInt( key )
             out.writeLong( hash )
          } { out =>
@@ -159,6 +177,9 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
       } { out =>
+//if( key == 0 ) {
+//   println( "::::: full single; index = " + index + "; term = " + term + "; sum = " + index.sum )
+//}
          out.writeUnsignedByte( 1 ) // aka entry single
          out.writeLong( term )
          ser.write( value, out )

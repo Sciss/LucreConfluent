@@ -31,7 +31,6 @@ import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
-import collection.immutable.IntMap
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.impl.BerkeleyDB
@@ -316,9 +315,6 @@ object Confluent {
       }
    }
 
-   private val emptyIntMapVal       = IntMap.empty[ Any ]
-//   private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
-
    private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
       def requiresNewTree : Boolean = highestTrees.size > 1
       def outputLevel : Int = if( requiresNewTree ) highestLevel + 1 else highestLevel
@@ -369,7 +365,7 @@ object Confluent {
          ()
       }
 
-      final protected def emptyCache : Map[ Int, _ ] = emptyIntMapVal
+      final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
 
       private val meld  = TxnLocal( emptyMeldInfo )
 
@@ -724,19 +720,16 @@ object Confluent {
       override def toString = "Var(" + id + ")"
    }
 
-   private final class IDMapImpl[ A ]( mapID: Int, map: PersistentMap[ Confluent, Long ])
+   private final class IDMapImpl[ A ]( mapID: Int, protected val persistent: PersistentMap[ Confluent, Long ])
                                      ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends IdentifierMap[ S#Tx, S#ID, A ] {
+   extends IdentifierMap[ S#Tx, S#ID, A ] with CacheMapImpl[ Confluent, Long ] {
       private val nid = mapID.toLong << 32
+
+      protected def emptyCache : Map[ Long, _ ] = CacheMapImpl.emptyLongMapVal
 
       def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
          val key = nid | (id.id.toLong & 0xFFFFFFFFL)
-         map.getWithSuffix( key, id.path )( tx, ByteArraySerializer ).map { tup =>
-            val access  = tup._1
-            val arr     = tup._2
-            val in      = new DataInput( arr )
-            serializer.read( in, access )
-         }
+         getCacheTxn[ A ]( key, id.path )
       }
 
       def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
@@ -744,12 +737,8 @@ object Confluent {
       }
 
       def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
-         val key  = nid | (id.id.toLong & 0xFFFFFFFFL)
-         val out  = new DataOutput()
-         serializer.write( value, out )
-         val arr  = out.toByteArray
-         // XXX TODO -- id.path might be empty or change its term at the end of the commit?
-         map.put( key, id.path, arr )( tx, ByteArraySerializer )
+         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
+         putCacheTxn[ A ]( key, id.path, value )
       }
       def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
          get( id ).isDefined  // XXX TODO more efficient implementation

@@ -27,10 +27,10 @@ package de.sciss.confluent
 package impl
 
 import de.sciss.lucre.stm.{TxnSerializer, Serializer}
-import collection.immutable.LongMap
 import concurrent.stm.TxnLocal
 import TemporalObjects.logConfig
 import de.sciss.lucre.{DataInput, DataOutput}
+import collection.immutable.{IntMap, LongMap}
 
 object CacheMapImpl {
    /**
@@ -74,8 +74,10 @@ object CacheMapImpl {
       }
    }
 
-   private val emptyLongMapVal      = LongMap.empty[ Any ]
-   private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
+   val emptyIntMapVal       = IntMap.empty[ Any ]
+   def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
+   val emptyLongMapVal      = LongMap.empty[ Any ]
+   def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
 }
 
 /**

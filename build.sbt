@@ -25,5 +25,9 @@ retrieveManaged := true
 
 scalacOptions ++= Seq( "-deprecation", "-unchecked", "-Xelide-below", "INFO" ) // elide debug logging!
 
+testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and full stack traces
+
+parallelExecution in Test := false
+
 initialCommands in console := """import de.sciss.confluent._
 """

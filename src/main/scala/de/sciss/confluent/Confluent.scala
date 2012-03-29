@@ -326,14 +326,14 @@ object Confluent {
     */
    private sealed trait CacheEntry {
       def id: S#ID
-      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) : Unit
       def value: Any
    }
    private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          store.put( id.id, pathOut, value )
@@ -344,7 +344,7 @@ object Confluent {
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -399,7 +399,7 @@ object Confluent {
          val meldInfo      = meld.get( peer )
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
-         val persistent    = system.persistent
+         val persistent    = system.varMap
          val outTerm = if( newTree ) {
             flushNewTree( meldInfo.outputLevel )
          } else {
@@ -494,7 +494,7 @@ object Confluent {
          val id1  = id.id
          val path = id.path
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
-            system.persistent.get[ A ]( id1, path )( this, ser )
+            system.varMap.get[ A ]( id1, path )( this, ser )
          ).getOrElse(
             sys.error( "No value for " + id )
          )
@@ -507,7 +507,7 @@ object Confluent {
          cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { e =>
             e.value.asInstanceOf[ A ]
          }).orElse({
-            system.persistent.getWithSuffix[ Array[ Byte ]]( id1, path )( this, ByteArraySerializer ).map { tup =>
+            system.varMap.getWithSuffix[ Array[ Byte ]]( id1, path )( this, ByteArraySerializer ).map { tup =>
                val access  = tup._1
                val arr     = tup._2
                val in      = new DataInput( arr )
@@ -1041,7 +1041,7 @@ object Confluent {
 
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
-      private[confluent] val persistent   = VarMap[ S, Any ]( store )
+      private[confluent] val varMap   = PersistentMap.newIntMap[ S ]( store )
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1109,7 +1109,7 @@ object Confluent {
             implicit val tx = new RootTxn( this, itx )
             val rootVar    = new RootVar[ A ]( 0, serializer )
             val rootPath   = tx.inputAccess
-            if( persistent.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
+            if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
                tx.newIndexTree( rootPath.term, 0 )
             }
@@ -1135,7 +1135,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 
    private[confluent] def store : PersistentStore
    private[confluent] def durable : Durable
-   private[confluent] def persistent : VarMap[ Confluent ]
+   private[confluent] def varMap : PersistentMap[ Confluent, Int ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

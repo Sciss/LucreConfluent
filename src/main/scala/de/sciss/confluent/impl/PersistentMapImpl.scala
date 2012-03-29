@@ -28,6 +28,7 @@ package impl
 
 import annotation.switch
 import de.sciss.lucre.stm.{TxnSerializer, Serializer, PersistentStore}
+import de.sciss.lucre.DataOutput
 
 object PersistentMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], +A ]
@@ -42,11 +43,13 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
 
 //   override def toString = "VarMap(" + store + ")"
 
-   final def put[ @specialized A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+   protected def writeKey( key: K, out: DataOutput ) : Unit
+
+   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       val (index, term) = path.splitIndex
       // first we need to see if anything has already been written to the index of the write path
       store.flatGet { out =>
-         out.writeInt( id )
+         writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
       } { in =>
          (in.readUnsignedByte(): @switch) match {
@@ -66,7 +69,7 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
          // if there is a single entry, construct a new ancestor.map with the
          // entry's value taken as root value
          case Some( EntrySingle( prevTerm, prevValue )) =>
-            putFullMap[ A ]( id, index, term, value, prevTerm, prevValue )
+            putFullMap[ A ]( key, index, term, value, prevTerm, prevValue )
          // if there is an existing map, simply add the new value to it
          case Some( EntryMap( m )) =>
             m.add( term, value )
@@ -78,8 +81,8 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
             // re-written in the tree root, hence path.suffix == <term, term>)
             val indexTerm = index.term
             if( term == indexTerm ) {
-               putPartials( id, index )
-               putFullSingle[ A ]( id, index, term, value )
+               putPartials( key, index )
+               putFullSingle[ A ]( key, index, term, value )
                // otherwise, we must read the root value for the entity, and then
                // construct a new map containing that root value along with the
                // new value
@@ -96,25 +99,25 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
                // we may forbid this behaviour in future versions, but for now let's
                // be generous and allow it, by checking _if_ a previous value exists.
                // if not -- go again for the full single entry...
-               //                  val prevValue = get[ A ]( id, path ).getOrElse(
-               //                     sys.error( path.mkString( "Expected previous value not found for <" + id + " @ ", ",", ">" ))
+               //                  val prevValue = get[ A ]( key, path ).getOrElse(
+               //                     sys.error( path.mkString( "Expected previous value not found for <" + key + " @ ", ",", ">" ))
                //                  )
-               //                  putPartials( id, index )
-               //                  putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
-               get[ A ]( id, path ) match {
+               //                  putPartials( key, index )
+               //                  putFullMap[ A ]( key, index, term, value, indexTerm, prevValue )
+               get[ A ]( key, path ) match {
                   case Some( prevValue ) =>
-                     putPartials( id, index )
-                     putFullMap[ A ]( id, index, term, value, indexTerm, prevValue )
+                     putPartials( key, index )
+                     putFullMap[ A ]( key, index, term, value, indexTerm, prevValue )
 
                   case _ =>
-                     putPartials( id, index )
-                     putFullSingle[ A ]( id, index, term, value )
+                     putPartials( key, index )
+                     putFullSingle[ A ]( key, index, term, value )
                }
             }
       }
    }
 
-   private def putFullMap[ @specialized A ]( id: Int, index: S#Acc, term: Long, value: A, prevTerm: Long,
+   private def putFullMap[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
@@ -122,7 +125,7 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
       val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
       store.put { out =>
-         out.writeInt( id )
+         writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
       } { out =>
          out.writeUnsignedByte( 2 ) // aka map entry
@@ -133,15 +136,15 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
    }
 
    // stores the prefixes
-   private def putPartials( id: Int, index: S#Acc )( implicit tx: S#Tx ) {
-      Hashing.foreachPrefix( index, key => store.contains { out =>
-         out.writeInt( id )
-         out.writeLong( key )
+   private def putPartials( key: K, index: S#Acc )( implicit tx: S#Tx ) {
+      Hashing.foreachPrefix( index, hash => store.contains { out =>
+         writeKey( key, out ) // out.writeInt( key )
+         out.writeLong( hash )
       }) {
          // for each key which is the partial sum, we store preSum which is the longest prefix of \tau' in \Pi
-         case (key, preSum) => store.put { out =>
-            out.writeInt( id )
-            out.writeLong( key )
+         case (hash, preSum) => store.put { out =>
+            writeKey( key, out ) // out.writeInt( key )
+            out.writeLong( hash )
          } { out =>
             out.writeUnsignedByte( 0 ) // aka entry pre
             out.writeLong( preSum )
@@ -150,10 +153,10 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
    }
 
    // store the full value at the full hash (path.sum)
-   private def putFullSingle[ @specialized A ]( id: Int, index: S#Acc, term: Long, value: A )
+   private def putFullSingle[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A )
                                               ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
       store.put { out =>
-         out.writeInt( id )
+         writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
       } { out =>
          out.writeUnsignedByte( 1 ) // aka entry single
@@ -162,26 +165,26 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
       }
    }
 
-   final def get[ @specialized A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+   final def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
       val (maxIndex, maxTerm) = path.splitIndex
-      getWithPrefixLen[ A, A ]( id, maxIndex, maxTerm )( (_, _, value) => value )
+      getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (_, _, value) => value )
    }
 
-   final def getWithSuffix[ @specialized A ]( id: Int, path: S#Acc )
+   final def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
                                             ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
       val (maxIndex, maxTerm) = path.splitIndex
-      getWithPrefixLen[ A, (S#Acc, A) ]( id, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
+      getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
       //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
          (writeTerm +: path.drop( preLen ), value)
       )
    }
 
-   private def getWithPrefixLen[ @specialized A, B ]( id: Int, maxIndex: S#Acc, maxTerm: Long )
+   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (Int, Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
-      val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
-         out.writeInt( id )
-         out.writeLong( key )
+      val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>
+         writeKey( key, out ) // out.writeInt( key )
+         out.writeLong( hash )
       })
       val (index, term) = if( preLen == maxIndex.size ) {
          // maximum prefix lies in last tree
@@ -192,7 +195,7 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
       }
       val preSum = index.sum
       store.flatGet { out =>
-         out.writeInt( id )
+         writeKey( key, out ) // out.writeInt( key )
          out.writeLong( preSum )
       } { in =>
          (in.readUnsignedByte(): @switch) match {
@@ -200,7 +203,7 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
                val hash = in.readLong()
                //                  EntryPre[ S ]( hash )
                val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-               getWithPrefixLen( id, fullIndex, fullTerm )( fun )
+               getWithPrefixLen( key, fullIndex, fullTerm )( fun )
 
             case 1 =>
                // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
@@ -231,4 +234,10 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
          }
       }
    }
+}
+final class IntMapImpl[ S <: KSys[ S ]]( protected val store: PersistentStore ) extends PersistentMapImpl[ S, Int ] {
+   protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
+}
+final class LongMapImpl[ S <: KSys[ S ]]( protected val store: PersistentStore ) extends PersistentMapImpl[ S, Long ] {
+   protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

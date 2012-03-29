@@ -25,8 +25,16 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.Serializer
+import de.sciss.lucre.stm.{Sys, PersistentStore, Serializer}
+import impl.{LongMapImpl, IntMapImpl}
 
+object PersistentMap {
+   def newIntMap[ S <: KSys[ S ]]( store: PersistentStore ) : PersistentMap[ S, Int ] =
+      new IntMapImpl[ S ]( store )
+
+   def newLongMap[ S <: KSys[ S ]]( store: PersistentStore ) : PersistentMap[ S, Long ] =
+      new LongMapImpl[ S ]( store )
+}
 /**
  * Interface for a confluently persistent storing key value map. Keys (type `K`) might
  * be single object identifiers (as the variable storage case), or combined keys
@@ -46,14 +54,14 @@ trait PersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     * an appropriate format (e.g. a byte array) before calling into `put`. In that case
     * the wrapping structure must be de-serialized after calling `get`.
     *
-    * @param id         the identifier for the object
+    * @param key        the identifier for the object
     * @param path       the path through which the object has been accessed (the version at which it is read)
     * @param value      the value to store
     * @param tx         the transaction within which the access is performed
     * @param serializer the serializer used to store the entity's values
     * @tparam A         the type of values stored with the entity
     */
-   def put[ @specialized A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Unit
+   def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Unit
 
    /**
     * Finds the most recent value for an entity `id` with respect to version `path`.
@@ -65,20 +73,20 @@ trait PersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     * an appropriate format (e.g. a byte array) before calling into `put`. In that case
     * the wrapping structure must be de-serialized after calling `get`.
     *
-    * @param id         the identifier for the object
+    * @param key        the identifier for the object
     * @param path       the path through which the object has been accessed (the version at which it is read)
     * @param tx         the transaction within which the access is performed
     * @param serializer the serializer used to store the entity's values
     * @tparam A         the type of values stored with the entity
     * @return           `None` if no value was found, otherwise a `Some` of that value.
     */
-   def get[ @specialized A ]( id: Int, path: S#Acc )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ A ]
+   def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ A ]
 
    /**
     * Finds the most recent value for an entity `id` with respect to version `path`. If a value is found,
     * it is return along with a suffix suitable for identifier path actualisation.
     *
-    * @param id         the identifier for the object
+    * @param key        the identifier for the object
     * @param path       the path through which the object has been accessed (the version at which it is read)
     * @param tx         the transaction within which the access is performed
     * @param serializer the serializer used to store the entity's values
@@ -88,6 +96,6 @@ trait PersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     *                   value was found. However, the suffix overlaps the prefix in that it begins with the
     *                   tree entering/exiting tuple at which the value was found.
     */
-   def getWithSuffix[ @specialized A ]( id: Int, path: S#Acc )
+   def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
                                       ( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ (S#Acc, A) ]
 }

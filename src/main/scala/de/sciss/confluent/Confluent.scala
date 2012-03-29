@@ -36,6 +36,7 @@ import TemporalObjects.logConfig
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, PersistentStore, Writer, TxnSerializer}
+import collection.immutable.{IndexedSeq => IIdxSeq}
 
 object Confluent {
    private type S = Confluent
@@ -354,15 +355,26 @@ object Confluent {
       private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
 
       private[Confluent] def removeFromCache( id: S#ID ) : Unit
+      private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _ ]) : Unit
 
       private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ]
    }
 
    private sealed trait TxnImpl extends Txn with CacheMapImpl[ Confluent, Int ] {
-      final private def markDirty() {
+      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _ ]]] = TxnLocal( initialValue = { implicit itx =>
          logConfig( "....... txn dirty ......." )
-         ScalaTxn.beforeCommit( _ => flush() )( peer )
-         ()
+         ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
+         IIdxSeq.empty
+      })
+
+      private val markDirtyFlag = TxnLocal( false )
+
+      final private def markDirty() {
+         if( !markDirtyFlag.swap( true )( peer )) addDirtyMap( this )
+      }
+
+      final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _ ]) {
+         dirtyMaps.transform( _ :+ map )( peer )
       }
 
       final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
@@ -374,7 +386,7 @@ object Confluent {
 
       final protected def  persistent = system.varMap
 
-      private def flush() {
+      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _ ]]) {
          val meldInfo      = meld.get( peer )
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
@@ -385,7 +397,7 @@ object Confluent {
          }
          logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
          system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
-         flushCache( outTerm )( this )
+         maps.foreach( _.flushCache( outTerm )( this ))
       }
 
       final def newID() : S#ID = {
@@ -725,6 +737,12 @@ object Confluent {
    extends IdentifierMap[ S#Tx, S#ID, A ] with CacheMapImpl[ Confluent, Long ] {
       private val nid = mapID.toLong << 32
 
+      private val markDirtyFlag = TxnLocal( false )
+
+      private def markDirty()( implicit tx: S#Tx ) {
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyMap( this )
+      }
+
       protected def emptyCache : Map[ Long, _ ] = CacheMapImpl.emptyLongMapVal
 
       def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
@@ -739,12 +757,16 @@ object Confluent {
       def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
          val key = nid | (id.id.toLong & 0xFFFFFFFFL)
          putCacheTxn[ A ]( key, id.path, value )
+         markDirty()
       }
+
       def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
          get( id ).isDefined  // XXX TODO more efficient implementation
       }
+
       def remove( id: S#ID )( implicit tx: S#Tx ) {
 println( "WARNING: IDMap.remove : not yet implemented" )
+         markDirty()
       }
 
       override def toString = "IdentifierMap<" + mapID + ">"

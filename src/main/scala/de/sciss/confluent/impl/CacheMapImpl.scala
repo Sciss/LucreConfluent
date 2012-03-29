@@ -28,7 +28,7 @@ package impl
 
 import de.sciss.lucre.stm.{TxnSerializer, Serializer}
 import collection.immutable.LongMap
-import concurrent.stm.{TxnLocal, Txn => ScalaTxn}
+import concurrent.stm.TxnLocal
 import TemporalObjects.logConfig
 import de.sciss.lucre.{DataInput, DataOutput}
 
@@ -165,6 +165,20 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
       putCache( new NonTxnEntry( key, path, value ))
    }
 
+   /**
+    * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
+    * a transactional serializer exists.
+    *
+    * If no value is found for the current path, this will try to read the most recent entry along the path.
+    *
+    * @param key        key at which the entry is stored
+    * @param path       access path for the read
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+    *                   neither in the cache nor in the persistent store.
+    */
    final protected def getCacheTxn[ A ]( key: K, path: S#Acc )
                                        ( implicit tx: S#Tx,
                                          serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
@@ -180,6 +194,20 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
       }) // .getOrElse( sys.error( "No value for " + id ))
    }
 
+   /**
+    * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
+    * non-transactional serializer exists.
+    *
+    * If no value is found for the current path, this will try to read the most recent entry along the path.
+    *
+    * @param key        key at which the entry is stored
+    * @param path       access path for the read
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+    *                   neither in the cache nor in the persistent store.
+    */
    final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
                                                                    serializer: Serializer[ A ]) : Option[ A ] = {
       cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(

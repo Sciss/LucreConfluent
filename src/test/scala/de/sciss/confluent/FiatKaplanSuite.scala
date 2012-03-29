@@ -209,7 +209,7 @@ class  FiatKaplanSuite extends FunSpec with GivenWhenThen {
             next.write( out )
          }
 
-         override def toString = "Node(" + name + ", " + id + ")"
+         override def toString() = "Node(" + name + ", " + id + ")"
       }
 
       def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {

@@ -92,7 +92,7 @@ object CacheMapImpl {
 trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    import CacheMapImpl._
 
-   private val markDirtyFlag  = TxnLocal( false )
+//   private val markDirtyFlag  = TxnLocal( false )
    private val cache          = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K ]]]])
 
    // ---- abstract ----
@@ -106,14 +106,14 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
 //    */
 //   protected def flushCache()( implicit tx: S#Tx ) : Unit
 
-   /**
-    * This is called when the first dirty `put` operation in the current transaction is performed.
-    * Implementations will typically install a before-commit handler which eventually generates a
-    * term value and then invokes `flushCache( term )` which takes care of performing all writes.
-    *
-    * @param tx   the transaction associated with the dirty cache.
-    */
-   protected def markDirty()( implicit tx: S#Tx ) : Unit
+//   /**
+//    * This is called when the first dirty `put` operation in the current transaction is performed.
+//    * Implementations will typically install a before-commit handler which eventually generates a
+//    * term value and then invokes `flushCache( term )` which takes care of performing all writes.
+//    *
+//    * @param tx   the transaction associated with the dirty cache.
+//    */
+//   protected def markDirty()( implicit tx: S#Tx ) : Unit
 
    /**
     * The persistent map to which the data is flushed or from which it is retrieved when not residing in cache.
@@ -132,8 +132,8 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    /**
     * Stores an entry in the cache for which 'only' a transactional serializer exists.
     *
-    * If this is the first cache write for the current transaction, a before-commit handler is
-    * installed which will call into the abstract method `flushCache()`.
+    * Note that the caller is responsible for monitoring this call, and if necessary installing
+    * a before-commit handler which will call into the abstract method `flushCache()`.
     *
     * @param key        key at which the entry will be stored
     * @param path       write path when persisting
@@ -150,8 +150,8 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    /**
     * Stores an entry in the cache for which a non-transactional serializer exists.
     *
-    * If this is the first cache write for the current transaction, a before-commit handler is
-    * installed which will call into the abstract method `flushCache()`.
+    * Note that the caller is responsible for monitoring this call, and if necessary installing
+    * a before-commit handler which will call into the abstract method `flushCache()`.
     *
     * @param key        key at which the entry will be stored
     * @param path       write path when persisting
@@ -235,7 +235,7 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
          mapMap + ((e.key, mapNew))
       })
 
-      if( !markDirtyFlag.swap( true )) markDirty() // ScalaTxn.beforeCommit( _ => flushCache() )
+//      if( !markDirtyFlag.swap( true )) markDirty() // ScalaTxn.beforeCommit( _ => flushCache() )
    }
 
    /**

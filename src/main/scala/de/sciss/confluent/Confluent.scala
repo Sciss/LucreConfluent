@@ -25,12 +25,13 @@
 
 package de.sciss.confluent
 
+import impl.CacheMapImpl
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
-import collection.immutable.{IntMap, LongMap}
+import collection.immutable.IntMap
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.impl.BerkeleyDB
@@ -315,49 +316,8 @@ object Confluent {
       }
    }
 
-   /**
-    * Instances of `CacheEntry` are stored for each variable write in a transaction. They
-    * are flushed at the commit to the persistent store. There are two sub types, a
-    * transactional and a non-transactional one. A non-transactional cache entry can deserialize
-    * the value without transactional context, e.g. this is true for all primitive types.
-    * A transactional entry is backed by a `TxnSerializer`. To be saved in the store which uses
-    * a sub system (`Durable`), serialization is a two-step process, using an intermediate
-    * binary representation.
-    */
-   private sealed trait CacheEntry {
-      def id: S#ID
-      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) : Unit
-      def value: Any
-   }
-   private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
-   extends CacheEntry {
-      override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
-
-      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) {
-         val pathOut = id.path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
-         store.put( id.id, pathOut, value )
-      }
-   }
-   private final class TxnCacheEntry[ A ]( val id: S#ID, val value: A )
-                                         ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends CacheEntry {
-      override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
-
-      def flush( outTerm: Long, store: PersistentMap[ S, Int ])( implicit tx: S#Tx ) {
-         val pathOut = id.path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
-         val out     = new DataOutput()
-         serializer.write( value, out )
-         val arr     = out.toByteArray
-         store.put( id.id, pathOut, arr )( tx, ByteArraySerializer )
-      }
-   }
-
-   private val emptyLongMapVal      = LongMap.empty[ Any ]
-   private def emptyLongMap[ T ]    = emptyLongMapVal.asInstanceOf[ LongMap[ T ]]
    private val emptyIntMapVal       = IntMap.empty[ Any ]
-   private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
+//   private def emptyIntMap[ T ]     = emptyIntMapVal.asInstanceOf[ IntMap[ T ]]
 
    private final case class MeldInfo( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
       def requiresNewTree : Boolean = highestTrees.size > 1
@@ -381,25 +341,47 @@ object Confluent {
    private val emptyMeldInfo = MeldInfo( -1, Set.empty )
 
    sealed trait Txn extends KSys.Txn[ S ] {
-      private val cache = TxnLocal( emptyIntMap[ LongMap[ CacheEntry ]])
-//private val writes = TxnLocal( IIdxSeq.empty[ CacheEntry ])
-      private val markDirty = TxnLocal( init = {
-//         logConfig( Console.CYAN + "txn dirty" + Console.RESET )
+      private[Confluent] implicit def durable: Durable#Tx
+
+      private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
+                                             term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int)
+      private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) : Unit
+      private[Confluent] def readTreeVertexLevel( term: Long ) : Int
+      private[Confluent] def readIndexTree( term: Long ) : IndexTree
+      private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree
+
+      private[Confluent] def addInputVersion( path: S#Acc ) : Unit
+
+      private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Unit
+      private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) : Unit
+      private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A
+      private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
+
+      private[Confluent] def removeFromCache( id: S#ID ) : Unit
+
+      private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ]
+   }
+
+   private sealed trait TxnImpl extends Txn with CacheMapImpl[ Confluent, Int ] {
+      final private def markDirty() {
          logConfig( "....... txn dirty ......." )
          ScalaTxn.beforeCommit( _ => flush() )( peer )
          ()
-      })
+      }
+
+      final protected def emptyCache : Map[ Int, _ ] = emptyIntMapVal
+
       private val meld  = TxnLocal( emptyMeldInfo )
-//      @volatile var inFlush = false
 
       protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
+
+      final protected def  persistent = system.varMap
 
       private def flush() {
          val meldInfo      = meld.get( peer )
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
-         val persistent    = system.varMap
          val outTerm = if( newTree ) {
             flushNewTree( meldInfo.outputLevel )
          } else {
@@ -407,24 +389,8 @@ object Confluent {
          }
          logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
          system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
-         cache.get( peer ).foreach { tup1 =>
-            val map  = tup1._2
-            map.foreach { tup2 =>
-               val e    = tup2._2
-               e.flush( outTerm, persistent )( this )
-            }
-         }
-//         writes.get( peer ).foreach { e =>
-//            e.flush( outTerm, persistent )( this )
-//         }
+         flushCache( outTerm )( this )
       }
-
-      private[Confluent] implicit def durable: Durable#Tx
-
-//      final private[Confluent] implicit lazy val durable: Durable#Tx = {
-//         logConfig( "txn durable" )
-//         system.durable.wrap( peer )
-//      }
 
       final def newID() : S#ID = {
          val res = new ID( system.newIDValue()( this ), Path.empty )
@@ -491,68 +457,47 @@ object Confluent {
 
       final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
          logConfig( "txn get " + id )
-         val id1  = id.id
-         val path = id.path
-         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
-            system.varMap.get[ A ]( id1, path )( this, ser )
-         ).getOrElse(
-            sys.error( "No value for " + id )
-         )
+         getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
          logConfig( "txn get' " + id )
-         val id1  = id.id
-         val path = id.path
-         cache.get( peer ).get( id1 ).flatMap( _.get( path.sum ).map { e =>
-            e.value.asInstanceOf[ A ]
-         }).orElse({
-            system.varMap.getWithSuffix[ Array[ Byte ]]( id1, path )( this, ByteArraySerializer ).map { tup =>
-               val access  = tup._1
-               val arr     = tup._2
-               val in      = new DataInput( arr )
-               ser.read( in, access )( this )
-            }
-         }).getOrElse( sys.error( "No value for " + id ))
+         getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
-         val e = new TxnCacheEntry( id, value )
-         cache.transform( mapMap => {
-            val id1     = id.id
-            val path    = id.path
-            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
-            val mapNew  = mapOld + (path.sum -> e)
-            mapMap + ((id1, mapNew))
-         })( peer )
-
-//writes.transform( _ :+ e )( peer )
-
-         markDirty()( peer )
+         putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
+         markDirty()
       }
 
       final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
 //         logConfig( "txn put " + id )
-         val e = new NonTxnCacheEntry( id, value )
-         cache.transform( mapMap => {
-            val id1     = id.id
-            val path    = id.path
-            val mapOld  = mapMap.getOrElse( id1, emptyLongMap[ CacheEntry ])
-            val mapNew  = mapOld + (path.sum -> e)
-            mapMap + ((id1, mapNew))
-         })( peer )
-
-//writes.transform( _ :+ e )( peer )
-
-         markDirty()( peer )
+         putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
+         markDirty()
       }
 
-      final private[Confluent] def dispose( id: S#ID ) {
-         cache.transform( _ - id.id )( peer )
+      final private[Confluent] def removeFromCache( id: S#ID ) {
+         removeCache( id.id )( this )
       }
 
-//      def indexTree( version: Int ) : Ancestor.Tree[ S, Int ] = system.indexTree( version )( this )
+      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+         getCacheTxn[ A ]( id.id, parent.path )( this, serializer ).getOrElse(
+            sys.error( "No value for " + id.id + " @ parent " + parent.path )
+         )
+      }
+
+      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )
+                               ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         putCacheTxn[ A ]( id.id, parent.path, value )( this, serializer )
+         markDirty()
+      }
+
+      final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
+
+      final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         putTxn[ A ]( id, value )
+      }
 
       final private[Confluent] def readIndexTree( term: Long ) : IndexTree = {
          val st = system.store
@@ -579,14 +524,6 @@ object Confluent {
          }
       }
 
-      final def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                                 ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
-         val term = index.term
-         val tree = readIndexTree( term )
-         val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
-         new IndexMapImpl[ A ]( index, map )
-      }
-
       final private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree = {
          logConfig( "txn new tree " + term.toInt )
          val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
@@ -599,8 +536,16 @@ object Confluent {
          res
       }
 
-      final def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
-                                ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+      final private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
+                                                   ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+         val term = index.term
+         val tree = readIndexTree( term )
+         val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
+         new IndexMapImpl[ A ]( index, map )
+      }
+
+      final private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
+                                                   ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val tree       = readIndexTree( index.term )
          val full       = tree.tree
          val rootVertex = if( rootTerm == tree.term ) {
@@ -658,30 +603,6 @@ object Confluent {
          new ID( id, pid.path )
       }
 
-      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
-         val schizo = new ID( id.id, parent.path )
-         getTxn[ A ]( schizo )
-      }
-
-      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )
-                               ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
-//         val out = new DataOutput()
-//         writer.write( value, out )
-////         val bytes = out.toByteArray
-////         system.storage += id.id -> (system.storage.getOrElse( id.id,
-////            Map.empty[ S#Acc, Array[ Byte ]]) + (parent.path -> bytes))
-//         sys.error( "TODO" )
-         val schizo = new ID( id.id, parent.path )
-         putTxn[ A ]( schizo, value )
-      }
-
-      final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A =
-         getTxn[ A ]( id )
-
-      final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         putTxn[ A ]( id, value )
-      }
-
       final private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
          ser match {
             case plain: Serializer[ _ ] =>
@@ -726,9 +647,9 @@ object Confluent {
       }
    }
 
-   private final class TxnImpl( val system: S, private[Confluent] val durable: Durable#Tx,
-                                val peer: InTxn, val inputAccess: Path )
-   extends Txn {
+   private final class RegularTxn( val system: S, private[Confluent] val durable: Durable#Tx,
+                                   val peer: InTxn, val inputAccess: Path )
+   extends TxnImpl {
 
       override def toString = "Txn" + inputAccess
 
@@ -748,7 +669,7 @@ object Confluent {
       }
    }
 
-   private final class RootTxn( val system: S, val peer: InTxn ) extends Txn {
+   private final class RootTxn( val system: S, val peer: InTxn ) extends TxnImpl {
       val inputAccess = Path.root
       override def toString = "RootTxn"
 
@@ -774,7 +695,7 @@ object Confluent {
       }
 
       final def dispose()( implicit tx: S#Tx ) {
-         tx.dispose( id )
+         tx.removeFromCache( id )
          id.dispose()
       }
 
@@ -1096,7 +1017,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             implicit val dtx = durable.wrap( itx )
             val last = global.lastAccess.get
             logConfig( "::::::: atomic - input access = " + last + " :::::::" )
-            fun( new TxnImpl( this, dtx, itx, last ))
+            fun( new RegularTxn( this, dtx, itx, last ))
          }
       }
 

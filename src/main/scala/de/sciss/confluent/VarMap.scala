@@ -1,5 +1,5 @@
 /*
- *  PersistentMap.scala
+ *  VarMap.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -28,35 +28,33 @@ package de.sciss.confluent
 import annotation.switch
 import de.sciss.lucre.stm.{Serializer, TxnSerializer, PersistentStore}
 
-object PersistentMap {
-   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ): PersistentMap[ S ] =
+object VarMap {
+   def apply[ S <: KSys[ S ], A ]( store: PersistentStore ): VarMap[ S ] =
       new Impl[ S ]( store )
 
    private final class Impl[ S <: KSys[ S ]]( store: PersistentStore )
-   extends PersistentMap[ S ] {
-      override def toString = "PersistentMap(" + store + ")"
+   extends VarMap[ S ] {
+      override def toString = "VarMap(" + store + ")"
 
       def put[ A ]( id: Int, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
          val (index, term) = path.splitIndex
          // first we need to see if anything has already been written to the index of the write path
-         store.flatGet {
-            out =>
-               out.writeInt( id )
-               out.writeLong( index.sum )
-         } {
-            in =>
-               (in.readUnsignedByte(): @switch) match {
-                  case 1 =>
-                     // a single 'root' value is found. extract it for successive re-write.
-                     val term2   = in.readLong()
-                     val prev    = ser.read( in )
-                     Some( EntrySingle( term2, prev ))
-                  case 2 =>
-                     // there is already a map found
-                     val m = tx.readIndexMap[ A ]( in, index )
-                     Some( EntryMap( m ))
-                  case _ => None // this would be a partial hash which we don't use
-               }
+         store.flatGet { out =>
+            out.writeInt( id )
+            out.writeLong( index.sum )
+         } { in =>
+            (in.readUnsignedByte(): @switch) match {
+               case 1 =>
+                  // a single 'root' value is found. extract it for successive re-write.
+                  val term2   = in.readLong()
+                  val prev    = ser.read( in )
+                  Some( EntrySingle( term2, prev ))
+               case 2 =>
+                  // there is already a map found
+                  val m = tx.readIndexMap[ A ]( in, index )
+                  Some( EntryMap( m ))
+               case _ => None // this would be a partial hash which we don't use
+            }
          } match {
             // with the previous entry read, react as follows:
             // if there is a single entry, construct a new ancestor.map with the
@@ -149,12 +147,12 @@ object PersistentMap {
       private def putFullSingle[ A ]( id: Int, index: S#Acc, term: Long, value: A )
                                     ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
          store.put { out =>
-            out.writeInt(id)
-            out.writeLong(index.sum)
+            out.writeInt( id )
+            out.writeLong( index.sum )
          } { out =>
-            out.writeUnsignedByte(1) // aka entry single
-            out.writeLong(term)
-            ser.write(value, out)
+            out.writeUnsignedByte( 1 ) // aka entry single
+            out.writeLong( term )
+            ser.write( value, out )
          }
       }
 
@@ -175,8 +173,8 @@ object PersistentMap {
                                           ( fun: (Int, Long, A) => B )
                                           ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
          val preLen = Hashing.maxPrefixLength( maxIndex, key => store.contains { out =>
-            out.writeInt(id)
-            out.writeLong(key)
+            out.writeInt( id )
+            out.writeLong( key )
          })
          val (index, term) = if( preLen == maxIndex.size ) {
             // maximum prefix lies in last tree
@@ -187,8 +185,8 @@ object PersistentMap {
          }
          val preSum = index.sum
          store.flatGet { out =>
-            out.writeInt(id)
-            out.writeLong(preSum)
+            out.writeInt( id )
+            out.writeLong( preSum )
          } { in =>
             (in.readUnsignedByte(): @switch) match {
                case 0 => // partial hash
@@ -240,7 +238,7 @@ object PersistentMap {
  *
  * @tparam S       the underlying system
  */
-sealed  trait PersistentMap[ S <: KSys[ S ]] {
+sealed trait VarMap[ S <: KSys[ S ]] {
    /**
     * Stores a new value for a given write path.
     *

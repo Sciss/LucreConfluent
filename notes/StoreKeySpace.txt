@@ -1,0 +1,10 @@
+:::::::::::::
+
+store key space
+
+<int ID>				Durable variables
+<int MapID><int KeyID>			Durable Map
+<int ID><long Hash>			Confluent Variables
+<byte 0><int Version>			Confluent Tree Vertex
+<byte 1><int Version>			Confluent Index Tree
+<int MapID<int KeyID><long Hash>	Confluent Map

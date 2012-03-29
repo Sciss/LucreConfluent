@@ -33,9 +33,9 @@ import de.sciss.collection.txn.Ancestor
 import collection.immutable.{IntMap, LongMap}
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.logConfig
-import de.sciss.lucre.stm.{Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, PersistentStore, Writer, TxnSerializer}
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
+import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, PersistentStore, Writer, TxnSerializer}
 
 object Confluent {
    private type S = Confluent
@@ -326,14 +326,14 @@ object Confluent {
     */
    private sealed trait CacheEntry {
       def id: S#ID
-      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) : Unit
       def value: Any
    }
    private final class NonTxnCacheEntry[ A ]( val id: S#ID, val value: A )( implicit serializer: Serializer[ A ])
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          store.put( id.id, pathOut, value )
@@ -344,7 +344,7 @@ object Confluent {
    extends CacheEntry {
       override def toString = "NonTxnCacheEntry(" + id + ", " + value + ")"
 
-      def flush( outTerm: Long, store: PersistentMap[ S ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: VarMap[ S ])( implicit tx: S#Tx ) {
          val pathOut = id.path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + id.id + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -647,6 +647,9 @@ object Confluent {
 
       final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
+      final def newIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] =
+         new IDMapImpl[ A ]( system.newIDValue()( this ))
+
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
          new ID( id, pid.path )
@@ -809,6 +812,27 @@ object Confluent {
          in.read( v )
          v
       }
+   }
+
+   private final class IDMapImpl[ A ]( id: Int )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends IdentifierMap[ S#Tx, S#ID, A ] {
+      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
+         sys.error( "TODO" )
+      }
+      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
+         sys.error( "TODO" )
+      }
+      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
+         sys.error( "TODO" )
+      }
+      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
+         sys.error( "TODO" )
+      }
+      def remove( id: S#ID )( implicit tx: S#Tx ) {
+         sys.error( "TODO" )
+      }
+
+      override def toString = "IdentifierMap<" + id + ">"
    }
 
    private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
@@ -1017,7 +1041,7 @@ object Confluent {
 
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
-      private[confluent] val persistent   = PersistentMap[ S, Any ]( store )
+      private[confluent] val persistent   = VarMap[ S, Any ]( store )
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1111,7 +1135,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 
    private[confluent] def store : PersistentStore
    private[confluent] def durable : Durable
-   private[confluent] def persistent : PersistentMap[ Confluent ]
+   private[confluent] def persistent : VarMap[ Confluent ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

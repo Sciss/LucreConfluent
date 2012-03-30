@@ -202,7 +202,6 @@ extends CacheMapImpl[ S, K, DurableConfluentMap[ S, K ]] {
       putCacheOnly( new NonTxnEntry( key, path, value ))
    }
 
-
    /**
     * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
     * a transactional serializer exists.
@@ -245,5 +244,29 @@ extends CacheMapImpl[ S, K, DurableConfluentMap[ S, K ]] {
     */
    final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
                                                                    serializer: Serializer[ A ]) : Option[ A ] =
+      getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
+}
+object InMemoryCacheMapImpl {
+   private final class Entry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   ( val key: K, val path: S#Acc, val value: A )
+   extends CacheMapImpl.Entry[ S, K, InMemoryConfluentMap[ S, K ]] {
+      override def toString = "Entry(" + key + ", " + value + ")"
+
+      def flush( outTerm: Long, store: InMemoryConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+         val pathOut = path.addTerm( outTerm )
+         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         store.put( key, pathOut, value )
+      }
+   }
+}
+trait InMemoryCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
+   import InMemoryCacheMapImpl._
+
+   final protected def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
+      putCacheOnly( new Entry( key, path, value ))
+   }
+
+   final protected def getCache[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
       getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
 }

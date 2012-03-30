@@ -45,7 +45,7 @@ object CacheMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
       def key: K
       def path: S#Acc
-      def flush( outTerm: Long, store: PersistentMap[ S, K ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) : Unit
       def value: Any
    }
    private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
@@ -53,7 +53,7 @@ object CacheMapImpl {
    extends Entry[ S, K ] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: PersistentMap[ S, K ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
@@ -64,7 +64,7 @@ object CacheMapImpl {
    extends Entry[ S, K ] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: PersistentMap[ S, K ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
          logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -120,7 +120,7 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    /**
     * The persistent map to which the data is flushed or from which it is retrieved when not residing in cache.
     */
-   protected def persistent : PersistentMap[ S, K ]
+   protected def persistent : DurableConfluentMap[ S, K ]
 
    /**
     * Implementations may provide a particular map implementation for the cache (e.g. `IntMap` or `LongMap`).

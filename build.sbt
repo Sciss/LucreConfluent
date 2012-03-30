@@ -16,14 +16,14 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.20",
-   "de.sciss" %% "lucredata-txn" % "0.22-SNAPSHOT",
+   "de.sciss" %% "lucredata-txn" % "0.22",
    "org.scalatest" %% "scalatest" % "1.7.1" % "test",
-   "de.sciss" %% "lucredata-txn-views" % "0.22-SNAPSHOT" % "test"
+   "de.sciss" %% "lucredata-txn-views" % "0.22" % "test"
 )
 
 retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked" ) // , "-Xelide-below", "INFO" ) // elide debug logging!
+scalacOptions ++= Seq( "-deprecation", "-unchecked", "-Xelide-below", "INFO" ) // elide debug logging!
 
 testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and full stack traces
 

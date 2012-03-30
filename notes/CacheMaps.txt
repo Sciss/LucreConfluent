@@ -1,0 +1,22 @@
+::::::: cache maps :::::::
+
+(1)
+
+DurableCacheMapImpl
+   ^
+   |
+DurableConfluentMap
+   ^
+   |
+PersistentStore
+(which will be renamed to DurableStore, or maybe better **DataStore** or **TxnDataStore**?)
+
+(2)
+
+InMemoryCacheMapImpl
+   ^
+   |
+InMemoryConfluentMap
+   ^
+   |
+TMap

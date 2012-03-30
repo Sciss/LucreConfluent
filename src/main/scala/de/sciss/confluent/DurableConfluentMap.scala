@@ -25,14 +25,14 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{Sys, PersistentStore, Serializer}
+import de.sciss.lucre.stm.{DataStore, Serializer}
 import impl.{LongMapImpl, IntMapImpl}
 
-object PersistentMap {
-   def newIntMap[ S <: KSys[ S ]]( store: PersistentStore ) : PersistentMap[ S, Int ] =
+object DurableConfluentMap {
+   def newIntMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Int ] =
       new IntMapImpl[ S ]( store )
 
-   def newLongMap[ S <: KSys[ S ]]( store: PersistentStore ) : PersistentMap[ S, Long ] =
+   def newLongMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Long ] =
       new LongMapImpl[ S ]( store )
 }
 /**
@@ -43,7 +43,7 @@ object PersistentMap {
  * @tparam S   the underlying system
  * @tparam K   the key type
  */
-trait PersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
+trait DurableConfluentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    /**
     * Stores a new value for a given write path.
     *

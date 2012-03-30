@@ -35,13 +35,13 @@ import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.logConfig
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
-import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, PersistentStoreFactory, PersistentStore, Writer, TxnSerializer}
+import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
 import collection.immutable.{IndexedSeq => IIdxSeq}
 
 object Confluent {
    private type S = Confluent
 
-   def apply( storeFactory: PersistentStoreFactory[ PersistentStore ]) : Confluent = new System( storeFactory )
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = new System( storeFactory )
 
    def tmp() : Confluent = {
       val dir = File.createTempFile( "confluent_", "db" )
@@ -600,9 +600,11 @@ object Confluent {
 
       final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
-      final def newIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
+      final def newInMemoryIDMap[ A ] : IdentifierMap[ S#Tx, S#ID, A ] = sys.error( "TODO" )
+
+      final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
          val id   = system.newIDValue()( this )
-         val map  = PersistentMap.newLongMap[ Confluent ]( system.store )
+         val map  = DurableConfluentMap.newLongMap[ Confluent ]( system.store )
          new IDMapImpl[ A ]( id, map )
       }
 
@@ -732,7 +734,7 @@ object Confluent {
       override def toString = "Var(" + id + ")"
    }
 
-   private final class IDMapImpl[ A ]( mapID: Int, protected val persistent: PersistentMap[ Confluent, Long ])
+   private final class IDMapImpl[ A ]( mapID: Int, protected val persistent: DurableConfluentMap[ Confluent, Long ])
                                      ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
    extends IdentifierMap[ S#Tx, S#ID, A ] with CacheMapImpl[ Confluent, Long ] {
       private val nid = mapID.toLong << 32
@@ -971,14 +973,14 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       lastAccess: Durable#Var[ Path ]
    )
 
-   private final class System( storeFactory: PersistentStoreFactory[ PersistentStore ])
+   private final class System( storeFactory: DataStoreFactory[ DataStore ])
    extends Confluent {
       val manifest                        = Predef.manifest[ Confluent ]
       def idOrdering : Ordering[ S#ID ]   = IDOrdering
 
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
-      private[confluent] val varMap       = PersistentMap.newIntMap[ S ]( store )
+      private[confluent] val varMap       = DurableConfluentMap.newIntMap[ S ]( store )
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1074,9 +1076,9 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    final type Var[ @specialized A ] = STMVar[ Tx, A ]
    final type Entry[ A ]            = KEntry[ Confluent, A ]
 
-   private[confluent] def store : PersistentStore
+   private[confluent] def store : DataStore
    private[confluent] def durable : Durable
-   private[confluent] def varMap : PersistentMap[ Confluent, Int ]
+   private[confluent] def varMap : DurableConfluentMap[ Confluent, Int ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

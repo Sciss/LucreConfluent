@@ -27,19 +27,19 @@ package de.sciss.confluent
 package impl
 
 import annotation.switch
-import de.sciss.lucre.stm.{TxnSerializer, Serializer, PersistentStore}
+import de.sciss.lucre.stm.{TxnSerializer, Serializer, DataStore}
 import de.sciss.lucre.DataOutput
 
-object PersistentMapImpl {
+object DurableConfluentMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], +A ]
    private final case class EntryPre[ S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
    private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends PersistentMap[ S, K ] {
-   import PersistentMapImpl._
+sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends DurableConfluentMap[ S, K ] {
+   import DurableConfluentMapImpl._
 
-   protected def store: PersistentStore
+   protected def store: DataStore
 
 //   override def toString = "VarMap(" + store + ")"
 
@@ -256,9 +256,9 @@ sealed trait PersistentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] ext
       }
    }
 }
-final class IntMapImpl[ S <: KSys[ S ]]( protected val store: PersistentStore ) extends PersistentMapImpl[ S, Int ] {
+final class IntMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class LongMapImpl[ S <: KSys[ S ]]( protected val store: PersistentStore ) extends PersistentMapImpl[ S, Long ] {
+final class LongMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

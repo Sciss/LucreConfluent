@@ -25,7 +25,7 @@
 
 package de.sciss.confluent
 
-import impl.{DurableCacheMapImpl, CacheMapImpl}
+import impl.{InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
@@ -601,7 +601,10 @@ object Confluent {
 
       final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
-      final def newInMemoryIDMap[ A ] : IdentifierMap[ S#Tx, S#ID, A ] = sys.error( "TODO" )
+      final def newInMemoryIDMap[ A ] : IdentifierMap[ S#Tx, S#ID, A ] = {
+         val map = InMemoryConfluentMap.newIntMap[ Confluent ]
+         new InMemoryIDMapImpl[ A ]( map )
+      }
 
       final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
          val id   = system.newIDValue()( this )
@@ -733,6 +736,41 @@ object Confluent {
       }
 
       override def toString = "Var(" + id + ")"
+   }
+
+   private final class InMemoryIDMapImpl[ A ]( protected val store: InMemoryConfluentMap[ Confluent, Int ])
+   extends IdentifierMap[ S#Tx, S#ID, A ] with InMemoryCacheMapImpl[ Confluent, Int ] {
+      private val markDirtyFlag = TxnLocal( false )
+
+      private def markDirty()( implicit tx: S#Tx ) {
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyMap( this )
+      }
+
+      protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
+
+      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
+         getCache[ A ]( id.id, id.path )
+      }
+
+      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
+         get( id ).getOrElse( default )
+      }
+
+      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
+         putCache[ A ]( id.id, id.path, value )
+         markDirty()
+      }
+
+      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
+         get( id ).isDefined  // XXX TODO more efficient implementation
+      }
+
+      def remove( id: S#ID )( implicit tx: S#Tx ) {
+println( "WARNING: IDMap.remove : not yet implemented" )
+         markDirty()
+      }
+
+      override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
    }
 
    private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurableConfluentMap[ Confluent, Long ])

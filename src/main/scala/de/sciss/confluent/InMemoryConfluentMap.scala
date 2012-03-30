@@ -25,12 +25,11 @@
 
 package de.sciss.confluent
 
+import impl.InMemoryConfluentMapImpl
+
 object InMemoryConfluentMap {
-//   def newIntMap[ S <: KSys[ S ]] : InMemoryConfluentMap[ S, Int ] =
-//      new IntMapImpl[ S ]
-//
-//   def newLongMap[ S <: KSys[ S ]] : InMemoryConfluentMap[ S, Long ] =
-//      new LongMapImpl[ S ]
+   def newIntMap[  S <: KSys[ S ]] : InMemoryConfluentMap[ S, Int  ] = new InMemoryConfluentMapImpl[ S, Int  ]
+   def newLongMap[ S <: KSys[ S ]] : InMemoryConfluentMap[ S, Long ] = new InMemoryConfluentMapImpl[ S, Long ]
 }
 trait InMemoryConfluentMap[ S <: KSys[ S ], @specialized( Int, Long) K ] {
    def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) : Unit

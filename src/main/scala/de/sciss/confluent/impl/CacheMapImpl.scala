@@ -263,7 +263,7 @@ trait InMemoryCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
 extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
    import InMemoryCacheMapImpl._
 
-   final protected def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
+   final protected def putCache[ A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
       putCacheOnly( new Entry( key, path, value ))
    }
 

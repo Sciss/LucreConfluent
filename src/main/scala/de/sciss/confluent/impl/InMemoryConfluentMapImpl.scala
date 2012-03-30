@@ -31,19 +31,21 @@ import collection.immutable.LongMap
 import annotation.switch
 
 object InMemoryConfluentMapImpl {
-   sealed trait Entry[ +A ]
+
+
+   private trait Entry[ +A ]
    private final case class EntryPre( hash: Long ) extends Entry[ Nothing ]
    private final case class EntryFull[ A ]( term: Long, v: A ) extends Entry[ A ]
 }
-sealed trait InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends InMemoryConfluentMap[ S, K ] {
+final class InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends InMemoryConfluentMap[ S, K ] {
    import InMemoryConfluentMapImpl._
 
-   final protected type Entries = Map[ Long, Entry[ _ ]]
-   protected def store: TMap[ K, Entries ]
+   private type Entries = Map[ Long, Entry[ _ ]]
+   private val store = TMap.empty[ K, Entries ]
 
    override def toString = "InMemoryConfluentMap(" + store + ")"
 
-   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
+   def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
       implicit val itx = tx.peer
       val (index, term) = path.splitIndex
 
@@ -57,57 +59,40 @@ sealed trait InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) 
       store.put( key, entries )
    }
 
-   final def get[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] = {
-      val (maxIndex, maxTerm) = path.splitIndex
-      getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (_, _, value) => value )
+   def get[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] = {
+      store.get( key )( tx.peer ).flatMap { entries =>
+         val (maxIndex, maxTerm) = path.splitIndex
+         getWithPrefixLen[ A, A ]( maxIndex, maxTerm, entries )( (_, _, value) => value )
+      }
    }
 
-   final def getWithSuffix[A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ] = {
-      val (maxIndex, maxTerm) = path.splitIndex
-      getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
-      //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
-         (writeTerm +: path.drop( preLen ), value)
-      )
+   def getWithSuffix[A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ] = {
+      store.get( key )( tx.peer ).flatMap { entries =>
+         val (maxIndex, maxTerm) = path.splitIndex
+         getWithPrefixLen[ A, (S#Acc, A) ]( maxIndex, maxTerm, entries )( (preLen, writeTerm, value) =>
+            (writeTerm +: path.drop( preLen ), value)
+         )
+      }
    }
 
-   private def getWithPrefixLen[ A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
-                                       ( fun: (Int, Long, A) => B )( implicit tx: S#Tx ) : Option[ B ] = {
-      sys.error( "TODO" )
-//      val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>
-//         writeKey( key, out ) // out.writeInt( key )
-//         out.writeLong( hash )
-//      })
-//      val (index, term) = if( preLen == maxIndex.size ) {
-//         // maximum prefix lies in last tree
-//         (maxIndex, maxTerm)
-//      } else {
-//         // prefix lies in other tree
-//         maxIndex.splitAtIndex( preLen )
-//      }
-//      val preSum = index.sum
-//      store.flatGet { out =>
-//         writeKey( key, out ) // out.writeInt( key )
-//         out.writeLong( preSum )
-//      } { in =>
-//         (in.readUnsignedByte(): @switch) match {
-//            case 0 => // partial hash
-//               val hash = in.readLong()
-//               //                  EntryPre[ S ]( hash )
-//               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-//               getWithPrefixLen( key, fullIndex, fullTerm )( fun )
-//
-//            case 1 =>
-//               val term2 = in.readLong()
-//               val value = ser.read( in )
-//               //                  EntrySingle[ S, A ]( term2, value )
-//               Some( fun( preLen, term2, value ))
-//
-//            case 2 =>
-//               val m = tx.readIndexMap[ A ]( in, index )
-//               //                  EntryMap[ S, A ]( m )
-//               val (term2, value) = m.nearest( term )
-//               Some( fun( preLen, term2, value ))
-//         }
-//      }
+   private def getWithPrefixLen[ A, B ]( maxIndex: S#Acc, maxTerm: Long, entries: Entries )
+                                       ( fun: (Int, Long, A) => B ) : Option[ B ] = {
+
+      val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
+      val (index, term) = if( preLen == maxIndex.size ) {
+         // maximum prefix lies in last tree
+         (maxIndex, maxTerm)
+      } else {
+         // prefix lies in other tree
+         maxIndex.splitAtIndex( preLen )
+      }
+      val preSum = index.sum
+      entries.get( preSum ).flatMap {
+         case EntryPre( hash ) =>   // partial hash
+            val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+            getWithPrefixLen( fullIndex, fullTerm, entries )( fun )
+
+         case EntryFull( term2, value ) => Some( fun( preLen, term2, value.asInstanceOf[ A ]))
+      }
    }
 }

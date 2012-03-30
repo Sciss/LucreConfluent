@@ -42,36 +42,11 @@ object CacheMapImpl {
     * a sub system (`Durable`), serialization is a two-step process, using an intermediate
     * binary representation.
     */
-   private sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
+   sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] {
       def key: K
       def path: S#Acc
-      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) : Unit
+      def flush( outTerm: Long, store: Store )( implicit tx: S#Tx ) : Unit
       def value: Any
-   }
-   private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ A ])
-   extends Entry[ S, K ] {
-      override def toString = "NonTxnEntry(" + key + ", " + value + ")"
-
-      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         store.put( key, pathOut, value )
-      }
-   }
-   private final class TxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends Entry[ S, K ] {
-      override def toString = "NonTxnEntry(" + key + ", " + value + ")"
-
-      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         val out     = new DataOutput()
-         serializer.write( value, out )
-         val arr     = out.toByteArray
-         store.put( key, pathOut, arr )( tx, ByteArraySerializer )
-      }
    }
 
    val emptyIntMapVal       = IntMap.empty[ Any ]
@@ -91,45 +66,105 @@ object CacheMapImpl {
  * @tparam S   the underlying system
  * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
  */
-trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
+sealed trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] {
    import CacheMapImpl._
 
-//   private val markDirtyFlag  = TxnLocal( false )
-   private val cache          = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K ]]]])
+   private val cache = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K, Store ]]]])
 
    // ---- abstract ----
-
-//   /**
-//    * This is called when the transaction is about to be committed and the cache is actually dirty.
-//    * Implementations will typically generate a term value and then invoke `flushCache( term )`
-//    * which takes care of performing all writes
-//    *
-//    * @param tx   the transaction which is about to be completed
-//    */
-//   protected def flushCache()( implicit tx: S#Tx ) : Unit
-
-//   /**
-//    * This is called when the first dirty `put` operation in the current transaction is performed.
-//    * Implementations will typically install a before-commit handler which eventually generates a
-//    * term value and then invokes `flushCache( term )` which takes care of performing all writes.
-//    *
-//    * @param tx   the transaction associated with the dirty cache.
-//    */
-//   protected def markDirty()( implicit tx: S#Tx ) : Unit
 
    /**
     * The persistent map to which the data is flushed or from which it is retrieved when not residing in cache.
     */
-   protected def persistent : DurableConfluentMap[ S, K ]
+   protected def store : Store
 
    /**
     * Implementations may provide a particular map implementation for the cache (e.g. `IntMap` or `LongMap`).
     * The value type of the returned map (which must be immutable and empty) is cast to the internal cache
     * entries.
     */
-   protected def emptyCache : Map[ K, _ ] // LongMap[ Entry[ S, K ]]]
+   protected def emptyCache : Map[ K, _ ]
 
    // ---- implementation ----
+
+   final protected def getCacheOnly[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
+      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map { e =>
+         e.value.asInstanceOf[ A ]
+      })
+
+   /**
+    * Removes an entry from the cache, and only the cache. This will not affect any
+    * values also persisted to `persistent`! If the cache does not contain an entry
+    * at the given `key`, this method simply returns.
+    *
+    * @param key        key at which the entry is stored
+    * @param tx         the current transaction
+    */
+   final protected def removeCacheOnly( key: K )( implicit tx: S#Tx ) {
+      cache.transform( _ - key )( tx.peer )
+   }
+   
+   final protected def putCacheOnly( e: Entry[ S, K, Store ])( implicit tx: S#Tx ) {
+      implicit val itx = tx.peer
+      cache.transform( mapMap => {
+         val mapOld  = mapMap.getOrElse( e.key, emptyLongMap[ Entry[ S, K, Store ]])
+         val mapNew  = mapOld + (e.path.sum -> e)
+         mapMap + ((e.key, mapNew))
+      })
+   }
+
+   /**
+    * This method should be invoked from the implementations flush hook after it has
+    * determined the terminal version at which the entries in the cache are written
+    * to the persistent store. If this method is not called, the cache will just
+    * vanish and not be written out to the `persistent` store.
+    *
+    * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
+    * @param tx      the current transaction (should be in commit or right-before commit phase)
+    */
+   final def flushCache( term: Long )( implicit tx: S#Tx ) {
+      val p = store
+      cache.get( tx.peer ).foreach { tup1 =>
+         val map  = tup1._2
+         map.foreach { tup2 =>
+            val e    = tup2._2
+            e.flush( term, p )
+         }
+      }
+   }
+}
+object DurableCacheMapImpl {
+   import CacheMapImpl.Entry
+
+   private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ A ])
+   extends Entry[ S, K, DurableConfluentMap[ S, K ]] {
+      override def toString = "NonTxnEntry(" + key + ", " + value + ")"
+
+      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+         val pathOut = path.addTerm( outTerm )
+         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         store.put( key, pathOut, value )
+      }
+   }
+   private final class TxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends Entry[ S, K, DurableConfluentMap[ S, K ]] {
+      override def toString = "NonTxnEntry(" + key + ", " + value + ")"
+
+      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+         val pathOut = path.addTerm( outTerm )
+         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         val out     = new DataOutput()
+         serializer.write( value, out )
+         val arr     = out.toByteArray
+         store.put( key, pathOut, arr )( tx, ByteArraySerializer )
+      }
+   }
+}
+trait DurableCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+extends CacheMapImpl[ S, K, DurableConfluentMap[ S, K ]] {
+   import DurableCacheMapImpl._
 
    /**
     * Stores an entry in the cache for which 'only' a transactional serializer exists.
@@ -146,7 +181,7 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     */
    final protected def putCacheTxn[ A ]( key: K, path: S#Acc, value: A )
                                        ( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
-      putCache( new TxnEntry( key, path, value ))
+      putCacheOnly( new TxnEntry( key, path, value ))
    }
 
    /**
@@ -164,8 +199,9 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     */
    final protected def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )
                                           ( implicit tx: S#Tx, serializer: Serializer[ A ]) {
-      putCache( new NonTxnEntry( key, path, value ))
+      putCacheOnly( new NonTxnEntry( key, path, value ))
    }
+
 
    /**
     * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
@@ -183,18 +219,15 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     */
    final protected def getCacheTxn[ A ]( key: K, path: S#Acc )
                                        ( implicit tx: S#Tx,
-                                         serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
-      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map { e =>
-         e.value.asInstanceOf[ A ]
-      }).orElse({
-         persistent.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
+                                         serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+      getCacheOnly( key, path ).orElse {
+         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
             val access  = tup._1
             val arr     = tup._2
             val in      = new DataInput( arr )
             serializer.read( in, access )
          }
-      }) // .getOrElse( sys.error( "No value for " + id ))
-   }
+      }
 
    /**
     * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
@@ -211,52 +244,6 @@ trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     *                   neither in the cache nor in the persistent store.
     */
    final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-                                                                   serializer: Serializer[ A ]) : Option[ A ] = {
-      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map( _.value )).asInstanceOf[ Option[ A ]].orElse(
-         persistent.get[ A ]( key, path )
-      ) // .getOrElse( sys.error( "No value for " + id ))
-   }
-
-   /**
-    * Removes an entry from the cache, and only the cache. This will not affect any
-    * values also persisted to `persistent`! If the cache does not contain an entry
-    * at the given `key`, this method simply returns.
-    *
-    * @param key        key at which the entry is stored
-    * @param tx         the current transaction
-    */
-   final protected def removeCache( key: K )( implicit tx: S#Tx ) {
-      cache.transform( _ - key )( tx.peer )
-   }
-   
-   private def putCache( e: Entry[ S, K ])( implicit tx: S#Tx ) {
-      implicit val itx = tx.peer
-      cache.transform( mapMap => {
-         val mapOld  = mapMap.getOrElse( e.key, emptyLongMap[ Entry[ S, K ]])
-         val mapNew  = mapOld + (e.path.sum -> e)
-         mapMap + ((e.key, mapNew))
-      })
-
-//      if( !markDirtyFlag.swap( true )) markDirty() // ScalaTxn.beforeCommit( _ => flushCache() )
-   }
-
-   /**
-    * This method should be invoked from the implementations flush hook after it has
-    * determined the terminal version at which the entries in the cache are written
-    * to the persistent store. If this method is not called, the cache will just
-    * vanish and not be written out to the `persistent` store.
-    *
-    * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
-    * @param tx      the current transaction (should be in commit or right-before commit phase)
-    */
-   final def flushCache( term: Long )( implicit tx: S#Tx ) {
-      val p = persistent
-      cache.get( tx.peer ).foreach { tup1 =>
-         val map  = tup1._2
-         map.foreach { tup2 =>
-            val e    = tup2._2
-            e.flush( term, p )
-         }
-      }
-   }
+                                                                   serializer: Serializer[ A ]) : Option[ A ] =
+      getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
 }

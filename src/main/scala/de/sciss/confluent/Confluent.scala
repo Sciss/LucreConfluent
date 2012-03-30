@@ -25,7 +25,7 @@
 
 package de.sciss.confluent
 
-import impl.CacheMapImpl
+import impl.{DurableCacheMapImpl, CacheMapImpl}
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
@@ -355,17 +355,18 @@ object Confluent {
       private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
 
       private[Confluent] def removeFromCache( id: S#ID ) : Unit
-      private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _ ]) : Unit
+      private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) : Unit
 
       private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ]
    }
 
-   private sealed trait TxnImpl extends Txn with CacheMapImpl[ Confluent, Int ] {
-      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _ ]]] = TxnLocal( initialValue = { implicit itx =>
-         logConfig( "....... txn dirty ......." )
-         ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
-         IIdxSeq.empty
-      })
+   private sealed trait TxnImpl extends Txn with DurableCacheMapImpl[ Confluent, Int ] {
+      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]] = TxnLocal( initialValue =
+         { implicit itx =>
+            logConfig( "....... txn dirty ......." )
+            ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
+            IIdxSeq.empty
+         })
 
       private val markDirtyFlag = TxnLocal( false )
 
@@ -373,7 +374,7 @@ object Confluent {
          if( !markDirtyFlag.swap( true )( peer )) addDirtyMap( this )
       }
 
-      final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _ ]) {
+      final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) {
          dirtyMaps.transform( _ :+ map )( peer )
       }
 
@@ -384,9 +385,9 @@ object Confluent {
       protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
 
-      final protected def  persistent = system.varMap
+      final protected def  store = system.varMap
 
-      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _ ]]) {
+      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]) {
          val meldInfo      = meld.get( peer )
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
@@ -486,7 +487,7 @@ object Confluent {
       }
 
       final private[Confluent] def removeFromCache( id: S#ID ) {
-         removeCache( id.id )( this )
+         removeCacheOnly( id.id )( this )
       }
 
       final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
@@ -605,7 +606,7 @@ object Confluent {
       final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
          val id   = system.newIDValue()( this )
          val map  = DurableConfluentMap.newLongMap[ Confluent ]( system.store )
-         new IDMapImpl[ A ]( id, map )
+         new DurableIDMapImpl[ A ]( id, map )
       }
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
@@ -734,9 +735,9 @@ object Confluent {
       override def toString = "Var(" + id + ")"
    }
 
-   private final class IDMapImpl[ A ]( mapID: Int, protected val persistent: DurableConfluentMap[ Confluent, Long ])
-                                     ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends IdentifierMap[ S#Tx, S#ID, A ] with CacheMapImpl[ Confluent, Long ] {
+   private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurableConfluentMap[ Confluent, Long ])
+                                           ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends IdentifierMap[ S#Tx, S#ID, A ] with DurableCacheMapImpl[ Confluent, Long ] {
       private val nid = mapID.toLong << 32
 
       private val markDirtyFlag = TxnLocal( false )

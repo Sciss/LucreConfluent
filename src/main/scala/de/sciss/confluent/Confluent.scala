@@ -622,7 +622,7 @@ object Confluent {
             case plain: Serializer[ _ ] =>
                new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
             case _ =>
-               new VarTxImpl[ A ]( id, ser )
+               new VarTxImpl[ A ]( id )
          }
       }
 
@@ -696,7 +696,11 @@ object Confluent {
       protected def flushNewTree( level: Int ) : Long = sys.error( "Cannot meld in the root version" )
    }
 
-   private sealed trait BasicVar[ A ] extends STMVar[ S#Tx, A ] {
+   sealed trait Var[ @specialized A ] extends STMVar[ S#Tx, A ] {
+      private[Confluent] def asEntry: S#Entry[ A ]
+   }
+
+   private sealed trait BasicVar[ A ] extends Var[ A ] {
       protected def id: S#ID
 
 //      @elidable(CONFIG) protected final def assertExists()(implicit tx: Txn) {
@@ -734,6 +738,8 @@ object Confluent {
          logConfig( this.toString + " ini " + v )
          tx.putNonTxn( id, v )( ser )
       }
+
+      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "Var(" + id + ")"
    }
@@ -813,12 +819,32 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       override def toString = "IdentifierMap<" + mapID + ">"
    }
 
-   private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
-      protected def id: S#ID
-      protected implicit def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+//   private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
+//      protected def id: S#ID
+//      protected implicit def ser: TxnSerializer[ S#Tx, S#Acc, A ]
+//
+//      def set( v: A )( implicit tx: S#Tx ) {
+////         assertExists()
+//         logConfig( this.toString + " set " + v )
+//         tx.putTxn( id, v )
+//      }
+//
+//      def get( implicit tx: S#Tx ) : A = {
+//         logConfig( this.toString + " get" )
+//         tx.getTxn( id )
+//      }
+//
+//      def setInit( v: A )( implicit tx: S#Tx ) {
+//         logConfig( this.toString + " ini " + v )
+//         tx.putTxn( id, v )
+//      }
+//
+//      override def toString = "Var(" + id + ")"
+//   }
 
+   private final class VarTxImpl[ A ]( protected val id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
-//         assertExists()
          logConfig( this.toString + " set " + v )
          tx.putTxn( id, v )
       }
@@ -833,19 +859,18 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putTxn( id, v )
       }
 
+      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
+
       override def toString = "Var(" + id + ")"
    }
 
-   private final class VarTxImpl[ A ]( protected val id: S#ID, protected val ser: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends VarTxLike[ A ]
-
-   private final class RootVar[ A ]( id1: Int, implicit val ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   private final class RootVar[ A ]( id1: Int, name: String, implicit val ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends KEntry[ S, A ] {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
       }
 
-      override def toString = "Root"
+      override def toString = name // "Root"
 
       private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
 
@@ -891,6 +916,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
+      private[Confluent] def asEntry : S#Entry[ Boolean ] = new RootVar[ Boolean ]( id.id, toString, this )
+
       override def toString = "Var[Boolean](" + id + ")"
 
       // ---- TxnSerializer ----
@@ -915,6 +942,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          logConfig( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
+
+      private[Confluent] def asEntry : S#Entry[ Int ] = new RootVar[ Int ]( id.id, toString, this )
 
       override def toString = "Var[Int](" + id + ")"
 
@@ -956,6 +985,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          logConfig( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
+
+      private[Confluent] def asEntry : S#Entry[ Long ] = new RootVar[ Long ]( id.id, toString, this )
 
       override def toString = "Var[Long](" + id + ")"
 
@@ -1089,7 +1120,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          logConfig( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
             implicit val tx = new RootTxn( this, itx )
-            val rootVar    = new RootVar[ A ]( 0, serializer )
+            val rootVar    = new RootVar[ A ]( 0, "Root", serializer )
             val rootPath   = tx.inputAccess
             if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
@@ -1099,7 +1130,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          }
       }
 
-      def asEntry[ A ]( v: S#Var[ A ]) : S#Entry[ A ] = sys.error( "TODO" )
+      def asEntry[ A ]( v: S#Var[ A ]) : S#Entry[ A ] = v.asEntry
 
       def close() { store.close()}
 
@@ -1112,7 +1143,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    final type ID                    = Confluent.ID
    final type Tx                    = Confluent.Txn
    final type Acc                   = Confluent.Path
-   final type Var[ @specialized A ] = STMVar[ Tx, A ]
+   final type Var[ @specialized A ] = Confluent.Var[ A ] // STMVar[ Tx, A ]
    final type Entry[ A ]            = KEntry[ Confluent, A ]
 
    private[confluent] def store : DataStore

@@ -1,6 +1,6 @@
 name := "TemporalObjects"
 
-version := "0.31-SNAPSHOT"
+version := "0.31"
 
 organization := "de.sciss"
 

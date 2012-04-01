@@ -11,7 +11,7 @@ import org.scalatest.{FunSpec, GivenWhenThen}
  * To run only this test:
  * test-only de.sciss.confluent.FiatKaplanSuite
  */
-class  FiatKaplanSuite extends FunSpec with GivenWhenThen {
+class FiatKaplanSuite extends FunSpec with GivenWhenThen {
    describe( "A Confluently Persistent Linked List" ) {
       val dir     = File.createTempFile( "database", "db" )
       dir.delete()

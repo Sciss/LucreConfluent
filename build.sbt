@@ -23,7 +23,7 @@ libraryDependencies ++= Seq(
 
 retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked", "-Xelide-below", "INFO" ) // elide debug logging!
+scalacOptions ++= Seq( "-deprecation", "-unchecked" ) // , "-Xelide-below", "INFO" ) // elide debug logging!
 
 testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and full stack traces
 

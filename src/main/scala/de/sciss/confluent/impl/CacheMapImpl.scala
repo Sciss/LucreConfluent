@@ -92,6 +92,12 @@ sealed trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] 
          e.value.asInstanceOf[ A ]
       })
 
+   final protected def cacheContains( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
+      cache.get( tx.peer ).get( key ) match {
+         case Some( map ) => map.contains( path.sum )
+         case _           => false
+      }
+
    /**
     * Removes an entry from the cache, and only the cache. This will not affect any
     * values also persisted to `persistent`! If the cache does not contain an entry
@@ -245,6 +251,11 @@ extends CacheMapImpl[ S, K, DurableConfluentMap[ S, K ]] {
    final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
                                                                    serializer: Serializer[ A ]) : Option[ A ] =
       getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
+
+//   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
+//      cacheContains( key, path ) || {
+//         store.getWithSuffix()
+//      }
 }
 object InMemoryCacheMapImpl {
    private final class Entry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]

@@ -353,6 +353,7 @@ object Confluent {
       private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) : Unit
       private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A
       private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
+      private[Confluent] def isFresh( id: S#ID ) : Boolean
 
       private[Confluent] def removeFromCache( id: S#ID ) : Unit
       private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) : Unit
@@ -485,6 +486,11 @@ object Confluent {
          putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
       }
+
+      final private[Confluent] def isFresh( id: S#ID ) : Boolean =
+         cacheContains( id.id, id.path )( this ) || {
+            sys.error( "TODO" )
+         }
 
       final private[Confluent] def removeFromCache( id: S#ID ) {
          removeCacheOnly( id.id )( this )
@@ -719,6 +725,8 @@ object Confluent {
 
       def setInit( v: A )( implicit tx: S#Tx ) : Unit
       final def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
+
+      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
    }
 
    private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: Serializer[ A ])
@@ -892,6 +900,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       }
 
       def transform( f: A => A )( implicit tx: S#Tx ) { set( f( get ))}
+
+      def isFresh( implicit tx: S#Tx ) : Boolean = tx.isFresh( id )
 
       def write( out: DataOutput ) { sys.error( "Unsupported Operation -- access.write" )}
 

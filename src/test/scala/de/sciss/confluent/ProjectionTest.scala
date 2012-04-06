@@ -65,5 +65,7 @@ trait ProjectionTest {
 
       def dispose()( implicit tx: PCursor[ Tx ]) {}
       def write( out: DataOutput ) {}
+
+      def isFresh( implicit tx: PCursor[ Tx ]) : Boolean = sys.error( "TODO" )
    }
 }

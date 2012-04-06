@@ -99,5 +99,5 @@ trait DurableConfluentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
                                       ( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ (S#Acc, A) ]
 
-//   def getSuffix( key: K, path: S#Acc )( implicit tx: S#Tx ) : S#Acc
+   def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

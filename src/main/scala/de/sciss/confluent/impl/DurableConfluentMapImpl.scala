@@ -45,6 +45,19 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K
 
    protected def writeKey( key: K, out: DataOutput ) : Unit
 
+   final def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      store.get { out =>
+         writeKey( key, out ) // out.writeInt( key )
+         out.writeLong( path.indexSum )
+      } { in =>
+         (in.readUnsignedByte(): @switch) match {
+            case 1 => true    // a single value is found
+            case 2 => true    // a map is found
+            case _ => false   // only a partial hash is found
+         }
+      } getOrElse( false )
+   }
+
    final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       val (index, term) = path.splitIndex
 //if( key == 0 ) {

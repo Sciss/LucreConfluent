@@ -211,6 +211,8 @@ object Confluent {
 //         val idx = size - 2; tree.find1( _._1 > idx ) ???
       }
 
+      private[confluent] def indexSum : Long = sum - (last >> 32)
+
       // XXX TODO should have an efficient method in finger tree
       private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
 
@@ -487,10 +489,21 @@ object Confluent {
          markDirty()
       }
 
-      final private[Confluent] def isFresh( id: S#ID ) : Boolean =
-         cacheContains( id.id, id.path )( this ) || {
-            sys.error( "TODO" )
+      final private[Confluent] def isFresh( id: S#ID ) : Boolean = {
+         val id1  = id.id
+         val path = id.path
+         // either the value was written during this transaction (implies freshness)...
+         cacheContains( id1, path )( this ) || {
+            // ...or we have currently an ongoing meld which will produce a new
+            // index tree---in that case the value is definitely not fresh...
+            if( meld.get( peer ).requiresNewTree ) false else {
+               // ...or otherwise freshness means the most recent write index corresponds
+               // to the input access index
+               // store....
+               store.isFresh( id1, path )( this )
+            }
          }
+      }
 
       final private[Confluent] def removeFromCache( id: S#ID ) {
          removeCacheOnly( id.id )( this )

@@ -26,7 +26,7 @@
 package de.sciss.confluent
 
 import de.sciss.lucre.stm.{DataStore, Serializer}
-import impl.{LongMapImpl, IntMapImpl}
+import impl.{PartialConfluentMapImpl, LongMapImpl, IntMapImpl}
 
 object DurableConfluentMap {
    def newIntMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Int ] =
@@ -34,6 +34,9 @@ object DurableConfluentMap {
 
    def newLongMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Long ] =
       new LongMapImpl[ S ]( store )
+
+   def newPartialMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Int ] =
+      new PartialConfluentMapImpl[ S ]( store )
 }
 /**
  * Interface for a confluently persistent storing key value map. Keys (type `K`) might

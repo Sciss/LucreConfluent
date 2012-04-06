@@ -281,3 +281,24 @@ extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
    final protected def getCache[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
       getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
 }
+
+// ---------------------------------------------------------------------
+
+object PartialCacheMapImpl {
+   def newIntCache[ S <: KSys[ S ]]( map: DurableConfluentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
+      new PartialCacheMapImpl[ S, Int ] {
+         final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
+         final protected val store : DurableConfluentMap[ S, Int ] = map
+      }
+}
+trait PartialCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+extends DurableCacheMapImpl[ S, K ] {
+   final def putPartial[ A ]( key: K, path: S#Acc, value: A )
+                            ( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      putCacheTxn( key, path, value )
+   }
+
+   final def getPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
+                                                     serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+      getCacheTxn[ A ]( key, path )
+}

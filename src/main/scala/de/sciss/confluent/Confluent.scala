@@ -25,7 +25,7 @@
 
 package de.sciss.confluent
 
-import impl.{InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
+import impl.{PartialCacheMapImpl, InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
 import util.MurmurHash
 import de.sciss.lucre.event.ReactionMap
 import de.sciss.lucre.{DataOutput, DataInput}
@@ -357,6 +357,9 @@ object Confluent {
       private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
       private[Confluent] def isFresh( id: S#ID ) : Boolean
 
+      private[Confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Unit
+      private[Confluent] def getPartial[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A
+
       private[Confluent] def removeFromCache( id: S#ID ) : Unit
       private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) : Unit
 
@@ -388,7 +391,9 @@ object Confluent {
       protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
 
-      final protected def  store = system.varMap
+      final protected def partialCache: PartialCacheMapImpl[ Confluent, Int ] = system.partialMap
+
+      final protected def store = system.varMap
 
       private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]) {
          val meldInfo      = meld.get( peer )
@@ -477,6 +482,11 @@ object Confluent {
          getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
+      final private[Confluent] def getPartial[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+         logConfig( "txn partial get' " + id )
+         partialCache.getPartial[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
+      }
+
       final private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
          putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
@@ -486,6 +496,11 @@ object Confluent {
       final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
 //         logConfig( "txn put " + id )
          putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
+         markDirty()
+      }
+
+      final private[Confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+         partialCache.putPartial( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
@@ -594,6 +609,13 @@ object Confluent {
          res
       }
 
+      final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         val res = new PartialVarTxImpl[ A ]( alloc( pid ))
+         logConfig( "txn newPartialVar " + res )
+         res.setInit( init )( this )
+         res
+      }
+
       final def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
          val id   = alloc( pid )
          val res  = new BooleanVar( id )
@@ -650,6 +672,9 @@ object Confluent {
          logConfig( "txn read " + res )
          res
       }
+
+      final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
+         sys.error( "TODO" )
 
       final def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
          val res = new BooleanVar( readSource( in, pid ))
@@ -863,6 +888,28 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //      override def toString = "Var(" + id + ")"
 //   }
 
+   private final class PartialVarTxImpl[ A ]( protected val id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ])
+   extends BasicVar[ A ] {
+      def set( v: A )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " set " + v )
+         tx.putPartial( id, v )
+      }
+
+      def get( implicit tx: S#Tx ) : A = {
+         logConfig( this.toString + " get" )
+         tx.getPartial( id )
+      }
+
+      def setInit( v: A )( implicit tx: S#Tx ) {
+         logConfig( this.toString + " ini " + v )
+         tx.putPartial( id, v )
+      }
+
+      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
+
+      override def toString = "PartialVar(" + id + ")"
+   }
+
    private final class VarTxImpl[ A ]( protected val id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
@@ -1074,6 +1121,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
       private[confluent] val varMap       = DurableConfluentMap.newIntMap[ S ]( store )
+      private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ] =
+         PartialCacheMapImpl.newIntCache( DurableConfluentMap.newPartialMap( store ))
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1172,6 +1221,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    private[confluent] def store : DataStore
    private[confluent] def durable : Durable
    private[confluent] def varMap : DurableConfluentMap[ Confluent, Int ]
+   private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

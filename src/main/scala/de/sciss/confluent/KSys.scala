@@ -41,6 +41,8 @@ object KSys {
                                              ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
 
       def inputAccess: S#Acc
+
+      private[confluent] def readPath( in: DataInput ) : S#Acc
    }
 
 //   trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]
@@ -71,6 +73,8 @@ object KSys {
       private[confluent] def indexSum: Long
 
       private[confluent] def apply( idx: Int ): Long
+
+      private[confluent] def maxPrefixLength( that: S#Acc ) : Int
 
 //      // replace last element
 //      private[confluent] def :-|( suffix: Long ) : S#Acc

@@ -28,7 +28,7 @@ package impl
 
 import de.sciss.lucre.stm.{TxnSerializer, Serializer}
 import concurrent.stm.TxnLocal
-import TemporalObjects.logConfig
+import TemporalObjects.logConfluent
 import de.sciss.lucre.{DataInput, DataOutput}
 import collection.immutable.{IntMap, LongMap}
 
@@ -149,7 +149,7 @@ object DurableCacheMapImpl {
 
       def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
       }
    }
@@ -160,7 +160,7 @@ object DurableCacheMapImpl {
 
       def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          val out     = new DataOutput()
          serializer.write( value, out )
          val arr     = out.toByteArray
@@ -265,7 +265,7 @@ object InMemoryCacheMapImpl {
 
       def flush( outTerm: Long, store: InMemoryConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfig( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
       }
    }

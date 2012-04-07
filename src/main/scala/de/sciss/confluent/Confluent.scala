@@ -32,7 +32,7 @@ import de.sciss.lucre.{DataOutput, DataInput}
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import de.sciss.collection.txn.Ancestor
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
-import TemporalObjects.logConfig
+import TemporalObjects.logConfluent
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
 import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
@@ -104,6 +104,16 @@ object Confluent {
       private[Confluent] val empty      = new Path( FingerTree.empty( PathMeasure ))
       /* private[Confluent] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[Confluent] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
+
+      def read( in: DataInput ) : S#Acc  = {
+         implicit val m = PathMeasure
+         val sz         = in.readInt()
+         var tree       = FingerTree.empty( m )
+         var i = 0; while( i < sz ) {
+            tree      :+= in.readLong()
+         i += 1 }
+         new Path( tree )
+      }
 
       def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
@@ -181,6 +191,19 @@ object Confluent {
       private[confluent] def +:( head: Long ) : Path = wrap( head +: tree )
 
       private[confluent] def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
+
+      private[confluent] def maxPrefixLength( that: S#Acc ) : Int = {
+         val ta   = tree
+         val tb   = that.tree
+         val sz   = math.min( size, that.size )
+         var same = true
+         // XXX TODO more efficient (binary search according to sum)
+         var i = 0; while( i < sz && same ) {
+            same = ta.find1( _._1 > i ) == tb.find1( _._1 > i )
+         i += 1 }
+//         wrap( ta.split1( _._1 > i )._1 )
+         if( same ) i else i - 1
+      }
 
       /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : Path = {
          val (_, _, right) = tree.split1( _._1 > dropLen )
@@ -371,7 +394,7 @@ object Confluent {
    private sealed trait TxnImpl extends Txn with DurableCacheMapImpl[ Confluent, Int ] {
       private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]] = TxnLocal( initialValue =
          { implicit itx =>
-            logConfig( "....... txn dirty ......." )
+            logConfluent( "....... txn dirty ......." )
             ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
             IIdxSeq.empty
          })
@@ -409,14 +432,14 @@ object Confluent {
          } else {
             flushOldTree()
          }
-         logConfig( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
+         logConfluent( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
          system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
          maps.foreach( _.flushCache( outTerm )( this ))
       }
 
       final def newID() : S#ID = {
          val res = new ID( system.newIDValue()( this ), Path.empty )
-         logConfig( "txn newID " + res )
+         logConfluent( "txn newID " + res )
          res
       }
 
@@ -448,6 +471,8 @@ object Confluent {
          }
       }
 
+      final private[confluent] def readPath( in: DataInput ) : S#Acc = Path.read( in )
+
       final private[Confluent] def readTreeVertexLevel( term: Long ) : Int = {
          system.store.get { out =>
             out.writeUnsignedByte( 0 )
@@ -478,17 +503,17 @@ object Confluent {
       }
 
       final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
-         logConfig( "txn get " + id )
+         logConfluent( "txn get " + id )
          getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
-         logConfig( "txn get' " + id )
+         logConfluent( "txn get' " + id )
          getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final private[Confluent] def getPartial[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
-         logConfig( "txn partial get' " + id )
+         logConfluent( "txn partial get' " + id )
          partialCache.getPartial[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
@@ -573,7 +598,7 @@ object Confluent {
       }
 
       final private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree = {
-         logConfig( "txn new tree " + term.toInt )
+         logConfluent( "txn new tree " + term.toInt )
          val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, TxnSerializer.Long, _.toInt )
          val res  = new IndexTreeImpl( tree, level )
          system.store.put( out => {
@@ -609,14 +634,14 @@ object Confluent {
 
       final def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
-         logConfig( "txn newVar " + res ) // + " - init = " + init
+         logConfluent( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
 
       final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = new PartialVarTxImpl[ A ]( alloc( pid ))
-         logConfig( "txn newPartialVar " + res )
+         logConfluent( "txn newPartialVar " + res )
          res.setInit( init )( this )
          res
       }
@@ -624,7 +649,7 @@ object Confluent {
       final def newBooleanVar( pid: S#ID, init: Boolean ) : S#Var[ Boolean ] = {
          val id   = alloc( pid )
          val res  = new BooleanVar( id )
-         logConfig( "txn newVar " + res ) // + " - init = " + init
+         logConfluent( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -632,7 +657,7 @@ object Confluent {
       final def newIntVar( pid: S#ID, init: Int ) : S#Var[ Int ] = {
          val id   = alloc( pid )
          val res  = new IntVar( id )
-         logConfig( "txn newVar " + res ) // + " - init = " + init
+         logConfluent( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -640,7 +665,7 @@ object Confluent {
       final def newLongVar( pid: S#ID, init: Long ) : S#Var[ Long ] = {
          val id   = alloc( pid )
          val res  = new LongVar( id )
-         logConfig( "txn newVar " + res ) // + " - init = " + init
+         logConfluent( "txn newVar " + res ) // + " - init = " + init
          res.setInit( init )( this )
          res
       }
@@ -674,37 +699,37 @@ object Confluent {
 
       final def readVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( readSource( in, pid ))
-         logConfig( "txn read " + res )
+         logConfluent( "txn read " + res )
          res
       }
 
       final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = new PartialVarTxImpl[ A ]( readSource( in, pid ))
-         logConfig( "txn read " + res )
+         logConfluent( "txn read " + res )
          res
       }
 
       final def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
          val res = new BooleanVar( readSource( in, pid ))
-         logConfig( "txn read " + res )
+         logConfluent( "txn read " + res )
          res
       }
 
       final def readIntVar( pid: S#ID, in: DataInput ) : S#Var[ Int ] = {
          val res = new IntVar( readSource( in, pid ))
-         logConfig( "txn read " + res )
+         logConfluent( "txn read " + res )
          res
       }
 
       final def readLongVar( pid: S#ID, in: DataInput ) : S#Var[ Long ] = {
          val res = new LongVar( readSource( in, pid ))
-         logConfig( "txn read " + res )
+         logConfluent( "txn read " + res )
          res
       }
 
       final def readID( in: DataInput, acc: S#Acc ) : S#ID = {
          val res = new ID( in.readInt(), Path.readAndAppend( in, acc )( this ))
-         logConfig( "txn readID " + res )
+         logConfluent( "txn readID " + res )
          res
       }
 
@@ -740,7 +765,7 @@ object Confluent {
       override def toString = "RootTxn"
 
       private[Confluent] implicit lazy val durable: Durable#Tx = {
-         logConfig( "txn durable" )
+         logConfluent( "txn durable" )
          system.durable.wrap( peer )
       }
 
@@ -779,17 +804,17 @@ object Confluent {
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putNonTxn( id, v )( ser )
       }
 
       def get( implicit tx: S#Tx ) : A = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getNonTxn[ A ]( id )( ser )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putNonTxn( id, v )( ser )
       }
 
@@ -899,17 +924,17 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private final class PartialVarTxImpl[ A ]( protected val id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putPartial( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getPartial( id )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putPartial( id, v )
       }
 
@@ -921,17 +946,17 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private final class VarTxImpl[ A ]( protected val id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ])
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getTxn( id )
       }
 
       def setInit( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putTxn( id, v )
       }
 
@@ -951,19 +976,19 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
 
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
-         logConfig( this.toString + " meld " + from )
+         logConfluent( this.toString + " meld " + from )
          val idm  = new ID( id1, from )
          tx.addInputVersion( from )
          tx.getTxn( idm )
       }
 
       def set( v: A )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putTxn( id, v )
       }
 
       def get( implicit tx: S#Tx ) : A = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getTxn( id )
       }
 
@@ -979,18 +1004,18 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private final class BooleanVar( protected val id: S#ID )
    extends BasicVar[ Boolean ] with Serializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getNonTxn[ Boolean ]( id )( this )
       }
 
       def setInit( v: Boolean )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Boolean )( implicit tx: S#Tx ) {
 //         assertExists()
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
 
@@ -1006,18 +1031,18 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private final class IntVar( protected val id: S#ID )
    extends BasicVar[ Int ] with Serializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getNonTxn[ Int ]( id )( this )
       }
 
       def setInit( v: Int )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Int )( implicit tx: S#Tx ) {
 //         assertExists()
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
 
@@ -1049,18 +1074,18 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private final class LongVar( protected val id: S#ID )
    extends BasicVar[ Long ] with Serializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
-         logConfig( this.toString + " get" )
+         logConfluent( this.toString + " get" )
          tx.getNonTxn[ Long ]( id )( this )
       }
 
       def setInit( v: Long )( implicit tx: S#Tx ) {
-         logConfig( this.toString + " ini " + v )
+         logConfluent( this.toString + " ini " + v )
          tx.putNonTxn( id, v )( this )
       }
 
       def set( v: Long )( implicit tx: S#Tx ) {
 //         assertExists()
-         logConfig( this.toString + " set " + v )
+         logConfluent( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
 
@@ -1183,7 +1208,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          TxnExecutor.defaultAtomic { implicit itx =>
             implicit val dtx = durable.wrap( itx )
             val last = global.lastAccess.get
-            logConfig( "::::::: atomic - input access = " + last + " :::::::" )
+            logConfluent( "::::::: atomic - input access = " + last + " :::::::" )
             fun( new RegularTxn( this, dtx, itx, last ))
          }
       }
@@ -1197,7 +1222,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       def root[ A ]( init: S#Tx => A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
-         logConfig( "::::::: root :::::::" )
+         logConfluent( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
             implicit val tx = new RootTxn( this, itx )
             val rootVar    = new RootVar[ A ]( 0, "Root", serializer )

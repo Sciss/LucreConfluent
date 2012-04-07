@@ -70,6 +70,8 @@ object KSys {
 
       private[confluent] def indexSum: Long
 
+      private[confluent] def apply( idx: Int ): Long
+
 //      // replace last element
 //      private[confluent] def :-|( suffix: Long ) : S#Acc
 

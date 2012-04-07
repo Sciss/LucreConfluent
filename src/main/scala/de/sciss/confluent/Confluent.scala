@@ -180,6 +180,8 @@ object Confluent {
 
       private[confluent] def +:( head: Long ) : Path = wrap( head +: tree )
 
+      private[confluent] def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
+
       /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : Path = {
          val (_, _, right) = tree.split1( _._1 > dropLen )
          wrap( newHead +: right )
@@ -377,7 +379,10 @@ object Confluent {
       private val markDirtyFlag = TxnLocal( false )
 
       final private def markDirty() {
-         if( !markDirtyFlag.swap( true )( peer )) addDirtyMap( this )
+         if( !markDirtyFlag.swap( true )( peer )) {
+            addDirtyMap( this )
+            addDirtyMap( partialCache )
+         }
       }
 
       final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) {
@@ -673,8 +678,11 @@ object Confluent {
          res
       }
 
-      final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] =
-         sys.error( "TODO" )
+      final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         val res = new PartialVarTxImpl[ A ]( readSource( in, pid ))
+         logConfig( "txn read " + res )
+         res
+      }
 
       final def readBooleanVar( pid: S#ID, in: DataInput ) : S#Var[ Boolean ] = {
          val res = new BooleanVar( readSource( in, pid ))
@@ -1121,7 +1129,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
       private[confluent] val varMap       = DurableConfluentMap.newIntMap[ S ]( store )
-      private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ] =
+      private[confluent] val partialMap : PartialCacheMapImpl[ Confluent, Int ] =
          PartialCacheMapImpl.newIntCache( DurableConfluentMap.newPartialMap( store ))
 
       private val global = durable.step { implicit tx =>

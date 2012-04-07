@@ -37,7 +37,7 @@ object TemporalObjects {
    val isSnapshot    = true
 
    private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
-   var showLog       = true
+   var showLog       = false
 
    def versionString = {
       val s = (version + 0.001).toString.substring( 0, 4 )

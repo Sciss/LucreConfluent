@@ -31,3 +31,6 @@ parallelExecution in Test := false
 
 initialCommands in console := """import de.sciss.confluent._
 """
+
+publishArtifact in (Compile, packageDoc) := false   // disable doc generation during development cycles
+

@@ -36,7 +36,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
    val rnd           = TxnRandom.plain( SEED )
 
    // make sure we don't look tens of thousands of actions
-   TemporalObjects.showLog = false
+   TemporalObjects.showConfluentLog = false
 
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: S => Unit ) {
       if( TWO_GAP_SIZES ) {

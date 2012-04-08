@@ -11,7 +11,7 @@ import de.sciss.collection.txn.{SpaceSerializers, DeterministicSkipOctree}
 import de.sciss.collection.geom.{Square, Point2D}
 
 object OctreeViewTest extends App with Runnable {
-   TemporalObjects.showLog = false
+   TemporalObjects.showConfluentLog = false
    EventQueue.invokeLater( this )
 
    def run() {

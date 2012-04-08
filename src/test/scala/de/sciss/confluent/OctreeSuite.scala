@@ -34,7 +34,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val cube          = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
 
    // make sure we don't look tens of thousands of actions
-   TemporalObjects.showLog = false
+   TemporalObjects.showConfluentLog = false
 
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {

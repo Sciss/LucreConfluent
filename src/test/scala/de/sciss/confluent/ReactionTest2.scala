@@ -56,7 +56,7 @@ object ReactionTest2 extends App {
       (s, () => s.close())
    }
 
-   TemporalObjects.showLog = false
+   TemporalObjects.showConfluentLog = false
 
    defer( args.toSeq.take( 2 ) match {
       case Seq( "--coll" )      => collections( tmpSys() )

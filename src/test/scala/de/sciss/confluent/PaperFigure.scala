@@ -8,7 +8,7 @@ import java.io.File
 class Nodes[S <: Sys[S]] {
   object Node {
     implicit object ser extends MutableSerializer[S, Node] {
-      def readData(in: DataInput, _id: S#ID)(implicit tx: S#Tx): Node = new Node {
+      def readData(in: DataInput, _id: S#ID)(implicit tx: S#Tx) = new Node {
         val id    = _id
         val value = tx.readVar[Int](id, in)
         val next  = tx.readVar[Option[Node]](id, in)

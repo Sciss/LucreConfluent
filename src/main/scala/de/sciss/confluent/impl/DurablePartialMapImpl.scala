@@ -20,7 +20,8 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 
    protected def writeKey( key: K, out: DataOutput ) : Unit
 
-   final def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+   final def isFresh( key: K, conPath: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      val path = conPath.partial
       store.get { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( path.indexSum )
@@ -33,15 +34,16 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
       } getOrElse( false )
    }
 
-   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
-      val (index, term) = path.splitIndex
+   final def put[ @specialized A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+      val path = conPath.partial
+      val (index, term) = conPath.splitIndex
 //if( key == 0 ) {
 //   println( "::::: put. write path = index " + index + "; term = " + term + "; sum = " + index.sum )
 //}
       // first we need to see if anything has already been written to the index of the write path
       store.flatGet { out =>
          writeKey( key, out ) // out.writeInt( key )
-         out.writeLong( index.sum )
+         out.writeLong( path.indexSum /* index.sum */ )
       } { in =>
          (in.readUnsignedByte(): @switch) match {
             case 1 =>
@@ -98,7 +100,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                //                  )
                //                  putPartials( key, index )
                //                  putFullMap[ A ]( key, index, term, value, indexTerm, prevValue )
-               get[ A ]( key, path ) match {
+               get[ A ]( key, conPath ) match {
                   case Some( prevValue ) =>
                      putPartials( key, index )
                      putFullMap[ A ]( key, index, term, value, indexTerm, prevValue )
@@ -111,16 +113,18 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
       }
    }
 
-   private def putFullMap[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
+   private def putFullMap[ @specialized A ]( key: K, conIndex: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
-      val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
+      val m = tx.newIndexMap[ A ]( conIndex, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
 //if( key == 0 ) {
 //   println( "::::: full map. index = " + index + "; term = " + term + "; sum = " + index.sum + "; m = " + m )
-//}
+
+      val index = conIndex.partial
+
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
@@ -133,7 +137,9 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
    }
 
    // stores the prefixes
-   private def putPartials( key: K, index: S#Acc )( implicit tx: S#Tx ) {
+   private def putPartials( key: K, conIndex: S#Acc )( implicit tx: S#Tx ) {
+      val index = conIndex.partial
+
       Hashing.foreachPrefix( index, hash => {
          val res = store.contains { out =>
             writeKey( key, out ) // out.writeInt( key )
@@ -159,8 +165,10 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
    }
 
    // store the full value at the full hash (path.sum)
-   private def putFullSingle[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A )
+   private def putFullSingle[ @specialized A ]( key: K, conIndex: S#Acc, term: Long, value: A )
                                               ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+      val index = conIndex.partial
+
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )
@@ -174,35 +182,39 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
       }
    }
 
-   final def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
-      val (maxIndex, maxTerm) = path.splitIndex
+   final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+      val (maxIndex, maxTerm) = conPath.splitIndex
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (_, _, value) => value )
    }
 
-   final def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
+   final def getWithSuffix[ @specialized A ]( key: K, conPath: S#Acc )
                                             ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
-      val (maxIndex, maxTerm) = path.splitIndex
+      val (maxIndex, maxTerm) = conPath.splitIndex
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
       //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
-         (writeTerm +: path.drop( preLen ), value)
+         (writeTerm +: conPath.drop( preLen ), value)
       )
    }
 
-   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
+   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxConIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (Int, Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
+      val maxIndex = maxConIndex.partial
+
       val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( hash )
       })
-      val (index, term) = if( preLen == maxIndex.size ) {
+      val preConLen = preLen << 1
+      val (conIndex, term) = if( preConLen == maxConIndex.size ) {
          // maximum prefix lies in last tree
-         (maxIndex, maxTerm)
+         (maxConIndex, maxTerm)
       } else {
          // prefix lies in other tree
-         maxIndex.splitAtIndex( preLen )
+         maxConIndex.splitAtIndex( preConLen )
       }
-      val preSum = index.sum
+      val index   = conIndex.partial
+      val preSum  = index.sum
       store.flatGet { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( preSum )
@@ -211,8 +223,10 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
             case 0 => // partial hash
                val hash = in.readLong()
                //                  EntryPre[ S ]( hash )
-               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-               getWithPrefixLen( key, fullIndex, fullTerm )( fun )
+               val idx     = maxIndex.indexOfSum( hash )
+               val idxCon  = idx << 1
+               val (conIndex, fullTerm) = maxConIndex.splitAtIndex( idxCon )
+               getWithPrefixLen( key, conIndex, fullTerm )( fun )
 
             case 1 =>
                // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
@@ -233,13 +247,13 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                val term2 = in.readLong()
                val value = ser.read( in )
                //                  EntrySingle[ S, A ]( term2, value )
-               Some( fun( preLen, term2, value ))
+               Some( fun( preConLen, term2, value ))
 
             case 2 =>
-               val m = tx.readIndexMap[ A ]( in, index )
+               val m = tx.readIndexMap[ A ]( in, conIndex )
                //                  EntryMap[ S, A ]( m )
                val (term2, value) = m.nearest( term )
-               Some( fun( preLen, term2, value ))
+               Some( fun( preConLen, term2, value ))
          }
       }
    }

@@ -76,6 +76,8 @@ object KSys {
 
       private[confluent] def maxPrefixLength( that: S#Acc ) : Int
 
+      private[confluent] def partial: S#Acc
+
 //      // replace last element
 //      private[confluent] def :-|( suffix: Long ) : S#Acc
 
@@ -90,6 +92,8 @@ object KSys {
       private[confluent] def splitAtIndex( idx: Int ): (S#Acc, Long)
 
       private[confluent] def splitAtSum( hash: Long ): (S#Acc, Long)
+
+      private[confluent] def indexOfSum( hash: Long ): Int
 
       private[confluent] def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc
 

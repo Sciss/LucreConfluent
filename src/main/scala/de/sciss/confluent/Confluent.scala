@@ -192,6 +192,20 @@ object Confluent {
 
       private[confluent] def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
 
+      // XXX TODO testin one two
+      private[confluent] def partial : Path = {
+         val sz   = size
+         if( sz == 0 ) return this
+
+         var res = FingerTree.empty( PathMeasure )
+         var idx = 0; while( idx < sz ) {
+            res :+= tree.find1( _._1 > idx )
+            idx += 2
+         }
+         if( sz % 2 == 0 ) res :+= tree.last
+         wrap( res )
+      }
+
       private[confluent] def maxPrefixLength( that: S#Acc ) : Int = {
          val ta   = tree
          val tb   = that.tree
@@ -266,6 +280,15 @@ object Confluent {
       private[confluent] def splitAtSum( hash: Long ) : (Path, Long) = {
          val tup = tree.split1( _._2 > hash )
          (wrap( tup._1 ), tup._2)
+      }
+
+      private[confluent] def indexOfSum( hash: Long ): Int = {
+         // XXX TODO very inefficient
+         var idx = 0; val sz = size; while( idx < sz ) {
+            if( sumUntil( idx ) >= hash ) return idx
+            idx += 1
+         }
+         idx
       }
 
       def write( out: DataOutput ) {

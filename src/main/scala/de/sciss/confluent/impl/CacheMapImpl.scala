@@ -144,10 +144,10 @@ object DurableCacheMapImpl {
 
    private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ A ])
-   extends Entry[ S, K, DurableConfluentMap[ S, K ]] {
+   extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: DurablePersistentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
          logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
@@ -155,10 +155,10 @@ object DurableCacheMapImpl {
    }
    private final class TxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends Entry[ S, K, DurableConfluentMap[ S, K ]] {
+   extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: DurableConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+      def flush( outTerm: Long, store: DurablePersistentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
          logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          val out     = new DataOutput()
@@ -169,7 +169,7 @@ object DurableCacheMapImpl {
    }
 }
 trait DurableCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
-extends CacheMapImpl[ S, K, DurableConfluentMap[ S, K ]] {
+extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
    import DurableCacheMapImpl._
 
    /**
@@ -285,10 +285,10 @@ extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
 // ---------------------------------------------------------------------
 
 object PartialCacheMapImpl {
-   def newIntCache[ S <: KSys[ S ]]( map: DurableConfluentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
+   def newIntCache[ S <: KSys[ S ]]( map: DurablePersistentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
       new PartialCacheMapImpl[ S, Int ] {
          final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
-         final protected val store : DurableConfluentMap[ S, Int ] = map
+         final protected val store : DurablePersistentMap[ S, Int ] = map
       }
 }
 trait PartialCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]

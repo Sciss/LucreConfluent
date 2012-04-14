@@ -1,5 +1,5 @@
 /*
- *  DurableConfluentMap.scala
+ *  DurablePersistentMap.scala
  *  (TemporalObjects)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -26,27 +26,27 @@
 package de.sciss.confluent
 
 import de.sciss.lucre.stm.{DataStore, Serializer}
-import impl.{PartialConfluentMapImpl, LongMapImpl, IntMapImpl}
+import impl.{PartialIntMapImpl, ConfluentLongMapImpl, ConfluentIntMapImpl}
 
-object DurableConfluentMap {
-   def newIntMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Int ] =
-      new IntMapImpl[ S ]( store )
+object DurablePersistentMap {
+   def newConfluentIntMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
+      new ConfluentIntMapImpl[ S ]( store )
 
-   def newLongMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Long ] =
-      new LongMapImpl[ S ]( store )
+   def newConfluentLongMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Long ] =
+      new ConfluentLongMapImpl[ S ]( store )
 
-   def newPartialMap[ S <: KSys[ S ]]( store: DataStore ) : DurableConfluentMap[ S, Int ] =
-      new PartialConfluentMapImpl[ S ]( store )
+   def newPartialMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
+      new PartialIntMapImpl[ S ]( store )
 }
 /**
- * Interface for a confluently persistent storing key value map. Keys (type `K`) might
+ * Interface for a confluently or partially persistent storing key value map. Keys (type `K`) might
  * be single object identifiers (as the variable storage case), or combined keys
  * (as in the live map case).
  *
  * @tparam S   the underlying system
  * @tparam K   the key type
  */
-trait DurableConfluentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
+trait DurablePersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
    /**
     * Stores a new value for a given write path.
     *

@@ -679,7 +679,7 @@ object Confluent {
 
       final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
          val id   = system.newIDValue()( this )
-         val map  = DurableConfluentMap.newLongMap[ Confluent ]( system.store )
+         val map  = DurablePersistentMap.newConfluentLongMap[ Confluent ]( system.store )
          new DurableIDMapImpl[ A ]( id, map )
       }
 
@@ -858,7 +858,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
    }
 
-   private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurableConfluentMap[ Confluent, Long ])
+   private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurablePersistentMap[ Confluent, Long ])
                                            ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
    extends IdentifierMap[ S#Tx, S#ID, A ] with DurableCacheMapImpl[ Confluent, Long ] {
       private val nid = mapID.toLong << 32
@@ -1153,9 +1153,9 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       private[confluent] val store        = storeFactory.open( "data" )
       private[confluent] val durable      = Durable( store ) : Durable
-      private[confluent] val varMap       = DurableConfluentMap.newIntMap[ S ]( store )
+      private[confluent] val varMap       = DurablePersistentMap.newConfluentIntMap[ S ]( store )
       private[confluent] val partialMap : PartialCacheMapImpl[ Confluent, Int ] =
-         PartialCacheMapImpl.newIntCache( DurableConfluentMap.newPartialMap( store ))
+         PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap( store ))
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1253,7 +1253,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 
    private[confluent] def store : DataStore
    private[confluent] def durable : Durable
-   private[confluent] def varMap : DurableConfluentMap[ Confluent, Int ]
+   private[confluent] def varMap : DurablePersistentMap[ Confluent, Int ]
    private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long

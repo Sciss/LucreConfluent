@@ -1,43 +1,18 @@
-/*
- *  DurableConfluentMapImpl.scala
- *  (TemporalObjects)
- *
- *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
- *
- *	 This software is free software; you can redistribute it and/or
- *	 modify it under the terms of the GNU General Public License
- *	 as published by the Free Software Foundation; either
- *	 version 2, june 1991 of the License, or (at your option) any later version.
- *
- *	 This software is distributed in the hope that it will be useful,
- *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *	 General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public
- *  License (gpl.txt) along with this software; if not, write to the Free Software
- *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
- *
- *	 For further information, please contact Hanns Holger Rutz at
- *	 contact@sciss.de
- */
-
 package de.sciss.confluent
 package impl
 
+import de.sciss.lucre.DataOutput
 import annotation.switch
 import de.sciss.lucre.stm.{TxnSerializer, Serializer, DataStore}
-import de.sciss.lucre.DataOutput
 
-object DurableConfluentMapImpl {
+object DurablePartialMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], +A ]
    private final case class EntryPre[ S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
    private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends DurablePersistentMap[ S, K ] {
-   import DurableConfluentMapImpl._
+sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends DurablePersistentMap[ S, K ] {
+   import DurablePartialMapImpl._
 
    protected def store: DataStore
 
@@ -269,9 +244,9 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K
       }
    }
 }
-final class ConfluentIntMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Int ] {
+final class PartialIntMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurablePartialMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class ConfluentLongMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Long ] {
+final class PartialLongMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurablePartialMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

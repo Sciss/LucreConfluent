@@ -205,7 +205,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( hash )
       })
-      val preConLen = preLen << 1
+      val preConLen = math.max( 0, (preLen << 1) - 1 )   // III
       val (conIndex, term) = if( preConLen == maxConIndex.size ) {
          // maximum prefix lies in last tree
          (maxConIndex, maxTerm)
@@ -224,7 +224,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                val hash = in.readLong()
                //                  EntryPre[ S ]( hash )
                val idx     = maxIndex.indexOfSum( hash )
-               val idxCon  = idx << 1
+               val idxCon  = idx << 1  // III XXX TODO check correctness
                val (conIndex, fullTerm) = maxConIndex.splitAtIndex( idxCon )
                getWithPrefixLen( key, conIndex, fullTerm )( fun )
 

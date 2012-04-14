@@ -756,6 +756,8 @@ object Confluent {
          res
       }
 
+      final def readPartialID( in: DataInput, acc: S#Acc ) : S#ID = readID( in, acc )
+
       final def access[ A ]( source: S#Var[ A ]) : A = {
          sys.error( "TODO" )  // source.access( system.path( this ))( this )
       }

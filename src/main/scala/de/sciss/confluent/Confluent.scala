@@ -198,11 +198,14 @@ object Confluent {
          if( sz == 0 ) return this
 
          var res = FingerTree.empty( PathMeasure )
-         var idx = 0; while( idx < sz ) {
-            res :+= tree.find1( _._1 > idx )
-            idx += 2
-         }
-         if( sz % 2 == 0 ) res :+= tree.last
+//         var idx = 0; while( idx < sz ) {
+//            res :+= tree.find1( _._1 > idx )
+//            idx += 2
+//         }
+//         if( sz % 2 == 0 ) res :+= tree.last
+         require( sz % 2 == 0 )
+         res :+= head
+         res :+= last
          wrap( res )
       }
 

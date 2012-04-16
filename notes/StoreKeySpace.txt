@@ -11,4 +11,4 @@ store key space
 
 :::::::::::::
 
-<byte 2><int Version>			partial map
+<byte 2><int Version>			partial map / partial variable

@@ -390,13 +390,13 @@ println( "?? partial from index " + this )
       override def toString = index.mkString( "PartialMap(<", ",", ">, " + map + ")" )
 
       def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
-         val v = tx.readTreeVertex( map.full, index, term )._1
+         val v = tx.readPartialTreeVertex( index, term )
          val (v2, value) = map.nearest( v )( tx.durable )
          (v2.version, value)
       }
 
       def add( term: Long, value: A )( implicit tx: S#Tx ) {
-         val v = tx.readTreeVertex( map.full, index, term )._1
+         val v = tx.readPartialTreeVertex( index, term )
          map.add( (v, value) )( tx.durable )
       }
 
@@ -431,6 +431,7 @@ println( "?? partial from index " + this )
 
       private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
                                              term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int)
+      private[Confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ Durable, Long ]
       private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) : Unit
       private[Confluent] def readTreeVertexLevel( term: Long ) : Int
       private[Confluent] def readIndexTree( term: Long ) : IndexTree
@@ -486,7 +487,7 @@ println( "?? partial from index " + this )
 
       final protected def store = system.varMap
 
-      private def partialTree: Ancestor.Tree[ Durable, Long ] = system.partialTree
+      protected def partialTree: Ancestor.Tree[ Durable, Long ] = system.partialTree
 
       private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]) {
          val meldInfo      = meld.get( peer )
@@ -525,6 +526,19 @@ println( "?? partial from index " + this )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
+      final private[Confluent] def readPartialTreeVertex( index: S#Acc,
+                                                          term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+//         val root = tree.root
+//         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
+         system.store.get { out =>
+            out.writeUnsignedByte( 3 )
+            out.writeInt( term.toInt )
+         } { in =>
+            val access  = index :+ term
+            partialTree.vertexSerializer.read( in, access )( durable )
+         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
+      }
+
       final private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) {
          system.store.put { out =>
             out.writeUnsignedByte( 0 )
@@ -533,6 +547,15 @@ println( "?? partial from index " + this )
             out.writeInt( tree.term.toInt )
             out.writeInt( tree.level )
             tree.tree.vertexSerializer.write( v, out )
+         }
+      }
+
+      final private[Confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ Durable, Long ]) {
+         system.store.put { out =>
+            out.writeUnsignedByte( 3 )
+            out.writeInt( v.version.toInt )
+         } { out =>
+            partialTree.vertexSerializer.write( v, out )
          }
       }
 
@@ -839,11 +862,25 @@ println( "?? partial from index " + this )
          val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
          val child      = tree.tree.insertChild( parent, childTerm )( durable )
          writeTreeVertex( tree, child )
+
+         // ---- partial ----
+         val pParent    = readPartialTreeVertex( index, parentTerm )
+         val pChild     = partialTree.insertChild( pParent, childTerm )( durable )
+         writePartialTreeVertex( pChild )
+
          childTerm
       }
+
       protected def flushNewTree( level: Int ) : Long = {
          val term = system.newVersionID( this )
          newIndexTree( term, level )
+
+         // ---- partial ----
+         val (index, parentTerm) = inputAccess.splitIndex
+         val pParent    = readPartialTreeVertex( index, parentTerm )
+         val pChild     = partialTree.insertChild( pParent, term )( durable )
+         writePartialTreeVertex( pChild )
+
          term
       }
    }
@@ -1326,6 +1363,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))
                tx.newIndexTree( rootPath.term, 0 )
+               tx.writePartialTreeVertex( partialTree.root )
             }
             rootVar
          }

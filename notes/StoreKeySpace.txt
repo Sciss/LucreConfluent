@@ -12,3 +12,5 @@ store key space
 :::::::::::::
 
 <byte 2><int Version>			partial map / partial variable
+
+<byte 3><int Version>			Partial Tree Vertex

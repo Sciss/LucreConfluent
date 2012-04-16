@@ -200,8 +200,17 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>
          val treeTerm   = tx.getIndexTreeTerm( writeTerm )
-         val preLen     = { val i = maxIndex.maxPrefixLength( treeTerm ); if( i == 0 ) 1 else i }  // XXX TODO ugly
-         (writeTerm +: conPath.drop( preLen ), value)
+         val i          = maxIndex.maxPrefixLength( treeTerm )
+         // XXX TODO ugly ugly ugly
+         val suffix = if( i == 0 ) {
+            val inPath = tx.inputAccess
+            val j = inPath.maxPrefixLength( treeTerm )
+            require( j > 0 )
+            inPath.drop( j )
+         } else {
+            conPath.drop( i )
+         }
+         (writeTerm +: suffix, value)
       }
    }
 

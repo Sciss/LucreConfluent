@@ -209,6 +209,15 @@ object Confluent {
          wrap( res )
       }
 
+      private[confluent] def maxPrefixLength( that: Long ) : Int = {
+         // XXX TODO more efficient
+         val sz = size
+         var i = 0; while( i < sz ) {
+            if( apply( i ) == that ) return i + 1
+         i += 2 }
+         0
+      }
+
       private[confluent] def maxPrefixLength( that: S#Acc ) : Int = {
          val ta   = tree
          val tb   = that.tree
@@ -603,6 +612,8 @@ object Confluent {
       final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
          putTxn[ A ]( id, value )
       }
+
+      final private[confluent] def getIndexTreeTerm( term: Long ) : Long = readIndexTree( term ).term
 
       final private[Confluent] def readIndexTree( term: Long ) : IndexTree = {
          val st = system.store

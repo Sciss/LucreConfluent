@@ -198,10 +198,11 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                                             ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
 //      val (maxIndex, maxTerm) = conPath.splitIndex
       val maxTerm = conPath.term
-      getWithPrefixLen[ A, (S#Acc, A) ]( key, /* maxIndex, */ maxTerm )( (/* preLen, */ writeTerm, value) =>
-//         (writeTerm +: conPath.drop( preLen ), value)
-         sys.error( "TODO" )
-      )
+      getWithPrefixLen[ A, (S#Acc, A) ]( key, /* maxIndex, */ maxTerm ) { (/* preLen, */ writeTerm, value) =>
+         val treeTerm   = tx.getIndexTreeTerm( writeTerm )
+         val preLen     = conPath.maxPrefixLength( treeTerm )
+         (writeTerm +: conPath.drop( preLen ), value)
+      }
    }
 
    private def getWithPrefixLen[ @specialized A, B ]( key: K, /* maxConIndex: S#Acc, */ maxTerm: Long )
@@ -268,8 +269,21 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 //                  tx.inEdges
 //                  sys.error( "TODO" )
 //               }
-               val (term2, value) = m.nearest( maxTerm /* term */)
-               Some( fun( /* preConLen, */ term2, value ))
+
+//               val (term2, value) = m.nearest( maxTerm /* term */)
+//               if( term2 == maxTerm ) {
+//                  Some( fun( /* preConLen, */ term2, value ))
+//               } else {
+//                  val inTerm = tx.inputAccess.term
+//                  if( maxTerm == inTerm ) {
+//                     Some( fun( /* preConLen, */ term2, value ))
+//                  } else {
+//                     None
+//                  }
+//               }
+               val inTerm = tx.inputAccess.term
+               val (term2, value) = m.nearest( inTerm )
+               Some( fun( term2, value ))
          }
       }
    }

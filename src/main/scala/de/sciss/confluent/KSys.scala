@@ -34,6 +34,8 @@ object KSys {
    trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
+      private[confluent] def getIndexTreeTerm( term: Long ) : Long
+
       private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
                                               ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
 
@@ -81,6 +83,8 @@ object KSys {
       private[confluent] def apply( idx: Int ): Long
 
       private[confluent] def maxPrefixLength( that: S#Acc ) : Int
+
+      private[confluent] def maxPrefixLength( that: Long ) : Int
 
       private[confluent] def partial: S#Acc
 

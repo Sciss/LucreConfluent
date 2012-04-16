@@ -203,7 +203,11 @@ object Confluent {
 //            idx += 2
 //         }
 //         if( sz % 2 == 0 ) res :+= tree.last
-         require( sz % 2 == 0 )
+
+//         require( sz % 2 == 0 )
+         if( sz % 2 != 0 ) {
+println( "?? partial from index " + this )
+         }
          res :+= head
          res :+= last
          wrap( res )
@@ -322,7 +326,9 @@ object Confluent {
          tree.split( _._1 > n )._1.measure._2
       }
 
-      def take( n: Int ) : PathLike = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
+      def take( n: Int ) : PathLike = _take( n )
+
+      def _take( n: Int ) : S#Acc = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
 
       protected def wrap( _tree: FingerTree[ (Int, Long), Long ]) : Path = new Path( _tree )
 
@@ -361,6 +367,27 @@ object Confluent {
                                           protected val map: Ancestor.Map[ Durable, Long, A ])
    extends IndexMap[ S, A ] {
       override def toString = index.mkString( "IndexMap(<", ",", ">, " + map + ")" )
+
+      def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
+         val v = tx.readTreeVertex( map.full, index, term )._1
+         val (v2, value) = map.nearest( v )( tx.durable )
+         (v2.version, value)
+      }
+
+      def add( term: Long, value: A )( implicit tx: S#Tx ) {
+         val v = tx.readTreeVertex( map.full, index, term )._1
+         map.add( (v, value) )( tx.durable )
+      }
+
+      def write( out: DataOutput ) {
+         map.write( out )
+      }
+   }
+
+   private final class PartialMapImpl[ A ]( protected val index: S#Acc,
+                                            protected val map: Ancestor.Map[ Durable, Long, A ])
+   extends IndexMap[ S, A ] {
+      override def toString = index.mkString( "PartialMap(<", ",", ">, " + map + ")" )
 
       def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
          val v = tx.readTreeVertex( map.full, index, term )._1
@@ -458,6 +485,8 @@ object Confluent {
       final protected def partialCache: PartialCacheMapImpl[ Confluent, Int ] = system.partialMap
 
       final protected def store = system.varMap
+
+      private def partialTree: Ancestor.Tree[ Durable, Long ] = system.partialTree
 
       private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]) {
          val meldInfo      = meld.get( peer )
@@ -654,7 +683,9 @@ object Confluent {
 
       final private[confluent] def readPartialMap[ A ]( access: S#Acc, in: DataInput )
                                                       ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
-         sys.error( "TODO" )
+         val map     = Ancestor.readMap[ Durable, Long, A ]( in, (), partialTree )
+         val index   = access._take( 1 )   // XXX correct ?
+         new PartialMapImpl[ A ]( index, map )
       }
 
       final private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
@@ -667,7 +698,9 @@ object Confluent {
 
       final private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
                                                      ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
-         sys.error( "TODO" )
+         val map     = Ancestor.newMap[ Durable, Long, A ]( partialTree, partialTree.root, rootValue )
+         val index   = access._take( 1 )   // XXX correct ?
+         new PartialMapImpl[ A ]( index, map )
       }
 
       final private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
@@ -1183,6 +1216,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             versionLinear.write( out )
             versionRandom.write( out )
             lastAccess.write( out )
+            partialTree.write( out )
          }
 
          def read( in: DataInput, acc: Durable#Acc )( implicit tx: Durable#Tx ) : GlobalState = {
@@ -1193,14 +1227,16 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             val versionLinear = tx.readCachedIntVar( in )
             val versionRandom = tx.readCachedLongVar( in )
             val lastAccess    = tx.readCachedVar[ Path ]( in )
-            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess )
+            val partialTree   = Ancestor.readTree[ Durable, Long ]( in, acc )( tx, TxnSerializer.Long, _.toInt )
+            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
          }
       }
    }
    private final case class GlobalState(
       idCnt: Durable#Var[ Int ], reactCnt: Durable#Var[ Int ],
       versionLinear: Durable#Var[ Int ], versionRandom: Durable#Var[ Long ],
-      lastAccess: Durable#Var[ Path ]
+      lastAccess: Durable#Var[ Path ],
+      partialTree: Ancestor.Tree[ Durable, Long ]
    )
 
    private final class System( storeFactory: DataStoreFactory[ DataStore ])
@@ -1221,7 +1257,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             val versionLinear = tx.newCachedIntVar( 0 )
             val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
             val lastAccess    = tx.newCachedVar[ Path ]( Path.root )( GlobalState.PathSerializer )
-            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess )
+            val partialTree   = Ancestor.newTree[ Durable, Long ]( 1L << 32 )( tx, TxnSerializer.Long, _.toInt )
+            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
          }
          root.get
       }
@@ -1241,6 +1278,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          ReactionMap[ S, Durable ]( global.reactCnt )( _.durable )
 
       override def toString = "Confluent"
+
+      private[confluent] def partialTree : Ancestor.Tree[ Durable, Long ] = global.partialTree
 
       private[confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val dtx = tx.durable
@@ -1312,6 +1351,7 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    private[confluent] def durable : Durable
    private[confluent] def varMap : DurablePersistentMap[ Confluent, Int ]
    private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ]
+   private[confluent] def partialTree: Ancestor.Tree[ Durable, Long ]
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]

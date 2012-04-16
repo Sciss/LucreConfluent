@@ -111,6 +111,8 @@ object KSys {
 
       // drop initial elements
       private[confluent] def drop( num: Int ): S#Acc
+
+      private[confluent] def _take( num: Int ): S#Acc
    }
 }
 trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {

@@ -26,6 +26,9 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( path.indexSum )
       } { in =>
+         // XXX TODO i don't think we'll encounter a partial hash unless
+         // there is a hash collision. the whole method should thus be
+         // simplified to a plain store.contains( key )
          (in.readUnsignedByte(): @switch) match {
             case 1 => true    // a single value is found
             case 2 => true    // a map is found
@@ -206,7 +209,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
          out.writeLong( hash )
       })
       val preConLen = math.max( 0, (preLen << 1) - 1 )   // III
-      val (conIndex, term) = if( preConLen == maxConIndex.size ) {
+      val (conIndex, term0) = if( preConLen == maxConIndex.size ) {
          // maximum prefix lies in last tree
          (maxConIndex, maxTerm)
       } else {
@@ -252,6 +255,13 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
             case 2 =>
                val m = tx.readIndexMap[ A ]( in, conIndex )
                //                  EntryMap[ S, A ]( m )
+               val term = if( term0 == maxTerm ) term0 else {
+                  // index was split, we need to find the terminal version from which
+                  // we went to tree maxIndex(preLen). then the value stored there
+                  // should be re-written at next index tree (term0)
+                  tx.inEdges
+                  sys.error( "TODO" )
+               }
                val (term2, value) = m.nearest( term )
                Some( fun( preConLen, term2, value ))
          }

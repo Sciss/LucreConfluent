@@ -329,4 +329,15 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
             serializer.read( in, access )
          }
       }
+
+//   final def getFreshPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
+//                                                          serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+//      getCacheOnly( key, path.partial ).orElse {
+//         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
+//            val access  = tup._1
+//            val arr     = tup._2
+//            val in      = new DataInput( arr )
+//            serializer.read( in, access )
+//         }
+//      }
 }

@@ -41,8 +41,8 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 
    final def put[ @specialized A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
 //      val path = conPath.partial
-//      val (index, term) = conPath.splitIndex
-      val term = conPath.term
+      val (index, term) = conPath.splitIndex
+//      val term = conPath.term
       // first we need to see if anything has already been written to the index of the write path
       store.flatGet { out =>
          out.writeUnsignedByte( 2 )
@@ -57,7 +57,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                Some( EntrySingle( term2, prev ))
             case 2 =>
                // there is already a map found
-               val m = tx.readPartialMap[ A ]( in )
+               val m = tx.readPartialMap[ A ]( index, in )
                Some( EntryMap( m ))
             case _ => None // this would be a partial hash which we don't use
          }
@@ -66,7 +66,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
          // if there is a single entry, construct a new ancestor.map with the
          // entry's value taken as root value
          case Some( EntrySingle( prevTerm, prevValue )) =>
-            putFullMap[ A ]( key, /* index, */ term, value, prevTerm, prevValue )
+            putFullMap[ A ]( key, index, term, value, prevTerm, prevValue )
          // if there is an existing map, simply add the new value to it
          case Some( EntryMap( m )) =>
 //if( key == 0 ) {
@@ -117,12 +117,12 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
       }
    }
 
-   private def putFullMap[ @specialized A ]( key: K, /* conIndex: S#Acc, */ term: Long, value: A, prevTerm: Long,
+   private def putFullMap[ @specialized A ]( key: K, conIndex: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
-      val m = tx.newPartialMap[ A ]( /* conIndex, */ prevTerm, prevValue )
+      val m = tx.newPartialMap[ A ]( conIndex, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
 //if( key == 0 ) {
 //   println( "::::: full map. index = " + index + "; term = " + term + "; sum = " + index.sum + "; m = " + m )
@@ -189,23 +189,23 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
    }
 
    final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
-//      val (maxIndex, maxTerm) = conPath.splitIndex
-      val maxTerm = conPath.term
-      getWithPrefixLen[ A, A ]( key, /* maxIndex, */ maxTerm )( (/* _, */ _, value) => value )
+      val (maxIndex, maxTerm) = conPath.splitIndex
+//      val maxTerm = conPath.term
+      getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (/* _, */ _, value) => value )
    }
 
    final def getWithSuffix[ @specialized A ]( key: K, conPath: S#Acc )
                                             ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
-//      val (maxIndex, maxTerm) = conPath.splitIndex
-      val maxTerm = conPath.term
-      getWithPrefixLen[ A, (S#Acc, A) ]( key, /* maxIndex, */ maxTerm ) { (/* preLen, */ writeTerm, value) =>
+      val (maxIndex, maxTerm) = conPath.splitIndex
+//      val maxTerm = conPath.term
+      getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>
          val treeTerm   = tx.getIndexTreeTerm( writeTerm )
-         val preLen     = conPath.maxPrefixLength( treeTerm )
+         val preLen     = maxIndex.maxPrefixLength( treeTerm )
          (writeTerm +: conPath.drop( preLen ), value)
       }
    }
 
-   private def getWithPrefixLen[ @specialized A, B ]( key: K, /* maxConIndex: S#Acc, */ maxTerm: Long )
+   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxConIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (/* Int, */ Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
 //      val maxIndex = maxConIndex.partial
@@ -260,7 +260,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
                Some( fun( /* preConLen, */ term2, value ))
 
             case 2 =>
-               val m = tx.readPartialMap[ A ]( in )
+               val m = tx.readPartialMap[ A ]( maxConIndex, in )
                //                  EntryMap[ S, A ]( m )
 //               val term = if( term0 == maxTerm ) term0 else {
 //                  // index was split, we need to find the terminal version from which

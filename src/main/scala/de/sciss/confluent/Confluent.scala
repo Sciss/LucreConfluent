@@ -652,12 +652,22 @@ object Confluent {
          res
       }
 
+      final private[confluent] def readPartialMap[ A ]( access: S#Acc, in: DataInput )
+                                                      ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+         sys.error( "TODO" )
+      }
+
       final private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
                                                    ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
          val term = index.term
          val tree = readIndexTree( term )
          val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
          new IndexMapImpl[ A ]( index, map )
+      }
+
+      final private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
+                                                     ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+         sys.error( "TODO" )
       }
 
       final private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )

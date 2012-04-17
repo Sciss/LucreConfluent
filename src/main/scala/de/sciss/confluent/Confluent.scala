@@ -647,18 +647,6 @@ println( "?? partial from index " + this )
          removeCacheOnly( id.id )( this )
       }
 
-      final def _readUgly[ A ]( parent: S#ID, id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
-         getCacheTxn[ A ]( id.id, parent.path )( this, serializer ).getOrElse(
-            sys.error( "No value for " + id.id + " @ parent " + parent.path )
-         )
-      }
-
-      final def _writeUgly[ A ]( parent: S#ID, id: S#ID, value: A )
-                               ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         putCacheTxn[ A ]( id.id, parent.path, value )( this, serializer )
-         markDirty()
-      }
-
       final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
 
       final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {

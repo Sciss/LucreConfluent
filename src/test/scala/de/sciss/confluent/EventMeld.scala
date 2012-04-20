@@ -5,7 +5,7 @@ import de.sciss.lucre.{LucreSTM, DataInput, DataOutput, event => evt}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.expr.Expr
-import de.sciss.lucre.stm.{Sys, Cursor, Serializer}
+import de.sciss.lucre.stm.{TxnSerializer, Sys, Cursor, Serializer}
 
 object EventMeld extends App {
    LucreSTM.showEventLog   = true
@@ -81,9 +81,9 @@ class EventMeld[ S <: KSys[ S ]] {
    object Child extends evt.Decl[ S, Child ] {
       declare[ Renamed ]( _.renamed )
 
-      def apply( _name: String )( implicit tx: S#Tx ) : Child = new Child {
+      def apply( _name: Expr[ S, String ])( implicit tx: S#Tx ) : Child = new Child {
          protected val targets   = evt.Targets[ S ]
-         protected val name_#    = Strings.newConfluentVar[ S ]( Strings.newConst( _name ))
+         protected val name_#    = Strings.newConfluentVar[ S ]( _name )
       }
 
       sealed trait Update { def child: Child }
@@ -122,9 +122,23 @@ class EventMeld[ S <: KSys[ S ]] {
       val imp = new EventMeld.ExprImplicits[ S ]
       import imp._
 
-      val groupAcc = system.root( Group.empty( _ ))
+      implicit object stringVarSerializer extends TxnSerializer[ S#Tx, S#Acc, Expr.Var[ S, String ]] {
+         def write( v: Expr.Var[ S, String ], out: DataOutput ) { v.write( out )}
+         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Expr.Var[ S, String ] =
+            Strings.readVar[ S ]( in, access )
+      }
 
-      def group( implicit tx: S#Tx ) = groupAcc.get
+//      implicit def accessSer : TxnSerializer[ S#Tx, S#Acc, (Group, Expr.Var[ S, String])] = {
+//         implicit val exprPeer = Strings.serializer[ S ]
+//         TxnSerializer.tuple2[ S#Tx, S#Acc, Group, Expr.Var[ S, String ]]
+//      }
+
+      val access = system.root { implicit tx =>
+         Group.empty -> Strings.newVar[ S ]( "A" )
+      }
+
+      def group( implicit tx: S#Tx )   = access.get._1
+      def nameVar( implicit tx: S#Tx ) = access.get._2
 
       cursor.step { implicit tx =>
          group.changed.reactTx { implicit tx =>
@@ -145,7 +159,7 @@ class EventMeld[ S <: KSys[ S ]] {
       }
 
       cursor.step { implicit tx =>
-         group.add( groupAcc.meld( v1 ).elements.head )
+         group.add( access.meld( v1 )._1.elements.head )
       }
 
       def traverse() {

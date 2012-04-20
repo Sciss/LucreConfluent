@@ -63,9 +63,7 @@ class EventMeld[ S <: KSys[ S ]] {
       def add( c: Child* )( implicit tx: S#Tx ) {
          val seq = c.toIndexedSeq
          childrenVar.transform( _ ++ seq )
-         seq.foreach { child =>
-
-         }
+         seq.foreach( elementChanged += _ )
          collectionChanged( Group.Added( this, seq ))
       }
 
@@ -85,7 +83,7 @@ class EventMeld[ S <: KSys[ S ]] {
 
       def apply( _name: String )( implicit tx: S#Tx ) : Child = new Child {
          protected val targets   = evt.Targets[ S ]
-         protected val name_#    = Strings.newConfluentVar[ S ]( Strings.newConst( "name" ))
+         protected val name_#    = Strings.newConfluentVar[ S ]( Strings.newConst( _name ))
       }
 
       sealed trait Update { def child: Child }
@@ -108,11 +106,14 @@ class EventMeld[ S <: KSys[ S ]] {
 
       override def toString() = "Child" + id
 
-      final protected def disposeData()( implicit tx: S#Tx ) {
+      def name( implicit tx: S#Tx ) : Expr[ S, String ] = name_#.get
+      def name_=( ex: Expr[ S, String ])( implicit tx: S#Tx ) { name_#.set( ex )}
+
+      protected def disposeData()( implicit tx: S#Tx ) {
          name_#.dispose()
       }
 
-      final protected def writeData( out: DataOutput ) {
+      protected def writeData( out: DataOutput ) {
          name_#.write( out )
       }
    }
@@ -122,27 +123,43 @@ class EventMeld[ S <: KSys[ S ]] {
       import imp._
 
       val groupAcc = system.root( Group.empty( _ ))
+
+      def group( implicit tx: S#Tx ) = groupAcc.get
+
       cursor.step { implicit tx =>
-         groupAcc.get.collectionChanged.reactTx { implicit tx =>
+         group.changed.reactTx { implicit tx =>
             (e: Group.Update) => println( "____OBSERVE____ " + e )
          }
       }
 
-      def group( implicit tx: S#Tx ) = groupAcc.get
 
       val v0 = cursor.step { implicit tx =>
          group.add( Child( "A" ))
          tx.inputAccess
       }
 
-      val v1 = cursor.step( _.inputAccess )
+      val v1 = cursor.step { implicit tx =>
+         // dummy action to increment cursor
+         group.add()
+         tx.inputAccess
+      }
 
       cursor.step { implicit tx =>
          group.add( groupAcc.meld( v1 ).elements.head )
       }
 
-      println( "Children = " + cursor.step { implicit tx =>
-         group.elements
-      })
+      def traverse() {
+         println( "____TRAVERSE____ " + cursor.step { implicit tx =>
+            group.elements.map( c => c -> c.name.value )
+         })
+      }
+
+      traverse()
+
+      cursor.step { implicit tx =>
+         group.elements.head.name = "B"
+      }
+
+      traverse()
    }
 }

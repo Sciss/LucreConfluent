@@ -6,9 +6,10 @@ import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.{TxnSerializer, Sys, Cursor, Serializer}
+import concurrent.stm.{TxnExecutor, Ref => STMRef}
 
 object EventMeld extends App {
-   LucreSTM.showEventLog   = true
+//   LucreSTM.showEventLog   = true
    val dir                 = File.createTempFile( "database", "db" )
    dir.delete()
    val store               = BerkeleyDB.factory( dir )
@@ -17,12 +18,12 @@ object EventMeld extends App {
    p.run()
 
    object ExprImplicits {
-      implicit def stringConst[  S <: Sys[ S ]]( s: String )  : Expr[ S, String  ] = Strings.newConst(  s )
+      implicit def stringConst[  S <: Sys[ S ]]( s: String )  : Expr[ S, String  ] = Strings2.newConst(  s )
    }
    class ExprImplicits[ S <: Sys[ S ]] {
-      implicit def stringConst( s: String ) : Expr[ S, String ] = Strings.newConst( s )
-      implicit def stringOps[ A ]( ex: A )( implicit tx: S#Tx, view: A => Expr[ S, String ]) : Strings.Ops[ S ] =
-         new Strings.Ops( ex )
+      implicit def stringConst( s: String ) : Expr[ S, String ] = Strings2.newConst( s )
+      implicit def stringOps[ A ]( ex: A )( implicit tx: S#Tx, view: A => Expr[ S, String ]) : Strings2.Ops[ S ] =
+         new Strings2.Ops( ex )
    }
 }
 class EventMeld[ S <: KSys[ S ]] {
@@ -62,6 +63,7 @@ class EventMeld[ S <: KSys[ S ]] {
 
       def add( c: Child* )( implicit tx: S#Tx ) {
          val seq = c.toIndexedSeq
+         if( seq.isEmpty ) return
          childrenVar.transform( _ ++ seq )
          seq.foreach( elementChanged += _ )
          collectionChanged( Group.Added( this, seq ))
@@ -83,7 +85,7 @@ class EventMeld[ S <: KSys[ S ]] {
 
       def apply( _name: Expr[ S, String ])( implicit tx: S#Tx ) : Child = new Child {
          protected val targets   = evt.Targets[ S ]
-         protected val name_#    = Strings.newConfluentVar[ S ]( _name )
+         protected val name_#    = Strings2.newConfluentVar[ S ]( _name )
       }
 
       sealed trait Update { def child: Child }
@@ -94,7 +96,7 @@ class EventMeld[ S <: KSys[ S ]] {
          def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])( implicit tx: S#Tx ) : Child =
             new Child {
                protected val targets   = _targets
-               protected val name_#    = Strings.readVar[ S ]( in, access )
+               protected val name_#    = Strings2.readVar[ S ]( in, access )
             }
       }
    }
@@ -118,6 +120,13 @@ class EventMeld[ S <: KSys[ S ]] {
       }
    }
 
+   object Observation {
+      final case class Added( names: String* ) extends Observation
+      final case class Removed( names: String* ) extends Observation
+      final case class Renamed( pairs: (String, String)* ) extends Observation
+   }
+   sealed trait Observation
+
    def run()( implicit system: S, cursor: Cursor[ S ]) {
       val imp = new EventMeld.ExprImplicits[ S ]
       import imp._
@@ -125,61 +134,96 @@ class EventMeld[ S <: KSys[ S ]] {
       implicit object stringVarSerializer extends TxnSerializer[ S#Tx, S#Acc, Expr.Var[ S, String ]] {
          def write( v: Expr.Var[ S, String ], out: DataOutput ) { v.write( out )}
          def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Expr.Var[ S, String ] =
-            Strings.readVar[ S ]( in, access )
+            Strings2.readVar[ S ]( in, access )
       }
 
 //      implicit def accessSer : TxnSerializer[ S#Tx, S#Acc, (Group, Expr.Var[ S, String])] = {
-//         implicit val exprPeer = Strings.serializer[ S ]
+//         implicit val exprPeer = Strings2.serializer[ S ]
 //         TxnSerializer.tuple2[ S#Tx, S#Acc, Group, Expr.Var[ S, String ]]
 //      }
 
       val access = system.root { implicit tx =>
-         Group.empty -> Strings.newVar[ S ]( "A" )
+         Group.empty -> Strings2.newVar[ S ]( "A" )
       }
 
       def group( implicit tx: S#Tx )   = access.get._1
       def nameVar( implicit tx: S#Tx ) = access.get._2
 
+      var observations = STMRef( IIdxSeq.empty[ Observation ])
+
       cursor.step { implicit tx =>
          group.changed.reactTx { implicit tx =>
-            (e: Group.Update) => println( "____OBSERVE____ " + e )
+            (e: Group.Update) => {
+               println( "____OBSERVE____ " + e )
+               implicit val itx = tx.peer
+               observations.transform( _ :+ (e match {
+                  case Group.Added(   _, children ) => Observation.Added(   children.map( c => c.name.value ): _* )
+                  case Group.Removed( _, children ) => Observation.Removed( children.map( c => c.name.value ): _* )
+                  case Group.Element( _, changes )  => Observation.Renamed( changes.map({
+                     case Child.Renamed( _, evt.Change( before, after )) => before -> after
+                  }): _* )
+               }))
+            }
          }
       }
 
+      def assertObservations( expected: Observation* ) {
+         val expSeq  = expected.toIndexedSeq
+         val obs     = observations.single.swap( IIdxSeq.empty )
+         assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
+      }
 
       val v0 = cursor.step { implicit tx =>
          group.add( Child( nameVar ))
          tx.inputAccess
       }
 
+      assertObservations( Observation.Added( "A" ))
+
       val v1 = cursor.step { implicit tx =>
          // dummy action to increment cursor
-         group.add()
+         tx.forceWrite()
          tx.inputAccess
       }
+
+      assertObservations()
 
       cursor.step { implicit tx =>
          group.add( access.meld( v1 )._1.elements.head )
       }
 
-      def traverse() {
-         println( "____TRAVERSE____ " + cursor.step { implicit tx =>
+      assertObservations( Observation.Added( "A" ))
+
+      def traverse() : IIdxSeq[ String ] = {
+         val pairs = cursor.step { implicit tx =>
             group.elements.map( c => c -> c.name.value )
-         })
+         }
+         println( "____TRAVERSE____ " + pairs )
+         pairs.map( _._2 )
       }
 
-      traverse()
+      def assertSequence( names: String* ) {
+         val expSeq  = names.toIndexedSeq
+         val obs     = traverse()
+         assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
+      }
+
+      assertSequence( "A", "A" )
 
       cursor.step { implicit tx =>
          group.elements.head.name = "B"
       }
 
-      traverse()
+      assertObservations( Observation.Renamed( "A" -> "B" ))
+      assertSequence( "B", "A" )
 
       cursor.step { implicit tx =>
          nameVar.set( "C" )
       }
 
-      traverse()
+      assertObservations( Observation.Renamed( "A" -> "C" ))
+      assertSequence( "B", "C" )
+
+      println( "Tests passed." )
    }
 }

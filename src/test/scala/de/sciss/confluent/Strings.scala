@@ -6,7 +6,7 @@ import de.sciss.lucre.expr.Type
 import de.sciss.lucre.event.Targets
 import annotation.switch
 
-object Strings extends Type[ String ] {
+object Strings2 extends Type[ String ] {
    private val typeID = 8
 
    protected def readValue( in: DataInput ) : String = in.readString()

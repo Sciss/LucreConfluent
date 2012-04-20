@@ -50,6 +50,8 @@ object KSys {
 
       def inputAccess: S#Acc
 
+      def forceWrite() : Unit
+
       private[confluent] def readPath( in: DataInput ) : S#Acc
    }
 

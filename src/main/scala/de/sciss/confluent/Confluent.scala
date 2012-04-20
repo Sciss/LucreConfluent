@@ -472,6 +472,8 @@ println( "?? partial from index " + this )
          }
       }
 
+      def forceWrite() { markDirty() }
+
       final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) {
          dirtyMaps.transform( _ :+ map )( peer )
       }

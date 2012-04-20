@@ -1,10 +1,11 @@
 package de.sciss.confluent
 
 import collection.immutable.{IndexedSeq => IIdxSeq}
-import de.sciss.lucre.stm.{Cursor, Serializer}
 import de.sciss.lucre.{LucreSTM, DataInput, DataOutput, event => evt}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
+import de.sciss.lucre.expr.Expr
+import de.sciss.lucre.stm.{Sys, Cursor, Serializer}
 
 object EventMeld extends App {
    LucreSTM.showEventLog   = true
@@ -14,6 +15,15 @@ object EventMeld extends App {
    implicit val s          = Confluent( store )
    val p = new EventMeld[ Confluent ]
    p.run()
+
+   object ExprImplicits {
+      implicit def stringConst[  S <: Sys[ S ]]( s: String )  : Expr[ S, String  ] = Strings.newConst(  s )
+   }
+   class ExprImplicits[ S <: Sys[ S ]] {
+      implicit def stringConst( s: String ) : Expr[ S, String ] = Strings.newConst( s )
+      implicit def stringOps[ A ]( ex: A )( implicit tx: S#Tx, view: A => Expr[ S, String ]) : Strings.Ops[ S ] =
+         new Strings.Ops( ex )
+   }
 }
 class EventMeld[ S <: KSys[ S ]] {
    implicit def seqSer[ A ]( implicit peer: Serializer[ A ]) : Serializer[ IIdxSeq[ A ]] = Serializer.indexedSeq[ A ]
@@ -64,34 +74,38 @@ class EventMeld[ S <: KSys[ S ]] {
 
    object Child extends evt.Decl[ S, Child ] {
       def apply( _name: String )( implicit tx: S#Tx ) : Child = new Child {
-         protected val targets = evt.Targets[ S ]
-         val name = _name
+         protected val targets   = evt.Targets[ S ]
+         protected val name_#    = Strings.newConfluentVar[ S ]( Strings.newConst( "name" ))
       }
 
       implicit val serializer : evt.NodeSerializer[ S, Child ] = new evt.NodeSerializer[ S, Child ] {
 //         def write( c: Child, out: DataOutput ) { out.writeString( c.name )}
          def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])( implicit tx: S#Tx ) : Child =
             new Child {
-               protected val targets = _targets
-               val name = in.readString()
+               protected val targets   = _targets
+               protected val name_#    = Strings.readVar[ S ]( in, access )
             }
       }
    }
    trait Child extends evt.Compound[ S, Child, Child.type ] {
       protected def decl = Child
+      protected def name_# : Expr.Var[ S, String ]
 
-      def name: String
-      override def toString = "Child(" + name + ")" + id
+      override def toString() = "Child" + id
 
       final protected def disposeData()( implicit tx: S#Tx ) {
+         name_#.dispose()
       }
 
       final protected def writeData( out: DataOutput ) {
-         out.writeString( name )
+         name_#.write( out )
       }
    }
 
    def run()( implicit system: S, cursor: Cursor[ S ]) {
+      val imp = new EventMeld.ExprImplicits[ S ]
+      import imp._
+
       val groupAcc = system.root( Group.empty( _ ))
       cursor.step { implicit tx =>
          groupAcc.get.collectionChanged.reactTx { implicit tx =>

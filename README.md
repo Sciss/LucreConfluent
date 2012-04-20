@@ -14,7 +14,7 @@ Further reading:
 
 ### requirements / installation
 
-Builds with sbt 0.11 against Scala 2.9.1 and Java 1.6, using standard sbt targets. The dependencies, [LucreSTM](https://github.com/Sciss/LucreSTM) and  [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt. Due to a bug in sbt publishing of [LucreData](https://github.com/Sciss/LucreData) is currently a pita, so this project you need to clone yourself and perform a `publish-local` on it first.
+Builds with sbt 0.11 against Scala 2.9.2 and Java 1.6, using standard sbt targets. The dependencies, [LucreSTM](https://github.com/Sciss/LucreSTM) and  [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt. Due to a bug in sbt publishing of [LucreData](https://github.com/Sciss/LucreData) is currently a pita, so this project you need to clone yourself and perform a `publish-local` on it first.
 
 ### linking to TemporalObjects
 

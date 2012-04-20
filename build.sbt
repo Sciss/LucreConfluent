@@ -10,15 +10,15 @@ homepage := Some( url( "https://github.com/Sciss/TemporalObjects" ))
 
 licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
-scalaVersion := "2.9.1"
+scalaVersion := "2.9.2"
 
 resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.20",
-   "de.sciss" %% "lucredata-txn" % "0.23-SNAPSHOT",
-   "org.scalatest" %% "scalatest" % "1.7.1" % "test",
-   "de.sciss" %% "lucredata-txn-views" % "0.23-SNAPSHOT" % "test"
+   "de.sciss" %% "lucredata-txn" % "0.23",
+   "org.scalatest" %% "scalatest" % "1.7.2" % "test",
+   "de.sciss" %% "lucredata-txn-views" % "0.23" % "test"
 )
 
 retrieveManaged := true
@@ -27,7 +27,7 @@ scalacOptions ++= Seq( "-deprecation", "-unchecked" ) // , "-Xelide-below", "INF
 
 testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and full stack traces
 
-parallelExecution in Test := false
+parallelExecution /* in Test */ := false
 
 initialCommands in console := """import de.sciss.confluent._
 """

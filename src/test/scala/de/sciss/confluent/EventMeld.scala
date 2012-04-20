@@ -62,36 +62,33 @@ class EventMeld[ S <: KSys[ S ]] {
       }
    }
 
-//   object Child extends evt.Decl[ S, Child ] {
-//      implicit val serializer : evt.Reader[ S, Child ] = Ser
-//
-//      private object Ser extends evt.Reader[ S, Child ] {
-//         def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])
-//      }
-//   }
-//   trait Child extends evt.Compound[ S, Child, Child.type ] {
-//      final protected def decl = Child
-//
-//      final protected def disposeData()( implicit tx: S#Tx ) {
-//      }
-//
-//      final protected def writeData( out: DataOutput ) {
-//      }
-//   }
-
-   object Child {
-      def apply( _name: String ) : Child = new Child {
+   object Child extends evt.Decl[ S, Child ] {
+      def apply( _name: String )( implicit tx: S#Tx ) : Child = new Child {
+         protected val targets = evt.Targets[ S ]
          val name = _name
       }
 
-      implicit val serializer : Serializer[ Child ] = new Serializer[ Child ] {
-         def write( c: Child, out: DataOutput ) { out.writeString( c.name )}
-         def read( in: DataInput ) : Child = new Child { val name = in.readString() }
+      implicit val serializer : evt.NodeSerializer[ S, Child ] = new evt.NodeSerializer[ S, Child ] {
+//         def write( c: Child, out: DataOutput ) { out.writeString( c.name )}
+         def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])( implicit tx: S#Tx ) : Child =
+            new Child {
+               protected val targets = _targets
+               val name = in.readString()
+            }
       }
    }
-   trait Child {
+   trait Child extends evt.Compound[ S, Child, Child.type ] {
+      protected def decl = Child
+
       def name: String
-      override def toString = "Child(" + name + ")"
+      override def toString = "Child(" + name + ")" + id
+
+      final protected def disposeData()( implicit tx: S#Tx ) {
+      }
+
+      final protected def writeData( out: DataOutput ) {
+         out.writeString( name )
+      }
    }
 
    def run()( implicit system: S, cursor: Cursor[ S ]) {

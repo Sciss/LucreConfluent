@@ -31,11 +31,14 @@ class EventMeld[ S <: KSys[ S ]] {
    object Group extends evt.Decl[ S, Group ] {
       implicit val serializer : evt.NodeSerializer[ S, Group ] = Ser
 
-      declare[ Update ]( _.collectionChanged )
+      declare[ Collection ]( _.collectionChanged )
+      declare[ Element ](    _.elementChanged    )
 
       sealed trait Update { def group: Group }
-      final case class Added(   group: Group, children: IIdxSeq[ Child ]) extends Update
-      final case class Removed( group: Group, children: IIdxSeq[ Child ]) extends Update
+      sealed trait Collection extends Update { def children: IIdxSeq[ Child ]}
+      final case class Added(   group: Group, children: IIdxSeq[ Child ]) extends Collection
+      final case class Removed( group: Group, children: IIdxSeq[ Child ]) extends Collection
+      final case class Element( group: Group, changes: IIdxSeq[ Child.Update ]) extends Update
 
       def empty( implicit tx: S#Tx ) : Group = new Group {
          protected val targets = evt.Targets[ S ]
@@ -53,11 +56,16 @@ class EventMeld[ S <: KSys[ S ]] {
       protected def childrenVar: S#Var[ IIdxSeq[ Child ]]
       protected def decl = Group
 
-      lazy val collectionChanged : evt.Trigger[ S, Group.Update, Group ] = event[ Group.Update ]
+      lazy val collectionChanged : evt.Trigger[ S, Group.Collection, Group ] = event[ Group.Collection ]
+      lazy val elementChanged    = collection( (c: Child) => c.renamed ).map( Group.Element( this, _ ))
+      lazy val changed           = collectionChanged | elementChanged
 
       def add( c: Child* )( implicit tx: S#Tx ) {
          val seq = c.toIndexedSeq
          childrenVar.transform( _ ++ seq )
+         seq.foreach { child =>
+
+         }
          collectionChanged( Group.Added( this, seq ))
       }
 
@@ -73,10 +81,15 @@ class EventMeld[ S <: KSys[ S ]] {
    }
 
    object Child extends evt.Decl[ S, Child ] {
+      declare[ Renamed ]( _.renamed )
+
       def apply( _name: String )( implicit tx: S#Tx ) : Child = new Child {
          protected val targets   = evt.Targets[ S ]
          protected val name_#    = Strings.newConfluentVar[ S ]( Strings.newConst( "name" ))
       }
+
+      sealed trait Update { def child: Child }
+      final case class Renamed( child: Child, change: evt.Change[ String ]) extends Update
 
       implicit val serializer : evt.NodeSerializer[ S, Child ] = new evt.NodeSerializer[ S, Child ] {
 //         def write( c: Child, out: DataOutput ) { out.writeString( c.name )}
@@ -90,6 +103,8 @@ class EventMeld[ S <: KSys[ S ]] {
    trait Child extends evt.Compound[ S, Child, Child.type ] {
       protected def decl = Child
       protected def name_# : Expr.Var[ S, String ]
+
+      def renamed = name_#.changed.map( Child.Renamed( this, _ ))
 
       override def toString() = "Child" + id
 

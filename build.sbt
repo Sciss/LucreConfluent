@@ -16,9 +16,9 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.20",
-   "de.sciss" %% "lucredata-txn" % "0.23",
+   "de.sciss" %% "lucredata-txn" % "0.24-SNAPSHOT",
    "org.scalatest" %% "scalatest" % "1.7.2" % "test",
-   "de.sciss" %% "lucredata-txn-views" % "0.23" % "test"
+   "de.sciss" %% "lucredata-txn-views" % "0.24-SNAPSHOT" % "test"
 )
 
 retrieveManaged := true
@@ -32,5 +32,5 @@ parallelExecution /* in Test */ := false
 initialCommands in console := """import de.sciss.confluent._
 """
 
-publishArtifact in (Compile, packageDoc) := false   // disable doc generation during development cycles
+// publishArtifact in (Compile, packageDoc) := false   // disable doc generation during development cycles
 

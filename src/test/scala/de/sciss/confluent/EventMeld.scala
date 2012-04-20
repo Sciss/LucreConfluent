@@ -148,7 +148,7 @@ class EventMeld[ S <: KSys[ S ]] {
 
 
       val v0 = cursor.step { implicit tx =>
-         group.add( Child( "A" ))
+         group.add( Child( nameVar ))
          tx.inputAccess
       }
 
@@ -172,6 +172,12 @@ class EventMeld[ S <: KSys[ S ]] {
 
       cursor.step { implicit tx =>
          group.elements.head.name = "B"
+      }
+
+      traverse()
+
+      cursor.step { implicit tx =>
+         nameVar.set( "C" )
       }
 
       traverse()

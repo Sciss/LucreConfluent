@@ -1,12 +1,12 @@
 package de.sciss.confluent
 
 import collection.immutable.{IndexedSeq => IIdxSeq}
-import de.sciss.lucre.{LucreSTM, DataInput, DataOutput, event => evt}
+import de.sciss.lucre.{DataInput, DataOutput, event => evt}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.expr.Expr
 import de.sciss.lucre.stm.{TxnSerializer, Sys, Cursor, Serializer}
-import concurrent.stm.{TxnExecutor, Ref => STMRef}
+import concurrent.stm.{Ref => STMRef}
 
 object EventMeld extends App {
 //   LucreSTM.showEventLog   = true
@@ -142,57 +142,18 @@ class EventMeld[ S <: KSys[ S ]] {
 //         TxnSerializer.tuple2[ S#Tx, S#Acc, Group, Expr.Var[ S, String ]]
 //      }
 
-      val access = system.root { implicit tx =>
-         Group.empty -> Strings2.newVar[ S ]( "A" )
-      }
+      import Observation._
+
+      val observations = STMRef( IIdxSeq.empty[ Observation ])
 
       def group( implicit tx: S#Tx )   = access.get._1
       def nameVar( implicit tx: S#Tx ) = access.get._2
-
-      var observations = STMRef( IIdxSeq.empty[ Observation ])
-
-      cursor.step { implicit tx =>
-         group.changed.reactTx { implicit tx =>
-            (e: Group.Update) => {
-               println( "____OBSERVE____ " + e )
-               implicit val itx = tx.peer
-               observations.transform( _ :+ (e match {
-                  case Group.Added(   _, children ) => Observation.Added(   children.map( c => c.name.value ): _* )
-                  case Group.Removed( _, children ) => Observation.Removed( children.map( c => c.name.value ): _* )
-                  case Group.Element( _, changes )  => Observation.Renamed( changes.map({
-                     case Child.Renamed( _, evt.Change( before, after )) => before -> after
-                  }): _* )
-               }))
-            }
-         }
-      }
 
       def assertObservations( expected: Observation* ) {
          val expSeq  = expected.toIndexedSeq
          val obs     = observations.single.swap( IIdxSeq.empty )
          assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
       }
-
-      val v0 = cursor.step { implicit tx =>
-         group.add( Child( nameVar ))
-         tx.inputAccess
-      }
-
-      assertObservations( Observation.Added( "A" ))
-
-      val v1 = cursor.step { implicit tx =>
-         // dummy action to increment cursor
-         tx.forceWrite()
-         tx.inputAccess
-      }
-
-      assertObservations()
-
-      cursor.step { implicit tx =>
-         group.add( access.meld( v1 )._1.elements.head )
-      }
-
-      assertObservations( Observation.Added( "A" ))
 
       def traverse() : IIdxSeq[ String ] = {
          val pairs = cursor.step { implicit tx =>
@@ -208,20 +169,62 @@ class EventMeld[ S <: KSys[ S ]] {
          assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
       }
 
+      lazy val access = system.root { implicit tx =>
+         Group.empty -> Strings2.newVar[ S ]( "A" )
+      }
+
+      access   // initialize
+
+      cursor.step { implicit tx =>
+         group.changed.reactTx { implicit tx =>
+            (e: Group.Update) => {
+               println( "____OBSERVED____ " + e )
+               implicit val itx = tx.peer
+               observations.transform( _ :+ (e match {
+                  case Group.Added(   _, children ) => Observation.Added(   children.map( c => c.name.value ): _* )
+                  case Group.Removed( _, children ) => Observation.Removed( children.map( c => c.name.value ): _* )
+                  case Group.Element( _, changes )  => Observation.Renamed( changes.map({
+                     case Child.Renamed( _, evt.Change( before, after )) => before -> after
+                  }): _* )
+               }))
+            }
+         }
+      }
+
+      /* val v0 = */ cursor.step { implicit tx =>
+         group.add( Child( nameVar ))
+//         tx.inputAccess
+      }
+
+      assertObservations( Added( "A" ))
+
+      val v1 = cursor.step { implicit tx =>
+         // dummy action to increment cursor
+         tx.forceWrite()
+         tx.inputAccess
+      }
+
+      assertObservations()
+
+      cursor.step { implicit tx =>
+         group.add( access.meld( v1 )._1.elements.head )
+      }
+
+      assertObservations( Added( "A" ))
       assertSequence( "A", "A" )
 
       cursor.step { implicit tx =>
          group.elements.head.name = "B"
       }
 
-      assertObservations( Observation.Renamed( "A" -> "B" ))
+      assertObservations( Renamed( "A" -> "B" ))
       assertSequence( "B", "A" )
 
       cursor.step { implicit tx =>
          nameVar.set( "C" )
       }
 
-      assertObservations( Observation.Renamed( "A" -> "C" ))
+      assertObservations( Renamed( "A" -> "C" ))
       assertSequence( "B", "C" )
 
       println( "Tests passed." )

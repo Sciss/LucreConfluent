@@ -148,6 +148,7 @@ class EventMeld[ S <: KSys[ S ]] {
 
       def group( implicit tx: S#Tx )   = access.get._1
       def nameVar( implicit tx: S#Tx ) = access.get._2
+      def proc( implicit tx: S#Tx )    = group.elements.head
 
       def assertObservations( expected: Observation* ) {
          val expSeq  = expected.toIndexedSeq
@@ -214,7 +215,7 @@ class EventMeld[ S <: KSys[ S ]] {
       assertSequence( "A", "A" )
 
       cursor.step { implicit tx =>
-         group.elements.head.name = "B"
+         proc.name = "B"
       }
 
       assertObservations( Renamed( "A" -> "B" ))
@@ -226,6 +227,43 @@ class EventMeld[ S <: KSys[ S ]] {
 
       assertObservations( Renamed( "A" -> "C" ))
       assertSequence( "B", "C" )
+
+      val v3 = cursor.step { implicit tx =>
+         proc.name = nameVar ++ ".copy"
+         tx.inputAccess
+      }
+
+      assertObservations( Renamed( "B" -> "C.copy" ))
+      assertSequence( "C.copy", "C" )
+
+      cursor.step { implicit tx =>
+         group.add( access.meld( v3 )._1.elements.head )
+      }
+
+      assertObservations( Added( "B" ))
+      assertSequence( "C.copy", "C", "B" )
+
+      cursor.step { implicit tx =>
+         nameVar.set( "D" )
+      }
+
+      assertObservations( Renamed( "C" -> "D", "C.copy" -> "D.copy" ))
+      assertSequence( "D.copy", "D", "B" )
+
+      cursor.step { implicit tx =>
+         val p = group.elements.last
+         p.name = nameVar ++ ".dup"
+      }
+
+      assertObservations( Renamed( "B" -> "D.dup" ))
+      assertSequence( "D.copy", "D", "D.dup" )
+
+      cursor.step { implicit tx =>
+         nameVar.set( "E" )
+      }
+
+      assertObservations( Renamed( "D" -> "E", "D.copy" -> "E.copy", "D.dup" -> "E.dup" ))
+      assertSequence( "E.copy", "E", "E.dup" )
 
       println( "Tests passed." )
    }

@@ -649,11 +649,11 @@ println( "?? partial from index " + this )
          removeCacheOnly( id.id )( this )
       }
 
-      final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
-
-      final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
-         putTxn[ A ]( id, value )
-      }
+//      final def readVal[ A ]( id: S#ID )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
+//
+//      final def writeVal[ A ]( id: S#ID, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+//         putTxn[ A ]( id, value )
+//      }
 
       final private[confluent] def getIndexTreeTerm( term: Long ) : Long = readIndexTree( term ).term
 

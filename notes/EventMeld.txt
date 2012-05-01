@@ -1,0 +1,51 @@
+the problem is not the confluent -> partial reduction, but the opposite motion: partial -> confluent
+which happens when looking up children in a partial expr var (if a child is confluent)
+
+v0: create group
+
+v1: create proc. add to group
+
+v2: create freqVar. proc.freq = freqVar
+
+v3: proc.freq = freqVar * 1.4
+
+v4: proc' = proc melded from v2. add to group
+
+v5: freqVar.set ...
+
+if freqVar is partial, it doesn't have a path component (the read and write 'path' will be the vertex corresponding to the current txn tail vertex)
+(it means its identity cannot be split, thus there is only one view of it for each access path tail)
+
+:::::::::::::
+
+v0: group<0,0>
+
+v1: proc<1,1>
+    proc<1,1>.children := [ group<0,1> ]
+
+v2: freqVar<(2,2)>
+    proc<1,2>.freq := freqVar<(2,2)>           : writePath = <1,2>
+    freqVar<2,2>.children := [ proc<1,2> ]
+    proc<1,2>.freq fire
+        resolves children as [ group<0,2> ]
+        ...
+
+v3: proc<1,3>.freq -/-> source; source is resolved as freqVar<(2,3)>
+        hence freqVar<(2,3)>.targets.remove( proc<1,3> )
+        : so how is this found? if childrenVar was confluent -- no problem (readVal will find the entry as maximum prefix)
+	      ; (( this was probably the reason readVal / writeVal was used at all ))
+
+    times<3,3> created
+    times
+    ...
+
+:::::::::::::
+
+how the partial targets (freqVar) need to behave:
+- in deserialization, instead of tx.readID, we need to be able to capture the suffix,
+  because it will be needed as "additional suffix" when reading in the childrenVar
+
+NO
+
+:::::::::::::
+

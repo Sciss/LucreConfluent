@@ -50,9 +50,9 @@ object Confluent {
       new System( BerkeleyDB.factory( dir ))
    }
 
-   final class ID private[Confluent]( val id: Int, val path: Path ) extends KSys.ID[ S#Tx, Path ] {
-//      final def shortString : String = access.mkString( "<", ",", ">" )
+   sealed trait ID extends KSys.ID[ S#Tx, Path ]
 
+   private final class ConfluentID( val id: Int, val path: Path ) extends ID {
       override def hashCode = {
          import MurmurHash._
          var h = startHash( 2 )
@@ -64,8 +64,8 @@ object Confluent {
       }
 
       override def equals( that: Any ) : Boolean =
-         that.isInstanceOf[ KSys.ID[ _, _ ]] && {
-            val b = that.asInstanceOf[ KSys.ID[ _, _ ]]
+         that.isInstanceOf[ ConfluentID ] && {
+            val b = that.asInstanceOf[ ConfluentID ]
             id == b.id && path == b.path
          }
 
@@ -74,7 +74,55 @@ object Confluent {
          path.write( out )
       }
 
-      override def toString = "<"  + id + path.mkString( " @ ", ",", ">" )
+      override def toString = "<" + id + path.mkString( " @ ", ",", ">" )
+
+      def dispose()( implicit tx: S#Tx ) {}
+   }
+
+   private final class PartialID( val id: Int, val path: Path ) extends ID {
+      override def hashCode = {
+         import MurmurHash._
+         var h = startHash( 2 )
+         var a = startMagicA
+         var b = startMagicB
+         h     = extendHash( h, id, a, b )
+
+         if( path.nonEmpty ) {
+            a     = nextMagicA( a )
+            b     = nextMagicB( b )
+            h     = extendHash( h, (path.head >> 32).toInt, a, b )
+
+            a     = nextMagicA( a )
+            b     = nextMagicB( b )
+            h     = extendHash( h, (path.last >> 32).toInt, a, b )
+         }
+         finalizeHash( h )
+      }
+
+      override def equals( that: Any ) : Boolean =
+         that.isInstanceOf[ PartialID ] && {
+            val b = that.asInstanceOf[ PartialID ]
+            val bp = b.path
+            if( path.isEmpty ) {
+               id == b.id && bp.isEmpty
+            } else {
+               id == b.id && bp.nonEmpty && path.head == bp.head && path.last == bp.last
+            }
+         }
+
+      def write( out: DataOutput ) {
+         out.writeInt( id )
+         path.write( out )
+      }
+
+      override def toString = "<" + id + " @ " + {
+         if( path.isEmpty ) ">" else {
+            val head = path.head
+            val tail = path.tail
+            val (mid, last) = tail.splitIndex
+            mid.mkString( head.toInt.toString + "(,", ",", ")," + last.toInt + ">" )
+         }
+      }
 
       def dispose()( implicit tx: S#Tx ) {}
    }
@@ -506,8 +554,14 @@ println( "?? partial from index " + this )
       }
 
       final def newID() : S#ID = {
-         val res = new ID( system.newIDValue()( this ), Path.empty )
+         val res = new ConfluentID( system.newIDValue()( this ), Path.empty )
          logConfluent( "txn newID " + res )
+         res
+      }
+
+      final def newPartialID() : S#ID = {
+         val res = new PartialID( system.newIDValue()( this ), Path.empty )
+         logConfluent( "txn newPartialID " + res )
          res
       }
 
@@ -729,7 +783,8 @@ println( "?? partial from index " + this )
          new IndexMapImpl[ A ]( index, map )
       }
 
-      @inline private def alloc( pid: S#ID ) : S#ID = new ID( system.newIDValue()( this ), pid.path )
+      @inline private def alloc(        pid: S#ID ) : S#ID = new ConfluentID( system.newIDValue()( this ), pid.path )
+      @inline private def allocPartial( pid: S#ID ) : S#ID = new PartialID(   system.newIDValue()( this ), pid.path )
 
       final def newVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
@@ -739,7 +794,7 @@ println( "?? partial from index " + this )
       }
 
       final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val res = new PartialVarTxImpl[ A ]( alloc( pid ))
+         val res = new PartialVarTxImpl[ A ]( allocPartial( pid ))
          logConfluent( "txn newPartialVar " + res )
          res.setInit( init )( this )
          res
@@ -784,7 +839,12 @@ println( "?? partial from index " + this )
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
-         new ID( id, pid.path )
+         new ConfluentID( id, pid.path )
+      }
+
+      private def readPartialSource( in: DataInput, pid: S#ID ) : S#ID = {
+         val id = in.readInt()
+         new PartialID( id, pid.path )
       }
 
       final private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
@@ -803,7 +863,7 @@ println( "?? partial from index " + this )
       }
 
       final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val res = new PartialVarTxImpl[ A ]( readSource( in, pid ))
+         val res = new PartialVarTxImpl[ A ]( readPartialSource( in, pid ))
          logConfluent( "txn read " + res )
          res
       }
@@ -827,12 +887,17 @@ println( "?? partial from index " + this )
       }
 
       final def readID( in: DataInput, acc: S#Acc ) : S#ID = {
-         val res = new ID( in.readInt(), Path.readAndAppend( in, acc )( this ))
+         val res = new ConfluentID( in.readInt(), Path.readAndAppend( in, acc )( this ))
          logConfluent( "txn readID " + res )
          res
       }
 
-      final def readPartialID( in: DataInput, acc: S#Acc ) : S#ID = readID( in, acc )
+      final def readPartialID( in: DataInput, acc: S#Acc ) : S#ID = {
+//         readID( in, acc )
+         val res = new PartialID( in.readInt(), Path.readAndAppend( in, acc )( this ))
+         logConfluent( "txn readPartialID " + res )
+         res
+      }
 
       final def access[ A ]( source: S#Var[ A ]) : A = {
          sys.error( "TODO" )  // source.access( system.path( this ))( this )
@@ -1098,11 +1163,11 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       override def toString = name // "Root"
 
-      private def id( implicit tx: S#Tx ) : S#ID = new ID( id1, tx.inputAccess )
+      private def id( implicit tx: S#Tx ) : S#ID = new ConfluentID( id1, tx.inputAccess )
 
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
          logConfluent( this.toString + " meld " + from )
-         val idm  = new ID( id1, from )
+         val idm  = new ConfluentID( id1, from )
          tx.addInputVersion( from )
          tx.getTxn( idm )
       }

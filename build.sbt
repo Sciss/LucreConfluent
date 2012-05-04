@@ -1,6 +1,6 @@
 name := "TemporalObjects"
 
-version := "0.32-SNAPSHOT"
+version := "0.32"
 
 organization := "de.sciss"
 
@@ -16,9 +16,10 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.20",
-   "de.sciss" %% "lucredata-txn" % "0.24-SNAPSHOT",
+   "de.sciss" %% "lucredata-txn" % "0.24",
    "org.scalatest" %% "scalatest" % "1.7.2" % "test",
-   "de.sciss" %% "lucredata-txn-views" % "0.24-SNAPSHOT" % "test"
+   "de.sciss" %% "lucredata-txn-views" % "0.24" % "test",
+   "de.sciss" %% "lucreexpr" % "0.10" % "test"
 )
 
 retrieveManaged := true

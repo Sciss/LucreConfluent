@@ -33,9 +33,9 @@ object SkipListViewTest extends App with Runnable {
 
    def build[ S <: KSys[ S ] with Cursor[ S ]]( implicit cursor: S ) {
       val fut = new InteractiveSkipListView.FutureObserver[ S ]
-      implicit val ser = HASkipList.serializer[ S, Int ]( fut )
+      implicit val ser = HASkipList.Set.serializer[ S, Int ]( fut )
       val access = cursor.root { implicit tx =>
-         HASkipList.empty[ S, Int ]( minGap = 1, keyObserver = fut )
+         HASkipList.Set.empty[ S, Int ]( minGap = 1, keyObserver = fut )
       }
 
 //      println( "We are in " + cursor.step { implicit tx => cursor.position })

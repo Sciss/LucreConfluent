@@ -32,9 +32,9 @@ import java.text.SimpleDateFormat
 
 object TemporalObjects {
    val name          = "TemporalObjects"
-   val version       = 0.32
+   val version       = 0.33
    val copyright     = "(C)opyright 2009-2012 Hanns Holger Rutz"
-   val isSnapshot    = false
+   val isSnapshot    = true
 
    private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
    var showConfluentLog       = false

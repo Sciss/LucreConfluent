@@ -6,9 +6,9 @@ import de.sciss.lucre.stm.Cursor
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
 import de.sciss.collection.txn.view.InteractiveSkipOctreePanel
-import de.sciss.collection.geom.Space.TwoDim
 import de.sciss.collection.txn.{SpaceSerializers, DeterministicSkipOctree}
-import de.sciss.collection.geom.{Square, Point2D}
+import de.sciss.collection.geom.{IntSquare, IntPoint2D}
+import de.sciss.collection.geom.IntSpace.TwoDim
 
 object OctreeViewTest extends App with Runnable {
    TemporalObjects.showConfluentLog = false
@@ -37,12 +37,12 @@ object OctreeViewTest extends App with Runnable {
    private val sz = 256
 
    def build[ S <: KSys[ S ] with Cursor[ S ]]( implicit cursor: S ) {
-      import SpaceSerializers.{Point2DSerializer, SquareSerializer}
-      implicit val pointView = (p: Point2D, t: Any) => p
-      implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, Point2D ]
+      import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
+      implicit val pointView = (p: IntPoint2D, t: Any) => p
+      implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, IntPoint2D ]
       val access = cursor.root { implicit tx =>
-         DeterministicSkipOctree.empty[ S, TwoDim, Point2D ](
-            Square( sz, sz, sz ), skipGap = 1 )
+         DeterministicSkipOctree.empty[ S, TwoDim, IntPoint2D ](
+            IntSquare( sz, sz, sz ), skipGap = 1 )
       }
       val model = new InteractiveSkipOctreePanel.Model2D[ S ](
          cursor, access, { () => println( "(Consistency not checked)" )} /*, nTimes = 2 */

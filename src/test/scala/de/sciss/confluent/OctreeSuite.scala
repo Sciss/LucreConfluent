@@ -5,11 +5,11 @@ import collection.breakOut
 import collection.mutable.{Set => MSet}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
-import de.sciss.collection.geom.Space.ThreeDim
-import de.sciss.collection.geom._
 import concurrent.stm.InTxn
 import de.sciss.lucre.stm.{Source, Cursor, Sys}
 import de.sciss.collection.txn.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
+import de.sciss.collection.geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D}
+import de.sciss.collection.geom.IntSpace.ThreeDim
 
 /**
  *
@@ -31,7 +31,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
    val rnd           = TxnRandom.plain( 2L ) // ( 12L )
 
-   val cube          = Cube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
+   val cube          = IntCube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
 
    // make sure we don't look tens of thousands of actions
    TemporalObjects.showConfluentLog = false
@@ -39,11 +39,11 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {
          implicit val sys: S with Cursor[ S ] = sysCreator()
-         import SpaceSerializers.{Point3DSerializer, CubeSerializer}
-         implicit val pointView = (p: Point3D, _: Any) => p
-         implicit val ser = DeterministicSkipOctree.serializer[ S, ThreeDim, Point3D ]
+         import SpaceSerializers.{IntPoint3DSerializer, IntCubeSerializer}
+         implicit val pointView = (p: IntPoint3D, _: Any) => p
+         implicit val ser = DeterministicSkipOctree.serializer[ S, ThreeDim, IntPoint3D ]
          val access = sys.root { implicit tx =>
-            DeterministicSkipOctree.empty[ S, ThreeDim, Point3D ]( cube )
+            DeterministicSkipOctree.empty[ S, ThreeDim, IntPoint3D ]( cube )
          }
          (sys, access, succ => sysCleanUp( sys, succ ))
       })
@@ -66,7 +66,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-   val pointFun3D = (itx: InTxn) => (mask: Int) => Point3D(
+   val pointFun3D = (itx: InTxn) => (mask: Int) => IntPoint3D(
       rnd.nextInt()( itx ) & mask,
       rnd.nextInt()( itx ) & mask,
       rnd.nextInt()( itx ) & mask
@@ -230,10 +230,10 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    }
 
    val queryFun3D = (itx: InTxn) => (max: Int, off: Int, ext: Int) =>
-      Cube( rnd.nextInt( max )( itx ) - off,
-            rnd.nextInt( max )( itx ) - off,
-            rnd.nextInt( max )( itx ) - off,
-            rnd.nextInt( ext )( itx ))
+      IntCube( rnd.nextInt( max )( itx ) - off,
+               rnd.nextInt( max )( itx ) - off,
+               rnd.nextInt( max )( itx ) - off,
+               rnd.nextInt( ext )( itx ))
 
    val sortFun3D = (p: ThreeDim#PointLike) => (p.x, p.y, p.z)
 
@@ -269,7 +269,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
          (dy * dy + dz * dz > 0L)
    }
 
-   val euclideanDist3D = DistanceMeasure3D.euclideanSq
+   val euclideanDist3D = IntDistanceMeasure3D.euclideanSq
 
    // JUHUUUUU SPECIALIZATION BROKEN ONCE MORE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    def verifyNN[ S <: Sys[ S ], M, D <: Space[ D ]](
@@ -283,7 +283,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       }
       // tricky: this guarantees that there are no 63 bit overflows,
       // while still allowing points outside the root hyperCube to enter the test
-      val ps = ps0.filter( pointFilter )
+      val ps: Seq[ D#Point ] = ps0.filter( pointFilter )
       val nnT: Map[ D#Point, D#Point ] = cursor.step { implicit tx =>
          val t = access.get
          ps.map( p => p -> t.nearestNeighbor( p, euclideanDist ))( breakOut )

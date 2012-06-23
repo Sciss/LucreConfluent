@@ -9,8 +9,8 @@ import annotation.switch
 object Strings2 extends Type[ String ] {
    private val typeID = 8
 
-   protected def readValue( in: DataInput ) : String = in.readString()
-   protected def writeValue( value: String, out: DataOutput ) { out.writeString( value )}
+   def readValue( in: DataInput ) : String = in.readString()
+   def writeValue( value: String, out: DataOutput ) { out.writeString( value )}
 
    final class Ops[ S <: Sys[ S ]]( ex: Ex[ S ])( implicit tx: S#Tx ) {
       private type E = Ex[ S ]

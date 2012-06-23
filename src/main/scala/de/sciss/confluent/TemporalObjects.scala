@@ -34,7 +34,7 @@ object TemporalObjects {
    val name          = "TemporalObjects"
    val version       = 0.33
    val copyright     = "(C)opyright 2009-2012 Hanns Holger Rutz"
-   val isSnapshot    = true
+   val isSnapshot    = false
 
    private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
    var showConfluentLog       = false

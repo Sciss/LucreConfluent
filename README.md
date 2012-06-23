@@ -8,6 +8,8 @@ TemporalObjects provides a transactional, durable, and confluently persistent me
 
 Further reading:
 
+ - Rutz, H. H., A Reactive, Confluently Persistent Framework for the Design of Computer Music, Proceedings of the Sound an Music Computing Conference, 2012, upcoming.
+
  - Rutz, H. H. and Miranda, E. and Eckel, G., On the Traceability of the Compositional Process, Proceedings of the Sound an Music Computing Conference, 2010, pp. 38:1–38:7.
 
  - Fiat, A. and Kaplan, H., Making data structures confluently persistent, Proceedings of the 12th annual ACM-SIAM symposium on Discrete algorithms, 2001, pp. 537–546.
@@ -20,7 +22,7 @@ Builds with sbt 0.11 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
-    "de.sciss" %% "temporalobjects" % "0.32"
+    "de.sciss" %% "temporalobjects" % "0.33"
 
 ### previous versions / tags
 

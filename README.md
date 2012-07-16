@@ -8,11 +8,11 @@ TemporalObjects provides a transactional, durable, and confluently persistent me
 
 Further reading:
 
- - Rutz, H. H., A Reactive, Confluently Persistent Framework for the Design of Computer Music, Proceedings of the Sound an Music Computing Conference, 2012, upcoming.
+ - Rutz, H. H., "A Reactive, Confluently Persistent Framework for the Design of Computer Music," in Proceedings of the 9th Sound an Music Computing Conference (SMC), Copenhagen 2012.
 
- - Rutz, H. H. and Miranda, E. and Eckel, G., On the Traceability of the Compositional Process, Proceedings of the Sound an Music Computing Conference, 2010, pp. 38:1–38:7.
+ - Rutz, H. H. and Miranda, E. and Eckel, G., "On the Traceability of the Compositional Process," in Proceedings of the 8th Sound an Music Computing Conference (SMC), Padua 2010, pp. 38:1–38:7.
 
- - Fiat, A. and Kaplan, H., Making data structures confluently persistent, Proceedings of the 12th annual ACM-SIAM symposium on Discrete algorithms, 2001, pp. 537–546.
+ - Fiat, A. and Kaplan, H., "Making data structures confluently persistent," in Proceedings of the 12th annual ACM-SIAM symposium on Discrete algorithms, 2001, pp. 537–546.
 
 ### requirements / installation
 

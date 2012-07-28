@@ -18,8 +18,8 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "0.21-SNAPSHOT",
-   "de.sciss" %% "lucredata-txn" % "0.34-SNAPSHOT",
-   "de.sciss" %% "lucredata-txn-views" % "0.34-SNAPSHOT" % "test",
+   "de.sciss" %% "lucredata-core" % "0.34-SNAPSHOT",
+   "de.sciss" %% "lucredata-views" % "0.34-SNAPSHOT" % "test",
    "de.sciss" %% "lucreexpr" % "0.34-SNAPSHOT" % "test"
 )
 

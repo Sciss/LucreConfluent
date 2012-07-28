@@ -5,10 +5,11 @@ import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.stm.Cursor
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
-import de.sciss.collection.txn.view.InteractiveSkipOctreePanel
-import de.sciss.collection.txn.{SpaceSerializers, DeterministicSkipOctree}
-import de.sciss.collection.geom.{IntSquare, IntPoint2D}
-import de.sciss.collection.geom.IntSpace.TwoDim
+import de.sciss.lucre.{data, geom}
+import data.gui.InteractiveSkipOctreePanel
+import data.{SpaceSerializers, DeterministicSkipOctree}
+import geom.{IntSquare, IntPoint2D, IntSpace}
+import IntSpace.TwoDim
 
 object OctreeViewTest extends App with Runnable {
    TemporalObjects.showConfluentLog = false

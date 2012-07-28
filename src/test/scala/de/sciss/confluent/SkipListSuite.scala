@@ -1,13 +1,14 @@
 package de.sciss.confluent
 
-import scala.collection.immutable.IntMap
-import scala.collection.mutable.{Set => MSet}
+import collection.immutable.IntMap
+import collection.mutable.{Set => MSet}
 import org.scalatest.{GivenWhenThen, FeatureSpec}
 import concurrent.stm.{InTxn, TxnExecutor, Ref}
-import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
-import de.sciss.collection.txn.{SkipList, HASkipList}
-import de.sciss.lucre.stm.{Source, Cursor, Sys}
+import de.sciss.lucre.{data, stm}
+import data.{SkipList, HASkipList}
+import stm.{Source, Cursor, Sys}
+import stm.impl.BerkeleyDB
 
 /**
  * To run this test copy + paste the following into sbt:

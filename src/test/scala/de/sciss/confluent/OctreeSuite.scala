@@ -6,10 +6,11 @@ import collection.mutable.{Set => MSet}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import concurrent.stm.InTxn
-import de.sciss.lucre.stm.{Source, Cursor, Sys}
-import de.sciss.collection.txn.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
-import de.sciss.collection.geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D}
-import de.sciss.collection.geom.IntSpace.ThreeDim
+import de.sciss.lucre.{stm, data, geom}
+import stm.{Source, Cursor, Sys}
+import data.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
+import geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D, IntSpace}
+import IntSpace.ThreeDim
 
 /**
  *

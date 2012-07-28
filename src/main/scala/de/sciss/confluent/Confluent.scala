@@ -27,15 +27,15 @@ package de.sciss.confluent
 
 import impl.{PartialCacheMapImpl, InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
 import util.MurmurHash
-import de.sciss.lucre.event.ReactionMap
-import de.sciss.lucre.{DataOutput, DataInput}
+import de.sciss.lucre.{event => evt, data, stm, DataInput, DataOutput}
+import evt.ReactionMap
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
-import de.sciss.collection.txn.Ancestor
+import data.Ancestor
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.{logConfluent, logPartial}
-import de.sciss.lucre.stm.impl.BerkeleyDB
+import stm.impl.BerkeleyDB
 import java.io.File
-import de.sciss.lucre.stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
+import stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
 import collection.immutable.{IndexedSeq => IIdxSeq}
 
 object Confluent {

@@ -22,7 +22,7 @@ Builds with sbt 0.11 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
-    "de.sciss" %% "temporalobjects" % "0.33"
+    "de.sciss" %% "temporalobjects" % "0.34-SNAPSHOT"
 
 ### previous versions / tags
 

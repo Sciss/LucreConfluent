@@ -1,10 +1,11 @@
 package de.sciss.confluent
 
-import de.sciss.collection.txn.view.InteractiveSkipListView
 import java.io.File
-import de.sciss.lucre.stm.impl.BerkeleyDB
-import de.sciss.lucre.stm.{Cursor}
-import de.sciss.collection.txn.{HASkipList}
+import de.sciss.lucre.{stm, data}
+import stm.Cursor
+import stm.impl.BerkeleyDB
+import data.HASkipList
+import data.gui.InteractiveSkipListView
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
 

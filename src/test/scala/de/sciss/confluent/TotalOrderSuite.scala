@@ -1,10 +1,11 @@
 package de.sciss.confluent
 
 import org.scalatest.{GivenWhenThen, FeatureSpec}
-import de.sciss.lucre.stm.impl.BerkeleyDB
 import java.io.File
-import de.sciss.lucre.stm.Cursor
-import de.sciss.collection.txn.TotalOrder
+import de.sciss.lucre.{stm, data}
+import stm.impl.BerkeleyDB
+import stm.Cursor
+import data.TotalOrder
 
 /**
  * To run this test copy + paste the following into sbt:

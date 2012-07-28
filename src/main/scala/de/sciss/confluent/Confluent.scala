@@ -1333,7 +1333,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
    private final class System( storeFactory: DataStoreFactory[ DataStore ])
    extends Confluent {
-      val manifest                        = Predef.manifest[ Confluent ]
+//      val manifest                        = Predef.manifest[ Confluent ]
       def idOrdering : Ordering[ S#ID ]   = IDOrdering
 
       private[confluent] val store        = storeFactory.open( "data" )

@@ -353,14 +353,14 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
                system.step { implicit tx =>
                   val t = access.get
-                  try {
+//                  try {
                      t.clear()
 //                     t.dispose()
-                  } catch {
-                     case e =>
-                        e.printStackTrace()
-                        throw e
-                  }
+//                  } catch {
+//                     case e =>
+//                        e.printStackTrace()
+//                        throw e
+//                  }
                }
                success = true
 

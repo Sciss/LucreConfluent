@@ -6,8 +6,8 @@ import annotation.switch
 import de.sciss.lucre.stm.{TxnSerializer, Serializer, DataStore}
 
 object DurablePartialMapImpl {
-   private sealed trait Entry[ S <: KSys[ S ], +A ]
-   private final case class EntryPre[ S <: KSys[ S ]]( hash: Long ) extends Entry[ S, Nothing ]
+   private sealed trait Entry[ S <: KSys[ S ], A ]
+   private final case class EntryPre[ S <: KSys[ S ], A ]( hash: Long ) extends Entry[ S, A ]
    private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }

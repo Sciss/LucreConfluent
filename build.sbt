@@ -12,15 +12,24 @@ licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
 scalaVersion := "2.9.2"
 
+crossScalaVersions in ThisBuild := Seq( "2.10.0-M6", "2.9.2" )
+
 resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "fingertree" % "0.20",
+   "de.sciss" %% "fingertree" % "0.21-SNAPSHOT",
    "de.sciss" %% "lucredata-txn" % "0.34-SNAPSHOT",
-   "org.scalatest" %% "scalatest" % "1.7.2" % "test",
    "de.sciss" %% "lucredata-txn-views" % "0.34-SNAPSHOT" % "test",
-   "de.sciss" %% "lucreexpr" % "0.33" % "test"
+   "de.sciss" %% "lucreexpr" % "0.34-SNAPSHOT" % "test"
 )
+
+libraryDependencies <+= scalaVersion { sv =>
+   val v = sv match {
+      case "2.10.0-M6" => "1.9-2.10.0-M6-B2"
+      case _ => "1.8"
+   }
+   "org.scalatest" %% "scalatest" % v % "test"
+}
 
 retrieveManaged := true
 

@@ -1,0 +1,4 @@
+#!/bin/sh
+rm -r lib_managed/jars/de.sciss/*
+sbt gen-idea
+sbt publish-local

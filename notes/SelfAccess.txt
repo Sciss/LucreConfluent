@@ -1,0 +1,41 @@
+:::::::: self access ::::::::
+
+the problem is how to efficiently compute the path component for a Source[ S#Tx, _ ], given the transactions input access. E.g. given
+
+    source.id.path = <e_i1, t_i1, e_i2, t_i2, ..., e_ij, t_ij>
+    inputAccess    = <e_0,  t_0,  e_k1, t_k1, ..., e_km, t_km>
+
+to find the suffix of inputAccess that needs to be appended to source.id.path.
+
+:::::::: discussion ::::::::
+
+The question is: should a self accessing structure use a Cursor at all? It doesn't seem logical, because the idea of the cursor is that the user may advance or change it. It may well invalidate the action of the transport when the cursor is changed at some point.
+
+On the other hand... The transport should run in parallel to the user's transaction time. We would be in big trouble if it lags behind or branches off, because that means all live views are suddenly lost.
+
+It seems the concept of the cursor must be restricted. In particular method position_= is dangerous. One should rather create an alternative cursor if one wishes to move elsewhere -- coinciding with the need to rebuild all views (unfortunately; but there is no other simple solution)
+
+There is only one call to position_= which is the Txn wrapping up after a write; so it should be safe to remove that method.
+
+The cursor is like the current branch in git. All possible cursor movements form a tree, not a graph.
+
+::::::::::::::::
+
+Cursors should be ephemeral but durable. It should be possible to write them in a self accessing structure. A cursor serializer could be part of Sys.
+
+If cursors can be written, there is no need to pass them into the serialisers, an approach that seriously sucks, anyway.
+
+::::::::::::::::
+
+It may sound odd, but isn't the self access most naturally performed like this:
+
+cursor.step { implicit tx => 
+   val updated =tx.refresh( this )( ownSerializer )
+   updated.work()
+}
+
+where `refresh` can do an in-memory write and read; the refresh could be optimised in future versions, but for now this should be simple to implement and work as expected?
+
+This could be implemented independent of the question whether cursors should be writeable or not.
+
+Obviously `refresh` implies that the 'old this' has a compatible access path, i.e. it was accessed with the _same cursor_. We may enforce that constraint at some point, but for now, let's just assume that this rule isn't actively violated. (the danger goes away when position_= is blocked)

@@ -66,7 +66,7 @@ final class InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K
       }
    }
 
-   def getWithSuffix[A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ] = {
+   def getWithSuffix[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ] = {
       store.get( key )( tx.peer ).flatMap { entries =>
          val (maxIndex, maxTerm) = path.splitIndex
          getWithPrefixLen[ A, (S#Acc, A) ]( maxIndex, maxTerm, entries )( (preLen, writeTerm, value) =>
@@ -79,12 +79,19 @@ final class InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K
                                        ( fun: (Int, Long, A) => B ) : Option[ B ] = {
 
       val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
-      val (index, term) = if( preLen == maxIndex.size ) {
+//      val (index, term) = if( preLen == maxIndex.size ) {
+//         // maximum prefix lies in last tree
+//         (maxIndex, maxTerm)
+//      } else {
+//         // prefix lies in other tree
+//         maxIndex.splitAtIndex( preLen )
+//      }
+      val index = if( preLen == maxIndex.size ) {
          // maximum prefix lies in last tree
-         (maxIndex, maxTerm)
+         maxIndex
       } else {
          // prefix lies in other tree
-         maxIndex.splitAtIndex( preLen )
+         maxIndex._take( preLen )
       }
       val preSum = index.sum
       entries.get( preSum ).flatMap {

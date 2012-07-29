@@ -36,7 +36,7 @@ import TemporalObjects.{logConfluent, logPartial}
 import stm.impl.BerkeleyDB
 import java.io.File
 import stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
-import collection.immutable.{IndexedSeq => IIdxSeq}
+import collection.immutable.{IndexedSeq => IIdxSeq, LongMap}
 
 object Confluent {
    private type S = Confluent
@@ -899,8 +899,49 @@ println( "?? partial from index " + this )
          res
       }
 
-      final def access[ A ]( source: S#Var[ A ]) : A = {
-         sys.error( "TODO" )  // source.access( system.path( this ))( this )
+//      final def access[ A ]( source: S#Var[ A ]) : A = {
+//         sys.error( "TODO" )  // source.access( system.path( this ))( this )
+//      }
+
+      // there may be a more efficient implementation, but for now let's just calculate
+      // all the prefixes and retrieve them the normal way.
+      final def refresh[ A ]( writePath: S#Acc, value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : A = {
+         val readPath = inputAccess
+         if( readPath == writePath ) return value
+
+         val out     = new DataOutput()
+         serializer.write( value, out )
+         val in      = new DataInput( out )
+
+         val (writeIndex, writeTerm) = writePath.splitIndex
+         var entries = LongMap.empty[ Long ]
+         Hashing.foreachPrefix( writeIndex, entries.contains ) {
+            case (_hash, _preSum) => entries += (_hash, _preSum)
+         }
+         entries += (writeIndex.sum, 0L)  // full cookie
+
+         var (maxIndex, maxTerm) = readPath.splitIndex
+         while( true ) {
+            val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
+            val index = if( preLen == maxIndex.size ) {
+               // maximum prefix lies in last tree
+               maxIndex
+            } else {
+               // prefix lies in other tree
+               maxIndex._take( preLen )
+            }
+            val preSum = index.sum
+            val hash = entries( preSum )
+            if( hash == 0L ) {   // full entry
+               val suffix  = writeTerm +: readPath.drop( preLen )
+               return serializer.read( in, suffix )( this )
+            } else {   // partial hash
+               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+               maxIndex = fullIndex
+               maxTerm  = fullTerm
+            }
+         }
+         sys.error( "Never here" )
       }
    }
 
@@ -954,7 +995,7 @@ println( "?? partial from index " + this )
    }
 
    sealed trait Var[ @specialized A ] extends STMVar[ S#Tx, A ] {
-      private[Confluent] def asEntry: S#Entry[ A ]
+//      private[Confluent] def asEntry: S#Entry[ A ]
    }
 
    private sealed trait BasicVar[ A ] extends Var[ A ] {
@@ -1000,7 +1041,8 @@ println( "?? partial from index " + this )
          tx.putNonTxn( id, v )( ser )
       }
 
-      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "Var(" + id + ")"
    }
@@ -1126,7 +1168,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putPartial( id, v )
       }
 
-      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "PartialVar(" + id + ")"
    }
@@ -1150,7 +1193,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putTxn( id, v )
       }
 
-      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "Var(" + id + ")"
    }
@@ -1213,7 +1257,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
-      private[Confluent] def asEntry : S#Entry[ Boolean ] = new RootVar[ Boolean ]( id.id, toString, this )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ Boolean ] = new RootVar[ Boolean ]( id.id, toString, this )
 
       override def toString = "Var[Boolean](" + id + ")"
 
@@ -1242,7 +1287,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
-      private[Confluent] def asEntry : S#Entry[ Int ] = new RootVar[ Int ]( id.id, toString, this )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ Int ] = new RootVar[ Int ]( id.id, toString, this )
 
       override def toString = "Var[Int](" + id + ")"
 
@@ -1271,7 +1317,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
-      private[Confluent] def asEntry : S#Entry[ Long ] = new RootVar[ Long ]( id.id, toString, this )
+//      // XXX TODO - this will fail if id.path does not start in v0
+//      private[Confluent] def asEntry : S#Entry[ Long ] = new RootVar[ Long ]( id.id, toString, this )
 
       override def toString = "Var[Long](" + id + ")"
 
@@ -1341,6 +1388,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private[confluent] val varMap       = DurablePersistentMap.newConfluentIntMap[ S ]( store )
       private[confluent] val partialMap : PartialCacheMapImpl[ Confluent, Int ] =
          PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap( store ))
+
+//      private val refreshMap = InMemoryConfluentMap.newIntMap[ Confluent ]
 
       private val global = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>
@@ -1448,4 +1497,6 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
    private[confluent] def reactionMap : ReactionMap[ Confluent ]
+
+   private[confluent] def position_=( newPos: Acc )( implicit tx: Tx ) : Unit
 }

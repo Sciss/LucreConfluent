@@ -36,7 +36,7 @@ import TemporalObjects.{logConfluent, logPartial}
 import stm.impl.BerkeleyDB
 import java.io.File
 import stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
-import collection.immutable.{IndexedSeq => IIdxSeq, LongMap}
+import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, LongMap}
 
 object Confluent {
    private type S = Confluent
@@ -831,10 +831,17 @@ println( "?? partial from index " + this )
          new InMemoryIDMapImpl[ A ]( map )
       }
 
-      final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#Tx, S#ID, A ] = {
-         val id   = system.newIDValue()( this )
+      final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
+         mkDurableIDMap( system.newIDValue()( this ))
+      }
+
+      private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
          val map  = DurablePersistentMap.newConfluentLongMap[ Confluent ]( system.store )
-         new DurableIDMapImpl[ A ]( id, map )
+         val res  = new DurableIDMapImpl[ A ]( id, map )
+         durableIDMaps.transform( _ + (id -> res) )( peer )
+         res
       }
 
       private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
@@ -899,9 +906,14 @@ println( "?? partial from index " + this )
          res
       }
 
-//      final def access[ A ]( source: S#Var[ A ]) : A = {
-//         sys.error( "TODO" )  // source.access( system.path( this ))( this )
-//      }
+      final def readDurableIDMap[ A ]( in: DataInput )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
+         val id = in.readInt()
+         durableIDMaps.get( peer ).get( id ) match {
+            case Some( existing ) => existing.asInstanceOf[ DurableIDMapImpl[ A ]]
+            case None => mkDurableIDMap( id )
+         }
+      }
 
       // there may be a more efficient implementation, but for now let's just calculate
       // all the prefixes and retrieve them the normal way.
@@ -1047,6 +1059,18 @@ println( "?? partial from index " + this )
       override def toString = "Var(" + id + ")"
    }
 
+   /*
+    * Because durable maps are persisted, they may be deserialized multiple times per transaction.
+    * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
+    * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
+    * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
+    * was marked after A1, it's cached value will override A2's, even though it is older.
+    *
+    * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
+    * only one instance per id is available in a single transaction.
+    */
+   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _ ]])
+
    private final class InMemoryIDMapImpl[ A ]( protected val store: InMemoryConfluentMap[ Confluent, Int ])
    extends IdentifierMap[ S#Tx, S#ID, A ] with InMemoryCacheMapImpl[ Confluent, Int ] {
       private val markDirtyFlag = TxnLocal( false )
@@ -1084,7 +1108,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
    private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurablePersistentMap[ Confluent, Long ])
                                            ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends IdentifierMap[ S#Tx, S#ID, A ] with DurableCacheMapImpl[ Confluent, Long ] {
+   extends IdentifierMap[ S#Tx, S#ID, A ] with DurableCacheMapImpl[ Confluent, Long ] with Writer with Disposable[ S#Tx ] {
       private val nid = mapID.toLong << 32
 
       private val markDirtyFlag = TxnLocal( false )
@@ -1118,6 +1142,12 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 println( "WARNING: IDMap.remove : not yet implemented" )
          markDirty()
       }
+
+      def write( out: DataOutput ) {
+         out.writeInt( mapID )
+      }
+
+      def dispose()( implicit tx: S#Tx ) {}
 
       override def toString = "IdentifierMap<" + mapID + ">"
    }
@@ -1168,9 +1198,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putPartial( id, v )
       }
 
-//      // XXX TODO - this will fail if id.path does not start in v0
-//      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
-
       override def toString = "PartialVar(" + id + ")"
    }
 
@@ -1192,9 +1219,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          logConfluent( this.toString + " ini " + v )
          tx.putTxn( id, v )
       }
-
-//      // XXX TODO - this will fail if id.path does not start in v0
-//      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "Var(" + id + ")"
    }
@@ -1257,9 +1281,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
-//      // XXX TODO - this will fail if id.path does not start in v0
-//      private[Confluent] def asEntry : S#Entry[ Boolean ] = new RootVar[ Boolean ]( id.id, toString, this )
-
       override def toString = "Var[Boolean](" + id + ")"
 
       // ---- TxnSerializer ----
@@ -1287,9 +1308,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          tx.putNonTxn( id, v )( this )
       }
 
-//      // XXX TODO - this will fail if id.path does not start in v0
-//      private[Confluent] def asEntry : S#Entry[ Int ] = new RootVar[ Int ]( id.id, toString, this )
-
       override def toString = "Var[Int](" + id + ")"
 
       // ---- TxnSerializer ----
@@ -1316,9 +1334,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          logConfluent( this.toString + " set " + v )
          tx.putNonTxn( id, v )( this )
       }
-
-//      // XXX TODO - this will fail if id.path does not start in v0
-//      private[Confluent] def asEntry : S#Entry[ Long ] = new RootVar[ Long ]( id.id, toString, this )
 
       override def toString = "Var[Long](" + id + ")"
 
@@ -1472,8 +1487,6 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             rootVar
          }
       }
-
-//      def asEntry[ A ]( v: S#Var[ A ]) : S#Entry[ A ] = v.asEntry
 
       def close() { store.close()}
 

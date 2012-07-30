@@ -36,7 +36,7 @@ object DurableConfluentMapImpl {
    private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends DurablePersistentMap[ S, K ] {
+sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] extends DurablePersistentMap[ S, K ] {
    import DurableConfluentMapImpl._
 
    protected def store: DataStore

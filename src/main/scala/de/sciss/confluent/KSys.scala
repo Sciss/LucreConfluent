@@ -25,8 +25,8 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{Serializer, Writer, Identifier, Sys, Txn => _Txn}
-import de.sciss.lucre.DataInput
+import de.sciss.lucre.stm.{Txn => _Txn, ImmutableSerializer, Identifier, Sys}
+import de.sciss.lucre.{Writable, DataInput}
 
 object KSys {
 //   private type S = KSys
@@ -37,16 +37,16 @@ object KSys {
       private[confluent] def getIndexTreeTerm( term: Long ) : Long
 
       private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                                              ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+                                              ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
 
       private[confluent] def readPartialMap[ A ]( access: S#Acc, in: DataInput )
-                                                ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+                                                ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
 
       private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
-                                             ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+                                             ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
 
       private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
-                                               ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ]
+                                               ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
 
       def inputAccess: S#Acc
 
@@ -67,7 +67,7 @@ object KSys {
 //      override def equals
 //   }
 
-   trait Acc[ S <: KSys[ S ]] extends Writer with PathLike {
+   trait Acc[ S <: KSys[ S ]] extends Writable with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
 
 //      // append element

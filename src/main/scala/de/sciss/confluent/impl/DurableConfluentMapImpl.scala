@@ -27,7 +27,7 @@ package de.sciss.confluent
 package impl
 
 import annotation.switch
-import de.sciss.lucre.stm.{TxnSerializer, Serializer, DataStore}
+import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer, DataStore}
 import de.sciss.lucre.DataOutput
 
 object DurableConfluentMapImpl {
@@ -58,7 +58,7 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
       } getOrElse( false )
    }
 
-   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       val (index, term) = path.splitIndex
 //if( key == 0 ) {
 //   println( "::::: put. write path = index " + index + "; term = " + term + "; sum = " + index.sum )
@@ -137,7 +137,7 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
    }
 
    private def putFullMap[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
-                                             prevValue: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+                                             prevValue: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
@@ -199,13 +199,13 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
       }
    }
 
-   final def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+   final def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
       val (maxIndex, maxTerm) = path.splitIndex
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (_, _, value) => value )
    }
 
    final def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
-                                            ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
+                                            ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
       val (maxIndex, maxTerm) = path.splitIndex
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
       //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
@@ -215,7 +215,7 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
 
    private def getWithPrefixLen[ @specialized A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (Int, Long, A) => B )
-                                                    ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
+                                                    ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {
       val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( hash )

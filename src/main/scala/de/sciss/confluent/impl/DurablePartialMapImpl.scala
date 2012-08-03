@@ -3,7 +3,7 @@ package impl
 
 import de.sciss.lucre.DataOutput
 import annotation.switch
-import de.sciss.lucre.stm.{TxnSerializer, Serializer, DataStore}
+import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer, DataStore}
 
 object DurablePartialMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], A ]
@@ -39,7 +39,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 //      } getOrElse( false )
 //   }
 
-   final def put[ @specialized A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+   final def put[ @specialized A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
 //      val path = conPath.partial
       val (index, term) = conPath.splitIndex
 //      val term = conPath.term
@@ -118,7 +118,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
    }
 
    private def putFullMap[ @specialized A ]( key: K, conIndex: S#Acc, term: Long, value: A, prevTerm: Long,
-                                             prevValue: A )( implicit tx: S#Tx, ser: Serializer[ A ]) {
+                                             prevValue: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
@@ -188,14 +188,14 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
       }
    }
 
-   final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ A ] = {
+   final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (/* _, */ _, value) => value )
    }
 
    final def getWithSuffix[ @specialized A ]( key: K, conPath: S#Acc )
-                                            ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ (S#Acc, A) ] = {
+                                            ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>
@@ -216,7 +216,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 
    private def getWithPrefixLen[ @specialized A, B ]( key: K, maxConIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (/* Int, */ Long, A) => B )
-                                                    ( implicit tx: S#Tx, ser: Serializer[ A ]) : Option[ B ] = {
+                                                    ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {
 //      val maxIndex = maxConIndex.partial
 
 //      val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>

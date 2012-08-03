@@ -25,10 +25,10 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.Serializer
+import de.sciss.lucre.stm.ImmutableSerializer
 import de.sciss.lucre.{DataInput, DataOutput}
 
-object ByteArraySerializer extends Serializer[ Array[ Byte ]] {
+object ByteArraySerializer extends ImmutableSerializer[ Array[ Byte ]] {
    def write( v: Array[ Byte ], out: DataOutput ) {
       out.writeInt( v.length )
       out.write( v )

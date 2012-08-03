@@ -27,7 +27,7 @@ package de.sciss.confluent
 
 import impl.{PartialCacheMapImpl, InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
 import util.MurmurHash
-import de.sciss.lucre.{event => evt, data, stm, DataInput, DataOutput}
+import de.sciss.lucre.{event => evt, Writable, data, stm, DataInput, DataOutput}
 import evt.ReactionMap
 import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import data.Ancestor
@@ -35,7 +35,7 @@ import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.{logConfluent, logPartial}
 import stm.impl.BerkeleyDB
 import java.io.File
-import stm.{IdentifierMap, Cursor, Disposable, Var => STMVar, Serializer, Durable, DataStoreFactory, DataStore, Writer, TxnSerializer}
+import stm.{Var => STMVar, ImmutableSerializer, IdentifierMap, Cursor, Disposable, Durable, DataStoreFactory, DataStore, TxnSerializer}
 import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, LongMap}
 
 object Confluent {
@@ -384,7 +384,7 @@ println( "?? partial from index " + this )
          tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
    }
 
-   sealed trait IndexTree extends Writer with Disposable[ Durable#Tx ] {
+   sealed trait IndexTree extends Writable with Disposable[ Durable#Tx ] {
       def tree: Ancestor.Tree[ Durable, Long ]
       def level: Int
       def term: Long
@@ -488,9 +488,9 @@ println( "?? partial from index " + this )
       private[Confluent] def addInputVersion( path: S#Acc ) : Unit
 
       private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Unit
-      private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) : Unit
+      private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) : Unit
       private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : A
-      private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A
+      private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A
       private[Confluent] def isFresh( id: S#ID ) : Boolean
 
       private[Confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : Unit
@@ -646,7 +646,7 @@ println( "?? partial from index " + this )
          })( peer )
       }
 
-      final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: Serializer[ A ]) : A = {
+      final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
          logConfluent( "txn get " + id )
          getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
@@ -662,7 +662,7 @@ println( "?? partial from index " + this )
          markDirty()
       }
 
-      final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ A ]) {
+      final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
 //         logConfig( "txn put " + id )
          putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
@@ -749,14 +749,14 @@ println( "?? partial from index " + this )
       }
 
       final private[confluent] def readPartialMap[ A ]( access: S#Acc, in: DataInput )
-                                                      ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+                                                      ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val map     = Ancestor.readMap[ Durable, Long, A ]( in, (), partialTree )
          val index   = access._take( 1 )   // XXX correct ?
          new PartialMapImpl[ A ]( index, map )
       }
 
       final private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                                                   ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+                                                   ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val term = index.term
          val tree = readIndexTree( term )
          val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
@@ -764,14 +764,14 @@ println( "?? partial from index " + this )
       }
 
       final private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
-                                                     ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+                                                     ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val map     = Ancestor.newMap[ Durable, Long, A ]( partialTree, partialTree.root, rootValue )
          val index   = access._take( 1 )   // XXX correct ?
          new PartialMapImpl[ A ]( index, map )
       }
 
       final private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
-                                                   ( implicit serializer: Serializer[ A ]) : IndexMap[ S, A ] = {
+                                                   ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val tree       = readIndexTree( index.term )
          val full       = tree.tree
          val rootVertex = if( rootTerm == tree.term ) {
@@ -826,20 +826,19 @@ println( "?? partial from index " + this )
 
       final def newVarArray[ A ]( size: Int ) : Array[ S#Var[ A ]] = new Array[ S#Var[ A ]]( size )
 
-      final def newInMemoryIDMap[ A ] : IdentifierMap[ S#Tx, S#ID, A ] = {
+      final def newInMemoryIDMap[ A ] : IdentifierMap[ S#ID, S#Tx, A ] = {
          val map = InMemoryConfluentMap.newIntMap[ Confluent ]
          new InMemoryIDMapImpl[ A ]( map )
       }
 
-      final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
+      final def newDurableIDMap[ A ]( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          mkDurableIDMap( system.newIDValue()( this ))
       }
 
-      private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
+      private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val map  = DurablePersistentMap.newConfluentLongMap[ Confluent ]( system.store )
-         val res  = new DurableIDMapImpl[ A ]( id, map )
+         val idi  = new ConfluentID( id, Path.empty )
+         val res  = new DurableIDMapImpl[ A ]( idi, map )
          durableIDMaps.transform( _ + (id -> res) )( peer )
          res
       }
@@ -856,8 +855,8 @@ println( "?? partial from index " + this )
 
       final private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: TxnSerializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
          ser match {
-            case plain: Serializer[ _ ] =>
-               new VarImpl[ A ]( id, plain.asInstanceOf[ Serializer[ A ]])
+            case plain: ImmutableSerializer[ _ ] =>
+               new VarImpl[ A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
             case _ =>
                new VarTxImpl[ A ]( id )
          }
@@ -906,8 +905,7 @@ println( "?? partial from index " + this )
          res
       }
 
-      final def readDurableIDMap[ A ]( in: DataInput )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-      : IdentifierMap[ S#Tx, S#ID, A ] with Writer with Disposable[ S#Tx ] = {
+      final def readDurableIDMap[ A ]( in: DataInput )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val id = in.readInt()
          durableIDMaps.get( peer ).get( id ) match {
             case Some( existing ) => existing.asInstanceOf[ DurableIDMapImpl[ A ]]
@@ -1033,7 +1031,7 @@ println( "?? partial from index " + this )
       final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
    }
 
-   private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: Serializer[ A ])
+   private final class VarImpl[ A ]( protected val id: S#ID, protected val ser: ImmutableSerializer[ A ])
    extends BasicVar[ A ] {
       def set( v: A )( implicit tx: S#Tx ) {
 //         assertExists()
@@ -1072,8 +1070,10 @@ println( "?? partial from index " + this )
    private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _ ]])
 
    private final class InMemoryIDMapImpl[ A ]( protected val store: InMemoryConfluentMap[ Confluent, Int ])
-   extends IdentifierMap[ S#Tx, S#ID, A ] with InMemoryCacheMapImpl[ Confluent, Int ] {
+   extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ Confluent, Int ] {
       private val markDirtyFlag = TxnLocal( false )
+
+      def id: S#ID = new ConfluentID( 0, Path.empty )
 
       private def markDirty()( implicit tx: S#Tx ) {
          if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyMap( this )
@@ -1103,13 +1103,16 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          markDirty()
       }
 
+      def write( out: DataOutput ) {}
+      def dispose()( implicit tx: S#Tx ) {}
+
       override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
    }
 
-   private final class DurableIDMapImpl[ A ]( mapID: Int, protected val store: DurablePersistentMap[ Confluent, Long ])
+   private final class DurableIDMapImpl[ A ]( val id: S#ID, protected val store: DurablePersistentMap[ Confluent, Long ])
                                            ( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
-   extends IdentifierMap[ S#Tx, S#ID, A ] with DurableCacheMapImpl[ Confluent, Long ] with Writer with Disposable[ S#Tx ] {
-      private val nid = mapID.toLong << 32
+   extends IdentifierMap[ S#ID, S#Tx, A ] with DurableCacheMapImpl[ Confluent, Long ] {
+      private val nid = id.id.toLong << 32
 
       private val markDirtyFlag = TxnLocal( false )
 
@@ -1144,12 +1147,12 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       }
 
       def write( out: DataOutput ) {
-         out.writeInt( mapID )
+         out.writeInt( id.id )
       }
 
       def dispose()( implicit tx: S#Tx ) {}
 
-      override def toString = "IdentifierMap<" + mapID + ">"
+      override def toString = "IdentifierMap<" + id.id + ">"
    }
 
 //   private sealed trait VarTxLike[ A ] extends BasicVar[ A ] {
@@ -1262,7 +1265,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    }
 
    private final class BooleanVar( protected val id: S#ID )
-   extends BasicVar[ Boolean ] with Serializer[ Boolean ] {
+   extends BasicVar[ Boolean ] with ImmutableSerializer[ Boolean ] {
       def get( implicit tx: S#Tx ): Boolean = {
          logConfluent( this.toString + " get" )
          tx.getNonTxn[ Boolean ]( id )( this )
@@ -1289,7 +1292,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    }
 
    private final class IntVar( protected val id: S#ID )
-   extends BasicVar[ Int ] with Serializer[ Int ] {
+   extends BasicVar[ Int ] with ImmutableSerializer[ Int ] {
       def get( implicit tx: S#Tx ) : Int = {
          logConfluent( this.toString + " get" )
          tx.getNonTxn[ Int ]( id )( this )
@@ -1316,7 +1319,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    }
 
    private final class LongVar( protected val id: S#ID )
-   extends BasicVar[ Long ] with Serializer[ Long ] {
+   extends BasicVar[ Long ] with ImmutableSerializer[ Long ] {
       def get( implicit tx: S#Tx ) : Long = {
          logConfluent( this.toString + " get" )
          tx.getNonTxn[ Long ]( id )( this )

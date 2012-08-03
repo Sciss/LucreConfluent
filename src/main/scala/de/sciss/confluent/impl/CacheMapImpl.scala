@@ -26,7 +26,7 @@
 package de.sciss.confluent
 package impl
 
-import de.sciss.lucre.stm.{TxnSerializer, Serializer}
+import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer}
 import concurrent.stm.TxnLocal
 import TemporalObjects.logConfluent
 import de.sciss.lucre.{DataInput, DataOutput}
@@ -143,7 +143,7 @@ object DurableCacheMapImpl {
    import CacheMapImpl.Entry
 
    private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ A ])
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: ImmutableSerializer[ A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
@@ -204,7 +204,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
     * @tparam A         the type of value stored
     */
    final protected def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )
-                                          ( implicit tx: S#Tx, serializer: Serializer[ A ]) {
+                                          ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) {
       putCacheOnly( new NonTxnEntry( key, path, value ))
    }
 
@@ -249,7 +249,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
     *                   neither in the cache nor in the persistent store.
     */
    final protected def getCacheNonTxn[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-                                                                   serializer: Serializer[ A ]) : Option[ A ] =
+                                                                   serializer: ImmutableSerializer[ A ]) : Option[ A ] =
       getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
 
 //   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =

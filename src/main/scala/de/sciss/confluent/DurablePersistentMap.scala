@@ -25,7 +25,7 @@
 
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{DataStore, Serializer}
+import de.sciss.lucre.stm.{ImmutableSerializer, DataStore}
 import impl.{PartialIntMapImpl, ConfluentLongMapImpl, ConfluentIntMapImpl}
 
 object DurablePersistentMap {
@@ -64,7 +64,7 @@ trait DurablePersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     * @param serializer the serializer used to store the entity's values
     * @tparam A         the type of values stored with the entity
     */
-   def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Unit
+   def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : Unit
 
    /**
     * Finds the most recent value for an entity `id` with respect to version `path`.
@@ -83,7 +83,7 @@ trait DurablePersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     * @tparam A         the type of values stored with the entity
     * @return           `None` if no value was found, otherwise a `Some` of that value.
     */
-   def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ A ]
+   def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : Option[ A ]
 
    /**
     * Finds the most recent value for an entity `id` with respect to version `path`. If a value is found,
@@ -100,7 +100,7 @@ trait DurablePersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
     *                   tree entering/exiting tuple at which the value was found.
     */
    def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
-                                      ( implicit tx: S#Tx, serializer: Serializer[ A ]) : Option[ (S#Acc, A) ]
+                                      ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ]
 
    def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

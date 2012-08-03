@@ -28,7 +28,7 @@ package de.sciss.confluent
 import annotation.tailrec
 import collection.immutable.{IndexedSeq => IIdxSeq}
 import de.sciss.lucre.expr.{Span, Spans, Longs, Strings}
-import de.sciss.lucre.stm.{TxnSerializer, Sys, Mutable}
+import de.sciss.lucre.stm.{Serializer, Sys, Mutable}
 import de.sciss.lucre.{event, DataOutput, DataInput}
 import event.{Event, Compound, NodeSerializer, Targets, Decl}
 
@@ -49,7 +49,7 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
       def apply( name: StringEx, span: SpanEx )( implicit tx: Tx ) : Region = new New( name, span, tx )
 
       private final class New( name0: StringEx, span0: SpanEx, tx0: Tx )
-      extends RegionLike.Impl with Region {
+      extends RegionLike.Impl with Region with Mutable.Impl[ S ] {
          region =>
 
          val id      = tx0.newID()
@@ -57,7 +57,8 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
          val span_#  = spans.NamedVar(   region.toString + ".span_#", span0 )( tx0 )
       }
 
-      private final class Read( in: DataInput, acc: S#Acc, tx0: S#Tx ) extends RegionLike.Impl with Region {
+      private final class Read( in: DataInput, acc: S#Acc, tx0: S#Tx )
+      extends RegionLike.Impl with Region with Mutable.Impl[ S ] {
          region =>
 
          val id      = tx0.readID( in, acc )
@@ -65,7 +66,7 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
          val span_#  = spans.readVar(   in, acc )( tx0 )
       }
 
-      implicit val serializer : TxnSerializer[ S#Tx, S#Acc, Region ] = new TxnSerializer[ S#Tx, S#Acc, Region ] {
+      implicit val serializer : Serializer[ S#Tx, S#Acc, Region ] = new Serializer[ S#Tx, S#Acc, Region ] {
          def write( v: Region, out: DataOutput ) { v.write( out )}
          def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Region =
             new Read( in, access, tx )
@@ -105,7 +106,7 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
       def span_# : SpanEx
    }
 
-   trait Region extends RegionLike with Mutable[ S ] {
+   trait Region extends RegionLike with Mutable[ S#ID, S#Tx ] {
       override def toString = "Region" + id
    }
 
@@ -341,11 +342,11 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
    }
 
    object LinkedList {
-      def apply[ A ]( value: A, next: Option[ LinkedList[ A ]])( implicit tx: S#Tx, peerSer: TxnSerializer[ S#Tx, S#Acc, A ]) : LinkedList[ A ] =
+      def apply[ A ]( value: A, next: Option[ LinkedList[ A ]])( implicit tx: S#Tx, peerSer: Serializer[ S#Tx, S#Acc, A ]) : LinkedList[ A ] =
          new New[ A ]( value, next, tx, peerSer )
 
-      private sealed trait Impl[ A ] extends LinkedList[ A ] {
-         protected def peerSer: TxnSerializer[ S#Tx, S#Acc, A ]
+      private sealed trait Impl[ A ] extends LinkedList[ A ] with Mutable.Impl[ S ] {
+         protected def peerSer: Serializer[ S#Tx, S#Acc, A ]
          final protected def writeData( out: DataOutput ) {
             peerSer.write( value, out )
             next_#.write( out )
@@ -359,27 +360,27 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
       }
 
       private final class New[ A ]( val value: A, next0: Option[ LinkedList[ A ]], tx0: S#Tx,
-                                    protected implicit val peerSer: TxnSerializer[ S#Tx, S#Acc, A ]) extends Impl[ A ] {
+                                    protected implicit val peerSer: Serializer[ S#Tx, S#Acc, A ]) extends Impl[ A ] {
          val id      = tx0.newID()
          val next_#  = tx0.newVar[ Option[ LinkedList[ A ]]]( id, next0 )
       }
 
       private final class Read[ A ]( in: DataInput, acc: S#Acc, tx0: S#Tx,
-                                     protected implicit val peerSer: TxnSerializer[ S#Tx, S#Acc, A ] ) extends Impl[ A ] {
+                                     protected implicit val peerSer: Serializer[ S#Tx, S#Acc, A ] ) extends Impl[ A ] {
          val id      = tx0.readID( in, acc )
          val value   = peerSer.read( in, acc )( tx0 )
          val next_#  = tx0.readVar[ Option[ LinkedList[ A ]]]( id, in )
       }
 
-      implicit def serializer[ A ]( implicit peerSer: TxnSerializer[ S#Tx, S#Acc, A ]) : TxnSerializer[ S#Tx, S#Acc, LinkedList[ A ]] =
-         new TxnSerializer[ S#Tx, S#Acc, LinkedList[ A ]] {
+      implicit def serializer[ A ]( implicit peerSer: Serializer[ S#Tx, S#Acc, A ]) : Serializer[ S#Tx, S#Acc, LinkedList[ A ]] =
+         new Serializer[ S#Tx, S#Acc, LinkedList[ A ]] {
             def write( v: LinkedList[ A ], out: DataOutput ) { v.write( out )}
             def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : LinkedList[ A ] =
                new Read[ A ]( in, access, tx, peerSer )
          }
    }
 
-   trait LinkedList[ A ] extends Mutable[ S ] {
+   trait LinkedList[ A ] extends Mutable[ S#ID, S#Tx ] {
       def value: A
       def next_# : S#Var[ Option[ LinkedList[ A ]]]
       final def next( implicit tx: Tx ) : Option[ LinkedList[ A ]] = next_#.get

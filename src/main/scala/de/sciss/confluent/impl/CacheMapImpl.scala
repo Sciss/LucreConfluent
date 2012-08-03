@@ -26,7 +26,7 @@
 package de.sciss.confluent
 package impl
 
-import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer}
+import de.sciss.lucre.stm.{ImmutableSerializer, Serializer}
 import concurrent.stm.TxnLocal
 import TemporalObjects.logConfluent
 import de.sciss.lucre.{DataInput, DataOutput}
@@ -38,7 +38,7 @@ object CacheMapImpl {
     * are flushed at the commit to the persistent store. There are two sub types, a
     * transactional and a non-transactional one. A non-transactional cache entry can de-serialize
     * the value without transactional context, e.g. this is true for all primitive types.
-    * A transactional entry is backed by a `TxnSerializer`. To be saved in the store which uses
+    * A transactional entry is backed by a `Serializer`. To be saved in the store which uses
     * a sub system (`Durable`), serialization is a two-step process, using an intermediate
     * binary representation.
     */
@@ -154,7 +154,7 @@ object DurableCacheMapImpl {
       }
    }
    private final class TxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "TxnEntry(" + key + ", " + value + ")"
 
@@ -186,7 +186,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
     * @tparam A         the type of value stored
     */
    final protected def putCacheTxn[ A ]( key: K, path: S#Acc, value: A )
-                                       ( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                                       ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new TxnEntry( key, path, value ))
    }
 
@@ -224,7 +224,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
     */
    final protected def getCacheTxn[ A ]( key: K, path: S#Acc )
                                        ( implicit tx: S#Tx,
-                                         serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+                                         serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
       getCacheOnly( key, path ).orElse {
          store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
             val access  = tup._1
@@ -294,7 +294,7 @@ object PartialCacheMapImpl {
       }
 
    private final class PartialEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
-   ( val key: K, val fullPath: S#Acc, val value: A )( implicit serializer: TxnSerializer[ S#Tx, S#Acc, A ])
+   ( val key: K, val fullPath: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "PartialEntry(" + key + ", " + value + ")"
 
@@ -315,12 +315,12 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
    import PartialCacheMapImpl._
 
    final def putPartial[ A ]( key: K, path: S#Acc, value: A )
-                            ( implicit tx: S#Tx, serializer: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                            ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new PartialEntry( key, path, value ))
    }
 
    final def getPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-                                                     serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+                                                     serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
       getCacheOnly( key, path.partial ).orElse {
          store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
             val access  = tup._1
@@ -331,7 +331,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
       }
 
 //   final def getFreshPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-//                                                          serializer: TxnSerializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+//                                                          serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
 //      getCacheOnly( key, path.partial ).orElse {
 //         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
 //            val access  = tup._1

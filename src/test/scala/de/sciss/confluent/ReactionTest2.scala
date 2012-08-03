@@ -34,7 +34,7 @@ import collection.immutable.{IndexedSeq => IIdxSeq}
 
 import concurrent.stm.InTxn
 import de.sciss.lucre.{DataInput, DataOutput, expr, event}
-import de.sciss.lucre.stm.{TxnSerializer, Cursor, Sys}
+import de.sciss.lucre.stm.{Serializer, Cursor, Sys}
 import expr.any2stringadd
 
 object ReactionTest2 extends App {
@@ -375,8 +375,8 @@ Usages:
             val collection = regions.RegionList.empty
          }
 
-         implicit val serializer : TxnSerializer[ S#Tx, S#Acc, Access ] =
-            new TxnSerializer[ S#Tx, S#Acc, Access ] {
+         implicit val serializer : Serializer[ S#Tx, S#Acc, Access ] =
+            new Serializer[ S#Tx, S#Acc, Access ] {
                def write( v: Access, out: DataOutput ) { v.write( out )}
                def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Access =
                   Access.read( in, access )
@@ -440,7 +440,7 @@ Usages:
       }
 
 
-//      implicit val regionsSer: TxnSerializer[ S#Tx, S#Acc, Regions[ S ]#RegionList ] = regions.RegionList.serializer
+//      implicit val regionsSer: Serializer[ S#Tx, S#Acc, Regions[ S ]#RegionList ] = regions.RegionList.serializer
 //      implicit val accessSer = CollectionsAccess.serializer[ S ]
       val access = system.root { implicit tx => Access.empty }
 

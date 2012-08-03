@@ -5,7 +5,7 @@ import de.sciss.lucre.{DataInput, DataOutput, event => evt}
 import java.io.File
 import de.sciss.lucre.stm.impl.BerkeleyDB
 import de.sciss.lucre.expr.Expr
-import de.sciss.lucre.stm.{TxnSerializer, Sys, Cursor, Serializer}
+import de.sciss.lucre.stm.{ImmutableSerializer, Serializer, Sys, Cursor}
 import concurrent.stm.{Ref => STMRef}
 
 object EventMeld extends App {
@@ -27,7 +27,8 @@ object EventMeld extends App {
    }
 }
 class EventMeld[ S <: KSys[ S ]] {
-   implicit def seqSer[ A ]( implicit peer: Serializer[ A ]) : Serializer[ IIdxSeq[ A ]] = Serializer.indexedSeq[ A ]
+   implicit def seqSer[ A ]( implicit peer: ImmutableSerializer[ A ]) : ImmutableSerializer[ IIdxSeq[ A ]] =
+      ImmutableSerializer.indexedSeq[ A ]
 
    object Group extends evt.Decl[ S, Group ] {
       implicit val serializer : evt.NodeSerializer[ S, Group ] = Ser
@@ -131,15 +132,15 @@ class EventMeld[ S <: KSys[ S ]] {
       val imp = new EventMeld.ExprImplicits[ S ]
       import imp._
 
-      implicit object stringVarSerializer extends TxnSerializer[ S#Tx, S#Acc, Expr.Var[ S, String ]] {
+      implicit object stringVarSerializer extends Serializer[ S#Tx, S#Acc, Expr.Var[ S, String ]] {
          def write( v: Expr.Var[ S, String ], out: DataOutput ) { v.write( out )}
          def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Expr.Var[ S, String ] =
             Strings2.readVar[ S ]( in, access )
       }
 
-//      implicit def accessSer : TxnSerializer[ S#Tx, S#Acc, (Group, Expr.Var[ S, String])] = {
+//      implicit def accessSer : Serializer[ S#Tx, S#Acc, (Group, Expr.Var[ S, String])] = {
 //         implicit val exprPeer = Strings2.serializer[ S ]
-//         TxnSerializer.tuple2[ S#Tx, S#Acc, Group, Expr.Var[ S, String ]]
+//         Serializer.tuple2[ S#Tx, S#Acc, Group, Expr.Var[ S, String ]]
 //      }
 
       import Observation._

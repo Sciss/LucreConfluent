@@ -3,7 +3,7 @@ package impl
 
 import de.sciss.lucre.DataOutput
 import annotation.switch
-import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer, DataStore}
+import de.sciss.lucre.stm.{ImmutableSerializer, Serializer, DataStore}
 
 object DurablePartialMapImpl {
    private sealed trait Entry[ S <: KSys[ S ], A ]
@@ -171,7 +171,7 @@ sealed trait DurablePartialMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ]
 
    // store the full value at the full hash (path.sum)
    private def putFullSingle[ @specialized A ]( key: K, /* conIndex: S#Acc, */ term: Long, value: A )
-                                              ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                                              ( implicit tx: S#Tx, ser: Serializer[ S#Tx, S#Acc, A ]) {
 //      val index = conIndex.partial
 
       store.put { out =>

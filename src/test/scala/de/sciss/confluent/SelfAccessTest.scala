@@ -1,7 +1,7 @@
 package de.sciss.confluent
 
-import de.sciss.lucre.stm.{IdentifierMap, Disposable, Durable, InMemory, Cursor, Sys, Writer, TxnSerializer}
-import de.sciss.lucre.{DataInput, DataOutput}
+import de.sciss.lucre.stm.{IdentifierMap, Disposable, Durable, InMemory, Cursor, Sys, Writer, Serializer}
+import de.sciss.lucre.{Writable, DataInput, DataOutput}
 import java.util.concurrent.{TimeUnit, Executors, ScheduledExecutorService}
 import concurrent.stm.Txn
 import de.sciss.lucre.stm.impl.BerkeleyDB
@@ -56,11 +56,11 @@ class SelfAccessTest[ S <: Sys[ S ]]( system: S )( implicit cursor: Cursor[ S ])
          res
       }
 
-      implicit def serializer( implicit cursor: Cursor[ S ]) : TxnSerializer[ S#Tx, S#Acc, Counter ] = new Ser( cursor )
+      implicit def serializer( implicit cursor: Cursor[ S ]) : Serializer[ S#Tx, S#Acc, Counter ] = new Ser( cursor )
 
 //private var map: IdentifierMap[ S#Tx, S#ID, Counter ] = null
 
-      private final class Ser( cursor: Cursor[ S ]) extends TxnSerializer[ S#Tx, S#Acc, Counter ] {
+      private final class Ser( cursor: Cursor[ S ]) extends Serializer[ S#Tx, S#Acc, Counter ] {
          ser =>
 
          def write( c: Counter, out: DataOutput ) {
@@ -164,7 +164,7 @@ class SelfAccessTest[ S <: Sys[ S ]]( system: S )( implicit cursor: Cursor[ S ])
          final def value()( implicit tx: S#Tx ) : Int = cnt.get
       }
    }
-   sealed trait Counter extends Writer with Disposable[ S#Tx ] {
+   sealed trait Counter extends Writable with Disposable[ S#Tx ] {
       def start()( implicit tx: S#Tx ) : Unit
       def stop()( implicit tx: S#Tx ) : Unit
       def value()( implicit tx: S#Tx ) : Int

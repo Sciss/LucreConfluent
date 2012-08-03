@@ -27,7 +27,7 @@ package de.sciss.confluent
 package impl
 
 import annotation.switch
-import de.sciss.lucre.stm.{ImmutableSerializer, TxnSerializer, DataStore}
+import de.sciss.lucre.stm.{ImmutableSerializer, Serializer, DataStore}
 import de.sciss.lucre.DataOutput
 
 object DurableConfluentMapImpl {
@@ -185,7 +185,7 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
 
    // store the full value at the full hash (path.sum)
    private def putFullSingle[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A )
-                                              ( implicit tx: S#Tx, ser: TxnSerializer[ S#Tx, S#Acc, A ]) {
+                                              ( implicit tx: S#Tx, ser: Serializer[ S#Tx, S#Acc, A ]) {
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )

@@ -1,0 +1,25 @@
+{
+  "organization" : "de.sciss",
+  "name" : "TemporalObjects",
+  "version" : "0.34",
+  "description" : "Confluent persistence and quasi-retroactive / fluent references for Scala",
+  "site" : "https://github.com/Sciss/TemporalObjects",
+  "tags" : [ "confluent", "persistence", "reactive", "event" ],
+  "docs" : "",
+  "resolvers" : [ "https://oss.sonatype.org/content/repositories/releases" ],
+  "dependencies" : [ {
+    "organization" : "de.sciss",
+    "name" : "fingertree",
+    "version" : "0.21"
+  }, {
+    "organization" : "de.sciss",
+    "name" : "lucredata-core",
+    "version" : "0.34"
+  } ],
+  "scalas" : [ "2.10.0-M6", "2.9.2" ],
+  "licenses" : [ {
+    "name" : "GPL v2+",
+    "url" : "http://www.gnu.org/licenses/gpl-2.0.txt"
+  } ],
+  "sbt" : false
+}

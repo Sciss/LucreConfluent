@@ -32,7 +32,7 @@ import java.text.SimpleDateFormat
 
 object TemporalObjects {
    val name          = "TemporalObjects"
-   val version       = 0.33
+   val version       = 0.34
    val copyright     = "(C)opyright 2009-2012 Hanns Holger Rutz"
    val isSnapshot    = false
 

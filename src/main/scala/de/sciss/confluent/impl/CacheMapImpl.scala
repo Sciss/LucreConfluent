@@ -42,7 +42,7 @@ object CacheMapImpl {
     * a sub system (`Durable`), serialization is a two-step process, using an intermediate
     * binary representation.
     */
-   sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] {
+   sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) +K, -Store ] {
       def key: K
       def path: S#Acc
       def flush( outTerm: Long, store: Store )( implicit tx: S#Tx ) : Unit

@@ -33,9 +33,9 @@ import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
 import data.Ancestor
 import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
 import TemporalObjects.{logConfluent, logPartial}
-import stm.impl.BerkeleyDB
+import stm.impl.{LocalVarImpl, BerkeleyDB}
 import java.io.File
-import stm.{Var => STMVar, ImmutableSerializer, IdentifierMap, Cursor, Disposable, Durable, DataStoreFactory, DataStore, Serializer}
+import stm.{Var => STMVar, InMemory, LocalVar, ImmutableSerializer, IdentifierMap, Cursor, Disposable, Durable, DataStoreFactory, DataStore, Serializer}
 import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, LongMap}
 
 object Confluent {
@@ -504,6 +504,8 @@ println( "?? partial from index " + this )
    }
 
    private sealed trait TxnImpl extends Txn with DurableCacheMapImpl[ Confluent, Int ] {
+      lazy val inMemory: InMemory#Tx = system.inMemory.wrap( peer )
+
       private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]] = TxnLocal( initialValue =
          { implicit itx =>
             logConfluent( "....... txn dirty ......." )
@@ -511,7 +513,9 @@ println( "?? partial from index " + this )
             IIdxSeq.empty
          })
 
-      private val markDirtyFlag = TxnLocal( false )
+      private val markDirtyFlag = TxnLocal( false )   // XXX TODO: we might just use a plain variable?
+
+      def isDirty = markDirtyFlag.get( peer )
 
       final private def markDirty() {
          if( !markDirtyFlag.swap( true )( peer )) {
@@ -792,6 +796,8 @@ println( "?? partial from index " + this )
          res.setInit( init )( this )
          res
       }
+
+      final def newLocalVar[ A ]( init: S#Tx => A ) : LocalVar[ S#Tx, A ] = new LocalVarImpl[ S, A ]( init )
 
       final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = new PartialVarTxImpl[ A ]( allocPartial( pid ))
@@ -1402,7 +1408,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //      def idOrdering : Ordering[ S#ID ]   = IDOrdering
 
       private[confluent] val store        = storeFactory.open( "data" )
-      private[confluent] val durable      = Durable( store ) : Durable
+      val durable : Durable               = Durable( store ) : Durable
+      val inMemory : InMemory             = durable.inMemory
       private[confluent] val varMap       = DurablePersistentMap.newConfluentIntMap[ S ]( store )
       private[confluent] val partialMap : PartialCacheMapImpl[ Confluent, Int ] =
          PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap( store ))
@@ -1505,8 +1512,10 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    final type Var[ @specialized A ] = Confluent.Var[ A ] // STMVar[ Tx, A ]
    final type Entry[ A ]            = KEntry[ Confluent, A ]
 
+   def durable : Durable
+   def inMemory : InMemory
+
    private[confluent] def store : DataStore
-   private[confluent] def durable : Durable
    private[confluent] def varMap : DurablePersistentMap[ Confluent, Int ]
    private[confluent] def partialMap : PartialCacheMapImpl[ Confluent, Int ]
    private[confluent] def partialTree: Ancestor.Tree[ Durable, Long ]

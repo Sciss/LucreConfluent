@@ -162,7 +162,7 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
       }
    }
    trait EventRegion extends RegionLike
-   with Compound[ S, EventRegion, EventRegion.type ] {
+   with Compound[ S, EventRegion.type, EventRegion ] {
       import EventRegion._
 
       def renamed: Event[ S, Renamed, EventRegion ]
@@ -315,7 +315,7 @@ class Regions[ S <: Sys[ S ]]( val strings: Strings[ S ], val longs: Longs[ S ],
    }
 
    trait RegionList extends // InvariantNode[ S, RegionList.Update ] with
-   Compound[ S, RegionList, RegionList.type ] {
+   Compound[ S, RegionList.type, RegionList ] {
       import RegionList._
 
       protected type Elem  = EventRegion

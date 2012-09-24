@@ -112,7 +112,8 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
 
    val id = 100
 
-   private type LongEx = Expr[ S, Long ]
+   private type LongEx  = Expr[ S, Long ]
+   private type LongExN = Expr[ S, Long ] with event.Node[ S ]
 
    def init()( implicit tx: S#Tx ) {
       implicit val itx = tx.peer
@@ -122,7 +123,7 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
 
    private object LongExtensions extends TupleReader[ S, Long ] {
       def readTuple( arity: Int, opID: Int, in: DataInput, access: S#Acc, targets: Targets[ S ])
-                   ( implicit tx: S#Tx ) : Expr[ S, Long ] = {
+                   ( implicit tx: S#Tx ) : Expr[ S, Long ] with event.Node[ S ] = {
          if( arity == 1 ) {
             UnaryLongOp( opID ).read( in, access, targets )
          } else {
@@ -161,7 +162,7 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
    private object Literal extends Tuple2Op[ Long, Long ] {
       def value( start: Long, stop: Long ) = new expr.Span( start, stop )
       val id = 0
-      def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+      def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
          val start   = longs.readExpr( in, access )
          val stop    = longs.readExpr( in, access )
          new Tuple2( tpe.id, this, targets, start, stop )
@@ -176,7 +177,7 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
    }
 
    def readTuple( arity: Int, opID: Int, in: DataInput, access: S#Acc,
-                  targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+                  targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
       (arity /*: @switch */) match {
 //         case 1 => UnaryOp( opID ).read( in, access, targets )
          case 2 => {
@@ -199,7 +200,7 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
          final def apply( _1: Ex, _2: Ex )( implicit tx: S#Tx ) : Ex =
             new Tuple2( tpe.id, this, Targets[ S ], _1, _2 )
 
-         def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+         def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
             val _1 = readExpr( in, access )
             val _2 = readExpr( in, access )
             new Tuple2( tpe.id, this, targets, _1, _2 )
@@ -241,7 +242,7 @@ final class Spans[ S <: Sys[ S ]] private( longs: Longs[ S ]) extends TypeOld[ S
          final def apply( _1: Ex )( implicit tx: S#Tx ) : LongEx =
             new longs.Tuple1( tpe.id, this, Targets[ S ], _1 )
 
-         def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : LongEx = {
+         def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : LongExN = {
             val _1 = readExpr( in, access )
             new longs.Tuple1( tpe.id, this, targets, _1 )
          }

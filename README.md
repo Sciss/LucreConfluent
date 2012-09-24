@@ -22,7 +22,7 @@ Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
-    "de.sciss" %% "temporalobjects" % "1.0.+"
+    "de.sciss" %% "temporalobjects" % "1.2.+"
 
 ### previous versions / tags
 
@@ -34,7 +34,7 @@ To develop the sources of TemporalObjects, we recommend to use IntelliJ IDEA. If
 
     resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
 
-    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")
+    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
 Then to create the IDEA project, run `sbt gen-idea`.
 

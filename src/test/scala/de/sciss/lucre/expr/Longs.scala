@@ -55,7 +55,7 @@ final class Longs[ S <: Sys[ S ]] extends TypeOld[ S, Long ] {
    }
 
    def readTuple( arity: Int, opID: Int, in: DataInput, access: S#Acc,
-                  targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+                  targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
       (arity: @switch) match {
          case 1 => UnaryOp(  opID ).read( in, access, targets )
          case 2 => BinaryOp( opID ).read( in, access, targets )
@@ -71,7 +71,7 @@ final class Longs[ S <: Sys[ S ]] extends TypeOld[ S, Long ] {
          final def apply( _1: Ex )( implicit tx: S#Tx ) : Ex =
             new Tuple1( tpe.id, this, Targets[ S ], _1 )
 
-         final def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+         final def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
             val _1 = readExpr( in, access )
             new Tuple1( tpe.id, this, targets, _1 )
          }
@@ -99,7 +99,7 @@ final class Longs[ S <: Sys[ S ]] extends TypeOld[ S, Long ] {
          final def apply( _1: Ex, _2: Ex )( implicit tx: S#Tx ) : Ex =
             new Tuple2( tpe.id, this, Targets[ S ], _1, _2 )
 
-         final def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+         final def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
             val _1 = readExpr( in, access )
             val _2 = readExpr( in, access )
             new Tuple2( tpe.id, this, targets, _1, _2 )

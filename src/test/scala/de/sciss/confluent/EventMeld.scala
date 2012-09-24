@@ -54,7 +54,7 @@ class EventMeld[ S <: KSys[ S ]] {
          }
       }
    }
-   trait Group extends evt.Compound[ S, Group, Group.type ] {
+   trait Group extends evt.Compound[ S, Group.type, Group ] {
       protected def childrenVar: S#Var[ IIdxSeq[ Child ]]
       protected def decl = Group
 
@@ -101,7 +101,7 @@ class EventMeld[ S <: KSys[ S ]] {
             }
       }
    }
-   trait Child extends evt.Compound[ S, Child, Child.type ] {
+   trait Child extends evt.Compound[ S, Child.type, Child ] {
       protected def decl = Child
       protected def name_# : Expr.Var[ S, String ]
 

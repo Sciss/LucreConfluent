@@ -515,7 +515,7 @@ println( "?? partial from index " + this )
 
       private val markDirtyFlag = TxnLocal( false )   // XXX TODO: we might just use a plain variable?
 
-      def isDirty = markDirtyFlag.get( peer )
+//      def isDirty = markDirtyFlag.get( peer )
 
       final private def markDirty() {
          if( !markDirtyFlag.swap( true )( peer )) {

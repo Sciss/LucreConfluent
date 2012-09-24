@@ -43,7 +43,7 @@ object Strings2 extends Type[ String ] {
    // ---- protected ----
 
    def readTuple[ S <: Sys[ S ]]( cookie: Int, in: DataInput, access: S#Acc, targets: Targets[ S ])
-                                ( implicit tx: S#Tx ) : Ex[ S ] = {
+                                ( implicit tx: S#Tx ) : ExN[ S ] = {
       (cookie /* : @switch */) match {
 //         case 1 =>
 //            val tpe  = in.readInt()

@@ -446,7 +446,7 @@ Usages:
 
       system.step { implicit tx =>
          val coll = access.get.collection
-         coll.changed.reactTx { implicit tx => {
+         coll.changed.reactTx[ RegionList.Update ] { implicit tx => {
             case RegionList.Added( _, idx, r ) =>
                val name    = r.name.value
                val span    = r.span.value

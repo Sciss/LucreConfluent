@@ -38,6 +38,7 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
    tpe =>
 
    type Ex     = Expr[ S, A ]
+   type ExN    = Expr[ S, A ] with event.Node[ S ]
    type Var    = Expr.Var[ S, A ]
    type Change = event.Change[ A ]
 
@@ -54,7 +55,7 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
    }
 
    implicit object serializer extends EventLikeSerializer[ S, Ex ] {
-      def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : Ex = {
+      def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : ExN = {
          // 0 = var, 1 = op
          (in.readUnsignedByte() /*: @switch */) match {
             case 0      => new VarRead( in, access, targets, tx )
@@ -77,7 +78,7 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
    }
 
    private final class VarRead( in: DataInput, access: S#Acc, protected val targets: Targets[ S ], tx0: S#Tx )
-   extends Basic with Expr.Var[ S, A ] {
+   extends Basic with impl.VarImpl[ S, A ] {
       protected val ref = tx0.readVar[ Ex ]( id, in )
    }
 
@@ -98,12 +99,12 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
       protected val constValue = init
    }
 
-   def Var( init: Ex )( implicit tx: S#Tx ) : Var = new Basic with Expr.Var[ S, A ] {
+   def Var( init: Ex )( implicit tx: S#Tx ) : Var = new Basic with impl.VarImpl[ S, A ] {
       protected val targets   = Targets[ S ]
       protected val ref       = tx.newVar[ Ex ]( id, init )
    }
 
-   def NamedVar( name: => String, init: Ex )( implicit tx: S#Tx ) : Var = new Basic with Expr.Var[ S, A ] {
+   def NamedVar( name: => String, init: Ex )( implicit tx: S#Tx ) : Var = new Basic with impl.VarImpl[ S, A ] {
       protected val targets   = Targets[ S ]
       protected val ref       = tx.newVar[ Ex ]( id, init )
       override def toString   = name
@@ -165,7 +166,7 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
 //         }
 //      }
 
-      private[lucre] def pullUpdate( pull: Pull[ S ])( implicit tx: S#Tx ) : Option[ Change ] = {
+      def pullUpdate( pull: Pull[ S ])( implicit tx: S#Tx ) : Option[ Change ] = {
          _1.changed.pullUpdate( pull ).flatMap { ach =>
             change( op.value( ach.before ), op.value( ach.now ))
          }
@@ -226,7 +227,7 @@ trait TypeOld[ S <: Sys[ S ], A ] extends Extensions[ S, A ] with TupleReader[ S
 //         }
 //      }
 
-      private[lucre] def pullUpdate( pull: Pull[ S ])( implicit tx: S#Tx ) : Option[ Change ] = {
+      def pullUpdate( pull: Pull[ S ])( implicit tx: S#Tx ) : Option[ Change ] = {
 //         val sources = pull.parents( select() )
          val _1c = _1.changed
          val _2c = _2.changed

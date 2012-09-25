@@ -1,4 +1,4 @@
-name := "TemporalObjects"
+name := "LucreConfluent"
 
 version := "1.3.0-SNAPSHOT"
 
@@ -6,7 +6,7 @@ organization := "de.sciss"
 
 description := "Confluent persistence and quasi-retroactive / fluent references for Scala"
 
-homepage := Some( url( "https://github.com/Sciss/TemporalObjects" ))
+homepage := Some( url( "https://github.com/Sciss/LucreConfluent" ))
 
 licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
@@ -77,8 +77,8 @@ pomIncludeRepository := { _ => false }
 
 pomExtra :=
 <scm>
-  <url>git@github.com:Sciss/TemporalObjects.git</url>
-  <connection>scm:git:git@github.com:Sciss/TemporalObjects.git</connection>
+  <url>git@github.com:Sciss/LucreConfluent.git</url>
+  <connection>scm:git:git@github.com:Sciss/LucreConfluent.git</connection>
 </scm>
 <developers>
    <developer>
@@ -96,7 +96,7 @@ seq( lsSettings :_* )
 
 (LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
 
-(LsKeys.ghRepo in LsKeys.lsync) := Some( "TemporalObjects" )
+(LsKeys.ghRepo in LsKeys.lsync) := Some( "LucreConfluent" )
 
 // bug in ls -- doesn't find the licenses from global scope
 (licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))

@@ -1,6 +1,6 @@
 ///*
 // *  ReactionTest2.scala
-// *  (TemporalObjects)
+// *  (LucreConfluent)
 // *
 // *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
 // *
@@ -56,7 +56,7 @@
 //      (s, () => s.close())
 //   }
 //
-//   TemporalObjects.showConfluentLog = false
+//   LucreConfluent.showConfluentLog = false
 //
 //   defer( args.toSeq.take( 2 ) match {
 //      case Seq( "--coll" )      => collections( tmpSys() )

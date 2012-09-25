@@ -20,7 +20,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
    val RND_SEED         = 0L
 
    // make sure we don't look tens of thousands of actions
-   TemporalObjects.showConfluentLog = false
+   showLog = false
 
    withSys[ Confluent ]( "Confluent", () => {
       val dir     = File.createTempFile( "totalorder", "_database" )

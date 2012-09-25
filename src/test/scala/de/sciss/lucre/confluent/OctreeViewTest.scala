@@ -12,7 +12,7 @@ import geom.{IntSquare, IntPoint2D, IntSpace}
 import IntSpace.TwoDim
 
 object OctreeViewTest extends App with Runnable {
-   TemporalObjects.showConfluentLog = false
+   showLog = false
    EventQueue.invokeLater( this )
 
    def run() {

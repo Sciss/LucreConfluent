@@ -1,6 +1,6 @@
 /*
  *  CacheMapImpl.scala
- *  (TemporalObjects)
+ *  (LucreConfluent)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
  *
@@ -29,7 +29,6 @@ package impl
 
 import stm.{ImmutableSerializer, Serializer}
 import concurrent.stm.TxnLocal
-import TemporalObjects.logConfluent
 import collection.immutable.{IntMap, LongMap}
 
 object CacheMapImpl {
@@ -149,7 +148,7 @@ object DurableCacheMapImpl {
 
       def flush( outTerm: Long, store: DurablePersistentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
       }
    }
@@ -160,7 +159,7 @@ object DurableCacheMapImpl {
 
       def flush( outTerm: Long, store: DurablePersistentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          val out     = new DataOutput()
          serializer.write( value, out )
          val arr     = out.toByteArray
@@ -265,7 +264,7 @@ object InMemoryCacheMapImpl {
 
       def flush( outTerm: Long, store: InMemoryConfluentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
-         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          store.put( key, pathOut, value )
       }
    }
@@ -302,7 +301,7 @@ object PartialCacheMapImpl {
 
       def flush( outTerm: Long, store: DurablePersistentMap[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = fullPath.addTerm( outTerm )
-         logConfluent( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
          val out     = new DataOutput()
          serializer.write( value, out )
          val arr     = out.toByteArray

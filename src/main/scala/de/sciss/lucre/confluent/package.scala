@@ -1,6 +1,6 @@
 /*
- *  TemporalObjects.scala
- *  (TemporalObjects)
+ *  LucreConfluent.scala
+ *  (LucreConfluent)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
  *
@@ -24,20 +24,19 @@
  */
 
 package de.sciss.lucre
-package confluent
 
 import annotation.elidable
 import elidable.CONFIG
 import java.util.{Locale, Date}
 import java.text.SimpleDateFormat
 
-object TemporalObjects {
+package object confluent {
    private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
-   var showConfluentLog       = false
-   var showPartialLog         = false
+   var showLog          = false
+   var showPartialLog   = false
 
-   @elidable(CONFIG) private[confluent] def logConfluent( what: => String ) {
-      if( showConfluentLog ) Console.out.println( logHeader.format( new Date() ) + what )
+   @elidable(CONFIG) private[confluent] def log( what: => String ) {
+      if( showLog ) Console.out.println( logHeader.format( new Date() ) + what )
    }
    @elidable(CONFIG) private[confluent] def logPartial( what: => String ) {
       if( showPartialLog ) Console.out.println( logHeader.format( new Date() ) + "partial " + what )

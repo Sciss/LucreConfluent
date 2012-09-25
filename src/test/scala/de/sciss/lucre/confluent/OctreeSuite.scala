@@ -35,7 +35,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val cube          = IntCube( 0x40000000, 0x40000000, 0x40000000, 0x40000000 )
 
    // make sure we don't look tens of thousands of actions
-   TemporalObjects.showConfluentLog = false
+   showLog = false
 
    def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {
@@ -196,7 +196,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       val szBefore = cursor.step { implicit tx => access.get.size }
 //println( "BEFORE " + t.system.step { implicit tx => t.toList })
 
-//TemporalObjects.showLog = true
+//LucreConfluent.showLog = true
 
       val newInT   = cursor.step { implicit tx =>
          val t = access.get
@@ -215,7 +215,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
       when( "all elements of the independently maintained map are removed from t" )
 
-//TemporalObjects.showLog = true
+//LucreConfluent.showLog = true
 
       val keptInT  = cursor.step { implicit tx =>
          val t = access.get

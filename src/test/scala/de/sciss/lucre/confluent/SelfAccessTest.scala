@@ -33,7 +33,7 @@ object SelfAccessTest extends App {
 
    def conf() {
       implicit val sys = Confluent( durFact() )
-//      TemporalObjects.showConfluentLog = true
+//      LucreConfluent.showConfluentLog = true
       new SelfAccessTest( sys )
    }
 }

@@ -1,10 +1,10 @@
-## TemporalObjects
+## LucreConfluent
 
 ### statement
 
-TemporalObjects is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/TemporalObjects/blob/master/licenses/TemporalObjects-License.txt).
+LucreConfluent is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/LucreConfluent/blob/master/licenses/LucreConfluent-License.txt).
 
-TemporalObjects provides a transactional, durable, and confluently persistent memory and reaction framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references as well as event propagation. It uses [LucreSTM](https://github.com/Sciss/LucreSTM) for the transactional layer, and builds on top of data structures provided by the [LucreData](https://github.com/Sciss/LucreData) project. The overall target is integration with a system for computer music composition.
+LucreConfluent provides a transactional, durable, and confluently persistent memory and reaction framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references as well as event propagation. It uses [LucreSTM](https://github.com/Sciss/LucreSTM) for the transactional layer, and builds on top of data structures provided by the [LucreData](https://github.com/Sciss/LucreData) project. The overall target is integration with a system for computer music composition.
 
 Further reading:
 
@@ -18,7 +18,7 @@ Further reading:
 
 Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt targets. The dependencies, [LucreData](https://github.com/Sciss/LucreData) and [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt.
 
-### linking to TemporalObjects
+### linking
 
 The following dependency is necessary:
 
@@ -30,14 +30,10 @@ __Note:__ see tag v0.14 for the example using actual audio file regions and sono
 
 ### creating an IntelliJ IDEA project
 
-To develop the sources of TemporalObjects, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
+To develop the sources of this library, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
 
     resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
 
     addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
 Then to create the IDEA project, run `sbt gen-idea`.
-
-### download
-
-The current version can be downloaded from [github.com/Sciss/TemporalObjects](http://github.com/Sciss/TemporalObjects).

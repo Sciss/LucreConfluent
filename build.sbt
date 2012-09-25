@@ -1,6 +1,6 @@
 name := "TemporalObjects"
 
-version := "1.2.0"
+version := "1.3.0-SNAPSHOT"
 
 organization := "de.sciss"
 
@@ -18,9 +18,9 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "1.0.+",
-   "de.sciss" %% "lucredata-core" % "1.2.+",
-   "de.sciss" %% "lucredata-views" % "1.2.+" % "test",
-   "de.sciss" %% "lucreexpr" % "1.2.+" % "test"
+   "de.sciss" %% "lucredata-core" % "1.3.0-SNAPSHOT",
+   "de.sciss" %% "lucredata-views" % "1.3.0-SNAPSHOT" % "test",
+   "de.sciss" %% "lucreexpr" % "1.3.0-SNAPSHOT" % "test"
 )
 
 libraryDependencies <+= scalaVersion { sv =>

@@ -14,7 +14,7 @@ Further reading:
 
  - Fiat, A. and Kaplan, H., "Making data structures confluently persistent," in Proceedings of the 12th annual ACM-SIAM symposium on Discrete algorithms, 2001, pp. 537–546.
 
-### requirements / installation
+### building
 
 Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt targets. The dependencies, [LucreData](https://github.com/Sciss/LucreData) and [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt.
 

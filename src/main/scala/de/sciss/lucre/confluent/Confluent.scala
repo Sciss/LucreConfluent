@@ -1510,6 +1510,8 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
    final type Var[ @specialized A ] = Confluent.Var[ A ] // STMVar[ Tx, A ]
    final type Entry[ A ]            = KEntry[ Confluent, A ]
 
+   final type IM                    = InMemory
+
    def durable : Durable
    def inMemory : InMemory
 

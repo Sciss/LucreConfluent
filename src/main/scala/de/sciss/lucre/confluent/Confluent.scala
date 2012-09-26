@@ -1524,4 +1524,11 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 //   private[confluent] def reactionMap : ReactionMap[ Confluent ]
 
    private[confluent] def position_=( newPos: Acc )( implicit tx: Tx ) : Unit
+
+//   final def inMemory[ A ]( fun: Confluent#IM#Tx => A )( implicit tx: Confluent#Tx ) : A = fun( tx.inMemory )
+
+   private type S = Confluent
+
+   final def im( tx: S#Tx ) : IM#Tx = tx.inMemory
+   final def imVar[ A ]( v: S#IM#Var[ A ]) : IM#Var[ A ] = v
 }

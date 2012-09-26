@@ -29,10 +29,10 @@ package confluent
 import impl.InMemoryConfluentMapImpl
 
 object InMemoryConfluentMap {
-   def newIntMap[  S <: KSys[ S ]] : InMemoryConfluentMap[ S, Int  ] = new InMemoryConfluentMapImpl[ S, Int  ]
-   def newLongMap[ S <: KSys[ S ]] : InMemoryConfluentMap[ S, Long ] = new InMemoryConfluentMapImpl[ S, Long ]
+   def newIntMap[  S <: Sys[ S ]] : InMemoryConfluentMap[ S, Int  ] = new InMemoryConfluentMapImpl[ S, Int  ]
+   def newLongMap[ S <: Sys[ S ]] : InMemoryConfluentMap[ S, Long ] = new InMemoryConfluentMapImpl[ S, Long ]
 }
-trait InMemoryConfluentMap[ S <: KSys[ S ], @specialized( Int, Long) K ] {
+trait InMemoryConfluentMap[ S <: Sys[ S ], @specialized( Int, Long) K ] {
    def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) : Unit
 
    /**

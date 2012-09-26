@@ -48,7 +48,7 @@ object Confluent {
       new System( BerkeleyDB.factory( dir ))
    }
 
-   sealed trait ID extends KSys.ID[ S#Tx, Path ]
+   sealed trait ID extends Sys.ID[ S#Tx, Path ]
 
    private final class ConfluentID( val id: Int, val path: Path ) extends ID {
       override def hashCode = {
@@ -211,7 +211,7 @@ object Confluent {
     * of the tree.
     */
    final class Path private[Confluent]( protected val tree: FingerTree[ (Int, Long), Long ])
-   extends KSys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
+   extends Sys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
       implicit protected def m: Measure[ Long, (Int, Long) ] = PathMeasure
 
       override def toString = mkString( "Path(", ", ", ")" )
@@ -472,7 +472,7 @@ println( "?? partial from index " + this )
    }
    private val emptyMeldInfo = MeldInfo( -1, Set.empty )
 
-   sealed trait Txn extends KSys.Txn[ S ] {
+   sealed trait Txn extends Sys.Txn[ S ] {
       private[Confluent] implicit def durable: Durable#Tx
 
       private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
@@ -499,6 +499,8 @@ println( "?? partial from index " + this )
       private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) : Unit
 
       private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ]
+
+      private[confluent] def inMemory : InMemory#Tx
    }
 
    private sealed trait TxnImpl extends Txn with DurableCacheMapImpl[ Confluent, Int ] {
@@ -628,7 +630,7 @@ println( "?? partial from index " + this )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      override def toString = "KSys#Tx" // + system.path.mkString( "<", ",", ">" )
+      override def toString = "Sys#Tx" // + system.path.mkString( "<", ",", ">" )
 
 //      final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
@@ -1231,7 +1233,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    }
 
    private final class RootVar[ A ]( id1: Int, name: String, implicit val ser: Serializer[ S#Tx, S#Acc, A ])
-   extends KEntry[ S, A ] {
+   extends Sys.Entry[ S, A ] {
       def setInit( v: A )( implicit tx: S#Tx ) {
          set( v ) // XXX could add require( tx.inAccess == Path.root )
       }
@@ -1502,15 +1504,17 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       def numUserRecords( implicit tx: S#Tx ): Int = math.max( 0, numRecords - 1 )
    }
+
+   implicit def inMemory( tx: Confluent#Tx ) : InMemory#Tx = tx.inMemory
 }
-sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
+sealed trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
    final type ID                    = Confluent.ID
    final type Tx                    = Confluent.Txn
    final type Acc                   = Confluent.Path
    final type Var[ @specialized A ] = Confluent.Var[ A ] // STMVar[ Tx, A ]
-   final type Entry[ A ]            = KEntry[ Confluent, A ]
+   final type Entry[ A ]            = Sys.Entry[ Confluent, A ]
 
-   final type IM                    = InMemory
+//   final type IM                    = InMemory
 
    def durable : Durable
    def inMemory : InMemory
@@ -1527,8 +1531,8 @@ sealed trait Confluent extends KSys[ Confluent ] with Cursor[ Confluent ] {
 
 //   final def inMemory[ A ]( fun: Confluent#IM#Tx => A )( implicit tx: Confluent#Tx ) : A = fun( tx.inMemory )
 
-   private type S = Confluent
-
-   final def im( tx: S#Tx ) : IM#Tx = tx.inMemory
-   final def imVar[ A ]( v: S#IM#Var[ A ]) : IM#Var[ A ] = v
+//   private type S = Confluent
+//
+//   final def im( tx: S#Tx ) : IM#Tx = tx.inMemory
+//   final def imVar[ A ]( v: S#IM#Var[ A ]) : IM#Var[ A ] = v
 }

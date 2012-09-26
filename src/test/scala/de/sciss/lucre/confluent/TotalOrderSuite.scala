@@ -39,7 +39,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-   def withSys[ S <: KSys[ S ]]( sysName: String, sysCreator: () => S with Cursor[ S ], sysCleanUp: S => Unit ) {
+   def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S with Cursor[ S ], sysCleanUp: S => Unit ) {
       def scenarioWithTime( descr: String )( body: => Unit ) {
          scenario( descr ) {
             val t1 = System.currentTimeMillis()

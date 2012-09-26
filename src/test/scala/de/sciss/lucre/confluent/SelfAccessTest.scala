@@ -1,7 +1,7 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Disposable, Durable, InMemory, Cursor, Sys, Serializer}
+import stm.{Disposable, Durable, InMemory, Cursor, Serializer}
 import java.util.concurrent.{TimeUnit, Executors, ScheduledExecutorService}
 import concurrent.stm.Txn
 import stm.impl.BerkeleyDB
@@ -37,7 +37,7 @@ object SelfAccessTest extends App {
       new SelfAccessTest( sys )
    }
 }
-class SelfAccessTest[ S <: Sys[ S ]]( system: S )( implicit cursor: Cursor[ S ]) {
+class SelfAccessTest[ S <: stm.Sys[ S ]]( system: S )( implicit cursor: Cursor[ S ]) {
    lazy val pool : ScheduledExecutorService = Executors.newScheduledThreadPool( 1 ) // > 0 to prevent immediate VM shutdown
 
    object Counter {

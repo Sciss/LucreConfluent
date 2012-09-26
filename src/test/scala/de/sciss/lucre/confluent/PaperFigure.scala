@@ -1,11 +1,11 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Cursor, Sys, MutableSerializer, Mutable}
+import stm.{Cursor, MutableSerializer, Mutable}
 import stm.impl.BerkeleyDB
 import java.io.File
 
-class Nodes[S <: Sys[S]] {
+class Nodes[S <: stm.Sys[S]] {
   object Node {
     implicit object ser extends MutableSerializer[S, Node] {
       def readData(in: DataInput, _id: S#ID)(implicit tx: S#Tx) = new Node with Mutable.Impl[ S ] {
@@ -46,7 +46,7 @@ object PaperFigure extends App {
    new Example( s, s )
 }
 
-class Example[S <:Sys[S]](s: S, c: Cursor[S]) {
+class Example[S <:stm.Sys[S]](s: S, c: Cursor[S]) {
   val nodes = new Nodes[S]
   import nodes._
 

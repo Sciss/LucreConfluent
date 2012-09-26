@@ -150,7 +150,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
       }
    }
 
-   class Types[ S <: KSys[ S ]]( val s: S ) {
+   class Types[ S <: Sys[ S ]]( val s: S ) {
       type Sys = S
 
       object Node {

@@ -41,7 +41,7 @@ object CacheMapImpl {
     * a sub system (`Durable`), serialization is a two-step process, using an intermediate
     * binary representation.
     */
-   sealed trait Entry[ S <: KSys[ S ], @specialized( Int, Long ) +K, -Store ] {
+   sealed trait Entry[ S <: Sys[ S ], @specialized( Int, Long ) +K, -Store ] {
       def key: K
       def path: S#Acc
       def flush( outTerm: Long, store: Store )( implicit tx: S#Tx ) : Unit
@@ -65,7 +65,7 @@ object CacheMapImpl {
  * @tparam S   the underlying system
  * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
  */
-sealed trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] {
+sealed trait CacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K, Store ] {
    import CacheMapImpl._
 
    private val cache = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K, Store ]]]])
@@ -141,7 +141,7 @@ sealed trait CacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K, Store ] 
 object DurableCacheMapImpl {
    import CacheMapImpl.Entry
 
-   private final class NonTxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   private final class NonTxnEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, @specialized A ]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: ImmutableSerializer[ A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
@@ -152,7 +152,7 @@ object DurableCacheMapImpl {
          store.put( key, pathOut, value )
       }
    }
-   private final class TxnEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
+   private final class TxnEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, A ]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "TxnEntry(" + key + ", " + value + ")"
@@ -167,7 +167,7 @@ object DurableCacheMapImpl {
       }
    }
 }
-trait DurableCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+trait DurableCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
 extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
    import DurableCacheMapImpl._
 
@@ -257,7 +257,7 @@ extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
 //      }
 }
 object InMemoryCacheMapImpl {
-   private final class Entry[ S <: KSys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   private final class Entry[ S <: Sys[ S ], @specialized( Int, Long ) K, @specialized A ]
    ( val key: K, val path: S#Acc, val value: A )
    extends CacheMapImpl.Entry[ S, K, InMemoryConfluentMap[ S, K ]] {
       override def toString = "Entry(" + key + ", " + value + ")"
@@ -269,7 +269,7 @@ object InMemoryCacheMapImpl {
       }
    }
 }
-trait InMemoryCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+trait InMemoryCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
 extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
    import InMemoryCacheMapImpl._
 
@@ -286,13 +286,13 @@ extends CacheMapImpl[ S, K, InMemoryConfluentMap[ S, K ]] {
 object PartialCacheMapImpl {
    import CacheMapImpl.Entry
 
-   def newIntCache[ S <: KSys[ S ]]( map: DurablePersistentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
+   def newIntCache[ S <: Sys[ S ]]( map: DurablePersistentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
       new PartialCacheMapImpl[ S, Int ] {
          final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
          final protected val store : DurablePersistentMap[ S, Int ] = map
       }
 
-   private final class PartialEntry[ S <: KSys[ S ], @specialized( Int, Long ) K, A ]
+   private final class PartialEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, A ]
    ( val key: K, val fullPath: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, DurablePersistentMap[ S, K ]] {
       override def toString = "PartialEntry(" + key + ", " + value + ")"
@@ -309,7 +309,7 @@ object PartialCacheMapImpl {
       }
    }
 }
-trait PartialCacheMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ]
+trait PartialCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
 extends CacheMapImpl[ S, K, DurablePersistentMap[ S, K ]] {
    import PartialCacheMapImpl._
 

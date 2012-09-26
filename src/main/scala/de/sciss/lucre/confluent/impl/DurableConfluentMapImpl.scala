@@ -31,12 +31,12 @@ import annotation.switch
 import stm.{ImmutableSerializer, Serializer, DataStore}
 
 object DurableConfluentMapImpl {
-   private sealed trait Entry[ S <: KSys[ S ], A ]
-   private final case class EntryPre[ S <: KSys[ S ], A ]( hash: Long ) extends Entry[ S, A ]
-   private final case class EntrySingle[ S <: KSys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
-   private final case class EntryMap[ S <: KSys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
+   private sealed trait Entry[ S <: Sys[ S ], A ]
+   private final case class EntryPre[ S <: Sys[ S ], A ]( hash: Long ) extends Entry[ S, A ]
+   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
+   private final case class EntryMap[ S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) K ] extends DurablePersistentMap[ S, K ] {
+sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ] extends DurablePersistentMap[ S, K ] {
    import DurableConfluentMapImpl._
 
    protected def store: DataStore
@@ -269,9 +269,9 @@ sealed trait DurableConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long ) 
       }
    }
 }
-final class ConfluentIntMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Int ] {
+final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class ConfluentLongMapImpl[ S <: KSys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Long ] {
+final class ConfluentLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

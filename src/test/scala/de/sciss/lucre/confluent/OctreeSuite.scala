@@ -5,7 +5,7 @@ import org.scalatest.{FeatureSpec, GivenWhenThen}
 import collection.breakOut
 import collection.mutable.{Set => MSet}
 import java.io.File
-import stm.{Source, Cursor, Sys}
+import stm.{Source, Cursor}
 import stm.impl.BerkeleyDB
 import concurrent.stm.InTxn
 import data.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
@@ -37,7 +37,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    // make sure we don't look tens of thousands of actions
    showLog = false
 
-   def withSys[ S <: KSys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
+   def withSys[ S <: Sys[ S ] with Cursor[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {
          implicit val sys: S with Cursor[ S ] = sysCreator()
          import SpaceSerializers.{IntPoint3DSerializer, IntCubeSerializer}

@@ -1,17 +1,15 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Sys, Txn}
-
 trait ProjectionTest {
 //   trait KVar[ -Tx, ~ ] extends Var[ Tx, ~ ]
 
    object KTx {
       implicit def downCast( implicit tx: BiTx ) : KTx[ KTemp ] = sys.error( "TODO" )
    }
-   trait KTx[ S <: KTempLike[ S ]] extends Txn[ S ]
+   trait KTx[ S <: KTempLike[ S ]] extends stm.Txn[ S ]
 
-   trait KTempLike[ S <: KTempLike[ S ]] extends Sys[ S ] {
+   trait KTempLike[ S <: KTempLike[ S ]] extends stm.Sys[ S ] {
       type Tx <: KTx[ S ]
 //      type Var[ @specialized ~ ] = stm.Var[ S#Tx, ~ ]
    }
@@ -45,7 +43,7 @@ trait ProjectionTest {
 ////      x.set( 33 )
 //   }
 
-   def test3[ S <: Sys[ S ], Time ]( dynVar: stm.Var[ Time, Int ])( implicit tx: S#Tx, dynView: S#Tx => Time ) {
+   def test3[ S <: stm.Sys[ S ], Time ]( dynVar: stm.Var[ Time, Int ])( implicit tx: S#Tx, dynView: S#Tx => Time ) {
       dynVar.transform( _ + 33 )( tx )
    }
 

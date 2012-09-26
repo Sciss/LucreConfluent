@@ -30,13 +30,13 @@ import de.sciss.lucre.stm.{ImmutableSerializer, DataStore}
 import impl.{PartialIntMapImpl, ConfluentLongMapImpl, ConfluentIntMapImpl}
 
 object DurablePersistentMap {
-   def newConfluentIntMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
+   def newConfluentIntMap[ S <: Sys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
       new ConfluentIntMapImpl[ S ]( store )
 
-   def newConfluentLongMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Long ] =
+   def newConfluentLongMap[ S <: Sys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Long ] =
       new ConfluentLongMapImpl[ S ]( store )
 
-   def newPartialMap[ S <: KSys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
+   def newPartialMap[ S <: Sys[ S ]]( store: DataStore ) : DurablePersistentMap[ S, Int ] =
       new PartialIntMapImpl[ S ]( store )
 }
 /**
@@ -47,7 +47,7 @@ object DurablePersistentMap {
  * @tparam S   the underlying system
  * @tparam K   the key type
  */
-trait DurablePersistentMap[ S <: KSys[ S ], @specialized( Int, Long ) K ] {
+trait DurablePersistentMap[ S <: Sys[ S ], @specialized( Int, Long ) K ] {
    /**
     * Stores a new value for a given write path.
     *

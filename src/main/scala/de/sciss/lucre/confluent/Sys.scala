@@ -1,5 +1,5 @@
 /*
- *  KSys.scala
+ *  Sys.scala
  *  (LucreConfluent)
  *
  *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
@@ -26,12 +26,16 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Txn => _Txn, ImmutableSerializer, Identifier, Sys}
+import stm.{Txn => _Txn, ImmutableSerializer, Identifier}
 
-object KSys {
-//   private type S = KSys
+object Sys {
+//   private type S = Sys
 
-   trait Txn[ S <: KSys[ S ]] extends _Txn[ S ] {
+   trait Entry[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
+      def meld( from: S#Acc )( implicit tx: S#Tx ) : A
+   }
+
+   trait Txn[ S <: Sys[ S ]] extends _Txn[ S ] {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
       private[confluent] def getIndexTreeTerm( term: Long ) : Long
@@ -55,7 +59,7 @@ object KSys {
       private[confluent] def readPath( in: DataInput ) : S#Acc
    }
 
-//   trait Var[ S <: KSys[ S ], A ] extends _Var[ S#Tx, A ]
+//   trait Var[ S <: Sys[ S ], A ] extends _Var[ S#Tx, A ]
 
    trait ID[ Txn, Acc ] extends Identifier[ Txn ] {
       def id: Int
@@ -67,7 +71,7 @@ object KSys {
 //      override def equals
 //   }
 
-   trait Acc[ S <: KSys[ S ]] extends Writable with PathLike {
+   trait Acc[ S <: Sys[ S ]] extends Writable with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
 
 //      // append element
@@ -117,10 +121,10 @@ object KSys {
       private[confluent] def _take( num: Int ): S#Acc
    }
 }
-trait KSys[ S <: KSys[ S ]] extends Sys[ S ] {
-//   type Var[ @specialized A ] <: KSys.Var[ S, A ]
-   type Tx <: KSys.Txn[ S ]
-   type ID <: KSys.ID[ S#Tx, S#Acc ]
-   type Acc <: KSys.Acc[ S ]
-   type Entry[ A ] <: KEntry[ S, A ] // with S#Var[ A ]
+trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
+//   type Var[ @specialized A ] <: Sys.Var[ S, A ]
+   type Tx <: Sys.Txn[ S ]
+   type ID <: Sys.ID[ S#Tx, S#Acc ]
+   type Acc <: Sys.Acc[ S ]
+   type Entry[ A ] <: Sys.Entry[ S, A ] // with S#Var[ A ]
 }

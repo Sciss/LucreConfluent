@@ -35,7 +35,7 @@ object InMemoryConfluentMapImpl {
    private final case class EntryPre( hash: Long ) extends Entry[ Nothing ]
    private final case class EntryFull[ A ]( term: Long, v: A ) extends Entry[ A ]
 }
-final class InMemoryConfluentMapImpl[ S <: KSys[ S ], @specialized( Int, Long) K ] extends InMemoryConfluentMap[ S, K ] {
+final class InMemoryConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] extends InMemoryConfluentMap[ S, K ] {
    import InMemoryConfluentMapImpl._
 
    private type Entries = Map[ Long, Entry[ _ ]]

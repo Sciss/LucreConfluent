@@ -40,6 +40,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
    import DurablePartialMapImpl._
 
    protected def store: DataStore
+   protected def handler: Sys.PartialMapHandler[ S ]
 
 //   override def toString = "VarMap(" + store + ")"
 
@@ -82,7 +83,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
                Some( EntrySingle( term2, prev ))
             case 2 =>
                // there is already a map found
-               val m = tx.readPartialMap[ A ]( index, in )
+               val m = handler.readPartialMap[ A ]( index, in )
                Some( EntryMap( m ))
             case _ => None // this would be a partial hash which we don't use
          }
@@ -147,7 +148,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
-      val m = tx.newPartialMap[ A ]( conIndex, prevTerm, prevValue )
+      val m = handler.newPartialMap[ A ]( conIndex, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
 //if( key == 0 ) {
 //   println( "::::: full map. index = " + index + "; term = " + term + "; sum = " + index.sum + "; m = " + m )
@@ -224,7 +225,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>
-         val treeTerm   = tx.getIndexTreeTerm( writeTerm )
+         val treeTerm   = handler.getIndexTreeTerm( writeTerm )
          val i          = maxIndex.maxPrefixLength( treeTerm )
          // XXX TODO ugly ugly ugly
          val suffix = if( i == 0 ) {
@@ -294,7 +295,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
                Some( fun( /* preConLen, */ term2, value ))
 
             case 2 =>
-               val m = tx.readPartialMap[ A ]( maxConIndex, in )
+               val m = handler.readPartialMap[ A ]( maxConIndex, in )
                //                  EntryMap[ S, A ]( m )
 //               val term = if( term0 == maxTerm ) term0 else {
 //                  // index was split, we need to find the terminal version from which
@@ -322,9 +323,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       }
    }
 }
-final class PartialIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurablePartialMapImpl[ S, Int ] {
+final class PartialIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.PartialMapHandler[ S ])
+extends DurablePartialMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class PartialLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurablePartialMapImpl[ S, Long ] {
+final class PartialLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.PartialMapHandler[ S ])
+extends DurablePartialMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

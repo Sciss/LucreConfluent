@@ -40,6 +40,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
    import DurableConfluentMapImpl._
 
    protected def store: DataStore
+   protected def handler: Sys.IndexMapHandler[ S ]
 
 //   override def toString = "VarMap(" + store + ")"
 
@@ -76,7 +77,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
                Some( EntrySingle( term2, prev ))
             case 2 =>
                // there is already a map found
-               val m = tx.readIndexMap[ A ]( in, index )
+               val m = handler.readIndexMap[ A ]( in, index )
                Some( EntryMap( m ))
             case _ => None // this would be a partial hash which we don't use
          }
@@ -141,7 +142,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
       // create new map with previous value
-      val m = tx.newIndexMap[ A ]( index, prevTerm, prevValue )
+      val m = handler.newIndexMap[ A ]( index, prevTerm, prevValue )
       // store the full value at the full hash (path.sum)
 //if( key == 0 ) {
 //   println( "::::: full map. index = " + index + "; term = " + term + "; sum = " + index.sum + "; m = " + m )
@@ -261,7 +262,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
                Some( fun( preLen, term2, value ))
 
             case 2 =>
-               val m = tx.readIndexMap[ A ]( in, index )
+               val m = handler.readIndexMap[ A ]( in, index )
                //                  EntryMap[ S, A ]( m )
                val (term2, value) = m.nearest( term )
                Some( fun( preLen, term2, value ))
@@ -269,9 +270,11 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       }
    }
 }
-final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Int ] {
+final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ])
+extends DurableConfluentMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class ConfluentLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore ) extends DurableConfluentMapImpl[ S, Long ] {
+final class ConfluentLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ])
+extends DurableConfluentMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

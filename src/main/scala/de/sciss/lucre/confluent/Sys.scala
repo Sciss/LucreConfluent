@@ -41,23 +41,30 @@ object Sys {
       def term: Long
    }
 
-   trait Txn[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends _Txn[ S ] {
-//      def indexTree( version: Int ) : IndexTree[ S ]
+   trait IndexMapHandler[ S <: Sys[ S ]] {
+      def readIndexMap[ A ]( in: DataInput, index: S#Acc )
+                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+      def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
+                          ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+   }
 
-      private[confluent] def getIndexTreeTerm( term: Long ) : Long
+   trait PartialMapHandler[ S <: Sys[ S ]] {
+      def getIndexTreeTerm( term: Long )( implicit tx: S#Tx ) : Long
 
-      private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                                              ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+      def readPartialMap[ A ]( access: S#Acc, in: DataInput )
+                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+      def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
+                          ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+   }
 
-      private[confluent] def readPartialMap[ A ]( access: S#Acc, in: DataInput )
-                                                ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+   trait IndexTreeHandler[ D <: stm.DurableLike[ D ]] {
+      def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
+//      def readTreeVertexLevel( term: Long ) : Int
+      def readIndexTree( term: Long ) : IndexTree[ D ]
+      def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
+   }
 
-      private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
-                                             ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
-
-      private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
-                                               ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
-
+   trait Txn[ S <: Sys[ S ]] extends _Txn[ S ] {
       def inputAccess: S#Acc
 
       def forceWrite() : Unit
@@ -66,15 +73,16 @@ object Sys {
 
       // formerly Confluent.Txn
 
-      private[confluent] implicit def durable: D#Tx
+//      private[confluent] implicit def durable: D#Tx
 
-      private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
-                                             term: Long ) : (Ancestor.Vertex[ D, Long ], Int)
-      private[confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ D, Long ]
-      private[confluent] def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
+//      private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
+//                                             term: Long ) : (Ancestor.Vertex[ D, Long ], Int)
+//      private[confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ D, Long ]
+
+//      private[confluent] def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
       private[confluent] def readTreeVertexLevel( term: Long ) : Int
-      private[confluent] def readIndexTree( term: Long ) : IndexTree[ D ]
-      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
+//      private[confluent] def readIndexTree( term: Long ) : IndexTree[ D ]
+//      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
 
       private[confluent] def addInputVersion( path: S#Acc ) : Unit
 
@@ -173,14 +181,20 @@ object Sys {
  */
 trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    type D <: stm.DurableLike[ D ]
+   type I <: stm.InMemoryLike[ I ]
+
 //   type Var[ @specialized A ] <: Sys.Var[ S, A ]
-   type Tx                         <: Sys.Txn[ S, D ]
+   type Tx                         <: Sys.Txn[ S ]
    final type ID                    = Sys.ID[ S ]
    final type Acc                   = Sys.Acc[ S ] // <: Sys.Acc[ S ]
    final type Var[ @specialized A ] = stm.Var[ S#Tx, A ] // Confluent.Var[ A ]
    final type Entry[ A ]            = Sys.Entry[ S, A ] // with S#Var[ A ]
 
    def durable : D
+   def inMemory : I
+
+   private[lucre] def durableTx(  tx: S#Tx ) : D#Tx
+   private[lucre] def inMemoryTx( tx: S#Tx ) : I#Tx
 
    private[confluent] def varMap : DurablePersistentMap[ S, Int ]
    private[confluent] def partialMap : impl.PartialCacheMapImpl[ S, Int ]
@@ -189,6 +203,9 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[confluent] def newVersionID( implicit tx: S#Tx ) : Long
    private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit
    private[confluent] def store : DataStore
+
+   private[confluent] def indexMap : Sys.IndexMapHandler[ S ]
+//   private[confluent] def partialIndexMap : Sys.IndexMapHandler[ S ]
 
    // ---- formerly Txn ----
    private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx )

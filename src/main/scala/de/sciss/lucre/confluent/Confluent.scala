@@ -49,7 +49,9 @@ object Confluent {
 //      new System( BerkeleyDB.factory( dir ))
    }
 
-   trait Txn extends Sys.Txn[ Confluent, Durable ] {
+   trait Txn extends Sys.Txn[ Confluent ] {
+      private[confluent] implicit def durable: Durable#Tx
+
 //      private[Confluent] implicit def durable: Durable#Tx
 //
 //      private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,

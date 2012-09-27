@@ -82,26 +82,18 @@ object Confluent {
 
    implicit def inMemory( tx: Confluent#Tx ) : InMemory#Tx = tx.inMemory
 }
-sealed trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
+trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
    private type S = Confluent
    private type D = Durable
    private type I = InMemory
 
-   final type ID                    = Sys.ID[ S ] // Confluent.ID
+//   final type ID                    = Sys.ID[ S ] // Confluent.ID
    final type Tx                    = Confluent.Txn   // Sys.Txn[ S, D ]
-   final type Acc                   = Sys.Acc[ S ] // Confluent.Path
-   final type Var[ @specialized A ] = Confluent.Var[ A ]
-   final type Entry[ A ]            = Sys.Entry[ S, A ]
+//   final type Acc                   = Sys.Acc[ S ] // Confluent.Path
+//   final type Var[ @specialized A ] = stm.Var[ S#Tx, A ] // Confluent.Var[ A ]
+//   final type Entry[ A ]            = Sys.Entry[ S, A ]
 
-   def durable : D
    def inMemory : I
 
-   private[confluent] def store : DataStore
-   private[confluent] def varMap : DurablePersistentMap[ S, Int ]
-   private[confluent] def partialMap : PartialCacheMapImpl[ S, Int ]
-   private[confluent] def partialTree: Ancestor.Tree[ D, Long ]
-   private[confluent] def newIDValue()( implicit tx: Tx ) : Int
    private[confluent] def newVersionID( implicit tx: Tx ) : Long
-
-   private[confluent] def position_=( newPos: Acc )( implicit tx: Tx ) : Unit
 }

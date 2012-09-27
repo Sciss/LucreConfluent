@@ -26,7 +26,7 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Txn => _Txn, Disposable, ImmutableSerializer, Identifier}
+import stm.{Txn => _Txn, DataStore, Disposable, ImmutableSerializer, Identifier}
 import data.Ancestor
 
 object Sys {
@@ -70,10 +70,10 @@ object Sys {
       private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
                                              term: Long ) : (Ancestor.Vertex[ D, Long ], Int)
       private[confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ D, Long ]
-      private[confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ D, Long ]) : Unit
+      private[confluent] def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
       private[confluent] def readTreeVertexLevel( term: Long ) : Int
-      private[confluent] def readIndexTree( term: Long ) : IndexTree
-      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree
+      private[confluent] def readIndexTree( term: Long ) : IndexTree[ D ]
+      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
 
       private[confluent] def addInputVersion( path: S#Acc ) : Unit
 
@@ -160,8 +160,18 @@ object Sys {
 trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    type D <: stm.DurableLike[ D ]
 //   type Var[ @specialized A ] <: Sys.Var[ S, A ]
-   type Tx <: Sys.Txn[ S, D ]
-   type ID <: Sys.ID[ S ]
-   type Acc <: Sys.Acc[ S ]
-   type Entry[ A ] <: Sys.Entry[ S, A ] // with S#Var[ A ]
+   type Tx                         <: Sys.Txn[ S, D ]
+   final type ID                    = Sys.ID[ S ]
+   final type Acc                   = Sys.Acc[ S ] // <: Sys.Acc[ S ]
+   final type Var[ @specialized A ] = stm.Var[ S#Tx, A ] // Confluent.Var[ A ]
+   final type Entry[ A ]            = Sys.Entry[ S, A ] // with S#Var[ A ]
+
+   def durable : D
+
+   private[confluent] def varMap : DurablePersistentMap[ S, Int ]
+   private[confluent] def partialMap : impl.PartialCacheMapImpl[ S, Int ]
+   private[confluent] def partialTree : Ancestor.Tree[ D, Long ]
+   private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
+   private[confluent] def position_=( newPos: S#Acc )( implicit tx: Tx ) : Unit
+   private[confluent] def store : DataStore
 }

@@ -3,34 +3,41 @@ package confluent
 package impl
 
 import stm.{InMemory, DataStore, DataStoreFactory, Durable, Serializer, IdentifierMap, ImmutableSerializer}
-import concurrent.stm.{InTxn, Txn, TxnExecutor, TxnLocal}
-import collection.immutable.IntMap
+import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
+import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap}
 import de.sciss.fingertree
 import fingertree.{FingerTreeLike, FingerTree}
 import data.Ancestor
+import util.MurmurHash
 
 object ConfluentImpl {
+   def ??? : Nothing = sys.error( "TODO" )
    // --------------------------------------------
    // ---------------- BEGIN Path ----------------
    // --------------------------------------------
 
-   private[confluent] object Path {
-      def test_empty : Path = empty
-      private[Confluent] val empty      = new Path( FingerTree.empty( PathMeasure ))
-      /* private[Confluent] */ def root = new Path( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
+   private object Path {
+//      type P = Path[ S ]
+      def test_empty[ S <: Sys[ S ]] : S#Acc = empty
+
+      private val anyEmpty = new Path[ Confluent ]( FingerTree.empty( PathMeasure ))
+
+      def empty[ S <: Sys[ S ]]: S#Acc = anyEmpty.asInstanceOf[ Path[ S ]]
+
+      /* private[Confluent] */ def root[ S <: Sys[ S ]]: S#Acc = new Path[ S ]( FingerTree( 1L << 32, 1L << 32 )( PathMeasure ))
 //      private[Confluent] def apply( tree: Long, term: Long ) = new Path( FingerTree( tree, term )( PathMeasure ))
 
-      def read( in: DataInput ) : S#Acc  = {
+      def read[ S <: Sys[ S ]]( in: DataInput ) : S#Acc  = {
          implicit val m = PathMeasure
          val sz         = in.readInt()
          var tree       = FingerTree.empty( m )
          var i = 0; while( i < sz ) {
             tree      :+= in.readLong()
          i += 1 }
-         new Path( tree )
+         new Path[ S ]( tree )
       }
 
-      def readAndAppend( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
+      def readAndAppend[ S <: Sys[ S ]]( in: DataInput, acc: S#Acc )( implicit tx: S#Tx ) : S#Acc = {
          implicit val m = PathMeasure
          val sz         = in.readInt()
 //         val accTree    = acc.tree
@@ -70,7 +77,7 @@ object ConfluentImpl {
             }
             accIter.foreach( tree :+= _ )
          }
-         new Path( tree )
+         new Path[ S ]( tree )
       }
    }
 
@@ -79,8 +86,8 @@ object ConfluentImpl {
     * and the lower 32 bits are the incremental version. The measure is taking the index and running sum
     * of the tree.
     */
-   private[confluent] final class Path[ S <: Sys[ S ]]( protected val tree: FingerTree[ (Int, Long), Long ])
-   extends Sys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path ] {
+   private final class Path[ S <: Sys[ S ]]( protected val tree: FingerTree[ (Int, Long), Long ])
+   extends Sys.Acc[ S ] with FingerTreeLike[ (Int, Long), Long, Path[ S ]] {
       implicit protected def m: fingertree.Measure[ Long, (Int, Long) ] = PathMeasure
 
       override def toString = mkString( "Path(", ", ", ")" )
@@ -99,16 +106,16 @@ object ConfluentImpl {
       override def equals( that: Any ) : Boolean =
          that.isInstanceOf[ PathLike ] && (that.asInstanceOf[ PathLike ].sum == sum)
 
-      def test_:+( elem: Long ) : Path = :+( elem )
+//      def test_:+( elem: Long ) : Path = :+( elem )
 
-      private[confluent] def :+( last: Long ) : Path = wrap( tree :+ last )
+      private[confluent] def :+( last: Long ) : S#Acc = wrap( tree :+ last )
 
-      private[confluent] def +:( head: Long ) : Path = wrap( head +: tree )
+      private[confluent] def +:( head: Long ) : S#Acc = wrap( head +: tree )
 
       private[confluent] def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
 
       // XXX TODO testin one two
-      private[confluent] def partial : Path = {
+      private[confluent] def partial : S#Acc = {
          val sz   = size
          if( sz == 0 ) return this
 
@@ -150,12 +157,12 @@ println( "?? partial from index " + this )
          if( same ) i else i - 1
       }
 
-      /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : Path = {
+      /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc = {
          val (_, _, right) = tree.split1( _._1 > dropLen )
          wrap( newHead +: right )
       }
 
-      private[confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : Path = {
+      private[confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : S#Acc = {
          val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
          } else {
@@ -170,13 +177,13 @@ println( "?? partial from index " + this )
          wrap( t )
       }
 
-      private[Confluent] def seminal : Path = {
+      private[confluent] def seminal : S#Acc = {
          val (_init, term) = splitIndex
          wrap( FingerTree( _init.term, term ))
       }
 
       // XXX TODO should have an efficient method in finger tree
-      private[Confluent] def indexTerm : Long = {
+      private[confluent] def indexTerm : Long = {
          tree.init.last
 //         val idx = size - 2; tree.find1( _._1 > idx ) ???
       }
@@ -184,10 +191,10 @@ println( "?? partial from index " + this )
       private[confluent] def indexSum : Long = sum - (last >> 32)
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def :-|( suffix: Long ) : Path = wrap( tree.init :+ suffix )
+      private[confluent] def :-|( suffix: Long ) : S#Acc = wrap( tree.init :+ suffix )
 
       // XXX TODO should have an efficient method in finger tree
-      /* private[confluent] */ def drop( n: Int ) : Path = {
+      /* private[confluent] */ def drop( n: Int ) : S#Acc = {
 //         var res = tree
 //         var i = 0; while( i < n ) {
 //            res = res.tail
@@ -201,14 +208,14 @@ println( "?? partial from index " + this )
       }
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def splitIndex : (Path, Long) = (init, last)
+      private[confluent] def splitIndex : (S#Acc, Long) = (init, last)
 
-      private[confluent] def splitAtIndex( idx: Int ) : (Path, Long) = {
+      private[confluent] def splitAtIndex( idx: Int ) : (S#Acc, Long) = {
          val tup = tree.split1( _._1 > idx )
          (wrap( tup._1 ), tup._2)
       }
 
-      private[confluent] def splitAtSum( hash: Long ) : (Path, Long) = {
+      private[confluent] def splitAtSum( hash: Long ) : (S#Acc, Long) = {
          val tup = tree.split1( _._2 > hash )
          (wrap( tup._1 ), tup._2)
       }
@@ -227,7 +234,7 @@ println( "?? partial from index " + this )
          tree.iterator.foreach( out.writeLong )
       }
 
-      def index : Path = wrap( tree.init )
+      def index : S#Acc = wrap( tree.init )
       def term : Long = tree.last
 
       def size : Int = tree.measure._1
@@ -245,7 +252,7 @@ println( "?? partial from index " + this )
 
       def _take( n: Int ) : S#Acc = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
 
-      protected def wrap( _tree: FingerTree[ (Int, Long), Long ]) : Path = new Path( _tree )
+      protected def wrap( _tree: FingerTree[ (Int, Long), Long ]) : S#Acc = new Path( _tree )
 
       def mkString( prefix: String, sep: String, suffix: String ) : String =
          tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
@@ -261,7 +268,7 @@ println( "?? partial from index " + this )
       def term: Long = tree.root.version
 
       override def equals( that: Any ) : Boolean = {
-         that.isInstanceOf[ IndexTree ] && (term == that.asInstanceOf[ IndexTree ].term)
+         that.isInstanceOf[ Sys.IndexTree[ _ ]] && (term == that.asInstanceOf[ Sys.IndexTree[ _ ]].term)
       }
 
       def write( out: DataOutput ) {
@@ -269,7 +276,7 @@ println( "?? partial from index " + this )
          out.writeInt( level )
       }
 
-      def dispose()( implicit tx: Durable#Tx ) {
+      def dispose()( implicit tx: D#Tx ) {
          tree.dispose()
       }
 
@@ -277,7 +284,7 @@ println( "?? partial from index " + this )
    }
 
    private final class IndexMapImpl[ S <: Sys[ S ], A ]( protected val index: S#Acc,
-                                          protected val map: Ancestor.Map[ Durable, Long, A ])
+                                          protected val map: Ancestor.Map[ S#D, Long, A ])
    extends IndexMap[ S, A ] {
       override def toString = index.mkString( "IndexMap(<", ",", ">, " + map + ")" )
 
@@ -298,7 +305,7 @@ println( "?? partial from index " + this )
    }
 
    private final class PartialMapImpl[ S <: Sys[ S ], A ]( protected val index: S#Acc,
-                                            protected val map: Ancestor.Map[ Durable, Long, A ])
+                                            protected val map: Ancestor.Map[ S#D, Long, A ])
    extends IndexMap[ S, A ] {
       override def toString = index.mkString( "PartialMap(<", ",", ">, " + map + ")" )
 
@@ -331,13 +338,15 @@ println( "?? partial from index " + this )
          level > highestLevel || (level == highestLevel && !highestTrees.contains( seminal ))
       }
 
-      def add( level: Int, seminal: S#Acc ) : MeldInfo = {
+      def add( level: Int, seminal: S#Acc ) : MeldInfo[ S ] = {
          if( isRelevant( level, seminal )) MeldInfo( level, highestTrees + seminal ) else this
       }
 
       def isEmpty : Boolean = highestLevel < 0
    }
-   private val emptyMeldInfo = MeldInfo( -1, Set.empty )
+
+   private def emptyMeldInfo[ S <: Sys[ S ]] : MeldInfo[ S ] = anyMeldInfo.asInstanceOf[ MeldInfo[ S ]]
+   private val anyMeldInfo = MeldInfo[ Confluent ]( -1, Set.empty )
 
 
    // ----------------------------------------------
@@ -346,9 +355,11 @@ println( "?? partial from index " + this )
 
    trait TxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]]
    extends Sys.Txn[ S, D ] with DurableCacheMapImpl[ S, Int ] {
+      _: S#Tx =>
+
 //      lazy val inMemory: InMemory#Tx = system.inMemory.wrap( peer )
 
-      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]] = TxnLocal( initialValue =
+      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ S, _, _ ]]] = TxnLocal( initialValue =
          { implicit itx =>
             log( "....... txn dirty ......." )
             ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
@@ -368,24 +379,24 @@ println( "?? partial from index " + this )
 
       def forceWrite() { markDirty() }
 
-      final private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) {
+      final private[confluent] def addDirtyMap( map: CacheMapImpl[ S, _, _ ]) {
          dirtyMaps.transform( _ :+ map )( peer )
       }
 
       final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
 
-      private val meld  = TxnLocal( emptyMeldInfo )
+      private val meld  = TxnLocal( emptyMeldInfo[ S ])
 
       protected def flushNewTree( level: Int ) : Long
       protected def flushOldTree() : Long
 
-      final protected def partialCache: PartialCacheMapImpl[ Confluent, Int ] = system.partialMap
+      final protected def partialCache: PartialCacheMapImpl[ S, Int ] = system.partialMap
 
       final protected def store = system.varMap
 
-      protected def partialTree: Ancestor.Tree[ Durable, Long ] = system.partialTree
+      protected def partialTree: Ancestor.Tree[ D, Long ] = system.partialTree
 
-      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ Confluent, _, _ ]]) {
+      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ S, _, _ ]]) {
          val meldInfo      = meld.get( peer )
          val newTree       = meldInfo.requiresNewTree
 //         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
@@ -400,20 +411,20 @@ println( "?? partial from index " + this )
       }
 
       final def newID() : S#ID = {
-         val res = new ConfluentID( system.newIDValue()( this ), Path.empty )
+         val res = new ConfluentID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
          log( "txn newID " + res )
          res
       }
 
       final def newPartialID() : S#ID = {
-         val res = new PartialID( system.newIDValue()( this ), Path.empty )
+         val res = new PartialID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
          log( "txn newPartialID " + res )
          res
       }
 
       // XXX TODO eventually should use caching
-      final private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
-                                                  term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int) = {
+      final private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
+                                                  term: Long ) : (Ancestor.Vertex[ D, Long ], Int) = {
 //         val root = tree.root
 //         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
          system.store.get { out =>
@@ -428,8 +439,8 @@ println( "?? partial from index " + this )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      final private[Confluent] def readPartialTreeVertex( index: S#Acc,
-                                                          term: Long ) : Ancestor.Vertex[ Durable, Long ] = {
+      final private[confluent] def readPartialTreeVertex( index: S#Acc,
+                                                          term: Long ) : Ancestor.Vertex[ D, Long ] = {
 //         val root = tree.root
 //         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
          system.store.get { out =>
@@ -441,7 +452,7 @@ println( "?? partial from index " + this )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      final private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) {
+      final private[confluent] def writeTreeVertex( tree: Sys.IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) {
          system.store.put { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( v.version.toInt )
@@ -452,7 +463,7 @@ println( "?? partial from index " + this )
          }
       }
 
-      final private[Confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ Durable, Long ]) {
+      final private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ]) {
          system.store.put { out =>
             out.writeUnsignedByte( 3 )
             out.writeInt( v.version.toInt )
@@ -461,9 +472,9 @@ println( "?? partial from index " + this )
          }
       }
 
-      final private[confluent] def readPath( in: DataInput ) : S#Acc = Path.read( in )
+      final private[confluent] def readPath( in: DataInput ) : S#Acc = Path.read[ S ]( in )
 
-      final private[Confluent] def readTreeVertexLevel( term: Long ) : Int = {
+      final private[confluent] def readTreeVertexLevel( term: Long ) : Int = {
          system.store.get { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( term.toInt )
@@ -476,7 +487,7 @@ println( "?? partial from index " + this )
 
 //      final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      final private[Confluent] def addInputVersion( path: S#Acc ) {
+      final private[confluent] def addInputVersion( path: S#Acc ) {
          val sem1 = path.seminal
          val sem2 = inputAccess.seminal
          if( sem1 == sem2 ) return
@@ -492,34 +503,34 @@ println( "?? partial from index " + this )
          })( peer )
       }
 
-      final private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
+      final private[confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
          log( "txn get " + id )
          getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
-      final private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A = {
+      final private[confluent] def getTxn[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A = {
          log( "txn get' " + id )
          getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
-      final private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) {
+      final private[confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
          putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
-      final private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
+      final private[confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
 //         logConfig( "txn put " + id )
          putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
-      final private[Confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) {
+      final private[confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) {
          partialCache.putPartial( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
-      final private[Confluent] def getPartial[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A = {
+      final private[confluent] def getPartial[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A = {
 //         logPartial( "txn get " + id )
          partialCache.getPartial[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
@@ -529,7 +540,7 @@ println( "?? partial from index " + this )
 //         partialCache.getFreshPartial[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
 //      }
 
-      final private[Confluent] def isFresh( id: S#ID ) : Boolean = {
+      final private[confluent] def isFresh( id: S#ID ) : Boolean = {
          val id1  = id.id
          val path = id.path
          // either the value was written during this transaction (implies freshness)...
@@ -545,7 +556,7 @@ println( "?? partial from index " + this )
          }
       }
 
-      final private[Confluent] def removeFromCache( id: S#ID ) {
+      final private[confluent] def removeFromCache( id: S#ID ) {
          removeCacheOnly( id.id )( this )
       }
 
@@ -557,13 +568,13 @@ println( "?? partial from index " + this )
 
       final private[confluent] def getIndexTreeTerm( term: Long ) : Long = readIndexTree( term ).term
 
-      final private[Confluent] def readIndexTree( term: Long ) : IndexTree = {
+      final private[confluent] def readIndexTree( term: Long ) : Sys.IndexTree[ D ] = {
          val st = system.store
          st.get { out =>
             out.writeUnsignedByte( 1 )
             out.writeInt( term.toInt )
          } { in =>
-            val tree    = Ancestor.readTree[ Durable, Long ]( in, () )( durable, Serializer.Long, _.toInt )
+            val tree    = Ancestor.readTree[ D, Long ]( in, () )( durable, Serializer.Long, _.toInt )
             val level   = in.readInt()
             new IndexTreeImpl( tree, level )
          } getOrElse { // sys.error( "Trying to access inexisting tree " + term.toInt )
@@ -582,9 +593,9 @@ println( "?? partial from index " + this )
          }
       }
 
-      final private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree = {
+      final private[confluent] def newIndexTree( term: Long, level: Int ) : Sys.IndexTree[ D ] = {
          log( "txn new tree " + term.toInt )
-         val tree = Ancestor.newTree[ Durable, Long ]( term )( durable, Serializer.Long, _.toInt )
+         val tree = Ancestor.newTree[ D, Long ]( term )( durable, Serializer.Long, _.toInt )
          val res  = new IndexTreeImpl( tree, level )
          system.store.put( out => {
             out.writeUnsignedByte( 1 )
@@ -598,7 +609,7 @@ println( "?? partial from index " + this )
                                                       ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val map     = Ancestor.readMap[ Durable, Long, A ]( in, (), partialTree )
          val index   = access._take( 1 )   // XXX correct ?
-         new PartialMapImpl[ A ]( index, map )
+         new PartialMapImpl[ D, A ]( index, map )
       }
 
       final private[confluent] def readIndexMap[ A ]( in: DataInput, index: S#Acc )
@@ -606,14 +617,14 @@ println( "?? partial from index " + this )
          val term = index.term
          val tree = readIndexTree( term )
          val map  = Ancestor.readMap[ Durable, Long, A ]( in, (), tree.tree )
-         new IndexMapImpl[ A ]( index, map )
+         new IndexMapImpl[ D, A ]( index, map )
       }
 
       final private[confluent] def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
                                                      ( implicit serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          val map     = Ancestor.newMap[ Durable, Long, A ]( partialTree, partialTree.root, rootValue )
          val index   = access._take( 1 )   // XXX correct ?
-         new PartialMapImpl[ A ]( index, map )
+         new PartialMapImpl[ D, A ]( index, map )
       }
 
       final private[confluent] def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
@@ -626,7 +637,7 @@ println( "?? partial from index " + this )
             readTreeVertex( full, index, rootTerm )._1
          }
          val map  = Ancestor.newMap[ Durable, Long, A ]( full, rootVertex, rootValue )
-         new IndexMapImpl[ A ]( index, map )
+         new IndexMapImpl[ D, A ]( index, map )
       }
 
       @inline private def alloc(        pid: S#ID ) : S#ID = new ConfluentID( system.newIDValue()( this ), pid.path )
@@ -642,7 +653,7 @@ println( "?? partial from index " + this )
       final def newLocalVar[ A ]( init: S#Tx => A ) : LocalVar[ S#Tx, A ] = new LocalVarImpl[ S, A ]( init )
 
       final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val res = new PartialVarTxImpl[ A ]( allocPartial( pid ))
+         val res = new PartialVarTxImpl[ D, A ]( allocPartial( pid ))
          log( "txn newPartialVar " + res )
          res.setInit( init )( this )
          res
@@ -686,7 +697,7 @@ println( "?? partial from index " + this )
       private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val map  = DurablePersistentMap.newConfluentLongMap[ Confluent ]( system.store )
          val idi  = new ConfluentID( id, Path.empty )
-         val res  = new DurableIDMapImpl[ A ]( idi, map )
+         val res  = new DurableIDMapImpl[ D, A ]( idi, map )
          durableIDMaps.transform( _ + (id -> res) )( peer )
          res
       }
@@ -701,12 +712,12 @@ println( "?? partial from index " + this )
          new PartialID( id, pid.path )
       }
 
-      final private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ] = {
+      final private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : BasicVar[ S, A ] = {
          ser match {
             case plain: ImmutableSerializer[ _ ] =>
-               new VarImpl[ A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
+               new VarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
             case _ =>
-               new VarTxImpl[ A ]( id )
+               new VarTxImpl[ S, A ]( id )
          }
       }
 
@@ -717,7 +728,7 @@ println( "?? partial from index " + this )
       }
 
       final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
-         val res = new PartialVarTxImpl[ A ]( readPartialSource( in, pid ))
+         val res = new PartialVarTxImpl[ S, A ]( readPartialSource( in, pid ))
          log( "txn read " + res )
          res
       }
@@ -741,7 +752,7 @@ println( "?? partial from index " + this )
       }
 
       final def readID( in: DataInput, acc: S#Acc ) : S#ID = {
-         val res = new ConfluentID( in.readInt(), Path.readAndAppend( in, acc )( this ))
+         val res = new ConfluentID( in.readInt(), Path.readAndAppend[ S ]( in, acc )( this ))
          log( "txn readID " + res )
          res
       }
@@ -756,7 +767,7 @@ println( "?? partial from index " + this )
       final def readDurableIDMap[ A ]( in: DataInput )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val id = in.readInt()
          durableIDMaps.get( peer ).get( id ) match {
-            case Some( existing ) => existing.asInstanceOf[ DurableIDMapImpl[ A ]]
+            case Some( existing ) => existing.asInstanceOf[ DurableIDMapImpl[ S, A ]]
             case None => mkDurableIDMap( id )
          }
       }
@@ -862,6 +873,7 @@ println( "?? partial from index " + this )
 
    private final class ConfluentID[ S <: Sys[ S ]]( val id: Int, val path: S#Acc ) extends Sys.ID[ S ] {
       override def hashCode = {
+         import MurmurHash._
          var h = startHash( 2 )
          val c = startMagicA
          val k = startMagicB
@@ -871,8 +883,8 @@ println( "?? partial from index " + this )
       }
 
       override def equals( that: Any ) : Boolean =
-         that.isInstanceOf[ ConfluentID ] && {
-            val b = that.asInstanceOf[ ConfluentID ]
+         that.isInstanceOf[ Sys.ID[ _ ]] && {
+            val b = that.asInstanceOf[ Sys.ID[ _ ]]
             id == b.id && path == b.path
          }
 
@@ -888,6 +900,7 @@ println( "?? partial from index " + this )
 
    private final class PartialID[ S <: Sys[ S ]]( val id: Int, val path: S#Acc ) extends Sys.ID[ S ] {
       override def hashCode = {
+         import MurmurHash._
          var h = startHash( 2 )
          var a = startMagicA
          var b = startMagicB
@@ -906,8 +919,8 @@ println( "?? partial from index " + this )
       }
 
       override def equals( that: Any ) : Boolean =
-         that.isInstanceOf[ PartialID ] && {
-            val b = that.asInstanceOf[ PartialID ]
+         that.isInstanceOf[ PartialID[ _ ]] && {
+            val b = that.asInstanceOf[ PartialID[ _ ]]
             val bp = b.path
             if( path.isEmpty ) {
                id == b.id && bp.isEmpty
@@ -1006,10 +1019,10 @@ println( "?? partial from index " + this )
    extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {
       private val markDirtyFlag = TxnLocal( false )
 
-      def id: S#ID = new ConfluentID( 0, Path.empty )
+      def id: S#ID = new ConfluentID( 0, Path.empty[ S ])
 
       private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyMap( this )
+         if( !markDirtyFlag.swap( true )( tx.peer )) ??? // tx.addDirtyMap( this )
       }
 
       protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
@@ -1051,7 +1064,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private val markDirtyFlag = TxnLocal( false )
 
       private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyMap( this )
+         if( !markDirtyFlag.swap( true )( tx.peer )) ??? // tx.addDirtyMap( this )
       }
 
       protected def emptyCache : Map[ Long, _ ] = CacheMapImpl.emptyLongMapVal
@@ -1148,11 +1161,11 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       override def toString = name // "Root"
 
-      private def id( implicit tx: S#Tx ) : S#ID = new ConfluentID( id1, tx.inputAccess )
+      private def id( implicit tx: S#Tx ) : S#ID = new ConfluentID[ S ]( id1, tx.inputAccess )
 
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A = {
          log( this.toString + " meld " + from )
-         val idm  = new ConfluentID( id1, from )
+         val idm  = new ConfluentID[ S ]( id1, from )
          tx.addInputVersion( from )
          tx.getTxn( idm )
       }
@@ -1312,12 +1325,16 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
    private final class System( storeFactory: DataStoreFactory[ DataStore ])
    extends Confluent {
+      private type S = Confluent
+      private type D = Durable
+      private type I = InMemory
+
 //      val manifest                        = Predef.manifest[ Confluent ]
 //      def idOrdering : Ordering[ S#ID ]   = IDOrdering
 
       private[confluent] val store        = storeFactory.open( "data" )
-      val durable : Durable               = Durable( store ) : Durable
-      val inMemory : InMemory             = durable.inMemory
+      val durable : D                     = Durable( store ) : Durable
+      val inMemory : I                    = durable.inMemory
       private[confluent] val varMap       = DurablePersistentMap.newConfluentIntMap[ S ]( store )
       private[confluent] val partialMap : PartialCacheMapImpl[ Confluent, Int ] =
          PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap( store ))
@@ -1330,9 +1347,9 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             val reactCnt      = tx.newCachedIntVar( 0 )
             val versionLinear = tx.newCachedIntVar( 0 )
             val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
-            val lastAccess    = tx.newCachedVar[ Path ]( Path.root )( GlobalState.PathSerializer )
-            val partialTree   = Ancestor.newTree[ Durable, Long ]( 1L << 32 )( tx, Serializer.Long, _.toInt )
-            GlobalState( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
+            val lastAccess    = tx.newCachedVar[ S#Acc ]( Path.root[ S ])( GlobalState.PathSerializer )
+            val partialTree   = Ancestor.newTree[ D, Long ]( 1L << 32 )( tx, Serializer.Long, _.toInt )
+            GlobalState[ S ]( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
          }
          root.get
       }
@@ -1353,7 +1370,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       override def toString = "Confluent"
 
-      private[confluent] def partialTree : Ancestor.Tree[ Durable, Long ] = global.partialTree
+      private[confluent] def partialTree : Ancestor.Tree[ D, Long ] = global.partialTree
 
       private[confluent] def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val dtx = tx.durable
@@ -1379,23 +1396,23 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             implicit val dtx = durable.wrap( itx )
             val last = global.lastAccess.get
             log( "::::::: atomic - input access = " + last + " :::::::" )
-            fun( new RegularTxn( this, dtx, itx, last ))
+            fun( new RegularTxn[ S ]( this, dtx, itx, last ))
          }
       }
 
       // XXX TODO
-      /* private[Confluent] */ def position_=( p: Path )( implicit tx: S#Tx ) {
+      /* private[Confluent] */ def position_=( p: S#Acc )( implicit tx: S#Tx ) {
          global.lastAccess.set( p )( tx.durable )
       }
 
-      def position( implicit tx: S#Tx ) : Path = global.lastAccess.get( tx.durable )
+      def position( implicit tx: S#Tx ) : S#Acc = global.lastAccess.get( tx.durable )
 
       def root[ A ]( init: S#Tx => A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
          log( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
-            implicit val tx = new RootTxn( this, itx )
-            val rootVar    = new RootVar[ A ]( 0, "Root", serializer )
+            implicit val tx = new RootTxn[ S ]( this, itx )
+            val rootVar    = new RootVar[ S, A ]( 0, "Root" ) // serializer
             val rootPath   = tx.inputAccess
             if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
                rootVar.setInit( init( tx ))

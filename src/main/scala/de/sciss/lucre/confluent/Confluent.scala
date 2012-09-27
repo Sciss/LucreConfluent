@@ -83,9 +83,9 @@ object Confluent {
    implicit def inMemory( tx: Confluent#Tx ) : InMemory#Tx = tx.inMemory
 }
 trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
-   private type S = Confluent
-   private type D = Durable
-   private type I = InMemory
+   final protected type S = Confluent
+   final type D = Durable
+   final type I = InMemory
 
 //   final type ID                    = Sys.ID[ S ] // Confluent.ID
    final type Tx                    = Confluent.Txn   // Sys.Txn[ S, D ]
@@ -94,6 +94,4 @@ trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
 //   final type Entry[ A ]            = Sys.Entry[ S, A ]
 
    def inMemory : I
-
-   private[confluent] def newVersionID( implicit tx: Tx ) : Long
 }

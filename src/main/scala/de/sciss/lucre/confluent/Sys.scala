@@ -28,6 +28,7 @@ package confluent
 
 import stm.{Txn => _Txn, DataStore, Disposable, ImmutableSerializer, Identifier}
 import data.Ancestor
+import de.sciss.fingertree.FingerTree
 
 object Sys {
    trait Entry[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
@@ -109,7 +110,11 @@ object Sys {
       // prepend element
       private[confluent] def +:( suffix: Long ) : S#Acc
 
+      private[confluent] def :+( last: Long ) : S#Acc
+
       private[confluent] def index : S#Acc
+
+      private[confluent] def tail : S#Acc
 
       private[confluent] def term: Long
 
@@ -121,7 +126,11 @@ object Sys {
 
       private[confluent] def maxPrefixLength( that: Long ) : Int
 
+      private[confluent] def seminal : S#Acc
+
       private[confluent] def partial: S#Acc
+
+      private[confluent] def tree: FingerTree[ (Int, Long), Long ]
 
 //      // replace last element
 //      private[confluent] def :-|( suffix: Long ) : S#Acc
@@ -148,6 +157,11 @@ object Sys {
       private[confluent] def drop( num: Int ): S#Acc
 
       private[confluent] def _take( num: Int ): S#Acc
+
+      private[confluent] def head : Long
+      private[confluent] def last : Long
+      private[confluent] def isEmpty : Boolean
+      private[confluent] def nonEmpty : Boolean
    }
 }
 
@@ -172,6 +186,12 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[confluent] def partialMap : impl.PartialCacheMapImpl[ S, Int ]
    private[confluent] def partialTree : Ancestor.Tree[ D, Long ]
    private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
-   private[confluent] def position_=( newPos: S#Acc )( implicit tx: Tx ) : Unit
+   private[confluent] def newVersionID( implicit tx: S#Tx ) : Long
+   private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit
    private[confluent] def store : DataStore
+
+   // ---- formerly Txn ----
+   private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx )
+   private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
+                                          term: Long )( implicit tx: S#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
 }

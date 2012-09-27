@@ -26,16 +26,21 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Txn => _Txn, ImmutableSerializer, Identifier}
+import stm.{Txn => _Txn, Disposable, ImmutableSerializer, Identifier}
+import data.Ancestor
 
 object Sys {
-//   private type S = Sys
-
    trait Entry[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A
    }
 
-   trait Txn[ S <: Sys[ S ]] extends _Txn[ S ] {
+   private[confluent] trait IndexTree[ D <: stm.DurableLike[ D ]] extends Writable with Disposable[ D#Tx ] {
+      def tree: Ancestor.Tree[ D, Long ]
+      def level: Int
+      def term: Long
+   }
+
+   trait Txn[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends _Txn[ S ] {
 //      def indexTree( version: Int ) : IndexTree[ S ]
 
       private[confluent] def getIndexTreeTerm( term: Long ) : Long
@@ -57,19 +62,43 @@ object Sys {
       def forceWrite() : Unit
 
       private[confluent] def readPath( in: DataInput ) : S#Acc
+
+      // formerly Confluent.Txn
+
+      private[confluent] implicit def durable: D#Tx
+
+      private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
+                                             term: Long ) : (Ancestor.Vertex[ D, Long ], Int)
+      private[confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ D, Long ]
+      private[confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ D, Long ]) : Unit
+      private[confluent] def readTreeVertexLevel( term: Long ) : Int
+      private[confluent] def readIndexTree( term: Long ) : IndexTree
+      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree
+
+      private[confluent] def addInputVersion( path: S#Acc ) : Unit
+
+      private[confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Unit
+      private[confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) : Unit
+      private[confluent] def getTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : A
+      private[confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A
+      private[confluent] def isFresh( id: S#ID ) : Boolean
+
+      private[confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Unit
+      private[confluent] def getPartial[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : A
+
+      private[confluent] def removeFromCache( id: S#ID ) : Unit
+//      private[confluent] def addDirtyMap( map: CacheMapImpl[ S, _, _ ]) : Unit
+
+      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : stm.Var[ S#Tx, A ] // BasicVar[ A ]
+
+//      private[confluent] def inMemory : InMemory#Tx
+
    }
 
-//   trait Var[ S <: Sys[ S ], A ] extends _Var[ S#Tx, A ]
-
-   trait ID[ Txn, Acc ] extends Identifier[ Txn ] {
+   trait ID[ S <: Sys[ S ]] extends Identifier[ S#Tx ] {
       def id: Int
-      def path: Acc
+      def path: S#Acc
    }
-
-//   final class Vertex( val version: Int, val hash: Int, val level: Int ) {
-//      override def hashCode : Int = hash
-//      override def equals
-//   }
 
    trait Acc[ S <: Sys[ S ]] extends Writable with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
@@ -121,10 +150,18 @@ object Sys {
       private[confluent] def _take( num: Int ): S#Acc
    }
 }
+
+/**
+ * This is analogous to a `ConfluentLike` trait. Since there is only one system in
+ * `LucreConfluent`, it was decided to just name it `confluent.Sys`.
+ *
+ * @tparam S   the implementing system
+ */
 trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
+   type D <: stm.DurableLike[ D ]
 //   type Var[ @specialized A ] <: Sys.Var[ S, A ]
-   type Tx <: Sys.Txn[ S ]
-   type ID <: Sys.ID[ S#Tx, S#Acc ]
+   type Tx <: Sys.Txn[ S, D ]
+   type ID <: Sys.ID[ S ]
    type Acc <: Sys.Acc[ S ]
    type Entry[ A ] <: Sys.Entry[ S, A ] // with S#Var[ A ]
 }

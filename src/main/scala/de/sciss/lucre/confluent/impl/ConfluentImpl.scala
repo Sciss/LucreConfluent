@@ -166,14 +166,14 @@ object ConfluentImpl {
 
 //      def test_:+( elem: Long ) : Path = :+( elem )
 
-      private[confluent] def :+( last: Long ) : S#Acc = wrap( tree :+ last )
+      def :+( last: Long ) : S#Acc = wrap( tree :+ last )
 
-      private[confluent] def +:( head: Long ) : S#Acc = wrap( head +: tree )
+      def +:( head: Long ) : S#Acc = wrap( head +: tree )
 
-      private[confluent] def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
+      def apply( idx: Int ) : Long = tree.find1( _._1 > idx )
 
       // XXX TODO testin one two
-      private[confluent] def partial : S#Acc = {
+      def partial : S#Acc = {
          val sz   = size
          if( sz == 0 ) return this
 
@@ -193,7 +193,7 @@ println( "?? partial from index " + this )
          wrap( res )
       }
 
-      private[confluent] def maxPrefixLength( that: Long ) : Int = {
+      def maxPrefixLength( that: Long ) : Int = {
          // XXX TODO more efficient
          val sz = size
          var i = 0; while( i < sz ) {
@@ -202,7 +202,7 @@ println( "?? partial from index " + this )
          0
       }
 
-      private[confluent] def maxPrefixLength( that: S#Acc ) : Int = {
+      def maxPrefixLength( that: S#Acc ) : Int = {
          val ta   = tree
          val tb   = that.tree
          val sz   = math.min( size, that.size )
@@ -215,12 +215,12 @@ println( "?? partial from index " + this )
          if( same ) i else i - 1
       }
 
-      /* private[confluent] */ def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc = {
+      def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc = {
          val (_, _, right) = tree.split1( _._1 > dropLen )
          wrap( newHead +: right )
       }
 
-      private[confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : S#Acc = {
+      def addTerm( term: Long )( implicit tx: S#Tx ) : S#Acc = {
          val t = if( tree.isEmpty ) {
             term +: term +: FingerTree.empty( PathMeasure )  // have FingerTree.two at some point
          } else {
@@ -235,24 +235,24 @@ println( "?? partial from index " + this )
          wrap( t )
       }
 
-      private[confluent] def seminal : S#Acc = {
+      def seminal : S#Acc = {
          val (_init, term) = splitIndex
          wrap( FingerTree( _init.term, term ))
       }
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def indexTerm : Long = {
+      def indexTerm : Long = {
          tree.init.last
 //         val idx = size - 2; tree.find1( _._1 > idx ) ??
       }
 
-      private[confluent] def indexSum : Long = sum - (last >> 32)
+      def indexSum : Long = sum - (last >> 32)
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def :-|( suffix: Long ) : S#Acc = wrap( tree.init :+ suffix )
+      def :-|( suffix: Long ) : S#Acc = wrap( tree.init :+ suffix )
 
       // XXX TODO should have an efficient method in finger tree
-      /* private[confluent] */ def drop( n: Int ) : S#Acc = {
+      def drop( n: Int ) : S#Acc = {
 //         var res = tree
 //         var i = 0; while( i < n ) {
 //            res = res.tail
@@ -266,19 +266,19 @@ println( "?? partial from index " + this )
       }
 
       // XXX TODO should have an efficient method in finger tree
-      private[confluent] def splitIndex : (S#Acc, Long) = (init, last)
+      def splitIndex : (S#Acc, Long) = (init, last)
 
-      private[confluent] def splitAtIndex( idx: Int ) : (S#Acc, Long) = {
+      def splitAtIndex( idx: Int ) : (S#Acc, Long) = {
          val tup = tree.split1( _._1 > idx )
          (wrap( tup._1 ), tup._2)
       }
 
-      private[confluent] def splitAtSum( hash: Long ) : (S#Acc, Long) = {
+      def splitAtSum( hash: Long ) : (S#Acc, Long) = {
          val tup = tree.split1( _._2 > hash )
          (wrap( tup._1 ), tup._2)
       }
 
-      private[confluent] def indexOfSum( hash: Long ): Int = {
+      def indexOfSum( hash: Long ): Int = {
          // XXX TODO very inefficient
          var idx = 0; val sz = size; while( idx < sz ) {
             if( sumUntil( idx ) >= hash ) return idx
@@ -676,6 +676,10 @@ println( "?? partial from index " + this )
    trait RegularTxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends TxnMixin[ S ] {
       _: S#Tx =>
 
+      final protected def flushCaches( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]]) {
+         system.flushRegular( meldInfo, caches )( this )
+      }
+
       override def toString = "Confluent#Tx" + inputAccess
    }
 
@@ -684,6 +688,11 @@ println( "?? partial from index " + this )
       _: S#Tx =>
 
       final val inputAccess = Path.root[ S ]
+
+      final protected def flushCaches( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]]) {
+         system.flushRoot( meldInfo, caches )( this )
+      }
+
       override def toString = "Confluent.RootTxn"
    }
 
@@ -691,23 +700,15 @@ println( "?? partial from index " + this )
       final lazy val inMemory: InMemory#Tx = system.inMemory.wrap( peer )
    }
 
-   private final class RegularTxn( val system: Confluent, private[confluent] val durable: Durable#Tx,
+   private final class RegularTxn( val system: Confluent, val durable: Durable#Tx,
                                    val peer: InTxn, val inputAccess: Confluent#Acc )
-   extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl {
-      protected def flushCaches( meldInfo: MeldInfo[ Confluent ], caches: IIdxSeq[ Cache[ Confluent#Tx ]]) {
-         system.flushRegular( meldInfo, caches )( this )
-      }
-   }
+   extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl
    
    private final class RootTxn( val system: Confluent, val peer: InTxn )
    extends RootTxnMixin[ Confluent, Durable ] with TxnImpl {
       lazy val durable: Durable#Tx = {
          log( "txn durable" )
          system.durable.wrap( peer )
-      }
-
-      protected def flushCaches( meldInfo: MeldInfo[ Confluent ], caches: IIdxSeq[ Cache[ Confluent#Tx ]]) {
-         system.flushRoot( meldInfo, caches )( this )
       }
    }
    

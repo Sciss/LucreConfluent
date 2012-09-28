@@ -36,7 +36,13 @@ import data.Ancestor
 import util.MurmurHash
 
 object ConfluentImpl {
-   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = new System( storeFactory )
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = {
+      // tricky: before `durable` was a `val` in `System`, this caused
+      // a NPE with `Mixin` initialising `global`.
+      // (http://stackoverflow.com/questions/12647326/avoiding-npe-in-trait-initialization-without-using-lazy-vals)
+      val durable = Durable( storeFactory )
+      new System( storeFactory, durable )
+   }
 
    // --------------------------------------------
    // ---------------- BEGIN Path ----------------
@@ -1168,11 +1174,11 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    // --------------- BEGIN systems ---------------
    // ---------------------------------------------
 
-   private final class System( protected val storeFactory: DataStoreFactory[ DataStore ])
+   private final class System( protected val storeFactory: DataStoreFactory[ DataStore ], val durable: Durable )
    extends Mixin[ Confluent ]
 //   with Sys.IndexTreeHandler[ Durable, Confluent#Acc ]
    with Confluent {
-      val durable : D                     = Durable( store )
+//      val durable : D                     = Durable( store )
       def inMemory : I                    = durable.inMemory
       def durableTx(  tx: S#Tx ) : D#Tx   = tx.durable
       def inMemoryTx( tx: S#Tx ) : I#Tx   = tx.inMemory

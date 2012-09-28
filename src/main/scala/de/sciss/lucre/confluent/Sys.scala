@@ -35,6 +35,10 @@ object Sys {
       def meld( from: S#Acc )( implicit tx: S#Tx ) : A
    }
 
+   trait Var[ S <: Sys[ S ], @specialized A ] extends stm.Var[ S#Tx, A ] {
+      private[confluent] def setInit( value: A )( implicit tx: S#Tx ) : Unit
+   }
+
    private[confluent] trait IndexTree[ D <: stm.DurableLike[ D ]] extends Writable with Disposable[ D#Tx ] {
       def tree: Ancestor.Tree[ D, Long ]
       def level: Int
@@ -98,7 +102,7 @@ object Sys {
       private[confluent] def removeFromCache( id: S#ID ) : Unit
 //      private[confluent] def addDirtyMap( map: CacheMapImpl[ S, _, _ ]) : Unit
 
-      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : stm.Var[ S#Tx, A ] // BasicVar[ A ]
+      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
 
 //      private[confluent] def inMemory : InMemory#Tx
 
@@ -187,7 +191,7 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    type Tx                         <: Sys.Txn[ S ]
    final type ID                    = Sys.ID[ S ]
    final type Acc                   = Sys.Acc[ S ] // <: Sys.Acc[ S ]
-   final type Var[ @specialized A ] = stm.Var[ S#Tx, A ] // Confluent.Var[ A ]
+   final type Var[ @specialized A ] = Sys.Var[ S, A ] // Confluent.Var[ A ]
    final type Entry[ A ]            = Sys.Entry[ S, A ] // with S#Var[ A ]
 
    def durable : D

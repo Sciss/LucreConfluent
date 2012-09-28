@@ -357,7 +357,7 @@ println( "?? partial from index " + this )
    // ---------------- BEGIN TxnMin ----------------
    // ----------------------------------------------
 
-   trait TxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]]
+   trait TxnMixin[ S <: Sys[ S ]]
    extends Sys.Txn[ S ] with DurableCacheMapImpl[ S, Int ] {
       _: S#Tx =>
 
@@ -400,7 +400,7 @@ println( "?? partial from index " + this )
 
       final protected def store = system.varMap
 
-      protected def partialTree: Ancestor.Tree[ D, Long ] = ??? // system.partialTree
+//      protected def partialTree: Ancestor.Tree[ D, Long ] = ??? // system.partialTree
 
       private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ S, _, _ ]]) {
          val meldInfo      = meld.get( peer )
@@ -583,7 +583,7 @@ println( "?? partial from index " + this )
       final def newVar[ A ]( pid: S#ID, init: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
          log( "txn newVar " + res ) // + " - init = " + init
-         ??? // res.setInit( init )( this )
+         res.setInit( init )( this )
          res
       }
 
@@ -649,7 +649,7 @@ println( "?? partial from index " + this )
          new PartialID( id, pid.path )
       }
 
-      final private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : stm.Var[ S#Tx, A ] /* BasicVar[ S, A ] */ = {
+      final private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] /* BasicVar[ S, A ] */ = {
          ser match {
             case plain: ImmutableSerializer[ _ ] =>
                new VarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
@@ -763,7 +763,7 @@ println( "?? partial from index " + this )
                                    val peer: InTxn, val inputAccess: Confluent#Acc )
    extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl
 
-   trait RegularTxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends TxnMixin[ S, D ] {
+   trait RegularTxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends TxnMixin[ S ] {
       _: S#Tx =>
 
       override def toString = "Txn" + inputAccess
@@ -804,7 +804,7 @@ println( "?? partial from index " + this )
    extends RootTxnMixin[ Confluent, Durable ] with TxnImpl
 
    trait RootTxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]]
-   extends TxnMixin[ S, D ] {
+   extends TxnMixin[ S ] {
       _: S#Tx =>
 
       val inputAccess = Path.root[ S ]
@@ -903,7 +903,7 @@ println( "?? partial from index " + this )
       def |+|( a: (Int, Long), b: (Int, Long), c: (Int, Long) ) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
    }
 
-   private sealed trait BasicVar[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
+   private sealed trait BasicVar[ S <: Sys[ S ], A ] extends Sys.Var[ S, A ] {
       protected def id: S#ID
 
 //      @elidable(CONFIG) protected final def assertExists()(implicit tx: Txn) {

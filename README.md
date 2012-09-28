@@ -32,8 +32,6 @@ __Note:__ see tag v0.14 for the example using actual audio file regions and sono
 
 To develop the sources of this library, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
 
-    resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
-
     addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
 Then to create the IDEA project, run `sbt gen-idea`.

@@ -26,74 +26,31 @@
 package de.sciss.lucre
 package confluent
 
-import impl.{PartialCacheMapImpl, InMemoryCacheMapImpl, DurableCacheMapImpl, CacheMapImpl}
-import util.MurmurHash
-import de.sciss.fingertree.{Measure, FingerTree, FingerTreeLike}
-import data.Ancestor
-import concurrent.stm.{TxnLocal, TxnExecutor, InTxn, Txn => ScalaTxn}
-import stm.impl.{LocalVarImpl, BerkeleyDB}
+import stm.{Cursor, DataStoreFactory, DataStore}
+import impl.{ConfluentImpl => Impl}
 import java.io.File
-import stm.{Var => STMVar, InMemory, LocalVar, ImmutableSerializer, IdentifierMap, Cursor, Disposable, Durable, DataStoreFactory, DataStore, Serializer}
-import collection.immutable.{IndexedSeq => IIdxSeq, IntMap, LongMap}
+import stm.impl.BerkeleyDB
 
 object Confluent {
-   def ??? : Nothing = sys.error( "TODO" )
-
-   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = ??? // new System( storeFactory )
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = Impl( storeFactory )
 
    def tmp() : Confluent = {
-???
-//      val dir = File.createTempFile( "confluent_", "db" )
-//      dir.delete()
-////      dir.mkdir()
-//      new System( BerkeleyDB.factory( dir ))
+      val dir = File.createTempFile( "confluent_", "db" )
+      dir.delete()
+//      dir.mkdir()
+      apply( BerkeleyDB.factory( dir ))
    }
 
    trait Txn extends Sys.Txn[ Confluent ] {
-      private[confluent] implicit def durable: Durable#Tx
-
-//      private[Confluent] implicit def durable: Durable#Tx
-//
-//      private[Confluent] def readTreeVertex( tree: Ancestor.Tree[ Durable, Long ], index: S#Acc,
-//                                             term: Long ) : (Ancestor.Vertex[ Durable, Long ], Int)
-//      private[Confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ Durable, Long ]
-//      private[Confluent] def writeTreeVertex( tree: IndexTree, v: Ancestor.Vertex[ Durable, Long ]) : Unit
-//      private[Confluent] def readTreeVertexLevel( term: Long ) : Int
-//      private[Confluent] def readIndexTree( term: Long ) : IndexTree
-//      private[Confluent] def newIndexTree( term: Long, level: Int ) : IndexTree
-//
-//      private[Confluent] def addInputVersion( path: S#Acc ) : Unit
-//
-//      private[Confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : Unit
-//      private[Confluent] def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) : Unit
-//      private[Confluent] def getTxn[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A
-//      private[Confluent] def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A
-//      private[Confluent] def isFresh( id: S#ID ) : Boolean
-//
-//      private[Confluent] def putPartial[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : Unit
-//      private[Confluent] def getPartial[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A
-////      private[Confluent] def getFreshPartial[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A
-//
-//      private[Confluent] def removeFromCache( id: S#ID ) : Unit
-//      private[Confluent] def addDirtyMap( map: CacheMapImpl[ Confluent, _, _ ]) : Unit
-//
-//      private[Confluent] def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : BasicVar[ A ]
-
-      private[confluent] def inMemory : InMemory#Tx
+      private[confluent] def durable: stm.Durable#Tx
+      private[confluent] def inMemory : stm.InMemory#Tx
    }
 
-   implicit def inMemory( tx: Confluent#Tx ) : InMemory#Tx = tx.inMemory
+   implicit def inMemory( tx: Confluent#Tx ) : stm.InMemory#Tx = tx.inMemory
 }
 trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
-   final protected type S = Confluent
-   final type D = Durable
-   final type I = InMemory
-
-//   final type ID                    = Sys.ID[ S ] // Confluent.ID
-   final type Tx                    = Confluent.Txn   // Sys.Txn[ S, D ]
-//   final type Acc                   = Sys.Acc[ S ] // Confluent.Path
-//   final type Var[ @specialized A ] = stm.Var[ S#Tx, A ] // Confluent.Var[ A ]
-//   final type Entry[ A ]            = Sys.Entry[ S, A ]
-
-   def inMemory : I
+   final protected type S  = Confluent
+   final type D            = stm.Durable
+   final type I            = stm.InMemory
+   final type Tx           = Confluent.Txn
 }

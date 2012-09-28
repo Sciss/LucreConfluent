@@ -1,3 +1,28 @@
+/*
+ *  ConfluentImpl.scala
+ *  (LucreConfluent)
+ *
+ *  Copyright (c) 2009-2012 Hanns Holger Rutz. All rights reserved.
+ *
+ *	 This software is free software; you can redistribute it and/or
+ *	 modify it under the terms of the GNU General Public License
+ *	 as published by the Free Software Foundation; either
+ *	 version 2, june 1991 of the License, or (at your option) any later version.
+ *
+ *	 This software is distributed in the hope that it will be useful,
+ *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *	 General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public
+ *  License (gpl.txt) along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ *
+ *	 For further information, please contact Hanns Holger Rutz at
+ *	 contact@sciss.de
+ */
+
 package de.sciss.lucre
 package confluent
 package impl
@@ -11,7 +36,7 @@ import data.Ancestor
 import util.MurmurHash
 
 object ConfluentImpl {
-   def ??? : Nothing = sys.error( "TODO" )
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = new System( storeFactory )
 
    // --------------------------------------------
    // ---------------- BEGIN Path ----------------
@@ -1148,11 +1173,12 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //   with Sys.IndexTreeHandler[ Durable, Confluent#Acc ]
    with Confluent {
       val durable : D                     = Durable( store )
-      def inMemory : I                    = ??? // durable.inMemory
+      def inMemory : I                    = durable.inMemory
       def durableTx(  tx: S#Tx ) : D#Tx   = tx.durable
       def inMemoryTx( tx: S#Tx ) : I#Tx   = tx.inMemory
 
       protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx = new RegularTxn( this, dtx, dtx.peer, inputAccess )
+      protected def wrapRoot( peer: InTxn ) : S#Tx = new RootTxn( this, peer )
    }
 
    trait Mixin[ S <: Sys[ S ] /*, D1 <: stm.DurableLike[ D1 ]*/]
@@ -1166,6 +1192,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       protected def storeFactory: DataStoreFactory[ DataStore ]
       protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx
+      protected def wrapRoot( peer: InTxn ) : S#Tx
 
       // ---- init ----
 
@@ -1234,20 +1261,20 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       }
 
       final def root[ A ]( init: S#Tx => A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
-???
-//         require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
-//         log( "::::::: root :::::::" )
-//         TxnExecutor.defaultAtomic { itx =>
-//            implicit val tx = new RootTxn[ S ]( this, itx )
-//            val rootVar    = new RootVar[ S, A ]( 0, "Root" ) // serializer
-//            val rootPath   = tx.inputAccess
-//            if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
-//               rootVar.setInit( init( tx ))
-//               tx.newIndexTree( rootPath.term, 0 )
-//               /* tx. */ writePartialTreeVertex( partialTree.root )
-//            }
-//            rootVar
-//         }
+         require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
+         log( "::::::: root :::::::" )
+         TxnExecutor.defaultAtomic { itx =>
+            implicit val tx   = wrapRoot( itx )
+            val rootVar    = new RootVar[ S, A ]( 0, "Root" ) // serializer
+            val rootPath   = tx.inputAccess
+            if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
+               implicit val dtx = durableTx( tx )  // created on demand (now)
+               rootVar.setInit( init( tx ))
+               newIndexTree( rootPath.term, 0 )
+               writePartialTreeVertex( partialTree.root )
+            }
+            rootVar
+         }
       }
 
       final def flushRoot( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {

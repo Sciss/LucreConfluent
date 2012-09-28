@@ -61,12 +61,14 @@ object Sys {
                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
    }
 
-   trait IndexTreeHandler[ D <: stm.DurableLike[ D ]] {
-      def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
-//      def readTreeVertexLevel( term: Long ) : Int
-      def readIndexTree( term: Long ) : IndexTree[ D ]
-      def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
-   }
+//   trait IndexTreeHandler[ D <: stm.DurableLike[ D ], -Index ] {
+//      def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ])( implicit tx: D#Tx ) : Unit
+////      def readTreeVertexLevel( term: Long ) : Int
+//      def readIndexTree( term: Long )( implicit tx: D#Tx ) : IndexTree[ D ]
+//      def newIndexTree( term: Long, level: Int )( implicit tx: D#Tx ) : IndexTree[ D ]
+//      def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: Index, term: Long )
+//                        ( implicit tx: D#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
+//   }
 
    trait Txn[ S <: Sys[ S ]] extends _Txn[ S ] {
       def inputAccess: S#Acc
@@ -213,6 +215,6 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
 
    // ---- formerly Txn ----
    private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx )
-   private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
-                                          term: Long )( implicit tx: S#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
+//   private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
+//                                          term: Long )( implicit tx: S#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
 }

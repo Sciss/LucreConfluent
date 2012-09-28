@@ -4,7 +4,7 @@ version := "1.3.0-SNAPSHOT"
 
 organization := "de.sciss"
 
-description := "Confluent persistence and quasi-retroactive / fluent references for Scala"
+description := "Confluent persistence references for Scala"
 
 homepage := Some( url( "https://github.com/Sciss/LucreConfluent" ))
 
@@ -92,7 +92,7 @@ pomExtra :=
 
 seq( lsSettings :_* )
 
-(LsKeys.tags in LsKeys.lsync) := Seq( "confluent", "persistence", "reactive", "event" )
+(LsKeys.tags in LsKeys.lsync) := Seq( "confluent", "persistence" )
 
 (LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
 

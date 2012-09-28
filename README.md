@@ -4,7 +4,7 @@
 
 LucreConfluent is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/LucreConfluent/blob/master/licenses/LucreConfluent-License.txt).
 
-LucreConfluent provides a transactional, durable, and confluently persistent memory and reaction framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references as well as event propagation. It uses [LucreSTM](https://github.com/Sciss/LucreSTM) for the transactional layer, and builds on top of data structures provided by the [LucreData](https://github.com/Sciss/LucreData) project. The overall target is integration with a system for computer music composition.
+LucreConfluent provides a transactional, durable, and confluently persistent memory framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references as well as event propagation (provided separately through the [ConfluentReactive](https://github.com/Sciss/ConfluentReactive) library). It uses [LucreSTM](https://github.com/Sciss/LucreSTM) for the transactional layer, and builds on top of data structures provided by the [LucreData](https://github.com/Sciss/LucreData) project. The overall target is integration with a system for computer music composition.
 
 Further reading:
 
@@ -22,7 +22,7 @@ Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
-    "de.sciss" %% "temporalobjects" % "1.2.+"
+    "de.sciss" %% "lucreconfluent" % "1.3.+"
 
 ### previous versions / tags
 

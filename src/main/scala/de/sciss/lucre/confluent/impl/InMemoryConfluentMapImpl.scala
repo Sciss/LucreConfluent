@@ -38,7 +38,7 @@ object InMemoryConfluentMapImpl {
 final class InMemoryConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] extends InMemoryConfluentMap[ S, K ] {
    import InMemoryConfluentMapImpl._
 
-   private type Entries = Map[ Long, Entry[ _ ]]
+   private type Entries = Map[ Long, Entry[ Any ]]
    private val store = TMap.empty[ K, Entries ]
 
    override def toString = "InMemoryConfluentMap(" + store + ")"

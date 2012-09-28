@@ -102,7 +102,7 @@ object Sys {
       private[confluent] def getPartial[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : A
 
       private[confluent] def removeFromCache( id: S#ID ) : Unit
-//      private[confluent] def addDirtyMap( map: CacheMapImpl[ S, _, _ ]) : Unit
+      private[confluent] def addDirtyCache( cache: Cache[ S#Tx ]) : Unit
 
       private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
 

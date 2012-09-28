@@ -38,6 +38,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
             w0.next.set( Some( w1 ))
             Some( w0 )
          }
+         val path0 = s.step( _.inputAccess ) // ?
 
          when( "the result is converted to a plain list in a new transaction" )
          val (_, res0) = s.step { implicit tx =>
@@ -86,7 +87,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
          // --> use a variant to better verify the results: set x=3 instead
          given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
-         timeWarp( Confluent.Path.root )
+         timeWarp( path0 ) //  Confluent.Path.root
          s.step { implicit tx =>
             access.transform {
                case Some( n ) =>

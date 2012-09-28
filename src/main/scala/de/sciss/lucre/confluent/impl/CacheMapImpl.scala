@@ -65,7 +65,7 @@ object CacheMapImpl {
  * @tparam S   the underlying system
  * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
  */
-sealed trait CacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K, Store ] {
+sealed trait CacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K, Store ] extends Cache[ S#Tx ] {
    import CacheMapImpl._
 
    private val cache = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K, Store ]]]])
@@ -82,7 +82,7 @@ sealed trait CacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K, Store ] {
     * The value type of the returned map (which must be immutable and empty) is cast to the internal cache
     * entries.
     */
-   protected def emptyCache : Map[ K, _ ]
+   protected def emptyCache : Map[ K, Any ]
 
    // ---- implementation ----
 
@@ -288,7 +288,7 @@ object PartialCacheMapImpl {
 
    def newIntCache[ S <: Sys[ S ]]( map: DurablePersistentMap[ S, Int ]) : PartialCacheMapImpl[ S, Int ] =
       new PartialCacheMapImpl[ S, Int ] {
-         final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
+         final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
          final protected val store : DurablePersistentMap[ S, Int ] = map
       }
 

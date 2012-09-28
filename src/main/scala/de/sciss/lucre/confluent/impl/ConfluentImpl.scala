@@ -333,18 +333,18 @@ println( "?? partial from index " + this )
 
       final private def markDirty() {
          if( !markDirtyFlag.swap( true )( peer )) {
-            addDirtyMap( this )
-            addDirtyMap( partialCache )
+            addDirtyCache( this )
+            addDirtyCache( partialCache )
          }
       }
 
       def forceWrite() { markDirty() }
 
-      final private[confluent] def addDirtyMap( map: CacheMapImpl[ S, _, _ ]) {
+      final private[confluent] def addDirtyCache( map: CacheMapImpl[ S, _, _ ]) {
          dirtyMaps.transform( _ :+ map )( peer )
       }
 
-      final protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
+      final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
 
       private val meld  = TxnLocal( emptyMeldInfo[ S ])
 
@@ -355,7 +355,7 @@ println( "?? partial from index " + this )
 
       final protected def store = system.varMap
 
-//      protected def partialTree: Ancestor.Tree[ D, Long ] = ??? // system.partialTree
+//      protected def partialTree: Ancestor.Tree[ D, Long ] = system.partialTree
 
       private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ S, _, _ ]]) {
          val meldInfo      = meld.get( peer )
@@ -903,10 +903,10 @@ println( "?? partial from index " + this )
       def id: S#ID = new ConfluentID( 0, Path.empty[ S ])
 
       private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) ??? // tx.addDirtyMap( this )
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
       }
 
-      protected def emptyCache : Map[ Int, _ ] = CacheMapImpl.emptyIntMapVal
+      protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
 
       def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
          getCache[ A ]( id.id, id.path )
@@ -945,10 +945,10 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       private val markDirtyFlag = TxnLocal( false )
 
       private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) ??? // tx.addDirtyMap( this )
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
       }
 
-      protected def emptyCache : Map[ Long, _ ] = CacheMapImpl.emptyLongMapVal
+      protected def emptyCache : Map[ Long, Any ] = CacheMapImpl.emptyLongMapVal
 
       def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
          val key = nid | (id.id.toLong & 0xFFFFFFFFL)
@@ -1328,6 +1328,20 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //            }
 //            rootVar
 //         }
+      }
+
+      protected def flushNewTree( level: Int )( implicit tx: S#Tx ) : Long = {
+         implicit val dtx = durableTx( tx )
+         val term = newVersionID( tx )
+         newIndexTree( term, level )
+
+         // ---- partial ----
+         val (index, parentTerm) = tx.inputAccess.splitIndex
+         val pParent    = readPartialTreeVertex( index, parentTerm )
+         val pChild     = partialTree.insertChild( pParent, term ) // ( durable )
+         writePartialTreeVertex( pChild )
+
+         term
       }
 
       def close() { store.close()}

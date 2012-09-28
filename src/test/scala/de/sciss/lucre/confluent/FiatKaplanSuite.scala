@@ -22,8 +22,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
       import types._
 
       def timeWarp( path: Sys#Acc ) {
-         val s1 = s.asInstanceOf[ Confluent ]   // XXX ugly
-         s1.step( s1.position_=( path )( _ ))
+         s.step( s.position_=( path )( _ ))
       }
 
       it( "should yield the same sequences as those in Fiat/Kaplan fig. 3" ) {

@@ -17,6 +17,14 @@ object ConfluentImpl {
    // ---------------- BEGIN Path ----------------
    // --------------------------------------------
 
+   private object PathMeasure extends fingertree.Measure[ Long, (Int, Long) ] {
+      override def toString = "PathMeasure"
+      val zero = (0, 0L)
+      def apply( c: Long ) = (1, c >> 32)
+      def |+|( a: (Int, Long), b: (Int, Long) ) = ((a._1 + b._1), (a._2 + b._2))
+      def |+|( a: (Int, Long), b: (Int, Long), c: (Int, Long) ) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
+   }
+
    private object Path {
 //      type P = Path[ S ]
       def test_empty[ S <: Sys[ S ]] : S#Acc = empty
@@ -284,43 +292,17 @@ println( "?? partial from index " + this )
       override def toString = "IndexTree<v=" + term.toInt + ", l=" + level + ">"
    }
 
-   private final case class MeldInfo[ S <: Sys[ S ]]( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
-      def requiresNewTree : Boolean = highestTrees.size > 1
-      def outputLevel : Int = if( requiresNewTree ) highestLevel + 1 else highestLevel
-
-      /**
-       * An input tree is relevant if its level is higher than the currently observed
-       * highest level, or if it has the same level but was not recorded in the set
-       * of highest trees.
-       */
-      def isRelevant( level: Int, seminal: S#Acc ) : Boolean = {
-         level > highestLevel || (level == highestLevel && !highestTrees.contains( seminal ))
-      }
-
-      def add( level: Int, seminal: S#Acc ) : MeldInfo[ S ] = {
-         if( isRelevant( level, seminal )) MeldInfo( level, highestTrees + seminal ) else this
-      }
-
-      def isEmpty : Boolean = highestLevel < 0
-   }
-
-   private def emptyMeldInfo[ S <: Sys[ S ]] : MeldInfo[ S ] = anyMeldInfo.asInstanceOf[ MeldInfo[ S ]]
-   private val anyMeldInfo = MeldInfo[ Confluent ]( -1, Set.empty )
-
-
    // ----------------------------------------------
-   // ---------------- BEGIN TxnMin ----------------
+   // ------------- BEGIN transactions -------------
    // ----------------------------------------------
 
    trait TxnMixin[ S <: Sys[ S ]]
    extends Sys.Txn[ S ] with DurableCacheMapImpl[ S, Int ] {
       _: S#Tx =>
 
-//      final type D = S#D
+      protected def flushMaps( maps: IIdxSeq[ Cache[ S#Tx ]]) : Unit
 
-//      lazy val inMemory: InMemory#Tx = system.inMemory.wrap( peer )
-
-      private val dirtyMaps : TxnLocal[ IIdxSeq[ CacheMapImpl[ S, _, _ ]]] = TxnLocal( initialValue =
+      private val dirtyMaps : TxnLocal[ IIdxSeq[ Cache[ S#Tx ]]] = TxnLocal( initialValue =
          { implicit itx =>
             log( "....... txn dirty ......." )
             ScalaTxn.beforeCommit { implicit itx => flushMaps( dirtyMaps() )}
@@ -338,38 +320,21 @@ println( "?? partial from index " + this )
          }
       }
 
-      def forceWrite() { markDirty() }
+      final def forceWrite() { markDirty() }
 
-      final private[confluent] def addDirtyCache( map: CacheMapImpl[ S, _, _ ]) {
+      final private[confluent] def addDirtyCache( map: Cache[ S#Tx ]) {
          dirtyMaps.transform( _ :+ map )( peer )
       }
 
       final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
 
-      private val meld  = TxnLocal( emptyMeldInfo[ S ])
-
-      protected def flushNewTree( level: Int ) : Long
-      protected def flushOldTree() : Long
+      private val meld  = TxnLocal( MeldInfo.empty[ S ])
 
       final protected def partialCache: PartialCacheMapImpl[ S, Int ] = system.partialMap
 
       final protected def store = system.varMap
 
 //      protected def partialTree: Ancestor.Tree[ D, Long ] = system.partialTree
-
-      private def flushMaps( maps: IIdxSeq[ CacheMapImpl[ S, _, _ ]]) {
-         val meldInfo      = meld.get( peer )
-         val newTree       = meldInfo.requiresNewTree
-//         logConfig( Console.RED + "txn flush - term = " + outTerm.toInt + Console.RESET )
-         val outTerm = if( newTree ) {
-            flushNewTree( meldInfo.outputLevel )
-         } else {
-            flushOldTree()
-         }
-         log( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
-         system.position_=( inputAccess.addTerm( outTerm )( this ))( this ) // XXX TODO last path would depend on value written to inputAccess?
-         maps.foreach( _.flushCache( outTerm )( this ))
-      }
 
       final def newID() : S#ID = {
          val res = new ConfluentID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
@@ -382,32 +347,6 @@ println( "?? partial from index " + this )
          log( "txn newPartialID " + res )
          res
       }
-
-      // XXX TODO eventually should use caching
-//      final private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
-//                                                  term: Long ) : (Ancestor.Vertex[ D, Long ], Int) = {
-////         val root = tree.root
-////         if( root.version == term ) return root // XXX TODO we might also save the root version separately and remove this conditional
-//         system.store.get { out =>
-//            out.writeUnsignedByte( 0 )
-//            out.writeInt( term.toInt )
-//         } { in =>
-//            in.readInt()   // tree index!
-//            val access  = index :+ term
-//            val level   = in.readInt()
-//            val v       = tree.vertexSerializer.read( in, access )( durable )
-//            (v, level)
-//         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
-//      }
-
-//      final private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ]) {
-//         system.store.put { out =>
-//            out.writeUnsignedByte( 3 )
-//            out.writeInt( v.version.toInt )
-//         } { out =>
-//            partialTree.vertexSerializer.write( v, out )
-//         }
-//      }
 
       final private[confluent] def readPath( in: DataInput ) : S#Acc = Path.read[ S ]( in )
 
@@ -422,8 +361,6 @@ println( "?? partial from index " + this )
       }
 
       override def toString = "Sys#Tx" // + system.path.mkString( "<", ",", ">" )
-
-//      final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
       final private[confluent] def addInputVersion( path: S#Acc ) {
          val sem1 = path.seminal
@@ -683,10 +620,6 @@ println( "?? partial from index " + this )
       }
    }
 
-   // ----------------------------------------------
-   // ----------------- END TxnMin -----------------
-   // ----------------------------------------------
-
    private sealed trait TxnImpl extends /* TxnMixin[ Confluent, Durable ] with */ Confluent.Txn {
       lazy val inMemory: InMemory#Tx = system.inMemory.wrap( peer )
    }
@@ -699,37 +632,6 @@ println( "?? partial from index " + this )
       _: S#Tx =>
 
       override def toString = "Txn" + inputAccess
-
-      protected def flushOldTree() : Long = {
-???
-//         val childTerm  = system.newVersionID( this )
-//         val (index, parentTerm) = inputAccess.splitIndex
-//         val tree       = readIndexTree( index.term )
-//         val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
-//         val child      = tree.tree.insertChild( parent, childTerm )( durable )
-//         writeTreeVertex( tree, child )
-//
-//         // ---- partial ----
-//         val pParent    = readPartialTreeVertex( index, parentTerm )
-//         val pChild     = partialTree.insertChild( pParent, childTerm )( durable )
-//         system.writePartialTreeVertex( pChild )( this )
-//
-//         childTerm
-      }
-
-      protected def flushNewTree( level: Int ) : Long = {
-???
-//         val term = system.newVersionID( this )
-//         newIndexTree( term, level )
-//
-//         // ---- partial ----
-//         val (index, parentTerm) = inputAccess.splitIndex
-//         val pParent    = readPartialTreeVertex( index, parentTerm )
-//         val pChild     = partialTree.insertChild( pParent, term )( durable )
-//         system.writePartialTreeVertex( pChild )( this )
-//
-//         term
-      }
    }
 
    private abstract /* final */ class RootTxn( val system: Confluent, val peer: InTxn )
@@ -739,7 +641,7 @@ println( "?? partial from index " + this )
    extends TxnMixin[ S ] {
       _: S#Tx =>
 
-      val inputAccess = Path.root[ S ]
+      final val inputAccess = Path.root[ S ]
       override def toString = "RootTxn"
 
       private[confluent] implicit lazy val durable: D#Tx = {
@@ -747,10 +649,15 @@ println( "?? partial from index " + this )
 //         log( "txn durable" )
 //         system.durable.wrap( peer )
       }
-
-      protected def flushOldTree() : Long = inputAccess.term
-      protected def flushNewTree( level: Int ) : Long = sys.error( "Cannot meld in the root version" )
    }
+
+   // ----------------------------------------------
+   // -------------- END transactions --------------
+   // ----------------------------------------------
+
+   // -----------------------------------------------
+   // -------------- BEGIN identifiers --------------
+   // -----------------------------------------------
 
    private final class ConfluentID[ S <: Sys[ S ]]( val id: Int, val path: S#Acc ) extends Sys.ID[ S ] {
       override def hashCode = {
@@ -827,13 +734,13 @@ println( "?? partial from index " + this )
       def dispose()( implicit tx: S#Tx ) {}
    }
 
-   private object PathMeasure extends fingertree.Measure[ Long, (Int, Long) ] {
-      override def toString = "PathMeasure"
-      val zero = (0, 0L)
-      def apply( c: Long ) = (1, c >> 32)
-      def |+|( a: (Int, Long), b: (Int, Long) ) = ((a._1 + b._1), (a._2 + b._2))
-      def |+|( a: (Int, Long), b: (Int, Long), c: (Int, Long) ) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
-   }
+   // -----------------------------------------------
+   // --------------- END identifiers ---------------
+   // -----------------------------------------------
+
+   // ---------------------------------------------
+   // -------------- BEGIN variables --------------
+   // ---------------------------------------------
 
    private sealed trait BasicVar[ S <: Sys[ S ], A ] extends Sys.Var[ S, A ] {
       protected def id: S#ID
@@ -882,105 +789,6 @@ println( "?? partial from index " + this )
 //      private[Confluent] def asEntry : S#Entry[ A ] = new RootVar[ A ]( id.id, toString, ser )
 
       override def toString = "Var(" + id + ")"
-   }
-
-   /*
-    * Because durable maps are persisted, they may be deserialized multiple times per transaction.
-    * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
-    * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
-    * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
-    * was marked after A1, it's cached value will override A2's, even though it is older.
-    *
-    * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
-    * only one instance per id is available in a single transaction.
-    */
-   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
-
-   private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( protected val store: InMemoryConfluentMap[ S, Int ])
-   extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {
-      private val markDirtyFlag = TxnLocal( false )
-
-      def id: S#ID = new ConfluentID( 0, Path.empty[ S ])
-
-      private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
-      }
-
-      protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
-
-      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
-         getCache[ A ]( id.id, id.path )
-      }
-
-      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
-         get( id ).getOrElse( default )
-      }
-
-      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
-         putCache[ A ]( id.id, id.path, value )
-         markDirty()
-      }
-
-      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
-         get( id ).isDefined  // XXX TODO more efficient implementation
-      }
-
-      def remove( id: S#ID )( implicit tx: S#Tx ) {
-println( "WARNING: IDMap.remove : not yet implemented" )
-         markDirty()
-      }
-
-      def write( out: DataOutput ) {}
-      def dispose()( implicit tx: S#Tx ) {}
-
-      override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
-   }
-
-   private final class DurableIDMapImpl[ S <: Sys[ S ], A ]( val id: S#ID,
-                                                             protected val store: DurablePersistentMap[ S, Long ])
-                                           ( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
-   extends IdentifierMap[ S#ID, S#Tx, A ] with DurableCacheMapImpl[ S, Long ] {
-      private val nid = id.id.toLong << 32
-
-      private val markDirtyFlag = TxnLocal( false )
-
-      private def markDirty()( implicit tx: S#Tx ) {
-         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
-      }
-
-      protected def emptyCache : Map[ Long, Any ] = CacheMapImpl.emptyLongMapVal
-
-      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
-         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
-         getCacheTxn[ A ]( key, id.path )
-      }
-
-      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
-         get( id ).getOrElse( default )
-      }
-
-      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
-         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
-         putCacheTxn[ A ]( key, id.path, value )
-         markDirty()
-      }
-
-      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
-         get( id ).isDefined  // XXX TODO more efficient implementation
-      }
-
-      def remove( id: S#ID )( implicit tx: S#Tx ) {
-println( "WARNING: IDMap.remove : not yet implemented" )
-         markDirty()
-      }
-
-      def write( out: DataOutput ) {
-         out.writeInt( id.id )
-      }
-
-      def dispose()( implicit tx: S#Tx ) {}
-
-      override def toString = "IdentifierMap<" + id.id + ">"
    }
 
    private final class PartialVarTxImpl[ S <: Sys[ S ], A ]( protected val id: S#ID )
@@ -1153,6 +961,117 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       def read( in: DataInput ) : Long = in.readLong()
    }
 
+   // ---------------------------------------------
+   // --------------- END variables ---------------
+   // ---------------------------------------------
+
+   // ----------------------------------------------
+   // ----------------- BEGIN maps -----------------
+   // ----------------------------------------------
+
+   /*
+    * Because durable maps are persisted, they may be deserialized multiple times per transaction.
+    * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
+    * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
+    * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
+    * was marked after A1, it's cached value will override A2's, even though it is older.
+    *
+    * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
+    * only one instance per id is available in a single transaction.
+    */
+   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
+
+   private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( protected val store: InMemoryConfluentMap[ S, Int ])
+   extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {
+      private val markDirtyFlag = TxnLocal( false )
+
+      def id: S#ID = new ConfluentID( 0, Path.empty[ S ])
+
+      private def markDirty()( implicit tx: S#Tx ) {
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
+      }
+
+      protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
+
+      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
+         getCache[ A ]( id.id, id.path )
+      }
+
+      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
+         get( id ).getOrElse( default )
+      }
+
+      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
+         putCache[ A ]( id.id, id.path, value )
+         markDirty()
+      }
+
+      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
+         get( id ).isDefined  // XXX TODO more efficient implementation
+      }
+
+      def remove( id: S#ID )( implicit tx: S#Tx ) {
+println( "WARNING: IDMap.remove : not yet implemented" )
+         markDirty()
+      }
+
+      def write( out: DataOutput ) {}
+      def dispose()( implicit tx: S#Tx ) {}
+
+      override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
+   }
+
+   private final class DurableIDMapImpl[ S <: Sys[ S ], A ]( val id: S#ID,
+                                                             protected val store: DurablePersistentMap[ S, Long ])
+                                           ( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
+   extends IdentifierMap[ S#ID, S#Tx, A ] with DurableCacheMapImpl[ S, Long ] {
+      private val nid = id.id.toLong << 32
+
+      private val markDirtyFlag = TxnLocal( false )
+
+      private def markDirty()( implicit tx: S#Tx ) {
+         if( !markDirtyFlag.swap( true )( tx.peer )) tx.addDirtyCache( this )
+      }
+
+      protected def emptyCache : Map[ Long, Any ] = CacheMapImpl.emptyLongMapVal
+
+      def get( id: S#ID )( implicit tx: S#Tx ) : Option[ A ] = {
+         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
+         getCacheTxn[ A ]( key, id.path )
+      }
+
+      def getOrElse( id: S#ID, default: => A )( implicit tx: S#Tx ) : A = {
+         get( id ).getOrElse( default )
+      }
+
+      def put( id: S#ID, value: A )( implicit tx: S#Tx ) {
+         val key = nid | (id.id.toLong & 0xFFFFFFFFL)
+         putCacheTxn[ A ]( key, id.path, value )
+         markDirty()
+      }
+
+      def contains( id: S#ID )( implicit tx: S#Tx ) : Boolean = {
+         get( id ).isDefined  // XXX TODO more efficient implementation
+      }
+
+      def remove( id: S#ID )( implicit tx: S#Tx ) {
+println( "WARNING: IDMap.remove : not yet implemented" )
+         markDirty()
+      }
+
+      def write( out: DataOutput ) {
+         out.writeInt( id.id )
+      }
+
+      def dispose()( implicit tx: S#Tx ) {}
+
+      override def toString = "IdentifierMap<" + id.id + ">"
+   }
+
+   // ----------------------------------------------
+   // ------------------ END maps ------------------
+   // ----------------------------------------------
+
    private object GlobalState {
       private val SER_VERSION = 0
 
@@ -1203,6 +1122,10 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       lastAccess: D#Var[ S#Acc ],
       partialTree: Ancestor.Tree[ D, Long ]
    )
+
+   // ---------------------------------------------
+   // --------------- BEGIN systems ---------------
+   // ---------------------------------------------
 
    private final class System( protected val storeFactory: DataStoreFactory[ DataStore ])
    extends Mixin[ Confluent ]
@@ -1330,7 +1253,45 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //         }
       }
 
-      protected def flushNewTree( level: Int )( implicit tx: S#Tx ) : Long = {
+      def flushRoot( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
+         require( !meldInfo.requiresNewTree, "Cannot meld in the root version" )
+         flush( tx.inputAccess.term, caches )
+      }
+
+      def flushRegular( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
+         val newTree = meldInfo.requiresNewTree
+         val outTerm = if( newTree ) {
+            flushNewTree( meldInfo.outputLevel )
+         } else {
+            flushOldTree()
+         }
+         log( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
+         flush( outTerm, caches )
+      }
+
+      private def flush( outTerm: Long, caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
+         position_=( tx.inputAccess.addTerm( outTerm ))   // XXX TODO last path would depend on value written to inputAccess?
+         caches.foreach( _.flushCache( outTerm ))
+      }
+
+      private def flushOldTree()( implicit tx: S#Tx ) : Long = {
+         implicit val dtx = durableTx( tx )
+         val childTerm  = newVersionID( tx )
+         val (index, parentTerm) = tx.inputAccess.splitIndex
+         val tree       = readIndexTree( index.term )
+         val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
+         val child      = tree.tree.insertChild( parent, childTerm )
+         writeTreeVertex( tree, child )
+
+         // ---- partial ----
+         val pParent    = readPartialTreeVertex( index, parentTerm )
+         val pChild     = partialTree.insertChild( pParent, childTerm )
+         writePartialTreeVertex( pChild )
+
+         childTerm
+      }
+
+      private def flushNewTree( level: Int )( implicit tx: S#Tx ) : Long = {
          implicit val dtx = durableTx( tx )
          val term = newVersionID( tx )
          newIndexTree( term, level )
@@ -1531,4 +1492,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          new PartialMapImpl[ A ]( index, map )
       }
    }
+
+   // ---------------------------------------------
+   // ---------------- END systems ----------------
+   // ---------------------------------------------
 }

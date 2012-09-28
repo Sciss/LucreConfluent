@@ -29,6 +29,7 @@ package confluent
 import stm.{Txn => _Txn, DataStore, Disposable, ImmutableSerializer, Identifier}
 import data.Ancestor
 import de.sciss.fingertree.FingerTree
+import collection.immutable.{IndexedSeq => IIdxSeq}
 
 object Sys {
    trait Entry[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
@@ -118,12 +119,10 @@ object Sys {
    trait Acc[ S <: Sys[ S ]] extends Writable with PathLike {
       def mkString( prefix: String, sep: String, suffix: String ) : String
 
-//      // append element
-//      private[confluent] def :+( suffix: Long ) : S#Acc
-
       // prepend element
       private[confluent] def +:( suffix: Long ) : S#Acc
 
+      // append element
       private[confluent] def :+( last: Long ) : S#Acc
 
       private[confluent] def index : S#Acc
@@ -144,7 +143,7 @@ object Sys {
 
       private[confluent] def partial: S#Acc
 
-      private[confluent] def tree: FingerTree[ (Int, Long), Long ]
+      private[confluent] def tree: FingerTree[ (Int, Long), Long ]   // :-( it's unfortunate having to expose this
 
 //      // replace last element
 //      private[confluent] def :-|( suffix: Long ) : S#Acc
@@ -217,4 +216,7 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx )
 //   private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
 //                                          term: Long )( implicit tx: S#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
+
+   private[confluent] def flushRegular( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit
+   private[confluent] def flushRoot(    meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit
 }

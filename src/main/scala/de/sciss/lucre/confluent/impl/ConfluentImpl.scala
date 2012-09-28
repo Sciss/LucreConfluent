@@ -284,29 +284,6 @@ println( "?? partial from index " + this )
       override def toString = "IndexTree<v=" + term.toInt + ", l=" + level + ">"
    }
 
-   private final class PartialMapImpl[ S <: Sys[ S ], D <: Sys[ D ], A ]( protected val index: S#Acc,
-                                            protected val map: Ancestor.Map[ D, Long, A ])
-   extends IndexMap[ S, A ] {
-      override def toString = index.mkString( "PartialMap(<", ",", ">, " + map + ")" )
-
-      def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
-???
-//         val v = tx.readPartialTreeVertex( index, term )
-//         val (v2, value) = map.nearest( v )( tx.durable )
-//         (v2.version, value)
-      }
-
-      def add( term: Long, value: A )( implicit tx: S#Tx ) {
-???
-//         val v = tx.readPartialTreeVertex( index, term )
-//         map.add( (v, value) )( tx.durable )
-      }
-
-      def write( out: DataOutput ) {
-         map.write( out )
-      }
-   }
-
    private final case class MeldInfo[ S <: Sys[ S ]]( highestLevel: Int, highestTrees: Set[ S#Acc ]) {
       def requiresNewTree : Boolean = highestTrees.size > 1
       def outputLevel : Int = if( requiresNewTree ) highestLevel + 1 else highestLevel
@@ -421,18 +398,6 @@ println( "?? partial from index " + this )
 //            val v       = tree.vertexSerializer.read( in, access )( durable )
 //            (v, level)
 //         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
-//      }
-
-//      final private[confluent] def readPartialTreeVertex( index: S#Acc,
-//                                                          term: Long ) : Ancestor.Vertex[ D, Long ] = {
-//???
-////         system.store.get { out =>
-////            out.writeUnsignedByte( 3 )
-////            out.writeInt( term.toInt )
-////         } { in =>
-////            val access  = index :+ term
-////            partialTree.vertexSerializer.read( in, access )( durable )
-////         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
 //      }
 
 //      final private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ]) {
@@ -1489,14 +1454,47 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       def readIndexMap[ A ]( in: DataInput, index: S#Acc )
                            ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
-???
-//         val term = index.term
-//         val tree = readIndexTree( term )
-//         val map  = Ancestor.readMap[ D, Long, A ]( in, (), tree.tree )
-//         new IndexMapImpl[ S, D, A ]( index, map )
+         implicit val dtx = durableTx( tx )
+         val term = index.term
+         val tree = readIndexTree( term )
+         val map  = Ancestor.readMap[ D, Long, A ]( in, (), tree.tree )
+         new IndexMapImpl[ A ]( index, map )
       }
 
       // ---- partial map handler ----
+
+      private final class PartialMapImpl[ A ]( protected val index: S#Acc,
+                                               protected val map: Ancestor.Map[ D, Long, A ])
+      extends IndexMap[ S, A ] {
+         override def toString = index.mkString( "PartialMap(<", ",", ">, " + map + ")" )
+
+         def nearest( term: Long )( implicit tx: S#Tx ) : (Long, A) = {
+            implicit val dtx = durableTx( tx )
+            val v = readPartialTreeVertex( index, term )
+            val (v2, value) = map.nearest( v )
+            (v2.version, value)
+         }
+
+         def add( term: Long, value: A )( implicit tx: S#Tx ) {
+            implicit val dtx = durableTx( tx )
+            val v = readPartialTreeVertex( index, term )
+            map.add( (v, value) )
+         }
+
+         def write( out: DataOutput ) {
+            map.write( out )
+         }
+      }
+
+      private def readPartialTreeVertex( index: S#Acc, term: Long )( implicit tx: D#Tx ) : Ancestor.Vertex[ D, Long ] = {
+         store.get { out =>
+            out.writeUnsignedByte( 3 )
+            out.writeInt( term.toInt )
+         } { in =>
+            val access  = index :+ term
+            partialTree.vertexSerializer.read( in, access )
+         } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
+      }
 
       def getIndexTreeTerm( term: Long )( implicit tx: S#Tx ) : Long = {
          implicit val dtx = durableTx( tx )
@@ -1504,19 +1502,19 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       }
 
       def newPartialMap[ A ]( access: S#Acc, rootTerm: Long, rootValue: A )
-                          ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
-???
-//         val map     = Ancestor.newMap[ D, Long, A ]( partialTree, partialTree.root, rootValue )
-//         val index   = access._take( 1 )   // XXX correct ?
-//         new PartialMapImpl[ S, D, A ]( index, map )
+                            ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
+         implicit val dtx = durableTx( tx )
+         val map     = Ancestor.newMap[ D, Long, A ]( partialTree, partialTree.root, rootValue )
+         val index   = access._take( 1 )   // XXX correct ?
+         new PartialMapImpl[ A ]( index, map )
       }
 
       def readPartialMap[ A ]( access: S#Acc, in: DataInput )
-                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
-???
-//         val map     = Ancestor.readMap[ D, Long, A ]( in, (), partialTree )
-//         val index   = access._take( 1 )   // XXX correct ?
-//         new PartialMapImpl[ S, D, A ]( index, map )
+                             ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
+         implicit val dtx = durableTx( tx )
+         val map     = Ancestor.readMap[ D, Long, A ]( in, (), partialTree )
+         val index   = access._take( 1 )   // XXX correct ?
+         new PartialMapImpl[ A ]( index, map )
       }
    }
 }

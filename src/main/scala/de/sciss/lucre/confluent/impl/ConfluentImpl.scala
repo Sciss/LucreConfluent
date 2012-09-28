@@ -26,7 +26,25 @@ object ConfluentImpl {
    }
 
    private object Path {
-//      type P = Path[ S ]
+      implicit def serializer[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] : stm.Serializer[ D#Tx, D#Acc, S#Acc ] =
+         new Ser[ S, D ]
+
+      private final class Ser[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends stm.Serializer[ D#Tx, D#Acc, S#Acc ] {
+         def write( v: S#Acc, out: DataOutput ) {
+            v.write( out )
+         }
+
+         def read( in: DataInput, acc: D#Acc )( implicit tx: D#Tx ) : S#Acc = {
+            implicit val m = PathMeasure
+            val sz         = in.readInt()
+            var tree       = FingerTree.empty( m )
+            var i = 0; while( i < sz ) {
+               tree :+= in.readLong()
+            i += 1 }
+            new Path[ S ]( tree )
+         }
+      }
+
       def test_empty[ S <: Sys[ S ]] : S#Acc = empty
 
       private val anyEmpty = new Path[ Confluent ]( FingerTree.empty( PathMeasure ))
@@ -1075,28 +1093,15 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    private object GlobalState {
       private val SER_VERSION = 0
 
-      final class PathSerializer[ S <: Sys[ S ], D <: Sys[ D ]] extends stm.Serializer[ D#Tx, D#Acc, S#Acc ] {
-         def write( v: S#Acc, out: DataOutput ) {
-            v.write( out )
-         }
+      implicit def serializer[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] : stm.Serializer[ D#Tx, D#Acc, GlobalState[ S, D ]] =
+         new Ser[ S, D ]
 
-         def read( in: DataInput, acc: D#Acc )( implicit tx: D#Tx ) : S#Acc = {
-            implicit val m = PathMeasure
-            val sz         = in.readInt()
-            var tree       = FingerTree.empty( m )
-            var i = 0; while( i < sz ) {
-               tree :+= in.readLong()
-            i += 1 }
-            new Path[ S ]( tree )
-         }
-      }
-
-      final class Serializer[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends stm.Serializer[ D#Tx, D#Acc, GlobalState[ S, D ]] {
+      private final class Ser[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends stm.Serializer[ D#Tx, D#Acc, GlobalState[ S, D ]] {
          def write( v: GlobalState[ S, D ], out: DataOutput ) {
             import v._
             out.writeUnsignedByte( SER_VERSION )
             idCnt.write( out )
-            reactCnt.write( out )
+//            reactCnt.write( out )
             versionLinear.write( out )
             versionRandom.write( out )
             lastAccess.write( out )
@@ -1107,17 +1112,17 @@ println( "WARNING: IDMap.remove : not yet implemented" )
             val serVer        = in.readUnsignedByte()
             require( serVer == SER_VERSION, "Incompatible serialized version. Found " + serVer + " but require " + SER_VERSION )
             val idCnt         = tx.readCachedIntVar( in )
-            val reactCnt      = tx.readCachedIntVar( in )
+//            val reactCnt      = tx.readCachedIntVar( in )
             val versionLinear = tx.readCachedIntVar( in )
             val versionRandom = tx.readCachedLongVar( in )
             val lastAccess: D#Var[ S#Acc ] = ??? // = tx.readCachedVar[ Path[ S ]]( in )
             val partialTree   = Ancestor.readTree[ D, Long ]( in, acc )( tx, ImmutableSerializer.Long, _.toInt )
-            GlobalState[ S, D ]( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
+            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, lastAccess, partialTree )
          }
       }
    }
    private final case class GlobalState[ S <: Sys[ S ], D <: stm.DurableLike[ D ]](
-      idCnt: D#Var[ Int ], reactCnt: D#Var[ Int ],
+      idCnt: D#Var[ Int ], /* reactCnt: D#Var[ Int ], */
       versionLinear: D#Var[ Int ], versionRandom: D#Var[ Long ],
       lastAccess: D#Var[ S#Acc ],
       partialTree: Ancestor.Tree[ D, Long ]
@@ -1162,17 +1167,16 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 //      private val refreshMap = InMemoryConfluentMap.newIntMap[ Confluent ]
 
       private val global: GlobalState[ S, D ] = durable.step { implicit tx =>
-???
-//         val root = durable.root { implicit tx =>
-//            val idCnt         = tx.newCachedIntVar( 0 )
+         val root = durable.root { implicit tx =>
+            val idCnt         = tx.newCachedIntVar( 0 )
 //            val reactCnt      = tx.newCachedIntVar( 0 )
-//            val versionLinear = tx.newCachedIntVar( 0 )
-//            val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
-//            val lastAccess: D#Var[ S#Acc ] = ??? // = tx.newCachedVar[ S#Acc ]( Path.root[ S ])( GlobalState.PathSerializer )
-//            val partialTree   = Ancestor.newTree[ D, Long ]( 1L << 32 )( tx, Serializer.Long, _.toInt )
-//            GlobalState[ S, D ]( idCnt, reactCnt, versionLinear, versionRandom, lastAccess, partialTree )
-//         }
-//         root.get
+            val versionLinear = tx.newCachedIntVar( 0 )
+            val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
+            val lastAccess: D#Var[ S#Acc ] = tx.newCachedVar[ S#Acc ]( Path.root[ S ])( Path.serializer[ S, D ])
+            val partialTree   = Ancestor.newTree[ D, Long ]( 1L << 32 )( tx, Serializer.Long, _.toInt )
+            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, lastAccess, partialTree )
+         }
+         root.get
       }
 
 //      private val inMem : InMemory = InMemory()

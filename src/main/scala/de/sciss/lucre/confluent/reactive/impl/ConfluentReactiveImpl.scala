@@ -244,7 +244,7 @@ object ConfluentReactiveImpl {
 
       final def readEventVar[ A ]( pid: S#ID, in: DataInput )
                                  ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val res = makeEventVar[ A ]( pid )
+         val res = makeEventVar[ A ]( readSource( in, pid ))
          log( "read evt " + res )
          res
       }

@@ -190,10 +190,29 @@ object ConfluentReactiveImpl {
          markEventDirty()
       }
       private[reactive] def getEventTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
-         eventCache.getCacheTxn[ A ]( id.id, id.path )( this, ser )
+         // note: eventCache.getCacheTxn will call store.get if the value is not in cache.
+         // that assumes that the value has been written, and id.path.splitIndex is called.
+         // for a fresh variable this fails obviously because the path is empty. therefore,
+         // we decompose the call at this site.
+//         eventCache.getCacheTxn[ A ]( id.id, id.path )( this, ser )
+         val idi  = id.id
+         val path = id.path
+         if( path.isEmpty ) {
+            eventCache.getCacheOnly[ A ]( idi, path )( this )
+         } else {
+            eventCache.getCacheTxn[  A ]( idi, path )( this, ser )
+         }
       }
       private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : Option[ A ] = {
-         eventCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser )
+         // see comment in getEventTxn
+//         eventCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser )
+         val idi  = id.id
+         val path = id.path
+         if( path.isEmpty ) {
+            eventCache.getCacheOnly[   A ]( idi, path )( this )
+         } else {
+            eventCache.getCacheNonTxn[ A ]( idi, path )( this, ser )
+         }
       }
 
 //      @inline private def allocEvent( pid: S#ID ) : S#ID = // new ConfluentID( system.newIDValue()( this ), pid.path )

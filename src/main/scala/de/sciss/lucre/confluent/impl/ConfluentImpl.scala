@@ -345,6 +345,9 @@ println( "?? partial from index " + this )
    // ------------- BEGIN transactions -------------
    // ----------------------------------------------
 
+   private def emptySeq[ A ] : IIdxSeq[ A ] = anyEmptySeq
+   private val anyEmptySeq = IIdxSeq.empty[ Nothing ]
+
    trait TxnMixin[ S <: Sys[ S ]]
    extends Sys.Txn[ S ] /* with DurableCacheMapImpl[ S, Int ] */ {
       _: S#Tx =>
@@ -355,15 +358,29 @@ println( "?? partial from index " + this )
 
       // ---- init ----
 
+      /*
+       * Because durable maps are persisted, they may be deserialized multiple times per transaction.
+       * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
+       * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
+       * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
+       * was marked after A1, it's cached value will override A2's, even though it is older.
+       *
+       * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
+       * only one instance per id is available in a single transaction.
+       */
+      private var durableIDMaps = IntMap.empty[ DurableIDMapImpl[ _, _ ]]
+
 //      private val meld  = TxnLocal( MeldInfo.empty[ S ])
       private var meld = MeldInfo.empty[ S ]
 
-      private val dirtyMaps : TxnLocal[ IIdxSeq[ Cache[ S#Tx ]]] = TxnLocal( initialValue =
-         { implicit itx =>
-            log( "....... txn dirty ......." )
-            ScalaTxn.beforeCommit { implicit itx => flushCaches( meld, dirtyMaps() )}
-            IIdxSeq.empty
-         })
+//      private val dirtyMaps : TxnLocal[ IIdxSeq[ Cache[ S#Tx ]]] = TxnLocal( initialValue =
+//         { implicit itx =>
+//            log( "....... txn dirty ......." )
+//            ScalaTxn.beforeCommit { implicit itx => flushCaches( meld, dirtyMaps() )}
+//            IIdxSeq.empty
+//         })
+
+      private var dirtyMaps = emptySeq[ Cache[ S#Tx ]]
 
 //      private val markDirtyFlag = TxnLocal( false )
       private var markDirtyFlag = false
@@ -381,7 +398,12 @@ println( "?? partial from index " + this )
       final def forceWrite() { markDirty() }
 
       final def addDirtyCache( map: Cache[ S#Tx ]) {
-         dirtyMaps.transform( _ :+ map )( peer )
+         val isFirst = dirtyMaps.isEmpty
+         dirtyMaps :+ map
+         if( isFirst ) {
+            log( "....... txn dirty ......." )
+            ScalaTxn.beforeCommit({ implicit itx => flushCaches( meld, dirtyMaps )})( peer )
+         }
       }
 
       final protected def fullCache    = system.fullMap
@@ -548,11 +570,16 @@ println( "?? partial from index " + this )
          mkDurableIDMap( system.newIDValue()( this ))
       }
 
+      final def removeDurableIDMap[ A ]( map: IdentifierMap[ S#ID, S#Tx, A ]) {
+         durableIDMaps -= map.id.id
+      }
+
       private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val map  = DurablePersistentMap.newConfluentLongMap[ S ]( system.store, system.indexMap )
          val idi  = new ConfluentID( id, Path.empty[ S ])
          val res  = new DurableIDMapImpl[ S, A ]( idi, map )
-         durableIDMaps.transform( _ + (id -> res) )( peer )
+//         durableIDMaps.transform( _ + (id -> res) )( peer )
+         durableIDMaps += id -> res
          res
       }
 
@@ -620,7 +647,7 @@ println( "?? partial from index " + this )
 
       final def readDurableIDMap[ A ]( in: DataInput )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
          val id = in.readInt()
-         durableIDMaps.get( peer ).get( id ) match {
+         durableIDMaps /* .get( peer ). */ get( id ) match {
             case Some( existing ) => existing.asInstanceOf[ DurableIDMapImpl[ S, A ]]
             case None => mkDurableIDMap( id )
          }
@@ -1029,17 +1056,7 @@ println( "?? partial from index " + this )
    // ----------------- BEGIN maps -----------------
    // ----------------------------------------------
 
-   /*
-    * Because durable maps are persisted, they may be deserialized multiple times per transaction.
-    * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
-    * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
-    * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
-    * was marked after A1, it's cached value will override A2's, even though it is older.
-    *
-    * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
-    * only one instance per id is available in a single transaction.
-    */
-   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
+//   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
 
    private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( val store: InMemoryConfluentMap[ S, Int ])
    extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {
@@ -1116,6 +1133,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       def remove( id: S#ID )( implicit tx: S#Tx ) {
 println( "WARNING: IDMap.remove : not yet implemented" )
+         tx.removeDurableIDMap( this )
          markDirty()
       }
 
@@ -1226,7 +1244,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       final def indexMap : Sys.IndexMapHandler[ S ] = this
 
-      final def partialTree : Ancestor.Tree[ D, Long ] = global.partialTree
+      @inline private def partialTree : Ancestor.Tree[ D, Long ] = global.partialTree
 
       final def newVersionID( implicit tx: S#Tx ) : Long = {
          implicit val dtx = durableTx( tx ) // tx.durable
@@ -1433,7 +1451,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
-      final def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx ) {
+      private def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx ) {
          store.put { out =>
             out.writeUnsignedByte( 3 )
             out.writeInt( v.version.toInt )

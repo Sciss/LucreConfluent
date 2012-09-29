@@ -105,6 +105,8 @@ object Sys {
       private[confluent] def removeFromCache( id: S#ID ) : Unit
       private[confluent] def addDirtyCache( cache: Cache[ S#Tx ]) : Unit
 
+      private[confluent] def removeDurableIDMap[ A ]( map: stm.IdentifierMap[ S#ID, S#Tx, A ]) : Unit
+
 //      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
 
 //      private[confluent] def inMemory : InMemory#Tx
@@ -201,22 +203,14 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[lucre] def durableTx(  tx: S#Tx ) : D#Tx
    private[lucre] def inMemoryTx( tx: S#Tx ) : I#Tx
 
-//   private[confluent] def varMap : DurablePersistentMap[ S, Int ]
    private[confluent] def fullMap    : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
    private[confluent] def partialMap : CacheMap.Partial[ S, Int, DurablePersistentMap[ S, Int ]]
-   private[confluent] def partialTree : Ancestor.Tree[ D, Long ]
    private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
    private[confluent] def newVersionID( implicit tx: S#Tx ) : Long
    private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit
    private[confluent] def store : DataStore
 
    private[confluent] def indexMap : Sys.IndexMapHandler[ S ]
-//   private[confluent] def partialIndexMap : Sys.IndexMapHandler[ S ]
-
-   // ---- formerly Txn ----
-   private[confluent] def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx )
-//   private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
-//                                          term: Long )( implicit tx: S#Tx ) : (Ancestor.Vertex[ D, Long ], Int)
 
    private[confluent] def flushRegular( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit
    private[confluent] def flushRoot(    meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit

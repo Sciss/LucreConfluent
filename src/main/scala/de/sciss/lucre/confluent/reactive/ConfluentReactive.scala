@@ -64,7 +64,8 @@ trait ConfluentReactiveLike[ S <: ConfluentReactiveLike[ S ]] extends confluent.
    type Tx <: ConfluentReactiveLike.Txn[ S ]
    private[reactive] def eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
 }
-trait ConfluentReactive extends ConfluentReactiveLike[ ConfluentReactive ] {
+// ought to remove cursor eventually in favour of a proper branch management...
+trait ConfluentReactive extends ConfluentReactiveLike[ ConfluentReactive ] with stm.Cursor[ ConfluentReactive ] {
    final protected type S  = ConfluentReactive
    final type D            = stm.Durable
    final type I            = stm.InMemory

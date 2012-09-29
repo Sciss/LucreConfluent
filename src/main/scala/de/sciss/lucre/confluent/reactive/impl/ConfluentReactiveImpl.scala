@@ -63,14 +63,25 @@ object ConfluentReactiveImpl {
 
       final def transform( default: => A )( f: A => A )( implicit tx: S#Tx ) { set( f( getOrElse( default )))}
 
-      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
+//      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
 
       override def toString = "evt.Var(" + id + ")"
    }
 
-   private final class EventVarTxImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
-                                                         ( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ])
+   private sealed trait IsFresh[ S <: ConfluentReactiveLike[ S ]] {
+      final def isFresh( implicit tx: S#Tx ) : Boolean = true
+   }
+
+   private sealed trait IsRead[ S <: ConfluentReactiveLike[ S ]] {
+      protected def id: S#ID
+
+      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
+   }
+
+   private sealed trait EventVarTxImpl[ S <: ConfluentReactiveLike[ S ], A ]
    extends BasicEventVar[ S, A ] {
+      implicit protected def ser: stm.Serializer[ S#Tx, S#Acc, A ]
+
       def set( v: A )( implicit tx: S#Tx ) {
          log( this.toString + " set " + v )
          tx.putEventTxn( id, v )
@@ -84,9 +95,18 @@ object ConfluentReactiveImpl {
 //      def getFresh( implicit tx: S#Tx ) : A = get
    }
 
-   private final class EventVarImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
-                                                                           protected val ser: ImmutableSerializer[ A ])
+   private final class EventVarTxNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
+   extends EventVarTxImpl[ S, A ] with IsFresh[ S ]
+
+   private final class EventVarTxRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
+   extends EventVarTxImpl[ S, A ] with IsRead[ S ]
+
+   private sealed trait EventVarImpl[ S <: ConfluentReactiveLike[ S ], A ]
    extends BasicEventVar[ S, A ] {
+      implicit protected def ser: ImmutableSerializer[ A ]
+
       def set( v: A )( implicit tx: S#Tx ) {
          log( this.toString + " set " + v )
          tx.putEventNonTxn( id, v )( ser )
@@ -100,7 +120,15 @@ object ConfluentReactiveImpl {
 //      def getFresh( implicit tx: S#Tx ) : A = get
    }
 
-   private final class IntEventVar[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
+   private final class EventVarNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+                                                                           protected val ser: ImmutableSerializer[ A ])
+   extends EventVarImpl[ S, A ] with IsFresh[ S ]
+
+   private final class EventVarRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+                                                                           protected val ser: ImmutableSerializer[ A ])
+   extends EventVarImpl[ S, A ] with IsRead[ S ]
+
+   private sealed trait IntEventVar[ S <: ConfluentReactiveLike[ S ]]
    extends BasicEventVar[ S, Int ] with ImmutableSerializer[ Int ] {
       def get( implicit tx: S#Tx ) : Option[ Int ] = {
          log( this.toString + " get" )
@@ -126,6 +154,12 @@ object ConfluentReactiveImpl {
       def write( v: Int, out: DataOutput ) { out.writeInt( v )}
       def read( in: DataInput ) : Int = in.readInt()
    }
+
+   private final class IntEventVarNew[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
+   extends IntEventVar[ S ] with IsFresh[ S ]
+
+   private final class IntEventVarRead[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
+   extends IntEventVar[ S ] with IsRead[ S ]
 
    trait TxnMixin[ S <: ConfluentReactiveLike[ S ]]
    extends confluent.impl.ConfluentImpl.TxnMixin[ S ] // gimme `alloc` and `readSource`
@@ -164,38 +198,39 @@ object ConfluentReactiveImpl {
 
 //      @inline private def allocEvent( pid: S#ID ) : S#ID = // new ConfluentID( system.newIDValue()( this ), pid.path )
 
-      private def makeEventVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         ser match {
-            case plain: ImmutableSerializer[ _ ] =>
-               new EventVarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
-            case _ =>
-               new EventVarTxImpl[ S, A ]( id )
-         }
-      }
-
       final def newEventVar[ A ]( pid: S#ID )
                                 ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val res = makeEventVar[ A ]( alloc( pid ))
+         val res = serializer match {
+            case plain: ImmutableSerializer[ _ ] =>
+               new EventVarNew[ S, A ]( pid, plain.asInstanceOf[ ImmutableSerializer[ A ]])
+            case _ =>
+               new EventVarTxNew[ S, A ]( pid )
+         }
          log( "new evt var " + res )
          res
       }
 
       final def newEventIntVar[ A ]( pid: S#ID ) : evt.Var[ S, Int ] = {
          val id   = alloc( pid )
-         val res  = new IntEventVar( id )
+         val res  = new IntEventVarNew( id )
          log( "new evt var " + res )
          res
       }
 
       final def readEventVar[ A ]( pid: S#ID, in: DataInput )
                                  ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val res = makeEventVar[ A ]( readSource( in, pid ))
+         val res = serializer match {
+            case plain: ImmutableSerializer[ _ ] =>
+               new EventVarRead[ S, A ]( pid, plain.asInstanceOf[ ImmutableSerializer[ A ]])
+            case _ =>
+               new EventVarTxRead[ S, A ]( pid )
+         }
          log( "read evt " + res )
          res
       }
 
       final def readEventIntVar[ A ]( pid: S#ID, in: DataInput ) : evt.Var[ S, Int ] = {
-         val res = new IntEventVar( readSource( in, pid ))
+         val res = new IntEventVarRead( readSource( in, pid ))
          log( "read evt " + res )
          res
       }

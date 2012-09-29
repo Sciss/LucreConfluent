@@ -32,9 +32,10 @@ import stm.{ImmutableSerializer, DataStoreFactory, DataStore}
 import de.sciss.lucre.{event => evt}
 import concurrent.stm.InTxn
 import de.sciss.lucre.event.ReactionMap
+import confluent.impl.DurableCacheMapImpl
 
 object ConfluentReactiveImpl {
-   def ??? : Nothing = sys.error( "TODO" )
+//   def ??? : Nothing = sys.error( "TODO" )
 
    private type S = ConfluentReactive
 
@@ -55,6 +56,40 @@ object ConfluentReactiveImpl {
       final def transform( default: => A )( f: A => A )( implicit tx: S#Tx ) { set( f( getOrElse( default )))}
 
       final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
+
+      override def toString = "evt.Var(" + id + ")"
+   }
+
+   private final class EventVarTxImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+                                                         ( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ])
+   extends BasicEventVar[ S, A ] {
+      def set( v: A )( implicit tx: S#Tx ) {
+         log( this.toString + " set " + v )
+         tx.putEventTxn( id, v )
+      }
+
+      def get( implicit tx: S#Tx ) : Option[ A ] = {
+         log( this.toString + " get" )
+         tx.getEventTxn( id )
+      }
+
+//      def getFresh( implicit tx: S#Tx ) : A = get
+   }
+
+   private final class EventVarImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+                                                                           protected val ser: ImmutableSerializer[ A ])
+   extends BasicEventVar[ S, A ] {
+      def set( v: A )( implicit tx: S#Tx ) {
+         log( this.toString + " set " + v )
+         tx.putEventNonTxn( id, v )( ser )
+      }
+
+      def get( implicit tx: S#Tx ) : Option[ A ] = {
+         log( this.toString + " get" )
+         tx.getEventNonTxn[ A ]( id )( ser )
+      }
+
+//      def getFresh( implicit tx: S#Tx ) : A = get
    }
 
    private final class IntEventVar[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
@@ -77,19 +112,21 @@ object ConfluentReactiveImpl {
          tx.putNonTxn( id, v )( this )
       }
 
-      override def toString = "Var[Int](" + id + ")"
+      override def toString = "evt.Var[Int](" + id + ")"
 
       // ---- Serializer ----
       def write( v: Int, out: DataOutput ) { out.writeInt( v )}
       def read( in: DataInput ) : Int = in.readInt()
    }
 
-   trait TxnMixin[ S <: ConfluentReactiveLike[ S ]] extends ConfluentReactiveLike.Txn[ S ] {
+   trait TxnMixin[ S <: ConfluentReactiveLike[ S ]]
+   extends confluent.impl.ConfluentImpl.TxnMixin[ S ] // gimme `alloc` and `readSource`
+   with ConfluentReactiveLike.Txn[ S ] {
       _: S#Tx =>
 
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      private val eventMap: CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = ???
+      private val eventCache: CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = system.eventCache
 
       private var markDirtyFlag = false
 
@@ -98,43 +135,61 @@ object ConfluentReactiveImpl {
       final private def markEventDirty() {
          if( !markDirtyFlag ) {
             markDirtyFlag = true
-            addDirtyCache( eventMap )
+            addDirtyCache( eventCache )
          }
       }
 
       private[reactive] def putEventTxn[ A ]( id: S#ID, value: A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) {
-         eventMap.putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
+         eventCache.putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
          markEventDirty()
       }
       private[reactive] def putEventNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
-         ???
+         eventCache.putCacheNonTxn( id.id, id.path, value )( this, ser )
+         markEventDirty()
       }
       private[reactive] def getEventTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
-         ???
+         eventCache.getCacheTxn[ A ]( id.id, id.path )( this, ser )
       }
       private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : Option[ A ] = {
-         ???
+         eventCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser )
       }
 
-      final def newEventVar[ A ]( id: S#ID )
+//      @inline private def allocEvent( pid: S#ID ) : S#ID = // new ConfluentID( system.newIDValue()( this ), pid.path )
+
+      private def makeEventVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
+         ser match {
+            case plain: ImmutableSerializer[ _ ] =>
+               new EventVarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
+            case _ =>
+               new EventVarTxImpl[ S, A ]( id )
+         }
+      }
+
+      final def newEventVar[ A ]( pid: S#ID )
                                 ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-//         new VarImpl( Ref.make[ A ])
-         ??? // new DurableVarImpl[ S, A ]( system.newEventIDValue()( this ), serializer )
+         val res = makeEventVar[ A ]( alloc( pid ))
+         log( "new evt var " + res )
+         res
       }
 
-      final def newEventIntVar[ A ]( id: S#ID ) : evt.Var[ S, Int ] = {
-         ??? // new DurableIntVar[ S ]( system.newEventIDValue()( this ))
+      final def newEventIntVar[ A ]( pid: S#ID ) : evt.Var[ S, Int ] = {
+         val id   = alloc( pid )
+         val res  = new IntEventVar( id )
+         log( "new evt var " + res )
+         res
       }
 
-      final def readEventVar[ A ]( id: S#ID, in: DataInput )
+      final def readEventVar[ A ]( pid: S#ID, in: DataInput )
                                  ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val id = in.readInt()
-         ??? // new DurableVarImpl[ S, A ]( id, serializer )
+         val res = makeEventVar[ A ]( readSource( in, pid ))
+         log( "read evt " + res )
+         res
       }
 
-      final def readEventIntVar[ A ]( id: S#ID, in: DataInput ) : evt.Var[ S, Int ] = {
-         val id = in.readInt()
-         ??? // new DurableIntVar[ S ]( id )
+      final def readEventIntVar[ A ]( pid: S#ID, in: DataInput ) : evt.Var[ S, Int ] = {
+         val res = new IntEventVar( readSource( in, pid ))
+         log( "read evt " + res )
+         res
       }
    }
 
@@ -163,6 +218,10 @@ object ConfluentReactiveImpl {
       def inMemory               = durable.inMemory
       def durableTx(  tx: S#Tx ) = tx.durable
       def inMemoryTx( tx: S#Tx ) = tx.inMemory
+
+      private val eventStore  = storeFactory.open( "event" )
+      private val eventVarMap = DurablePersistentMap.newConfluentIntMap[ S ]( eventStore, this )
+      val eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = DurableCacheMapImpl.newIntCache( eventVarMap )
 
       protected def wrapRegular( dtx: evt.Durable#Tx, inputAccess: S#Acc ) = new RegularTxn( this, dtx, inputAccess )
       protected def wrapRoot( peer: InTxn ) = new RootTxn( this, peer )

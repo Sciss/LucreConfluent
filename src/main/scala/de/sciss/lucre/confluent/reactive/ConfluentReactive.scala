@@ -50,6 +50,7 @@ object ConfluentReactiveLike {
 }
 trait ConfluentReactiveLike[ S <: ConfluentReactiveLike[ S ]] extends confluent.Sys[ S ] with evt.Sys[ S ] {
    type Tx <: ConfluentReactiveLike.Txn[ S ]
+   private[reactive] def eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
 }
 trait ConfluentReactive extends ConfluentReactiveLike[ ConfluentReactive ] {
    final protected type S  = ConfluentReactive

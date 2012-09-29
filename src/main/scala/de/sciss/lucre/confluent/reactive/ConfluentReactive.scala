@@ -28,6 +28,7 @@ package confluent
 package reactive
 
 import de.sciss.lucre.{event => evt}
+import stm.ImmutableSerializer
 
 object ConfluentReactive {
    private type S = ConfluentReactive
@@ -40,7 +41,12 @@ object ConfluentReactive {
    implicit def inMemory( tx: S#Tx ) : evt.InMemory#Tx = tx.inMemory
 }
 object ConfluentReactiveLike {
-   trait Txn[ S <: ConfluentReactiveLike[ S ]] extends confluent.Sys.Txn[ S ] with evt.Txn[ S ]
+   trait Txn[ S <: ConfluentReactiveLike[ S ]] extends confluent.Sys.Txn[ S ] with evt.Txn[ S ] {
+      private[reactive] def putEventTxn[    A ]( id: S#ID, value: A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Unit
+      private[reactive] def putEventNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ])         : Unit
+      private[reactive] def getEventTxn[    A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ]
+      private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ])         : Option[ A ]
+   }
 }
 trait ConfluentReactiveLike[ S <: ConfluentReactiveLike[ S ]] extends confluent.Sys[ S ] with evt.Sys[ S ] {
    type Tx <: ConfluentReactiveLike.Txn[ S ]

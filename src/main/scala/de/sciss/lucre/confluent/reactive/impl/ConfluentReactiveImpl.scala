@@ -63,24 +63,25 @@ object ConfluentReactiveImpl {
 
       final def transform( default: => A )( f: A => A )( implicit tx: S#Tx ) { set( f( getOrElse( default )))}
 
-//      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
+      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
 
       override def toString = "evt.Var(" + id + ")"
    }
 
-   private sealed trait IsFresh[ S <: ConfluentReactiveLike[ S ]] {
-      final def isFresh( implicit tx: S#Tx ) : Boolean = true
-   }
+//   private sealed trait IsFresh[ S <: ConfluentReactiveLike[ S ]] {
+//      final def isFresh( implicit tx: S#Tx ) : Boolean = true
+//   }
+//
+//   private sealed trait IsRead[ S <: ConfluentReactiveLike[ S ]] {
+//      protected def id: S#ID
+//
+//      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
+//   }
 
-   private sealed trait IsRead[ S <: ConfluentReactiveLike[ S ]] {
-      protected def id: S#ID
-
-      final def isFresh( implicit tx: S#Tx ) : Boolean  = tx.isFresh( id )
-   }
-
-   private sealed trait EventVarTxImpl[ S <: ConfluentReactiveLike[ S ], A ]
+   private final class EventVarTxImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
    extends BasicEventVar[ S, A ] {
-      implicit protected def ser: stm.Serializer[ S#Tx, S#Acc, A ]
+//      implicit protected def ser: stm.Serializer[ S#Tx, S#Acc, A ]
 
       def set( v: A )( implicit tx: S#Tx ) {
          log( this.toString + " set " + v )
@@ -95,17 +96,18 @@ object ConfluentReactiveImpl {
 //      def getFresh( implicit tx: S#Tx ) : A = get
    }
 
-   private final class EventVarTxNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
-                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
-   extends EventVarTxImpl[ S, A ] with IsFresh[ S ]
+//   private final class EventVarTxNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+//                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
+//   extends EventVarTxImpl[ S, A ] with IsFresh[ S ]
+//
+//   private final class EventVarTxRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
+//                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
+//   extends EventVarTxImpl[ S, A ] with IsRead[ S ]
 
-   private final class EventVarTxRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID )
-                                                         ( implicit protected val ser: stm.Serializer[ S#Tx, S#Acc, A ])
-   extends EventVarTxImpl[ S, A ] with IsRead[ S ]
-
-   private sealed trait EventVarImpl[ S <: ConfluentReactiveLike[ S ], A ]
+   private final class EventVarImpl[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+                                                                           protected val ser: ImmutableSerializer[ A ])
    extends BasicEventVar[ S, A ] {
-      implicit protected def ser: ImmutableSerializer[ A ]
+//      implicit protected def ser: ImmutableSerializer[ A ]
 
       def set( v: A )( implicit tx: S#Tx ) {
          log( this.toString + " set " + v )
@@ -120,15 +122,15 @@ object ConfluentReactiveImpl {
 //      def getFresh( implicit tx: S#Tx ) : A = get
    }
 
-   private final class EventVarNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
-                                                                           protected val ser: ImmutableSerializer[ A ])
-   extends EventVarImpl[ S, A ] with IsFresh[ S ]
+//   private final class EventVarNew[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+//                                                                           protected val ser: ImmutableSerializer[ A ])
+//   extends EventVarImpl[ S, A ] with IsFresh[ S ]
+//
+//   private final class EventVarRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
+//                                                                           protected val ser: ImmutableSerializer[ A ])
+//   extends EventVarImpl[ S, A ] with IsRead[ S ]
 
-   private final class EventVarRead[ S <: ConfluentReactiveLike[ S ], A ]( protected val id: S#ID,
-                                                                           protected val ser: ImmutableSerializer[ A ])
-   extends EventVarImpl[ S, A ] with IsRead[ S ]
-
-   private sealed trait IntEventVar[ S <: ConfluentReactiveLike[ S ]]
+   private final class IntEventVar[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
    extends BasicEventVar[ S, Int ] with ImmutableSerializer[ Int ] {
       def get( implicit tx: S#Tx ) : Option[ Int ] = {
          log( this.toString + " get" )
@@ -155,11 +157,11 @@ object ConfluentReactiveImpl {
       def read( in: DataInput ) : Int = in.readInt()
    }
 
-   private final class IntEventVarNew[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
-   extends IntEventVar[ S ] with IsFresh[ S ]
-
-   private final class IntEventVarRead[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
-   extends IntEventVar[ S ] with IsRead[ S ]
+//   private final class IntEventVarNew[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
+//   extends IntEventVar[ S ] with IsFresh[ S ]
+//
+//   private final class IntEventVarRead[ S <: ConfluentReactiveLike[ S ]]( protected val id: S#ID )
+//   extends IntEventVar[ S ] with IsRead[ S ]
 
    trait TxnMixin[ S <: ConfluentReactiveLike[ S ]]
    extends confluent.impl.ConfluentImpl.TxnMixin[ S ] // gimme `alloc` and `readSource`
@@ -190,66 +192,65 @@ object ConfluentReactiveImpl {
          markEventDirty()
       }
       private[reactive] def getEventTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
-         // note: eventCache.getCacheTxn will call store.get if the value is not in cache.
+         // OBSOLETE: note: eventCache.getCacheTxn will call store.get if the value is not in cache.
          // that assumes that the value has been written, and id.path.splitIndex is called.
          // for a fresh variable this fails obviously because the path is empty. therefore,
          // we decompose the call at this site.
-//         eventCache.getCacheTxn[ A ]( id.id, id.path )( this, ser )
-         val idi  = id.id
-         val path = id.path
-         if( path.isEmpty ) {
-            eventCache.getCacheOnly[ A ]( idi, path )( this )
-         } else {
-            eventCache.getCacheTxn[  A ]( idi, path )( this, ser )
-         }
+         eventCache.getCacheTxn[ A ]( id.id, id.path )( this, ser )
+//         val idi  = id.id
+//         val path = id.path
+//         if( path.isEmpty ) {
+//            eventCache.getCacheOnly[ A ]( idi, path )( this )
+//         } else {
+//            eventCache.getCacheTxn[  A ]( idi, path )( this, ser )
+//         }
       }
       private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : Option[ A ] = {
-         // see comment in getEventTxn
-//         eventCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser )
-         val idi  = id.id
-         val path = id.path
-         if( path.isEmpty ) {
-            eventCache.getCacheOnly[   A ]( idi, path )( this )
-         } else {
-            eventCache.getCacheNonTxn[ A ]( idi, path )( this, ser )
-         }
+         // OBSOLETE: see comment in getEventTxn
+         eventCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser )
+//         val idi  = id.id
+//         val path = id.path
+//         if( path.isEmpty ) {
+//            eventCache.getCacheOnly[   A ]( idi, path )( this )
+//         } else {
+//            eventCache.getCacheNonTxn[ A ]( idi, path )( this, ser )
+//         }
       }
 
 //      @inline private def allocEvent( pid: S#ID ) : S#ID = // new ConfluentID( system.newIDValue()( this ), pid.path )
 
+      private def makeEventVar[ A ]( id: S#ID )( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
+         serializer match {
+            case plain: ImmutableSerializer[ _ ] =>
+               new EventVarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
+            case _ =>
+               new EventVarTxImpl[ S, A ]( id )
+         }
+      }
+
       final def newEventVar[ A ]( pid: S#ID )
                                 ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val res = serializer match {
-            case plain: ImmutableSerializer[ _ ] =>
-               new EventVarNew[ S, A ]( pid, plain.asInstanceOf[ ImmutableSerializer[ A ]])
-            case _ =>
-               new EventVarTxNew[ S, A ]( pid )
-         }
+         val res = makeEventVar[ A ]( pid )
          log( "new evt var " + res )
          res
       }
 
       final def newEventIntVar[ A ]( pid: S#ID ) : evt.Var[ S, Int ] = {
          val id   = alloc( pid )
-         val res  = new IntEventVarNew( id )
+         val res  = new IntEventVar( id )
          log( "new evt var " + res )
          res
       }
 
       final def readEventVar[ A ]( pid: S#ID, in: DataInput )
                                  ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : evt.Var[ S, A ] = {
-         val res = serializer match {
-            case plain: ImmutableSerializer[ _ ] =>
-               new EventVarRead[ S, A ]( pid, plain.asInstanceOf[ ImmutableSerializer[ A ]])
-            case _ =>
-               new EventVarTxRead[ S, A ]( pid )
-         }
+         val res = makeEventVar[ A ]( pid )
          log( "read evt " + res )
          res
       }
 
       final def readEventIntVar[ A ]( pid: S#ID, in: DataInput ) : evt.Var[ S, Int ] = {
-         val res = new IntEventVarRead( readSource( in, pid ))
+         val res = new IntEventVar( readSource( in, pid ))
          log( "read evt " + res )
          res
       }

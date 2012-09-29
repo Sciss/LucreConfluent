@@ -516,8 +516,8 @@ println( "?? partial from index " + this )
 //         putTxn[ A ]( id, value )
 //      }
 
-      @inline private def alloc(        pid: S#ID ) : S#ID = new ConfluentID( system.newIDValue()( this ), pid.path )
-      @inline private def allocPartial( pid: S#ID ) : S#ID = new PartialID(   system.newIDValue()( this ), pid.path )
+      @inline final protected def alloc(        pid: S#ID ) : S#ID = new ConfluentID( system.newIDValue()( this ), pid.path )
+      @inline final protected def allocPartial( pid: S#ID ) : S#ID = new PartialID(   system.newIDValue()( this ), pid.path )
 
       final def newVar[ A ]( pid: S#ID, init: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
          val res = makeVar[ A ]( alloc( pid ))
@@ -583,12 +583,12 @@ println( "?? partial from index " + this )
          res
       }
 
-      private def readSource( in: DataInput, pid: S#ID ) : S#ID = {
+      final protected def readSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
          new ConfluentID( id, pid.path )
       }
 
-      private def readPartialSource( in: DataInput, pid: S#ID ) : S#ID = {
+      final protected def readPartialSource( in: DataInput, pid: S#ID ) : S#ID = {
          val id = in.readInt()
          new PartialID( id, pid.path )
       }

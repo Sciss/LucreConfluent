@@ -76,7 +76,7 @@ object Sys {
 
       def forceWrite() : Unit
 
-      private[confluent] def readPath( in: DataInput ) : S#Acc
+//      private[confluent] def readPath( in: DataInput ) : S#Acc
 
       // formerly Confluent.Txn
 
@@ -105,7 +105,7 @@ object Sys {
       private[confluent] def removeFromCache( id: S#ID ) : Unit
       private[confluent] def addDirtyCache( cache: Cache[ S#Tx ]) : Unit
 
-      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
+//      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
 
 //      private[confluent] def inMemory : InMemory#Tx
 
@@ -201,8 +201,9 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[lucre] def durableTx(  tx: S#Tx ) : D#Tx
    private[lucre] def inMemoryTx( tx: S#Tx ) : I#Tx
 
-   private[confluent] def varMap : DurablePersistentMap[ S, Int ]
-   private[confluent] def partialMap : impl.PartialCacheMapImpl[ S, Int ]
+//   private[confluent] def varMap : DurablePersistentMap[ S, Int ]
+   private[confluent] def fullMap    : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
+   private[confluent] def partialMap : CacheMap.Partial[ S, Int, DurablePersistentMap[ S, Int ]]
    private[confluent] def partialTree : Ancestor.Tree[ D, Long ]
    private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
    private[confluent] def newVersionID( implicit tx: S#Tx ) : Long

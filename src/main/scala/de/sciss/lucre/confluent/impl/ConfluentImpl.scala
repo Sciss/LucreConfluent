@@ -346,7 +346,7 @@ println( "?? partial from index " + this )
    // ----------------------------------------------
 
    trait TxnMixin[ S <: Sys[ S ]]
-   extends Sys.Txn[ S ] with DurableCacheMapImpl[ S, Int ] {
+   extends Sys.Txn[ S ] /* with DurableCacheMapImpl[ S, Int ] */ {
       _: S#Tx =>
 
       // ---- abstract ----
@@ -355,22 +355,25 @@ println( "?? partial from index " + this )
 
       // ---- init ----
 
-      private val meld  = TxnLocal( MeldInfo.empty[ S ])
+//      private val meld  = TxnLocal( MeldInfo.empty[ S ])
+      private var meld = MeldInfo.empty[ S ]
 
       private val dirtyMaps : TxnLocal[ IIdxSeq[ Cache[ S#Tx ]]] = TxnLocal( initialValue =
          { implicit itx =>
             log( "....... txn dirty ......." )
-            ScalaTxn.beforeCommit { implicit itx => flushCaches( meld(), dirtyMaps() )}
+            ScalaTxn.beforeCommit { implicit itx => flushCaches( meld, dirtyMaps() )}
             IIdxSeq.empty
          })
 
-      private val markDirtyFlag = TxnLocal( false )   // XXX TODO: we might just use a plain variable?
+//      private val markDirtyFlag = TxnLocal( false )
+      private var markDirtyFlag = false
 
 //      def isDirty = markDirtyFlag.get( peer )
 
       final private def markDirty() {
-         if( !markDirtyFlag.swap( true )( peer )) {
-            addDirtyCache( this )
+         if( !markDirtyFlag ) {
+            markDirtyFlag = true
+            addDirtyCache( fullCache )
             addDirtyCache( partialCache )
          }
       }
@@ -381,13 +384,8 @@ println( "?? partial from index " + this )
          dirtyMaps.transform( _ :+ map )( peer )
       }
 
-      final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
-
-      final protected def partialCache: PartialCacheMapImpl[ S, Int ] = system.partialMap
-
-      final protected def store = system.varMap
-
-//      protected def partialTree: Ancestor.Tree[ D, Long ] = system.partialTree
+      final protected def fullCache    = system.fullMap
+      final protected def partialCache = system.partialMap
 
       final def newID() : S#ID = {
          val res = new ConfluentID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
@@ -417,42 +415,41 @@ println( "?? partial from index " + this )
          val sem1 = path.seminal
          val sem2 = inputAccess.seminal
          if( sem1 == sem2 ) return
-         meld.transform( m => {
-            if( sem1 == sem2 ) m else {
-               // note: before we were reading the index tree; but since only the level
-               // is needed, we can read the vertex instead which also stores the
-               // the level.
+         if( sem1 != sem2 ) {
+            val m = meld
+            // note: before we were reading the index tree; but since only the level
+            // is needed, we can read the vertex instead which also stores the
+            // the level.
 //               val tree1 = readIndexTree( sem1.head )
-               val tree1Level = readTreeVertexLevel( sem1.head )
-               val m1 = if( m.isEmpty ) {
+            val tree1Level = readTreeVertexLevel( sem1.head )
+            val m1 = if( m.isEmpty ) {
 //                     val tree2 = readIndexTree( sem2.head )
-                  val tree2Level = readTreeVertexLevel( sem2.head )
-                  m.add( tree2Level, sem2 )
-               } else m
-               m1.add( tree1Level, sem1 )
-            }
-         })( peer )
+               val tree2Level = readTreeVertexLevel( sem2.head )
+               m.add( tree2Level, sem2 )
+            } else m
+            meld = m1.add( tree1Level, sem1 )
+         }
       }
 
       final def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
          log( "txn get " + id )
-         getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
+         fullCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final def getTxn[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : A = {
          log( "txn get' " + id )
-         getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
+         fullCache.getCacheTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
       }
 
       final def putTxn[ A ]( id: S#ID, value: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) {
 //         logConfig( "txn put " + id )
-         putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
+         fullCache.putCacheTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
       final def putNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
 //         logConfig( "txn put " + id )
-         putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
+         fullCache.putCacheNonTxn[ A ]( id.id, id.path, value )( this, ser )
          markDirty()
       }
 
@@ -475,20 +472,20 @@ println( "?? partial from index " + this )
          val id1  = id.id
          val path = id.path
          // either the value was written during this transaction (implies freshness)...
-         cacheContains( id1, path )( this ) || {
+         fullCache.cacheContains( id1, path )( this ) || {
             // ...or we have currently an ongoing meld which will produce a new
             // index tree---in that case (it wasn't in the cache!) the value is definitely not fresh...
-            if( meld.get( peer ).requiresNewTree ) false else {
+            if( meld.requiresNewTree ) false else {
                // ...or otherwise freshness means the most recent write index corresponds
                // to the input access index
                // store....
-               store.isFresh( id1, path )( this )
+               fullCache.store.isFresh( id1, path )( this )
             }
          }
       }
 
       final def removeFromCache( id: S#ID ) {
-         removeCacheOnly( id.id )( this )
+         fullCache.removeCacheOnly( id.id )( this )
       }
 
 //      final def readVal[ A ]( id: S#ID )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
@@ -1044,7 +1041,7 @@ println( "?? partial from index " + this )
     */
    private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
 
-   private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( protected val store: InMemoryConfluentMap[ S, Int ])
+   private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( val store: InMemoryConfluentMap[ S, Int ])
    extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {
       private val markDirtyFlag = TxnLocal( false )
 
@@ -1085,7 +1082,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
    }
 
    private final class DurableIDMapImpl[ S <: Sys[ S ], A ]( val id: S#ID,
-                                                             protected val store: DurablePersistentMap[ S, Long ])
+                                                             val store: DurablePersistentMap[ S, Long ])
                                            ( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends IdentifierMap[ S#ID, S#Tx, A ] with DurableCacheMapImpl[ S, Long ] {
       private val nid = id.id.toLong << 32
@@ -1205,10 +1202,10 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       // ---- init ----
 
-      final val store        = storeFactory.open( "data" )
-      final val varMap       = DurablePersistentMap.newConfluentIntMap[ S ]( store, this )
-      final val partialMap : PartialCacheMapImpl[ S, Int ] =
-         PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap[ S ]( store, this ))
+      final val store         = storeFactory.open( "data" )
+      private val varMap      = DurablePersistentMap.newConfluentIntMap[ S ]( store, this )
+      final val fullMap       = DurableCacheMapImpl.newIntCache( varMap )
+      final val partialMap    = PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap[ S ]( store, this ))
 
       private val global: GlobalState[ S, D ] = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>

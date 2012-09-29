@@ -406,8 +406,8 @@ println( "?? partial from index " + this )
          }
       }
 
-      final protected def fullCache    = system.fullMap
-      final protected def partialCache = system.partialMap
+      final protected def fullCache    = system.fullCache
+      final protected def partialCache = system.partialCache
 
       final def newID() : S#ID = {
          val res = new ConfluentID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
@@ -593,7 +593,7 @@ println( "?? partial from index " + this )
          new PartialID( id, pid.path )
       }
 
-      final def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] /* BasicVar[ S, A ] */ = {
+      private def makeVar[ A ]( id: S#ID )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] /* BasicVar[ S, A ] */ = {
          ser match {
             case plain: ImmutableSerializer[ _ ] =>
                new VarImpl[ S, A ]( id, plain.asInstanceOf[ ImmutableSerializer[ A ]])
@@ -1222,8 +1222,8 @@ println( "WARNING: IDMap.remove : not yet implemented" )
 
       final val store         = storeFactory.open( "data" )
       private val varMap      = DurablePersistentMap.newConfluentIntMap[ S ]( store, this )
-      final val fullMap       = DurableCacheMapImpl.newIntCache( varMap )
-      final val partialMap    = PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap[ S ]( store, this ))
+      final val fullCache     = DurableCacheMapImpl.newIntCache( varMap )
+      final val partialCache  = PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap[ S ]( store, this ))
 
       private val global: GlobalState[ S, D ] = durable.step { implicit tx =>
          val root = durable.root { implicit tx =>

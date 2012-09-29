@@ -76,21 +76,7 @@ object Sys {
 
       def forceWrite() : Unit
 
-//      private[confluent] def readPath( in: DataInput ) : S#Acc
-
-      // formerly Confluent.Txn
-
-//      private[confluent] implicit def durable: D#Tx
-
-//      private[confluent] def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc,
-//                                             term: Long ) : (Ancestor.Vertex[ D, Long ], Int)
-//      private[confluent] def readPartialTreeVertex( index: S#Acc, term: Long ) : Ancestor.Vertex[ D, Long ]
-
-//      private[confluent] def writeTreeVertex( tree: IndexTree[ D ], v: Ancestor.Vertex[ D, Long ]) : Unit
       private[confluent] def readTreeVertexLevel( term: Long ) : Int
-//      private[confluent] def readIndexTree( term: Long ) : IndexTree[ D ]
-//      private[confluent] def newIndexTree( term: Long, level: Int ) : IndexTree[ D ]
-
       private[confluent] def addInputVersion( path: S#Acc ) : Unit
 
       private[confluent] def putTxn[ A ]( id: S#ID, value: A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Unit
@@ -106,11 +92,6 @@ object Sys {
       private[confluent] def addDirtyCache( cache: Cache[ S#Tx ]) : Unit
 
       private[confluent] def removeDurableIDMap[ A ]( map: stm.IdentifierMap[ S#ID, S#Tx, A ]) : Unit
-
-//      private[confluent] def makeVar[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Var[ S, A ] // BasicVar[ A ]
-
-//      private[confluent] def inMemory : InMemory#Tx
-
    }
 
    trait ID[ S <: Sys[ S ]] extends Identifier[ S#Tx ] {
@@ -203,8 +184,8 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[lucre] def durableTx(  tx: S#Tx ) : D#Tx
    private[lucre] def inMemoryTx( tx: S#Tx ) : I#Tx
 
-   private[confluent] def fullMap    : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
-   private[confluent] def partialMap : CacheMap.Partial[ S, Int, DurablePersistentMap[ S, Int ]]
+   private[confluent] def fullCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]]
+   private[confluent] def partialCache : CacheMap.Partial[ S, Int, DurablePersistentMap[ S, Int ]]
    private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
    private[confluent] def newVersionID( implicit tx: S#Tx ) : Long
    private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit

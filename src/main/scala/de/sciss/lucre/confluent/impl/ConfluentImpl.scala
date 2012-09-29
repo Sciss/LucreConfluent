@@ -701,8 +701,10 @@ println( "?? partial from index " + this )
    }
 
    private final class RegularTxn( val system: Confluent, val durable: Durable#Tx,
-                                   val peer: InTxn, val inputAccess: Confluent#Acc )
-   extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl
+                                   val inputAccess: Confluent#Acc )
+   extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl {
+      lazy val peer = durable.peer
+   }
    
    private final class RootTxn( val system: Confluent, val peer: InTxn )
    extends RootTxnMixin[ Confluent, Durable ] with TxnImpl {
@@ -1184,7 +1186,7 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       def durableTx(  tx: S#Tx ) : D#Tx   = tx.durable
       def inMemoryTx( tx: S#Tx ) : I#Tx   = tx.inMemory
 
-      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx = new RegularTxn( this, dtx, dtx.peer, inputAccess )
+      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx = new RegularTxn( this, dtx, inputAccess )
       protected def wrapRoot( peer: InTxn ) : S#Tx = new RootTxn( this, peer )
    }
 

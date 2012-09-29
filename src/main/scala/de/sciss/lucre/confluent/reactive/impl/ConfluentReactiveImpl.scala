@@ -85,9 +85,11 @@ object ConfluentReactiveImpl {
    }
 
    trait TxnMixin[ S <: ConfluentReactiveLike[ S ]] extends ConfluentReactiveLike.Txn[ S ] {
+      _: S#Tx =>
+
       final def reactionMap : ReactionMap[ S ] = system.reactionMap
 
-      private val eventMap: confluent.impl.DurableCacheMapImpl[ S, Int ] = ???
+      private val eventMap: CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = ???
 
       private var markDirtyFlag = false
 
@@ -107,10 +109,10 @@ object ConfluentReactiveImpl {
       private[reactive] def putEventNonTxn[ A ]( id: S#ID, value: A )( implicit ser: ImmutableSerializer[ A ]) {
          ???
       }
-      private[reactive] def getEventTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : A = {
+      private[reactive] def getEventTxn[ A ]( id: S#ID )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] = {
          ???
       }
-      private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
+      private[reactive] def getEventNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : Option[ A ] = {
          ???
       }
 

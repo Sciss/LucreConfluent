@@ -399,7 +399,7 @@ println( "?? partial from index " + this )
 
       final def addDirtyCache( map: Cache[ S#Tx ]) {
          val isFirst = dirtyMaps.isEmpty
-         dirtyMaps :+ map
+         dirtyMaps :+= map
          if( isFirst ) {
             log( "....... txn dirty ......." )
             ScalaTxn.beforeCommit({ implicit itx => flushCaches( meld, dirtyMaps )})( peer )

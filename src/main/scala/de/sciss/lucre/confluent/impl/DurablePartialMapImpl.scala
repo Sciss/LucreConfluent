@@ -215,6 +215,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
    }
 
    final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
+      if( conPath.isEmpty ) return None
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (/* _, */ _, value) => value )
@@ -222,6 +223,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
 
    final def getWithSuffix[ @specialized A ]( key: K, conPath: S#Acc )
                                             ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
+      if( conPath.isEmpty ) return None
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>

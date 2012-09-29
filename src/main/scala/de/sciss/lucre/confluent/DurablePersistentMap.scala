@@ -103,5 +103,8 @@ trait DurablePersistentMap[ S <: Sys[ S ], @specialized( Int, Long ) K ] {
    def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
                                       ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ]
 
+   /**
+    * '''Note:''' requires that `path` is non-empty.
+    */
    def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

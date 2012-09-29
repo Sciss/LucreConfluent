@@ -494,7 +494,8 @@ println( "?? partial from index " + this )
          val id1  = id.id
          val path = id.path
          // either the value was written during this transaction (implies freshness)...
-         fullCache.cacheContains( id1, path )( this ) || {
+         // ...or the path is empty (it was just created) -> also implies freshness...
+         fullCache.cacheContains( id1, path )( this ) || path.isEmpty || {
             // ...or we have currently an ongoing meld which will produce a new
             // index tree---in that case (it wasn't in the cache!) the value is definitely not fresh...
             if( meld.requiresNewTree ) false else {

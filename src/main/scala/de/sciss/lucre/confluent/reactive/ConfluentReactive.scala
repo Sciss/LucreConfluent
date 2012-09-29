@@ -28,17 +28,29 @@ package confluent
 package reactive
 
 import de.sciss.lucre.{event => evt}
-import stm.ImmutableSerializer
+import stm.{DataStoreFactory, DataStore, ImmutableSerializer}
+import stm.impl.BerkeleyDB
+import java.io.File
+import impl.{ConfluentReactiveImpl => Impl}
 
 object ConfluentReactive {
    private type S = ConfluentReactive
 
-   trait Txn extends ConfluentReactiveLike.Txn[ S ] {
-      private[confluent] def durable : evt.Durable#Tx
-      private[confluent] def inMemory : evt.InMemory#Tx
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : S = Impl( storeFactory )
+
+   def tmp() : S = {
+      val dir = File.createTempFile( "confluent_", "db" )
+      dir.delete()
+//      dir.mkdir()
+      apply( BerkeleyDB.factory( dir ))
    }
 
-   implicit def inMemory( tx: S#Tx ) : evt.InMemory#Tx = tx.inMemory
+   trait Txn extends ConfluentReactiveLike.Txn[ S ] {
+      private[confluent] def durable : stm.Durable#Tx
+      private[confluent] def inMemory : stm.InMemory#Tx
+   }
+
+   implicit def inMemory( tx: S#Tx ) : stm.InMemory#Tx = tx.inMemory
 }
 object ConfluentReactiveLike {
    trait Txn[ S <: ConfluentReactiveLike[ S ]] extends confluent.Sys.Txn[ S ] with evt.Txn[ S ] {
@@ -54,8 +66,8 @@ trait ConfluentReactiveLike[ S <: ConfluentReactiveLike[ S ]] extends confluent.
 }
 trait ConfluentReactive extends ConfluentReactiveLike[ ConfluentReactive ] {
    final protected type S  = ConfluentReactive
-   final type D            = evt.Durable
-   final type I            = evt.InMemory
+   final type D            = stm.Durable
+   final type I            = stm.InMemory
    final type Tx           = ConfluentReactive.Txn
 
 //   private[confluent] def reactionMap: evt.ReactionMap[ S ]

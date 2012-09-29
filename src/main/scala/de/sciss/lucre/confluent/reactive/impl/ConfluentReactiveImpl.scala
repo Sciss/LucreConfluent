@@ -39,6 +39,14 @@ object ConfluentReactiveImpl {
 
    private type S = ConfluentReactive
 
+   def apply( storeFactory: DataStoreFactory[ DataStore ]) : S = {
+      // tricky: before `durable` was a `val` in `System`, this caused
+      // a NPE with `Mixin` initialising `global`.
+      // (http://stackoverflow.com/questions/12647326/avoiding-npe-in-trait-initialization-without-using-lazy-vals)
+      val durable = stm.Durable( storeFactory )
+      new System( storeFactory, durable )
+   }
+
    private sealed trait BasicEventVar[ S <: Sys[ S ], A ] extends evt.Var[ S, A ] {
       protected def id: S#ID
 
@@ -194,24 +202,25 @@ object ConfluentReactiveImpl {
    }
 
    private sealed trait TxnImpl extends TxnMixin[ S ] with ConfluentReactive.Txn {
-      final lazy val inMemory: evt.InMemory#Tx = system.inMemory.wrap( peer )
+//      final lazy val inMemory: evt.InMemory#Tx = system.inMemory.wrap( peer )
+      final lazy val inMemory: stm.InMemory#Tx = system.inMemory.wrap( peer )
    }
 
-   private final class RegularTxn( val system: S, val durable: evt.Durable#Tx,
+   private final class RegularTxn( val system: S, val durable: stm.Durable#Tx,
                                    val inputAccess: S#Acc )
-   extends confluent.impl.ConfluentImpl.RegularTxnMixin[ S, evt.Durable ] with TxnImpl {
+   extends confluent.impl.ConfluentImpl.RegularTxnMixin[ S, stm.Durable ] with TxnImpl {
       lazy val peer = durable.peer
    }
 
    private final class RootTxn( val system: S, val peer: InTxn )
-   extends confluent.impl.ConfluentImpl.RootTxnMixin[ S, evt.Durable ] with TxnImpl {
-      lazy val durable: evt.Durable#Tx = {
+   extends confluent.impl.ConfluentImpl.RootTxnMixin[ S, stm.Durable ] with TxnImpl {
+      lazy val durable: stm.Durable#Tx = {
          log( "txn durable" )
          system.durable.wrap( peer )
       }
    }
 
-   private final class System( protected val storeFactory: DataStoreFactory[ DataStore ], val durable: evt.Durable )
+   private final class System( protected val storeFactory: DataStoreFactory[ DataStore ], val durable: stm.Durable )
    extends confluent.impl.ConfluentImpl.Mixin[ S ]
    with evt.impl.ReactionMapImpl.Mixin[ S ]
    with ConfluentReactive {
@@ -223,7 +232,7 @@ object ConfluentReactiveImpl {
       private val eventVarMap = DurablePersistentMap.newConfluentIntMap[ S ]( eventStore, this )
       val eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = DurableCacheMapImpl.newIntCache( eventVarMap )
 
-      protected def wrapRegular( dtx: evt.Durable#Tx, inputAccess: S#Acc ) = new RegularTxn( this, dtx, inputAccess )
+      protected def wrapRegular( dtx: stm.Durable#Tx, inputAccess: S#Acc ) = new RegularTxn( this, dtx, inputAccess )
       protected def wrapRoot( peer: InTxn ) = new RootTxn( this, peer )
    }
 }

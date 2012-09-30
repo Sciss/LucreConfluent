@@ -47,7 +47,8 @@ class SelfAccessTest[ S <: stm.Sys[ S ]]( system: S )( implicit cursor: Cursor[ 
             val cnt     = tx.newIntVar( id, 0 )
             val play    = tx.newBooleanVar( id, init = false )
             val csr     = cursor
-            val csrPos  = cursor.position
+//            val csrPos  = cursor.position
+            val me: stm.Source[ S#Tx, Counter ] = tx.newHandle( this: Counter )
 //            val self = tx.newVar[ Counter ]( id, null )
 //            self.set( this )
          }
@@ -77,7 +78,8 @@ class SelfAccessTest[ S <: stm.Sys[ S ]]( system: S )( implicit cursor: Cursor[ 
                val cnt     = tx.readIntVar( id, in )
                val play    = tx.readBooleanVar( id, in )
                val csr     = cursor
-               val csrPos  = csr.position
+//               val csrPos  = csr.position
+               val me: stm.Source[ S#Tx, Counter ] = tx.newHandle( this: Counter )
 //               val self    = tx.readVar[ Counter ]( id, in )( ser )
             }
          }
@@ -85,13 +87,15 @@ class SelfAccessTest[ S <: stm.Sys[ S ]]( system: S )( implicit cursor: Cursor[ 
 
       private abstract class Impl
       extends Counter with Runnable {
-         me =>
+//         me =>
+
+         protected def me: stm.Source[ S#Tx, Counter ]
 
          def id: S#ID
          protected def cnt: S#Var[ Int ]
          protected def play: S#Var[ Boolean ]
          protected def csr: Cursor[ S ]
-         protected def csrPos: S#Acc
+//         protected def csrPos: S#Acc
 //         protected def self: S#Var[ Counter ]
 
          override def toString = "Counter" + id
@@ -116,7 +120,7 @@ class SelfAccessTest[ S <: stm.Sys[ S ]]( system: S )( implicit cursor: Cursor[ 
 //               val icke = self.get
 //               val ickeO = map.get( id )
 //               val icke = tx.access( self )
-               val icke = tx.refresh[ Counter ]( csrPos, me )
+               val icke = me.get // tx.refresh[ Counter ]( csrPos, me )
 //               println( "...run " + tx + " -> " + icke )
                icke.step()
             }

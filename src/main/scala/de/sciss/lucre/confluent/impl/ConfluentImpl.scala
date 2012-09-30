@@ -453,6 +453,13 @@ println( "?? partial from index " + this )
          }
       }
 
+      final def newHandle[ A ]( value: A )( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : stm.Source[ S#Tx, A ] = {
+//         val id   = new ConfluentID[ S ]( 0, Path.empty[ S ])
+         val h = new HandleImpl( value, inputAccess.index )
+         addDirtyCache( h )
+         h
+      }
+
       final def getNonTxn[ A ]( id: S#ID )( implicit ser: ImmutableSerializer[ A ]) : A = {
          log( "txn get " + id )
          fullCache.getCacheNonTxn[ A ]( id.id, id.path )( this, ser ).getOrElse( sys.error( "No value for " + id ))
@@ -654,46 +661,46 @@ println( "?? partial from index " + this )
          }
       }
 
-      // there may be a more efficient implementation, but for now let's just calculate
-      // all the prefixes and retrieve them the normal way.
-      final def refresh[ A ]( writePath: S#Acc, value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : A = {
-         val readPath = inputAccess
-         if( readPath == writePath ) return value
-
-         val out     = new DataOutput()
-         serializer.write( value, out )
-         val in      = new DataInput( out )
-
-         val (writeIndex, writeTerm) = writePath.splitIndex
-         var entries = LongMap.empty[ Long ]
-         Hashing.foreachPrefix( writeIndex, entries.contains ) {
-            case (_hash, _preSum) => entries += (_hash, _preSum)
-         }
-         entries += (writeIndex.sum, 0L)  // full cookie
-
-         var (maxIndex, maxTerm) = readPath.splitIndex
-         while( true ) {
-            val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
-            val index = if( preLen == maxIndex.size ) {
-               // maximum prefix lies in last tree
-               maxIndex
-            } else {
-               // prefix lies in other tree
-               maxIndex._take( preLen )
-            }
-            val preSum = index.sum
-            val hash = entries( preSum )
-            if( hash == 0L ) {   // full entry
-               val suffix  = writeTerm +: readPath.drop( preLen )
-               return serializer.read( in, suffix )( this )
-            } else {   // partial hash
-               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-               maxIndex = fullIndex
-               maxTerm  = fullTerm
-            }
-         }
-         sys.error( "Never here" )
-      }
+//      // there may be a more efficient implementation, but for now let's just calculate
+//      // all the prefixes and retrieve them the normal way.
+//      final def refresh[ A ]( writePath: S#Acc, value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : A = {
+//         val readPath = inputAccess
+//         if( readPath == writePath ) return value
+//
+//         val out     = new DataOutput()
+//         serializer.write( value, out )
+//         val in      = new DataInput( out )
+//
+//         val (writeIndex, writeTerm) = writePath.splitIndex
+//         var entries = LongMap.empty[ Long ]
+//         Hashing.foreachPrefix( writeIndex, entries.contains ) {
+//            case (_hash, _preSum) => entries += (_hash, _preSum)
+//         }
+//         entries += (writeIndex.sum, 0L)  // full cookie
+//
+//         var (maxIndex, maxTerm) = readPath.splitIndex
+//         while( true ) {
+//            val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
+//            val index = if( preLen == maxIndex.size ) {
+//               // maximum prefix lies in last tree
+//               maxIndex
+//            } else {
+//               // prefix lies in other tree
+//               maxIndex._take( preLen )
+//            }
+//            val preSum = index.sum
+//            val hash = entries( preSum )
+//            if( hash == 0L ) {   // full entry
+//               val suffix  = writeTerm +: readPath.drop( preLen )
+//               return serializer.read( in, suffix )( this )
+//            } else {   // partial hash
+//               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+//               maxIndex = fullIndex
+//               maxTerm  = fullTerm
+//            }
+//         }
+//         sys.error( "Never here" )
+//      }
 
       override def toString = "confluent.Sys#Tx" + inputAccess // + system.path.mkString( "<", ",", ">" )
    }
@@ -829,6 +836,59 @@ println( "?? partial from index " + this )
    // ---------------------------------------------
    // -------------- BEGIN variables --------------
    // ---------------------------------------------
+
+   private final class HandleImpl[ S <: Sys[ S ], A ]( stale: A, writeIndex: S#Acc )( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ])
+   extends stm.Source[ S#Tx, A ] with Cache[ S#Tx ] {
+      private var writeTerm = 0L
+
+      override def toString = "handle: " + stale
+
+      def flushCache( term: Long )( implicit tx: S#Tx ) {
+         writeTerm = term
+      }
+
+      def get( implicit tx: S#Tx ) : A = {
+         if( writeTerm == 0L ) return stale  // wasn't flushed yet
+
+         val readPath = tx.inputAccess
+//         if( readPath == writePath ) return stale
+
+         val out     = new DataOutput()
+         serializer.write( stale, out )
+         val in      = new DataInput( out )
+
+//         val (writeIndex, writeTerm) = writePath.splitIndex
+//         val writeIndex = stalePath.index
+         var entries = LongMap.empty[ Long ]
+         Hashing.foreachPrefix( writeIndex, entries.contains ) {
+            case (_hash, _preSum) => entries += (_hash, _preSum)
+         }
+         entries += (writeIndex.sum, 0L)  // full cookie
+
+         var (maxIndex, maxTerm) = readPath.splitIndex
+         while( true ) {
+            val preLen = Hashing.maxPrefixLength( maxIndex, entries.contains )
+            val index = if( preLen == maxIndex.size ) {
+               // maximum prefix lies in last tree
+               maxIndex
+            } else {
+               // prefix lies in other tree
+               maxIndex._take( preLen )
+            }
+            val preSum = index.sum
+            val hash = entries( preSum )
+            if( hash == 0L ) {   // full entry
+               val suffix  = writeTerm +: readPath.drop( preLen )
+               return serializer.read( in, suffix )
+            } else {   // partial hash
+               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
+               maxIndex = fullIndex
+               maxTerm  = fullTerm
+            }
+         }
+         sys.error( "Never here" )
+      }
+   }
 
    private sealed trait BasicVar[ S <: Sys[ S ], A ] extends Sys.Var[ S, A ] {
       protected def id: S#ID

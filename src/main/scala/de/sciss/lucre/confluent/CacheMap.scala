@@ -59,7 +59,7 @@ trait CacheMap[ S <: stm.Sys[ S ], @specialized( Int, Long ) K, +Store ] extends
     * @param key        key at which the entry is stored
     * @param tx         the current transaction
     */
-   def removeCacheOnly( key: K )( implicit tx: S#Tx ) : Unit
+   def removeCacheOnly( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 
    /**
     * This method should be invoked from the implementations flush hook after it has
@@ -71,4 +71,6 @@ trait CacheMap[ S <: stm.Sys[ S ], @specialized( Int, Long ) K, +Store ] extends
     * @param tx      the current transaction (should be in commit or right-before commit phase)
     */
    def flushCache( term: Long )( implicit tx: S#Tx ) : Unit
+
+   def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

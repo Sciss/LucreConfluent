@@ -60,4 +60,6 @@ trait InMemoryConfluentMap[ S <: Sys[ S ], @specialized( Int, Long) K ] {
     *                   tree entering/exiting tuple at which the value was found.
     */
    def getWithSuffix[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ]
+
+   def remove( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

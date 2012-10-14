@@ -107,4 +107,6 @@ trait DurablePersistentMap[ S <: Sys[ S ], @specialized( Int, Long ) K ] {
     * '''Note:''' requires that `path` is non-empty.
     */
    def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
+
+   def remove( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean
 }

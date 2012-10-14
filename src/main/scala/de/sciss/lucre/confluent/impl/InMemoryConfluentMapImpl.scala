@@ -57,6 +57,29 @@ final class InMemoryConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K 
       store.put( key, entries )
    }
 
+   def remove( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      implicit val itx = tx.peer
+      store.get( key ) match {
+         case Some( entries ) =>
+            val index      = path.index
+            var newEntries = entries
+            Hashing.foreachPrefix( index, entries.contains ) {
+               case (hash, _) => newEntries -= hash
+            }
+            val indexSum   = index.sum
+            val res        = newEntries.contains( indexSum )
+            if( res ) newEntries -= indexSum
+            if( newEntries.isEmpty ) {
+               store.remove( key )
+            } else {
+               store.put( key, newEntries )
+            }
+            res
+
+         case _ => false
+      }
+   }
+
    def get[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] = {
       store.get( key )( tx.peer ).flatMap { entries =>
          val (maxIndex, maxTerm) = path.splitIndex

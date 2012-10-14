@@ -214,6 +214,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       }
    }
 
+   def remove( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      println( "Durable partial map : remove not yet implemented" )
+      true
+   }
+
    final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
       if( conPath.isEmpty ) return None
       val (maxIndex, maxTerm) = conPath.splitIndex

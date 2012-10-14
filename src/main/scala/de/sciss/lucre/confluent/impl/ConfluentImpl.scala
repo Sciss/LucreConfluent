@@ -515,7 +515,7 @@ println( "?? partial from index " + this )
       }
 
       final def removeFromCache( id: S#ID ) {
-         fullCache.removeCacheOnly( id.id )( this )
+         fullCache.removeCacheOnly( id.id, id.path )( this )
       }
 
 //      final def readVal[ A ]( id: S#ID )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : A = getTxn[ A ]( id )
@@ -1149,8 +1149,7 @@ println( "?? partial from index " + this )
       }
 
       def remove( id: S#ID )( implicit tx: S#Tx ) {
-println( "WARNING: IDMap.remove : not yet implemented" )
-         markDirty()
+         if( removeCache( id.id, id.path )) markDirty()
       }
 
       def write( out: DataOutput ) {}
@@ -1193,16 +1192,17 @@ println( "WARNING: IDMap.remove : not yet implemented" )
       }
 
       def remove( id: S#ID )( implicit tx: S#Tx ) {
-println( "WARNING: IDMap.remove : not yet implemented" )
-         tx.removeDurableIDMap( this )
-         markDirty()
+         if( removeCacheOnly( id.id, id.path )) markDirty()
       }
 
       def write( out: DataOutput ) {
          out.writeInt( id.id )
       }
 
-      def dispose()( implicit tx: S#Tx ) {}
+      def dispose()( implicit tx: S#Tx ) {
+println( "WARNING: Durable IDMap.dispose : not yet implemented" )
+         tx.removeDurableIDMap( this )
+      }
 
       override def toString = "IdentifierMap<" + id.id + ">"
    }

@@ -158,6 +158,24 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       m.add( term, value )
    }
 
+   def remove( key: K, index: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      Hashing.foreachPrefix( index, hash => {
+         store.contains { out =>
+            writeKey( key, out )
+            out.writeLong( hash )
+         }
+      }) {
+         case (hash, _) => store.remove { out =>
+            writeKey( key, out )
+            out.writeLong( hash )
+         }
+      }
+      store.remove { out =>
+         writeKey( key, out ) // out.writeInt( key )
+         out.writeLong( index.sum )
+      }
+   }
+
    // stores the prefixes
    private def putPartials( key: K, index: S#Acc )( implicit tx: S#Tx ) {
       Hashing.foreachPrefix( index, hash => {

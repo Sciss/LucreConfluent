@@ -99,8 +99,24 @@ extends CacheMap[ S, K, Store ] {
     * @param key        key at which the entry is stored
     * @param tx         the current transaction
     */
-   final def removeCacheOnly( key: K )( implicit tx: S#Tx ) {
-      cache.transform( _ - key )( tx.peer )
+   final def removeCacheOnly( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      implicit val itx = tx.peer
+//      cache.transform( _ - key )( tx.peer )
+      val m    = cache.get
+      val km   = m.getOrElse( key, LongMap.empty )
+      val hash = path.sum
+      if( km.contains( hash )) {
+         val km1  = km - hash
+         val m1   = if( km1.isEmpty ) {
+            m - key
+         } else {
+            m + (key -> km1)
+         }
+         cache.set( m1 )
+         true
+      } else {
+         false
+      }
    }
    
    final protected def putCacheOnly( e: Entry[ S, K, Store ])( implicit tx: S#Tx ) {
@@ -257,6 +273,10 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
 //      cacheContains( key, path ) || {
 //         store.getWithSuffix()
 //      }
+
+   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      removeCacheOnly( key, path ) || store.remove( key, path )
+   }
 }
 object InMemoryCacheMapImpl {
    private type Store[ S <: Sys[ S ], K ] = InMemoryConfluentMap[ S, K ]
@@ -284,6 +304,10 @@ with CacheMapImpl[         S, K, InMemoryConfluentMap[ S, K ]] {
 
    final def getCache[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
       getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
+
+   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      removeCacheOnly( key, path ) || store.remove( key, path )
+   }
 }
 
 // ---------------------------------------------------------------------
@@ -336,6 +360,10 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
             serializer.read( in, access )
          }
       }
+
+   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
+      removeCacheOnly( key, path ) || store.remove( key, path )
+   }
 
 //   final def getFreshPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
 //                                                          serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =

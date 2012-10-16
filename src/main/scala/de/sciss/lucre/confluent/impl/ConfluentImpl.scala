@@ -416,6 +416,8 @@ println( "?? partial from index " + this )
       }
 
       final def newPartialID() : S#ID = {
+         if( Confluent.DEBUG_DISABLE_PARTIAL ) return newID()
+
          val res = new PartialID[ S ]( system.newIDValue()( this ), Path.empty[ S ])
          log( "txn newPartialID " + res )
          res
@@ -537,6 +539,8 @@ println( "?? partial from index " + this )
       final def newLocalVar[ A ]( init: S#Tx => A ) : stm.LocalVar[ S#Tx, A ] = new stm.impl.LocalVarImpl[ S, A ]( init )
 
       final def newPartialVar[ A ]( pid: S#ID, init: A )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         if( Confluent.DEBUG_DISABLE_PARTIAL ) return newVar( pid, init )
+
          val res = new PartialVarTxImpl[ S, A ]( allocPartial( pid ))
          log( "txn newPartialVar " + res )
          res.setInit( init )( this )
@@ -617,6 +621,8 @@ println( "?? partial from index " + this )
       }
 
       final def readPartialVar[ A ]( pid: S#ID, in: DataInput )( implicit ser: Serializer[ S#Tx, S#Acc, A ]) : S#Var[ A ] = {
+         if( Confluent.DEBUG_DISABLE_PARTIAL ) return readVar( pid, in )
+
          val res = new PartialVarTxImpl[ S, A ]( readPartialSource( in, pid ))
          log( "txn read " + res )
          res
@@ -647,7 +653,8 @@ println( "?? partial from index " + this )
       }
 
       final def readPartialID( in: DataInput, acc: S#Acc ) : S#ID = {
-//         readID( in, acc )
+         if( Confluent.DEBUG_DISABLE_PARTIAL ) return readID( in, acc )
+
          val res = new PartialID( in.readInt(), Path.readAndAppend( in, acc )( this ))
          log( "txn readPartialID " + res )
          res

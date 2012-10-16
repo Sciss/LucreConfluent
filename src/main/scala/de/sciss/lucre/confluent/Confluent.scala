@@ -32,6 +32,8 @@ import java.io.File
 import stm.impl.BerkeleyDB
 
 object Confluent {
+   var DEBUG_DISABLE_PARTIAL  = true
+
    def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = Impl( storeFactory )
 
    def tmp() : Confluent = {

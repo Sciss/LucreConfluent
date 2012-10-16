@@ -81,6 +81,7 @@ final class InMemoryConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K 
    }
 
    def get[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] = {
+      if( path.isEmpty ) return None
       store.get( key )( tx.peer ).flatMap { entries =>
          val (maxIndex, maxTerm) = path.splitIndex
          getWithPrefixLen[ A, A ]( maxIndex, maxTerm, entries )( (_, _, value) => value )
@@ -88,6 +89,7 @@ final class InMemoryConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K 
    }
 
    def getWithSuffix[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ (S#Acc, A) ] = {
+      if( path.isEmpty ) return None
       store.get( key )( tx.peer ).flatMap { entries =>
          val (maxIndex, maxTerm) = path.splitIndex
          getWithPrefixLen[ A, (S#Acc, A) ]( maxIndex, maxTerm, entries )( (preLen, writeTerm, value) =>

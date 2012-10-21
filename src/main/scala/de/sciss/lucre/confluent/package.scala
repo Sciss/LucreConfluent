@@ -41,4 +41,6 @@ package object confluent {
    @elidable(CONFIG) private[confluent] def logPartial( what: => String ) {
       if( showPartialLog ) Console.out.println( logHeader.format( new Date() ) + "partial " + what )
    }
+
+   private[confluent] def ??? : Nothing = sys.error( "TODO" )
 }

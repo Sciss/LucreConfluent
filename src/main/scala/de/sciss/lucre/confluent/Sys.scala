@@ -30,6 +30,7 @@ import stm.{Txn => _Txn, DataStore, Disposable, ImmutableSerializer, Identifier}
 import data.Ancestor
 import de.sciss.fingertree.FingerTree
 import collection.immutable.{IndexedSeq => IIdxSeq}
+import concurrent.stm.InTxn
 
 object Sys {
    trait Entry[ S <: Sys[ S ], A ] extends stm.Var[ S#Tx, A ] {
@@ -92,6 +93,12 @@ object Sys {
       private[confluent] def addDirtyCache( cache: Cache[ S#Tx ]) : Unit
 
       private[confluent] def removeDurableIDMap[ A ]( map: stm.IdentifierMap[ S#ID, S#Tx, A ]) : Unit
+
+      // ---- cursors ----
+//      def readPath( in: DataInput ) : S#Acc
+
+      def newCursor( init: S#Acc ) : Cursor[ S ]
+      def readCursor( in: DataInput, access: S#Acc ) : Cursor[ S ]
    }
 
    trait ID[ S <: Sys[ S ]] extends Identifier[ S#Tx ] {
@@ -188,11 +195,22 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
    private[confluent] def partialCache : CacheMap.Partial[ S, Int, DurablePersistentMap[ S, Int ]]
    private[confluent] def newIDValue()( implicit tx: S#Tx ) : Int
    private[confluent] def newVersionID( implicit tx: S#Tx ) : Long
-   private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit
+//   private[confluent] def position_=( newPos: S#Acc )( implicit tx: S#Tx ) : Unit
    private[confluent] def store : DataStore
 
    private[confluent] def indexMap : Sys.IndexMapHandler[ S ]
 
    private[confluent] def flushRegular( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit
    private[confluent] def flushRoot(    meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) : Unit
+
+   private[confluent] def readPath( in: DataInput ) : S#Acc
+
+   private[confluent] def createTxn( dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[ S#Tx ]) : S#Tx
+
+   // ---- cursors ----
+
+//   implicit def defaultCursor : Cursor[ S ]
+
+   private[confluent] def newCursor( init: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ]
+   private[confluent] def readCursor( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ]
 }

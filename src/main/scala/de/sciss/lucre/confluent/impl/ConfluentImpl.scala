@@ -423,8 +423,6 @@ println( "?? partial from index " + this )
          res
       }
 
-      final def readPath( in: DataInput ) : S#Acc = Path.read[ S ]( in )
-
       final def readTreeVertexLevel( term: Long ) : Int = {
          system.store.get( out => {
             out.writeUnsignedByte( 0 )
@@ -668,6 +666,9 @@ println( "?? partial from index " + this )
          }
       }
 
+      final def newCursor( init: S#Acc ) : Cursor[ S ] = system.newCursor( init )( this )
+      final def readCursor( in: DataInput, access: S#Acc ) : Cursor[ S ] = system.readCursor( in, access )( this )
+
 //      // there may be a more efficient implementation, but for now let's just calculate
 //      // all the prefixes and retrieve them the normal way.
 //      final def refresh[ A ]( writePath: S#Acc, value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : A = {
@@ -715,8 +716,10 @@ println( "?? partial from index " + this )
    trait RegularTxnMixin[ S <: Sys[ S ], D <: stm.DurableLike[ D ]] extends TxnMixin[ S ] {
       _: S#Tx =>
 
+      protected def cursorCache: Cache[ S#Tx ]
+
       final protected def flushCaches( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]]) {
-         system.flushRegular( meldInfo, caches )( this )
+         system.flushRegular( meldInfo, caches :+ cursorCache )( this )
       }
 
       override def toString = "Confluent#Tx" + inputAccess
@@ -740,7 +743,7 @@ println( "?? partial from index " + this )
    }
 
    private final class RegularTxn( val system: Confluent, val durable: Durable#Tx,
-                                   val inputAccess: Confluent#Acc )
+                                   val inputAccess: Confluent#Acc, val cursorCache: Cache[ Confluent#Tx ])
    extends RegularTxnMixin[ Confluent, Durable ] with TxnImpl {
       lazy val peer = durable.peer
    }
@@ -1232,7 +1235,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 //            reactCnt.write( out )
             versionLinear.write( out )
             versionRandom.write( out )
-            lastAccess.write( out )
+//            lastAccess.write( out )
             partialTree.write( out )
          }
 
@@ -1243,16 +1246,16 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 //            val reactCnt      = tx.readCachedIntVar( in )
             val versionLinear = tx.readCachedIntVar( in )
             val versionRandom = tx.readCachedLongVar( in )
-            val lastAccess: D#Var[ S#Acc ] = tx.readCachedVar[ S#Acc ]( in )( Path.serializer[ S, D ])
+//            val lastAccess: D#Var[ S#Acc ] = tx.readCachedVar[ S#Acc ]( in )( Path.serializer[ S, D ])
             val partialTree   = Ancestor.readTree[ D, Long ]( in, acc )( tx, ImmutableSerializer.Long, _.toInt )
-            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, lastAccess, partialTree )
+            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, /* lastAccess, */ partialTree )
          }
       }
    }
    private final case class GlobalState[ S <: Sys[ S ], D <: stm.DurableLike[ D ]](
       idCnt: D#Var[ Int ], /* reactCnt: D#Var[ Int ], */
       versionLinear: D#Var[ Int ], versionRandom: D#Var[ Long ],
-      lastAccess: D#Var[ S#Acc ],
+//      lastAccess: D#Var[ S#Acc ],
       partialTree: Ancestor.Tree[ D, Long ]
    )
 
@@ -1269,7 +1272,9 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       def durableTx(  tx: S#Tx ) : D#Tx   = tx.durable
       def inMemoryTx( tx: S#Tx ) : I#Tx   = tx.inMemory
 
-      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx = new RegularTxn( this, dtx, inputAccess )
+      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[ S#Tx ]) : S#Tx =
+         new RegularTxn( this, dtx, inputAccess, cursorCache )
+
       protected def wrapRoot( peer: InTxn ) : S#Tx = new RootTxn( this, peer )
    }
 
@@ -1283,7 +1288,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       // ---- abstract methods ----
 
       protected def storeFactory: DataStoreFactory[ DataStore ]
-      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc ) : S#Tx
+      protected def wrapRegular( dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[ S#Tx ]) : S#Tx
       protected def wrapRoot( peer: InTxn ) : S#Tx
 
       // ---- init ----
@@ -1299,9 +1304,9 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 //            val reactCnt      = tx.newCachedIntVar( 0 )
             val versionLinear = tx.newCachedIntVar( 0 )
             val versionRandom = tx.newCachedLongVar( TxnRandom.initialScramble( 0L )) // scramble !!!
-            val lastAccess: D#Var[ S#Acc ] = tx.newCachedVar[ S#Acc ]( Path.root[ S ])( Path.serializer[ S, D ])
+//            val lastAccess: D#Var[ S#Acc ] = tx.newCachedVar[ S#Acc ]( Path.root[ S ])( Path.serializer[ S, D ])
             val partialTree   = Ancestor.newTree[ D, Long ]( 1L << 32 )( tx, Serializer.Long, _.toInt )
-            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, lastAccess, partialTree )
+            GlobalState[ S, D ]( idCnt, /* reactCnt, */ versionLinear, versionRandom, /* lastAccess, */ partialTree )
          }
          root.get
       }
@@ -1333,24 +1338,30 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          res
       }
 
-      final def step[ A ]( fun: S#Tx => A ): A = {
-         TxnExecutor.defaultAtomic { implicit itx =>
-            implicit val dtx = durable.wrap( itx )
-            val last = global.lastAccess.get
-            log( "::::::: atomic - input access = " + last + " :::::::" )
-            fun( wrapRegular( dtx, last ))
-         }
+      final def createTxn( dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[ S#Tx ]) : S#Tx = {
+         log( "::::::: atomic - input access = " + inputAccess + " :::::::" )
+         wrapRegular( dtx, inputAccess, cursorCache )
       }
 
-      final def position_=( p: S#Acc )( implicit tx: S#Tx ) {
-         implicit val dtx = durableTx( tx )
-         global.lastAccess.set( p ) // ( tx.durable )
+      final def readPath( in: DataInput ) : S#Acc = Path.read[ S ]( in )
+
+      final def newCursor( init: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ] = {
+         CursorImpl[ S, D ]( init )( tx, this )
       }
 
-      final def position( implicit tx: S#Tx ) : S#Acc = {
-         implicit val dtx = durableTx( tx )
-         global.lastAccess.get // ( tx.durable )
+      final def readCursor( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ] = {
+         CursorImpl.read[ S, D ]( in, access )( tx, this )
       }
+
+//      final def position_=( p: S#Acc )( implicit tx: S#Tx ) {
+//         implicit val dtx = durableTx( tx )
+//         global.lastAccess.set( p ) // ( tx.durable )
+//      }
+//
+//      final def position( implicit tx: S#Tx ) : S#Acc = {
+//         implicit val dtx = durableTx( tx )
+//         global.lastAccess.get // ( tx.durable )
+//      }
 
       final def root[ A ]( init: S#Tx => A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
@@ -1386,7 +1397,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       }
 
       private def flush( outTerm: Long, caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
-         position_=( tx.inputAccess.addTerm( outTerm ))   // XXX TODO last path would depend on value written to inputAccess?
+//         position_=( tx.inputAccess.addTerm( outTerm ))   // XXX TODO last path would depend on value written to inputAccess?
          caches.foreach( _.flushCache( outTerm ))
       }
 

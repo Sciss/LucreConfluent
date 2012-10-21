@@ -26,7 +26,7 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Cursor, DataStoreFactory, DataStore}
+import stm.{DataStoreFactory, DataStore}
 import impl.{ConfluentImpl => Impl}
 import java.io.File
 import stm.impl.BerkeleyDB
@@ -50,7 +50,7 @@ object Confluent {
 
    implicit def inMemory( tx: Confluent#Tx ) : stm.InMemory#Tx = tx.inMemory
 }
-trait Confluent extends Sys[ Confluent ] with Cursor[ Confluent ] {
+trait Confluent extends Sys[ Confluent ] /* with stm.Cursor[ Confluent ] */ {
    final protected type S  = Confluent
    final type D            = stm.Durable
    final type I            = stm.InMemory

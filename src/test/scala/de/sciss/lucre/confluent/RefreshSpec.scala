@@ -10,8 +10,8 @@ import stm.MutableSerializer
  * test-only de.sciss.lucre.confluent.RefreshSpec
  */
 class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
-   type FixtureParam = Confluent
-   type S = FixtureParam
+   type FixtureParam = Cursor[ Confluent ]
+   type S = Confluent
 
    confluent.showLog = true
 
@@ -37,21 +37,21 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
    def withFixture( test: OneArgTest ) {
       val system = Confluent.tmp()
       try {
-         system.root( _ => () )
-         test( system )
+         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
+         test( cursor )
       }
       finally {
          system.close()
       }
    }
 
-   "An entity" should "serialize and deserialize via tx.refresh" in { system =>
+   "An entity" should "serialize and deserialize via tx.refresh" in { cursor =>
       val value = 1234
-      val h = system.step { implicit tx =>
+      val h = cursor.step { implicit tx =>
          val ent = Entity( value )
          tx.newHandle( ent )
       }
-      val res = system.step { implicit tx =>
+      val res = cursor.step { implicit tx =>
          val ent = h.get // tx.refresh( csrStale, entStale )
          ent.field.get
       }

@@ -97,7 +97,7 @@ object Sys {
       // ---- cursors ----
 //      def readPath( in: DataInput ) : S#Acc
 
-      def newCursor( init: S#Acc ) : Cursor[ S ]
+      def newCursor( init: S#Acc = inputAccess ) : Cursor[ S ]
       def readCursor( in: DataInput, access: S#Acc ) : Cursor[ S ]
    }
 
@@ -213,4 +213,9 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
 
    private[confluent] def newCursor( init: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ]
    private[confluent] def readCursor( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Cursor[ S ]
+
+//   def cursorRoot[ A, B ]( fun: S#Tx => (A, B) )( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ], cursorView: A => B ) : (S#Entry[ A ], B)
+
+   def cursorRoot[ A, B ]( init: S#Tx => A )( result: S#Tx => A => B )
+                         ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : (S#Entry[ A ], B)
 }

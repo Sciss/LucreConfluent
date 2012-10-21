@@ -1364,19 +1364,33 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 //      }
 
       final def root[ A ]( init: S#Tx => A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ] = {
+         cursorRoot[ A, Unit ]( init )( _ => _ => () )._1
+      }
+
+      def cursorRoot[ A, B ]( init: S#Tx => A )( result: S#Tx => A => B )
+                            ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : (S#Entry[ A ], B) = {
          require( ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction" )
          log( "::::::: root :::::::" )
          TxnExecutor.defaultAtomic { itx =>
             implicit val tx   = wrapRoot( itx )
             val rootVar    = new RootVar[ S, A ]( 0, "Root" ) // serializer
             val rootPath   = tx.inputAccess
-            if( varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer ).isEmpty ) {
-               implicit val dtx = durableTx( tx )  // created on demand (now)
-               rootVar.setInit( init( tx ))
-               newIndexTree( rootPath.term, 0 )
-               writePartialTreeVertex( partialTree.root )
+            val arrOpt     = varMap.get[ Array[ Byte ]]( 0, rootPath )( tx, ByteArraySerializer )
+            val rootVal    = arrOpt match {
+               case Some( arr ) =>
+                  val in      = new DataInput( arr )
+                  val aRead   = serializer.read( in, rootPath )
+                  aRead
+
+               case _ =>
+                  implicit val dtx = durableTx( tx )  // created on demand (now)
+                  val aNew = init( tx )
+                  rootVar.setInit( aNew )
+                  newIndexTree( rootPath.term, 0 )
+                  writePartialTreeVertex( partialTree.root )
+                  aNew
             }
-            rootVar
+            rootVar -> result( tx )( rootVal )
          }
       }
 

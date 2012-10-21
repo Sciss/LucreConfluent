@@ -2,7 +2,6 @@ package de.sciss.lucre
 package confluent
 
 import java.io.File
-import stm.Cursor
 import stm.impl.BerkeleyDB
 import data.HASkipList
 import data.gui.InteractiveSkipListView
@@ -32,16 +31,16 @@ object SkipListViewTest extends App with Runnable {
       build( s )
    }
 
-   def build[ S <: Sys[ S ] with Cursor[ S ]]( implicit cursor: S ) {
+   def build[ S <: Sys[ S ]]( system: S ) {
       val fut = new InteractiveSkipListView.FutureObserver[ S ]
       implicit val ser = HASkipList.Set.serializer[ S, Int ]( fut )
-      val access = cursor.root { implicit tx =>
+      val (access, cursor) = system.cursorRoot { implicit tx =>
          HASkipList.Set.empty[ S, Int ]( minGap = 1, keyObserver = fut )
-      }
+      } { tx => _ => tx.newCursor() }
 
 //      println( "We are in " + cursor.step { implicit tx => cursor.position })
 
-      val view = new InteractiveSkipListView[ S ]( access )
+      val view = new InteractiveSkipListView[ S ]( access )( cursor )
 
       val f    = new JFrame( "SkipList" )
       val cp   = f.getContentPane

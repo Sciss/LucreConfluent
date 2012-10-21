@@ -3,7 +3,6 @@ package confluent
 
 import java.io.File
 import stm.impl.BerkeleyDB
-import stm.Cursor
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
 import data.gui.InteractiveSkipOctreePanel
@@ -37,14 +36,14 @@ object OctreeViewTest extends App with Runnable {
 
    private val sz = 256
 
-   def build[ S <: Sys[ S ] with Cursor[ S ]]( implicit cursor: S ) {
+   def build[ S <: Sys[ S ]]( system: S ) {
       import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
       implicit val pointView = (p: IntPoint2D, t: Any) => p
       implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, IntPoint2D ]
-      val access = cursor.root { implicit tx =>
+      val (access, cursor) = system.cursorRoot { implicit tx =>
          DeterministicSkipOctree.empty[ S, TwoDim, IntPoint2D ](
             IntSquare( sz, sz, sz ), skipGap = 1 )
-      }
+      } { tx => _ => tx.newCursor() }
       val model = new InteractiveSkipOctreePanel.Model2D[ S ](
          cursor, access, { () => println( "(Consistency not checked)" )} /*, nTimes = 2 */
       )

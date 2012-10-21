@@ -4,7 +4,6 @@ package confluent
 import org.scalatest.{GivenWhenThen, FeatureSpec}
 import java.io.File
 import stm.impl.BerkeleyDB
-import stm.Cursor
 import data.TotalOrder
 
 /**
@@ -39,7 +38,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-   def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S with Cursor[ S ], sysCleanUp: S => Unit ) {
+   def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: S => Unit ) {
       def scenarioWithTime( descr: String )( body: => Unit ) {
          scenario( descr ) {
             val t1 = System.currentTimeMillis()
@@ -60,7 +59,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
             implicit val system = sysCreator()
             try {
                implicit val ser = TotalOrder.Set.serializer[ S ]
-               val access = system.root { implicit tx =>
+               val (access, cursor) = system.cursorRoot { implicit tx =>
                   TotalOrder.Set.empty[ S ] /* ( new RelabelObserver[ S#Tx, E ] {
                      def beforeRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {
                         if( MONITOR_LABELING ) {
@@ -72,7 +71,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
 
                      def afterRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {}
                   }) */
-               }
+               } { tx => _ => tx.newCursor() }
 //               val rnd   = new util.Random( RND_SEED )
                val rnd   = TxnRandom.plain( RND_SEED )
                // would be nice to test maximum possible number of labels
@@ -80,7 +79,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                val n     = NUM // 113042 // 3041
       //        to        = to.append() // ( 0 )
 
-               /* val set = */ system.step { implicit tx =>
+               /* val set = */ cursor.step { implicit tx =>
                   var e = access.get.root
                   var coll = Set[ TotalOrder.Set.Entry[ S ]]() // ( e )
                   for( i <- 1 until n ) {
@@ -97,7 +96,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
 //println( "AQUI" )
 
                when( "the structure size is determined" )
-               val sz = system.step { implicit tx => access.get.size }
+               val sz = cursor.step { implicit tx => access.get.size }
       //        val sz = {
       //           var i = 1; var x = to; while( !x.isHead ) { x = x.prev; i +=1 }
       //           x = to; while( !x.isLast ) { x = x.next; i += 1 }
@@ -107,7 +106,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                assert( sz == n, sz.toString + " != " + n )
 
                when( "the structure is mapped to its pairwise comparisons" )
-               val result = system.step { implicit tx =>
+               val result = cursor.step { implicit tx =>
                   var res   = Set.empty[ Int ]
                   var prev  = access.get.head
                   var next  = prev.next.orNull
@@ -121,12 +120,12 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                }
 
                then( "the resulting set should only contain -1" )
-               assert( result == Set( -1 ), result.toString + " -- " + system.step( implicit tx =>
+               assert( result == Set( -1 ), result.toString + " -- " + cursor.step( implicit tx =>
                   access.get.tagList( access.get.head )
                ))
 
                when( "the structure is emptied" )
-               val sz2 = system.step { implicit tx =>
+               val sz2 = cursor.step { implicit tx =>
 //                  set.foreach( _.removeAndDispose() )
                   val to = access.get
                   var prev = to.head

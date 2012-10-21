@@ -58,6 +58,11 @@ object CursorImpl {
          path.get
       }
 
+      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ) {
+         implicit val dtx: D1#Tx = system.durableTx( tx )
+         path.set( pathVal )
+      }
+
       def dispose()( implicit tx: S#Tx ) {
          implicit val dtx: D1#Tx = system.durableTx( tx )
          path.dispose()

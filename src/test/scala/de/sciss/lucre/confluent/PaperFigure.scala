@@ -1,7 +1,7 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Cursor, MutableSerializer, Mutable}
+import stm.{MutableSerializer, Mutable}
 import stm.impl.BerkeleyDB
 import java.io.File
 
@@ -43,16 +43,16 @@ object PaperFigure extends App {
    val store   = BerkeleyDB.factory( dir )
    val s       = Confluent( store )
 
-   new Example( s, s )
+   new Example( s )
 }
 
-class Example[S <:stm.Sys[S]](s: S, c: Cursor[S]) {
+class Example[S <: Sys[S]](s: S) {
   val nodes = new Nodes[S]
   import nodes._
 
-  val access = s.root(_ => Option.empty[Node])
+  val (access, cursor) = s.cursorRoot(_ => Option.empty[Node])( tx => _ => tx.newCursor() )
 
-  c.step { implicit tx =>
+  cursor.step { implicit tx =>
     val w1 = Node(3)
     val w2 = Node(5)
     w1.next set Some(w2)

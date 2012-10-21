@@ -14,6 +14,8 @@ import org.scalatest.{FunSpec, GivenWhenThen}
 class FiatKaplanSuite extends FunSpec with GivenWhenThen {
    // showLog = true
 
+   type S = Confluent
+
    describe( "A Confluently Persistent Linked List" ) {
       val dir     = File.createTempFile( "database", "db" )
       dir.delete()
@@ -23,8 +25,8 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
       import types._
 
-      def timeWarp( path: Sys#Acc ) {
-         s.step( s.position_=( path )( _ ))
+      def timeWarp( path: Sys#Acc )( implicit cursor: Cursor[ S ]) {
+         cursor.step( cursor.position_=( path )( _ ))
       }
 
       it( "should yield the same sequences as those in Fiat/Kaplan fig. 3" ) {
@@ -33,16 +35,17 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
          given( "v0 : Allocate nodes w0, w1, with x=2 and x=1, concatenate them" )
          implicit val whyOhWhy = Node.ser
-         val access = s.root[ Option[ Node ]] { implicit tx =>
+         val (access, cursor) = s.cursorRoot[ Option[ Node ], Cursor[ S ]] { implicit tx =>
             val w0      = Node( "w0", 2 )
             val w1      = Node( "w1", 1 )
             w0.next.set( Some( w1 ))
             Some( w0 )
-         }
-         val path0 = s.step( _.inputAccess ) // ?
+         } { implicit tx => _ => tx.newCursor() }
+
+         val path0 = cursor.step( _.inputAccess ) // ?
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res0) = s.step { implicit tx =>
+         val (_, res0) = cursor.step { implicit tx =>
             val node = access.get
             (tx.inputAccess, toList( node ))
          }
@@ -54,7 +57,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v1 /////////////////////////////
 
          given( "v1 : Invert order of input linked list" )
-         s.step { implicit tx =>
+         cursor.step { implicit tx =>
             // urrgh, this got pretty ugly. but well, it does its job...
             access.transform { no =>
                def reverse( node: Node ) : Node = node.next.get match {
@@ -75,7 +78,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v1, res1) = s.step { implicit tx =>
+         val (v1, res1) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -88,8 +91,8 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
          // --> use a variant to better verify the results: set x=3 instead
          given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
-         timeWarp( path0 ) //  Confluent.Path.root
-         s.step { implicit tx =>
+         timeWarp( path0 )( cursor ) //  Confluent.Path.root
+         cursor.step { implicit tx =>
             access.transform {
                case Some( n ) =>
                   val res = n.next.get
@@ -108,7 +111,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (v2, res2) = s.step { implicit tx =>
+         val (v2, res2) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -120,8 +123,8 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v3 /////////////////////////////
 
          given( "v3: Add +2 to all elements of right list. Concatenate left and right lists" )
-         timeWarp( v1 )
-         s.step { implicit tx =>
+         timeWarp( v1 )( cursor )
+         cursor.step { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
                pred.next.get match {
@@ -142,7 +145,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res3) = s.step { implicit tx =>
+         val (_, res3) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -154,7 +157,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v4 /////////////////////////////
 
          given( "v4: Concatenate Left and Right Lists" )
-         s.step { implicit tx =>
+         cursor.step { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
                pred.next.get match {
@@ -166,7 +169,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res4) = s.step { implicit tx =>
+         val (_, res4) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }

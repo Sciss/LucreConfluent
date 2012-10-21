@@ -12,6 +12,8 @@ import org.scalatest.{FunSpec, GivenWhenThen}
  * test-only de.sciss.confluent.DoubleLinkedListSuite
  */
 class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
+   type S = Confluent
+
    describe( "A Confluently Persistent Double Linked List" ) {
       val dir     = File.createTempFile( "database", "db" )
       dir.delete()
@@ -32,15 +34,15 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          given( "v0 : Allocate node w0, with x = 1" )
          implicit val whyOhWhy = Node.ser
-         val access = s.root[ Option[ Node ]] { implicit tx =>
+         val (access, cursor) = s.cursorRoot[ Option[ Node ], Cursor[ S ]] { implicit tx =>
             val w0 = Node( "w0", 1 )
             Some( w0 )
-         }
+         } { implicit tx => _ => tx.newCursor() }
 
          ///////////////////////////// v1 /////////////////////////////
 
          given( "v1 : Append a new node w1 with x = 2" )
-         s.step { implicit tx =>
+         cursor.step { implicit tx =>
             val head    = access.get
             val newLast = Node( "w1", 2 )
             @tailrec def step( last: Node ) {
@@ -58,7 +60,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res1) = s.step { implicit tx =>
+         val (_, res1) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -71,7 +73,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          given( "v2 : Increment all nodes by 2" )
 //         timeWarp( Confluent.Path.root )
-         s.step { implicit tx =>
+         cursor.step { implicit tx =>
             @tailrec def step( last: Option[ Node ]) { last match {
                case None =>
                case Some( n ) =>
@@ -82,7 +84,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res2) = s.step { implicit tx =>
+         val (_, res2) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }
@@ -92,7 +94,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          assert( res2 === exp2 )
 
          when( "the result is converted to a plain list going from back to front" )
-         val res2b = s.step { implicit tx =>
+         val res2b = cursor.step { implicit tx =>
             @tailrec def findLast( n: Node ) : Node = n.next.get match {
                case None => n
                case Some( n1 ) => findLast( n1 )
@@ -120,7 +122,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          given( "v3 : Increment all nodes by 2, going from back to front" )
 //         timeWarp( Confluent.Path.root )
-         s.step { implicit tx =>
+         cursor.step { implicit tx =>
             @tailrec def findLast( n: Node ) : Node = n.next.get match {
                case None => n
                case Some( n1 ) => findLast( n1 )
@@ -139,7 +141,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          }
 
          when( "the result is converted to a plain list in a new transaction" )
-         val (_, res3) = s.step { implicit tx =>
+         val (_, res3) = cursor.step { implicit tx =>
             val node = access.get
             tx.inputAccess -> toList( node )
          }

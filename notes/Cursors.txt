@@ -1,0 +1,21 @@
+CursorImpl {
+   protected def path: D#Var[ S#Acc ]
+}
+
+root[ A ]( fun: S#Tx => A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ]) : S#Entry[ A ]
+
+trait Doc[ S <: Sys[ S ]] {
+   def cursors: S#Var[ IIdxSeq[ Cursor[ S ]]]
+}
+
+cursorRoot[ A ]( fun: S#Tx => A )( implicit ser: stm.Serializer[ S#Tx, S#Acc, A ], cursorView: A => Cursor[ S ]) : (S#Entry[ A ], Cursor[ S ])
+
+
+cursorRoot[ A, B ]( init: S#Tx => A )( result: S#Tx => A => B ) : B
+
+::::::::::::::::
+
+root2[ A, B ]( initConfl: S#Tx => A )( initDur: D#Tx => B ) : (S#Entry[ A ], D#Entry[ B ])
+
+::::::::::::::::
+

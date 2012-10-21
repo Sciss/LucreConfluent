@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version := "1.3.0-SNAPSHOT"
+version := "1.3.0"
 
 organization := "de.sciss"
 
@@ -18,9 +18,8 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "1.0.+",
-   "de.sciss" %% "lucredata-core" % "1.3.0-SNAPSHOT",
-   "de.sciss" %% "lucredata-views" % "1.3.0-SNAPSHOT" % "test"
-//   "de.sciss" %% "lucreexpr" % "1.3.0-SNAPSHOT" % "test"
+   "de.sciss" %% "lucredata-core" % "1.3.0",
+   "de.sciss" %% "lucredata-views" % "1.3.0" % "test"
 )
 
 libraryDependencies <+= scalaVersion { sv =>

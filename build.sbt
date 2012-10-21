@@ -1,6 +1,6 @@
 name := "ConfluentReactive"
 
-version := "1.3.0-SNAPSHOT"
+version := "1.3.0"
 
 organization := "de.sciss"
 
@@ -15,8 +15,8 @@ scalaVersion := "2.9.2"
 // crossScalaVersions in ThisBuild := Seq( "2.10.0-M6", "2.9.2" )
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "lucreevent" % "1.3.0-SNAPSHOT",
-   "de.sciss" %% "lucreconfluent" % "1.3.0-SNAPSHOT"
+   "de.sciss" %% "lucreevent" % "1.3.0",
+   "de.sciss" %% "lucreconfluent" % "1.3.0"
 )
 
 libraryDependencies <+= scalaVersion { sv =>

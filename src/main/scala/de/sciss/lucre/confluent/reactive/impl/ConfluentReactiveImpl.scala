@@ -33,6 +33,7 @@ import de.sciss.lucre.{event => evt}
 import concurrent.stm.InTxn
 import de.sciss.lucre.event.ReactionMap
 import confluent.impl.DurableCacheMapImpl
+import confluent.Sys
 
 object ConfluentReactiveImpl {
 //   def ??? : Nothing = sys.error( "TODO" )
@@ -262,7 +263,7 @@ object ConfluentReactiveImpl {
    }
 
    private final class RegularTxn( val system: S, val durable: stm.Durable#Tx,
-                                   val inputAccess: S#Acc )
+                                   val inputAccess: S#Acc, val cursorCache: Cache[ S#Tx ])
    extends confluent.impl.ConfluentImpl.RegularTxnMixin[ S, stm.Durable ] with TxnImpl {
       lazy val peer = durable.peer
    }
@@ -287,7 +288,9 @@ object ConfluentReactiveImpl {
       private val eventVarMap = DurablePersistentMap.newConfluentIntMap[ S ]( eventStore, this )
       val eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = DurableCacheMapImpl.newIntCache( eventVarMap )
 
-      protected def wrapRegular( dtx: stm.Durable#Tx, inputAccess: S#Acc ) = new RegularTxn( this, dtx, inputAccess )
+      protected def wrapRegular( dtx: stm.Durable#Tx, inputAccess: S#Acc, cursorCache: Cache[ S#Tx ]) =
+         new RegularTxn( this, dtx, inputAccess, cursorCache )
+
       protected def wrapRoot( peer: InTxn ) = new RootTxn( this, peer )
    }
 }

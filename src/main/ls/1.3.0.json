@@ -1,0 +1,25 @@
+{
+  "organization" : "de.sciss",
+  "name" : "ConfluentReactive",
+  "version" : "1.3.0",
+  "description" : "Confluent persistence and quasi-retroactive / fluent references for Scala",
+  "site" : "https://github.com/Sciss/ConfluentReactive",
+  "tags" : [ "confluent", "persistence", "reactive", "event" ],
+  "docs" : "",
+  "resolvers" : [ "https://oss.sonatype.org/content/repositories/releases" ],
+  "dependencies" : [ {
+    "organization" : "de.sciss",
+    "name" : "lucreevent",
+    "version" : "1.3.0"
+  }, {
+    "organization" : "de.sciss",
+    "name" : "lucreconfluent",
+    "version" : "1.3.0"
+  } ],
+  "scalas" : [ "2.9.2" ],
+  "licenses" : [ {
+    "name" : "GPL v2+",
+    "url" : "http://www.gnu.org/licenses/gpl-2.0.txt"
+  } ],
+  "sbt" : false
+}

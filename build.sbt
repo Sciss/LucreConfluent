@@ -48,7 +48,7 @@ buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
    BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
 )
 
-buildInfoPackage := "de.sciss.confluent.reactive"
+buildInfoPackage := "de.sciss.lucre.confluent.reactive"
 
 // ---- publishing ----
 

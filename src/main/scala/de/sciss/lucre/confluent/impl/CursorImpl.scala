@@ -23,7 +23,7 @@ object CursorImpl {
       implicit val pathSer = new PathSer[ S, D1 ]
       val id   = dtx.newID()
       val path = dtx.newVar[ S#Acc ]( id, init )
-      new Impl[ S, D1 ]( path )
+      new Impl[ S, D1 ]( id, path )
    }
 
    def read[ S <: Sys[ S ], D1 <: stm.DurableLike[ D1 ]]( in: DataInput, access: S#Acc )
@@ -32,10 +32,10 @@ object CursorImpl {
       implicit val pathSer = new PathSer[ S, D1 ]
       val id   = dtx.readID( in, access )
       val path = dtx.readVar[ S#Acc ]( id, in )
-      new Impl[ S, D1 ]( path )
+      new Impl[ S, D1 ]( id, path )
    }
 
-   private final class Impl[ S <: Sys[ S ], D1 <: stm.DurableLike[ D1 ]]( path: D1#Var[ S#Acc ])
+   private final class Impl[ S <: Sys[ S ], D1 <: stm.DurableLike[ D1 ]]( id: D1#ID, path: D1#Var[ S#Acc ])
                                                                         ( implicit system: S { type D = D1 })
    extends Cursor[ S ] with Cache[ S#Tx ] {
       def step[ A ]( fun: S#Tx => A ) : A = {
@@ -65,10 +65,12 @@ object CursorImpl {
 
       def dispose()( implicit tx: S#Tx ) {
          implicit val dtx: D1#Tx = system.durableTx( tx )
+         id.dispose()
          path.dispose()
       }
 
       def write( out: DataOutput ) {
+         id.write( out )
          path.write( out )
       }
    }

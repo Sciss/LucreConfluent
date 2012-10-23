@@ -29,7 +29,7 @@ package impl
 
 import stm.{InMemory, DataStore, DataStoreFactory, Durable, Serializer, IdentifierMap, ImmutableSerializer}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
-import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap}
+import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
 import de.sciss.fingertree
 import fingertree.{FingerTreeLike, FingerTree}
 import data.Ancestor
@@ -381,9 +381,13 @@ println( "?? partial from index " + this )
 //         })
 
       private var dirtyMaps = emptySeq[ Cache[ S#Tx ]]
+      private var beforeCommitFuns = IQueue.empty[ S#Tx => Unit ]
 
-//      private val markDirtyFlag = TxnLocal( false )
-      private var markDirtyFlag = false
+      // indicates whether we have added the cache maps to dirty maps
+      private var markDirtyFlag        = false
+      // indicates whether any before commit handling is needed
+      // (either dirtyMaps got non-empty, or a user before-commit handler got registered)
+      private var markBeforeCommitFlag = false
 
 //      def isDirty = markDirtyFlag.get( peer )
 
@@ -398,12 +402,31 @@ println( "?? partial from index " + this )
       final def forceWrite() { markDirty() }
 
       final def addDirtyCache( map: Cache[ S#Tx ]) {
-         val isFirst = dirtyMaps.isEmpty
          dirtyMaps :+= map
-         if( isFirst ) {
+         markBeforeCommit()
+      }
+
+      final def beforeCommit( fun: S#Tx => Unit) {
+         beforeCommitFuns = beforeCommitFuns.enqueue( fun )
+         markBeforeCommit()
+      }
+
+      private def markBeforeCommit() {
+         if( !markBeforeCommitFlag ) {
+            markBeforeCommitFlag = true
             log( "....... txn dirty ......." )
-            ScalaTxn.beforeCommit({ implicit itx => flushCaches( meld, dirtyMaps )})( peer )
+            ScalaTxn.beforeCommit( handleBeforeCommit )( peer )
          }
+      }
+
+      // first execute before commit handlers, then flush
+      private def handleBeforeCommit( itx: InTxn ) {
+         while( beforeCommitFuns.nonEmpty ) {
+            val (fun, q)      = beforeCommitFuns.dequeue
+            beforeCommitFuns  = q
+            fun( this )
+         }
+         flushCaches( meld, dirtyMaps )
       }
 
       final protected def fullCache    = system.fullCache
@@ -1128,6 +1151,20 @@ println( "?? partial from index " + this )
    // ----------------------------------------------
 
 //   private val durableIDMaps = TxnLocal( IntMap.empty[ DurableIDMapImpl[ _, _ ]])
+
+//   private type Store[ S <: Sys[ S ], K ] = InMemoryConfluentMap[ S, K ]
+
+//   private final class InMemoryIDMapEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, @specialized A ]
+//   ( val key: K, val path: S#Acc, val value: A )
+//   extends CacheMapImpl.Entry[ S, K, InMemoryConfluentMap[ S, K ]] {
+//      override def toString = "Entry(" + key + ", " + value + ")"
+//
+//      def flush( outTerm: Long, store: InMemoryConfluentMap[ S, K ])( implicit tx: S#Tx ) {
+//         val pathOut = path.addTerm( outTerm )
+//         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
+//         store.put( key, pathOut, value )
+//      }
+//   }
 
    private final class InMemoryIDMapImpl[ S <: Sys[ S ], A ]( val store: InMemoryConfluentMap[ S, Int ])
    extends IdentifierMap[ S#ID, S#Tx, A ] with InMemoryCacheMapImpl[ S, Int ] {

@@ -53,6 +53,7 @@ object CursorImpl {
          implicit val dtx: D1#Tx = system.durableTx( tx )
          val newPath             = tx.inputAccess.addTerm( term )
          path.set( newPath )
+         log( this.toString + " flush path = " + newPath )
       }
 
       def position( implicit tx: S#Tx ) : S#Acc = {

@@ -15,32 +15,48 @@ object ForkTest extends App {
 
    def bang( implicit tx: S#Tx ) = access.get
 
-   val pool = Executors.newSingleThreadExecutor()
+//   val pool = Executors.newSingleThreadExecutor()
+//
+//   def fork( i: Int )( implicit tx: S#Tx ) : Cursor[ S ] = {
+//      val newCursor = tx.newCursor()
+//      Txn.afterCommit( _ => pool.submit( new Runnable {
+//         def run() {
+////            Thread.sleep(1000) // NOT a race condition
+//            newCursor.step { implicit tx =>
+//               bang.react { _ => println( "Bang in Fork " + i + "!" )}
+//            }
+//         }
+//      }))( tx.peer )
+//      newCursor
+//   }
 
-   def fork( i: Int )( implicit tx: S#Tx ) : Cursor[ S ] = {
-      val newCursor = tx.newCursor()
-      Txn.afterCommit( _ => pool.submit( new Runnable {
-         def run() {
-            Thread.sleep(1000)
-            newCursor.step { implicit tx =>
-               bang.react { _ => println( "Bang in Fork " + i + "!" )}
-            }
-         }
-      }))( tx.peer )
-      newCursor
-   }
+   println( "Creating cursors" )
 
    val cursors = cursor0.step { implicit tx =>
-      for( i <- 1 to 3 ) yield fork( i )
+      for( i <- 1 to 3 ) yield tx.newCursor() // fork( i )
    }
 
    def debug() {
       println( "Debug" )
    }
 
+   println( "Creating observers" )
+
+//   de.sciss.lucre.confluent.showLog = true
+
    cursors.zipWithIndex.foreach { case (cursor, j) =>
       cursor.step { implicit tx =>
-         if( j == 2 ) debug()
+         println( "Registering fork " + (j+1) )
+//         if( j == 1 ) debug()
+         bang.react { _ => println( "Bang in Fork " + (j+1) + "!" )}
+      }
+   }
+
+   println( "Firing events" )
+
+   cursors.zipWithIndex.foreach { case (cursor, j) =>
+      cursor.step { implicit tx =>
+//         if( j == 2 ) debug()
          println( "Banging " + (j+1) )
          bang.apply()
       }

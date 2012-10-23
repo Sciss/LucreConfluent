@@ -40,7 +40,7 @@ testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and fu
 
 parallelExecution /* in Test */ := false
 
-initialCommands in console := """import de.sciss.confluent._
+initialCommands in console := """import de.sciss.lucre.confluent._
 """
 
 // publishArtifact in (Compile, packageDoc) := false   // disable doc generation during development cycles
@@ -56,7 +56,7 @@ buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
    BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
 )
 
-buildInfoPackage := "de.sciss.confluent"
+buildInfoPackage := "de.sciss.lucre.confluent"
 
 // ---- publishing ----
 

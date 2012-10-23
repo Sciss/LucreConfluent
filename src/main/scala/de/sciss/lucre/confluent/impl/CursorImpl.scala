@@ -38,6 +38,8 @@ object CursorImpl {
    private final class Impl[ S <: Sys[ S ], D1 <: stm.DurableLike[ D1 ]]( id: D1#ID, path: D1#Var[ S#Acc ])
                                                                         ( implicit system: S { type D = D1 })
    extends Cursor[ S ] with Cache[ S#Tx ] {
+      override def toString = "Cursor" + id
+
       def step[ A ]( fun: S#Tx => A ) : A = {
          TxnExecutor.defaultAtomic { itx =>
             implicit val dtx  = system.durable.wrap( itx )

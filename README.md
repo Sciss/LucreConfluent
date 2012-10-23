@@ -14,4 +14,4 @@ Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
-    "de.sciss" %% "confluentreactive" % "1.3.+"
+    "de.sciss" %% "confluentreactive" % "1.4.+"

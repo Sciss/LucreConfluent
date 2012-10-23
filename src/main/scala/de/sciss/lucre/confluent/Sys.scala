@@ -52,6 +52,8 @@ object Sys {
                            ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
       def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ]
+      // true is term1 is ancestor of term2
+      def isAncestor( index: S#Acc, term1: Long, term2: Long )( implicit tx: S#Tx ) : Boolean
    }
 
    trait PartialMapHandler[ S <: Sys[ S ]] {

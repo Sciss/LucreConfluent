@@ -18,8 +18,8 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "fingertree" % "1.0.+",
-   "de.sciss" %% "lucredata-core" % "1.3.0",
-   "de.sciss" %% "lucredata-views" % "1.3.0" % "test"
+   "de.sciss" %% "lucredata-core" % "1.4.0-SNAPSHOT",
+   "de.sciss" %% "lucredata-views" % "1.4.0-SNAPSHOT" % "test"
 )
 
 libraryDependencies <+= scalaVersion { sv =>

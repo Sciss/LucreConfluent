@@ -585,7 +585,7 @@ println( "?? partial from index " + this )
       }
 
       private def mkDurableIDMap[ A ]( id: Int )( implicit serializer: Serializer[ S#Tx, S#Acc, A ]) : IdentifierMap[ S#ID, S#Tx, A ] = {
-         val map  = DurablePersistentMap.newConfluentLongMap[ S ]( system.store, system.indexMap )
+         val map  = DurablePersistentMap.newConfluentLongMap[ S ]( system.store, system.indexMap, isOblivious = false )
          val idi  = new ConfluentID( id, Path.empty[ S ])
          val res  = new DurableIDMapImpl[ S, A ]( idi, map )
 //         durableIDMaps.transform( _ + (id -> res) )( peer )
@@ -1294,7 +1294,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       // ---- init ----
 
       final val store         = storeFactory.open( "data" )
-      private val varMap      = DurablePersistentMap.newConfluentIntMap[ S ]( store, this )
+      private val varMap      = DurablePersistentMap.newConfluentIntMap[ S ]( store, this, isOblivious = false )
       final val fullCache     = DurableCacheMapImpl.newIntCache( varMap )
       final val partialCache  = PartialCacheMapImpl.newIntCache( DurablePersistentMap.newPartialMap[ S ]( store, this ))
 
@@ -1469,6 +1469,15 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             (v2.version, value)
          }
 
+         // XXX TODO: DRY
+         def nearestOption( term: Long )( implicit tx: S#Tx ) : Option[ (Long, A) ] = {
+            implicit val dtx = durableTx( tx )
+            val v = readTreeVertex( map.full, index, term )._1
+            map.nearestOption( v ) map {
+               case (v2, value) => (v2.version, value)
+            }
+         }
+
          def add( term: Long, value: A )( implicit tx: S#Tx ) {
             implicit val dtx = durableTx( tx )
             val v = readTreeVertex( map.full, index, term )._1
@@ -1528,6 +1537,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          }
       }
 
+      // reeds the vertex along with the tree level
       final def readTreeVertex( tree: Ancestor.Tree[ D, Long ], index: S#Acc, term: Long )
                         ( implicit tx: D#Tx ) : (Ancestor.Vertex[ D, Long ], Int) = {
 //         val root = tree.root
@@ -1578,6 +1588,20 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          new IndexMapImpl[ A ]( index, map )
       }
 
+      // true is term1 is ancestor of term2
+      def isAncestor( index: S#Acc, term1: Long, term2: Long )( implicit tx: S#Tx ) : Boolean = {
+         implicit val dtx = durableTx( tx )
+         if( term1 == term2 ) return true                // same vertex
+         if( term1.toInt > term2.toInt ) return false    // can't be an ancestor if newer
+
+         val tree    = readIndexTree( term1 )
+         if( tree.term == term1 ) return true            // if term1 is the root then it must be ancestor of term2
+
+         val v1      = readTreeVertex( tree.tree, index, term1 )._1
+         val v2      = readTreeVertex( tree.tree, index, term2 )._1
+         v1.isAncestorOf( v2 )
+      }
+
       // ---- partial map handler ----
 
       private final class PartialMapImpl[ A ]( protected val index: S#Acc,
@@ -1590,6 +1614,15 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             val v = readPartialTreeVertex( index, term )
             val (v2, value) = map.nearest( v )
             (v2.version, value)
+         }
+
+         // XXX TODO: DRY
+         def nearestOption( term: Long )( implicit tx: S#Tx ) : Option[ (Long, A) ] = {
+            implicit val dtx = durableTx( tx )
+            val v = readPartialTreeVertex( index, term )
+            map.nearestOption( v ).map {
+               case (v2, value) => (v2.version, value)
+            }
          }
 
          def add( term: Long, value: A )( implicit tx: S#Tx ) {

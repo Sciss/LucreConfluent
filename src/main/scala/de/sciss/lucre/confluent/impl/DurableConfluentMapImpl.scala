@@ -41,6 +41,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
 
    protected def store: DataStore
    protected def handler: Sys.IndexMapHandler[ S ]
+   protected def isOblivious: Boolean
 
 //   override def toString = "VarMap(" + store + ")"
 
@@ -276,25 +277,43 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
                // entry map, and we can safely _coerce_ the previous value to be the map's
                // _root_ value.
 
-               val term2 = in.readLong()
-               val value = ser.read( in )
-               //                  EntrySingle[ S, A ]( term2, value )
-               Some( fun( preLen, term2, value ))
+               // --- ADDENDUM 2 (23-Oct-12): the above addendum fails for event variables which may well be
+               // uninitialised. Therefore go back to the original thought...
+
+               val term2   = in.readLong()
+               val isOk    = if( isOblivious ) {
+                  handler.isAncestor( index, term2, term )
+               } else true
+
+               if( isOk ) {
+                  val value = ser.read( in )
+                  Some( fun( preLen, term2, value ))
+               } else {
+                  None
+               }
 
             case 2 =>
                val m = handler.readIndexMap[ A ]( in, index )
-               //                  EntryMap[ S, A ]( m )
-               val (term2, value) = m.nearest( term )
-               Some( fun( preLen, term2, value ))
+               if( isOblivious ) {
+                  m.nearestOption( term ).map {
+                     case (term2, value) => fun( preLen, term2, value )
+                  }
+
+               } else {
+                  val (term2, value) = m.nearest( term )
+                  Some( fun( preLen, term2, value ))
+               }
          }
       }
    }
 }
-final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ])
+final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ],
+                                                 protected val isOblivious: Boolean )
 extends DurableConfluentMapImpl[ S, Int ] {
    protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
 }
-final class ConfluentLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ])
+final class ConfluentLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ],
+                                                  protected val isOblivious: Boolean )
 extends DurableConfluentMapImpl[ S, Long ] {
    protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
 }

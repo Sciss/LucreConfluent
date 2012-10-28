@@ -284,7 +284,7 @@ object ConfluentReactiveImpl {
       def durableTx(  tx: S#Tx ) = tx.durable
       def inMemoryTx( tx: S#Tx ) = tx.inMemory
 
-      private val eventStore  = storeFactory.open( "event" )
+      private val eventStore  = storeFactory.open( "event", overwrite = true )
       private val eventVarMap = DurablePersistentMap.newConfluentIntMap[ S ]( eventStore, this, isOblivious = true )
       val eventCache : CacheMap.Durable[ S, Int, DurablePersistentMap[ S, Int ]] = DurableCacheMapImpl.newIntCache( eventVarMap )
 

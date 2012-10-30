@@ -31,7 +31,7 @@ import java.util.{Locale, Date}
 import java.text.SimpleDateFormat
 
 package object confluent {
-   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'confluent' - ", Locale.US )
+   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
    var showLog          = false
    var showPartialLog   = false
    var showCursorLog    = false

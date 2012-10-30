@@ -45,6 +45,7 @@ object CursorImpl {
             implicit val dtx  = system.durable.wrap( itx )
             val inputAccess   = path.get
             val tx            = system.createTxn( dtx, inputAccess, this )
+            logCursor( id.toString + " step. input path = " + inputAccess )
             fun( tx )
          }
       }
@@ -53,7 +54,7 @@ object CursorImpl {
          implicit val dtx: D1#Tx = system.durableTx( tx )
          val newPath             = tx.inputAccess.addTerm( term )
          path.set( newPath )
-         log( this.toString + " flush path = " + newPath )
+         logCursor( id.toString + " flush path = " + newPath )
       }
 
       def position( implicit tx: S#Tx ) : S#Acc = {
@@ -70,6 +71,7 @@ object CursorImpl {
          implicit val dtx: D1#Tx = system.durableTx( tx )
          id.dispose()
          path.dispose()
+         logCursor( id.toString + " dispose" )
       }
 
       def write( out: DataOutput ) {

@@ -31,15 +31,19 @@ import java.util.{Locale, Date}
 import java.text.SimpleDateFormat
 
 package object confluent {
-   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US )
+   private lazy val logHeader = new SimpleDateFormat( "[d MMM yyyy, HH:mm''ss.SSS] 'confluent' - ", Locale.US )
    var showLog          = false
    var showPartialLog   = false
+   var showCursorLog    = false
 
    @elidable(CONFIG) private[confluent] def log( what: => String ) {
       if( showLog ) Console.out.println( logHeader.format( new Date() ) + what )
    }
    @elidable(CONFIG) private[confluent] def logPartial( what: => String ) {
       if( showPartialLog ) Console.out.println( logHeader.format( new Date() ) + "partial " + what )
+   }
+   @elidable(CONFIG) private[confluent] def logCursor( what: => String ) {
+      if( showCursorLog ) Console.out.println( logHeader.format( new Date() ) + "cursor " + what )
    }
 
    private[confluent] def ??? : Nothing = sys.error( "TODO" )

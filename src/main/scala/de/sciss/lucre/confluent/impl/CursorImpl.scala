@@ -44,10 +44,22 @@ object CursorImpl {
          TxnExecutor.defaultAtomic { itx =>
             implicit val dtx  = system.durable.wrap( itx )
             val inputAccess   = path.get
-            val tx            = system.createTxn( dtx, inputAccess, this )
-            logCursor( id.toString + " step. input path = " + inputAccess )
-            fun( tx )
+            performStep( inputAccess, dtx, fun )
          }
+      }
+
+      def stepFrom[ A ]( inputAccess: S#Acc )( fun: S#Tx => A ) : A = {
+         TxnExecutor.defaultAtomic { itx =>
+            implicit val dtx  = system.durable.wrap( itx )
+            path.set( inputAccess )
+            performStep( inputAccess, dtx, fun )
+         }
+      }
+
+      private def performStep[ A ]( inputAccess: S#Acc, dtx: D1#Tx, fun: S#Tx => A ) : A = {
+         val tx = system.createTxn( dtx, inputAccess, this )
+         logCursor( id.toString + " step. input path = " + inputAccess )
+         fun( tx )
       }
 
       def flushCache( term: Long )( implicit tx: S#Tx ) {
@@ -62,10 +74,10 @@ object CursorImpl {
          path.get
       }
 
-      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ) {
-         implicit val dtx: D1#Tx = system.durableTx( tx )
-         path.set( pathVal )
-      }
+//      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ) {
+//         implicit val dtx: D1#Tx = system.durableTx( tx )
+//         path.set( pathVal )
+//      }
 
       def dispose()( implicit tx: S#Tx ) {
          implicit val dtx: D1#Tx = system.durableTx( tx )

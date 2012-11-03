@@ -25,9 +25,9 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
       import types._
 
-      def timeWarp( path: Sys#Acc )( implicit cursor: Cursor[ S ]) {
-         cursor.step( cursor.position_=( path )( _ ))
-      }
+//      def timeWarp( path: Sys#Acc )( implicit cursor: Cursor[ S ]) {
+//         cursor.step( cursor.position_=( path )( _ ))
+//      }
 
       it( "should yield the same sequences as those in Fiat/Kaplan fig. 3" ) {
 
@@ -91,8 +91,8 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
 
          // --> use a variant to better verify the results: set x=3 instead
          given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
-         timeWarp( path0 )( cursor ) //  Confluent.Path.root
-         cursor.step { implicit tx =>
+//         timeWarp( path0 )( cursor ) //  Confluent.Path.root
+         cursor.stepFrom( path0 ) { implicit tx =>
             access.transform {
                case Some( n ) =>
                   val res = n.next.get
@@ -123,8 +123,8 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          ///////////////////////////// v3 /////////////////////////////
 
          given( "v3: Add +2 to all elements of right list. Concatenate left and right lists" )
-         timeWarp( v1 )( cursor )
-         cursor.step { implicit tx =>
+//         timeWarp( v1 )( cursor )
+         cursor.stepFrom( v1 ) { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
                pred.next.get match {

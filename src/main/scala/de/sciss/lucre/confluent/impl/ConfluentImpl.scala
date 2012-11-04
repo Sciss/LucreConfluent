@@ -1448,7 +1448,9 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 
       final def flushRoot( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
          require( !meldInfo.requiresNewTree, "Cannot meld in the root version" )
-         flush( tx.inputAccess.term, caches )
+         val outTerm = tx.inputAccess.term
+         writeVersionInfo( outTerm )
+         flush( outTerm, caches )
       }
 
       final def flushRegular( meldInfo: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {

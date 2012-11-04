@@ -1,8 +1,6 @@
 package de.sciss.lucre
 package confluent
 
-import org.scalatest.fixture
-import org.scalatest.matchers.ShouldMatchers
 import stm.MutableSerializer
 import collection.immutable.{IndexedSeq => IIdxSeq}
 
@@ -10,11 +8,7 @@ import collection.immutable.{IndexedSeq => IIdxSeq}
  * To run only this test:
  * test-only de.sciss.lucre.confluent.CursorsSpec
  */
-class CursorsSpec extends fixture.FlatSpec with ShouldMatchers {
-   type FixtureParam = Confluent
-   type S = Confluent
-   type D = stm.Durable
-
+class CursorsSpec extends ConfluentSpec {
 //   confluent.showLog = true
 
    object Entity {
@@ -63,17 +57,6 @@ class CursorsSpec extends fixture.FlatSpec with ShouldMatchers {
       protected def writeData( out: DataOutput ) {
          field.write( out )
          cursorsVar.write( out )
-      }
-   }
-
-   def withFixture( test: OneArgTest ) {
-      val system = Confluent.tmp()
-      try {
-//         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
-         test( system )
-      }
-      finally {
-         system.close()
       }
    }
 

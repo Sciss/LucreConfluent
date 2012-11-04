@@ -1516,14 +1516,26 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          val sz = access.size
          require( sz % 2 == 0, "Provided path is index, not full terminating path " + access )
          val idx = loop( 0, sz - 1 )
-         if( idx >= 0 ) {
-            val index = access._take( idx + 1 )
+         // if idx is zero or positive, a time stamp was found, we can simply return
+         // the appropriate prefix. if idx is -1, it means the query time is smaller
+         // than the seminal version's time stamp; so in that case, return the
+         // seminal path (`max(0, -1) + 1 == 1`)
+         if( idx >= -1 ) {
+            val index = access._take( math.max( 0, idx ) + 1 )
             index :+ index.term
          } else {
+            // otherwise, check if the last exit version is smaller than the query time,
+            // and we return the full input access argument. otherwise, we calculate
+            // the insertion index `idxP` which is an even number. the entry vertex
+            // at that index would have a time stamp greater than the query time stamp,
+            // and the entry vertex at that index minus 2 would have a time stamp less
+            // than the query time step. therefore, we have to look at the time stamp
+            // map for the entry vertex at that index minus 2, and find the ancestor
+            // of the tree's exit vetex at idxP - 1.
             val idxP       = -idx - 1
             if( idxP == sz ) access else {
-               val index      = access._take( idxP )
-               val treeExit   = access( idxP )
+               val index      = access._take( idxP - 1 )
+               val treeExit   = access( idxP - 1 )
                val anc     = readTimeStampMap( index )
                val resOpt  = anc.nearestUntil( timeStamp = timeStamp, term = treeExit )
                val res     = resOpt.getOrElse( sys.error( "No version info found for " + index ))

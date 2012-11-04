@@ -11,7 +11,7 @@ import org.scalatest.{FunSpec, GivenWhenThen}
  * To run only this test:
  * test-only de.sciss.lucre.confluent.FiatKaplanSuite
  */
-class FiatKaplanSuite extends FunSpec with GivenWhenThen {
+class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList {
    // showLog = true
 
    type S = Confluent
@@ -177,49 +177,6 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen {
          val exp4 = List( "w1" -> 1, "w0" -> 2, "w1" -> 3, "w2" -> 5, "w1" -> 1, "w2" -> 3 )
          then( "is should equal " + exp4 )
          assert( res4 === exp4 )
-      }
-   }
-
-   class Types[ S <: Sys[ S ]]( val s: S ) {
-      type Sys = S
-
-      object Node {
-         implicit object ser extends MutableSerializer[ S, Node ] {
-            def readData( in: DataInput, _id: S#ID )( implicit tx: S#Tx ) : Node = new Node with Mutable.Impl[ S ] {
-               val id      = _id
-               val name    = in.readString()
-               val value   = tx.readIntVar( id, in )
-               val next    = tx.readVar[ Option[ Node ]]( id, in )
-            }
-         }
-
-         def apply( _name: String, init: Int )( implicit tx: S#Tx ) : Node = new Node with Mutable.Impl[ S ] {
-            val id      = tx.newID()
-            val name    = _name
-            val value   = tx.newIntVar( id, init )
-            val next    = tx.newVar[ Option[ Node ]]( id, None )
-         }
-      }
-      trait Node extends Mutable[ S#ID, S#Tx ] {
-         def name: String
-         def value: S#Var[ Int ]
-         def next: S#Var[ Option[ Node ]]
-         protected def disposeData()( implicit tx: S#Tx ) {
-            value.dispose()
-            next.dispose()
-         }
-         protected def writeData( out: DataOutput ) {
-            out.writeString( name )
-            value.write( out )
-            next.write( out )
-         }
-
-         override def toString = "Node(" + name + ", " + id + ")"
-      }
-
-      def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {
-         case Some( n ) => (n.name, n.value.get) :: toList( n.next.get )
-         case _ => Nil
       }
    }
 }

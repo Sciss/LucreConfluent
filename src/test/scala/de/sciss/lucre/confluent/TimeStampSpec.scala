@@ -8,7 +8,7 @@ class TimeStampSpec extends ConfluentSpec {
    // ensure time stamps are distinct
    def sleep() { Thread.sleep( 10 )}
 
-   "Time stamps and version info" should "work as expected" in { system =>
+   "Time stamps and version info" should "work in a non-melded graph" in { system =>
       val (access, cursor) = system.cursorRoot { implicit tx => 0
       } { implicit tx => _ => tx.newCursor() }
 
@@ -38,7 +38,8 @@ class TimeStampSpec extends ConfluentSpec {
 
       val path2 = cursor.step( _.inputAccess )
 
-      // first of all, ensure version infos can be read
+      // ---- first of all, ensure version infos can be read ----
+
       val (info0, info1, info2) = cursor.step { implicit tx =>
          (path0.info, path1.info, path2.info)
       }
@@ -48,6 +49,16 @@ class TimeStampSpec extends ConfluentSpec {
       assert( info2.message === "message 2" )
       assert( info0.timeStamp < info1.timeStamp )
       assert( info1.timeStamp < info2.timeStamp )
+
+      // ---- now perform `until` queries ----
+
+      val (path0u1, path0u2, path0u3) = cursor.step { implicit tx =>
+         (path0.takeUntil( info0.timeStamp - 1 ), path0.takeUntil( info0.timeStamp ), path0.takeUntil( System.currentTimeMillis() ))
+      }
+
+      assert( path0u1 === path0 )
+      assert( path0u2 === path0 )
+      assert( path0u3 === path0 )
 
 //      assert( res === IIdxSeq( 1, 2 ))
    }

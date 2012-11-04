@@ -1,0 +1,13 @@
+prefix = <pe1, pt1, pe2, pt2, ... pek, ptk>
+suffix = <se1, st1, se2, st2, ... sem, stm>
+
+val sz = access.size
+require( sz % 2 == 0, "Must be full path, not index" )
+tree = if( sz <= 2 ) {
+   access.head
+} else {
+   val (pre, suff) = access.splitAt( (sz / 2) & ~1 )
+   val suffIdx = suff.head
+   val suffStamp = versionInfo( suffIdx ).timeStamp
+   if( suffStamp == ...
+}

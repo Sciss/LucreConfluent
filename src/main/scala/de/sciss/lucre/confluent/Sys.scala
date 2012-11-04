@@ -76,6 +76,7 @@ object Sys {
 
    trait Txn[ S <: Sys[ S ]] extends _Txn[ S ] {
       def inputAccess: S#Acc
+      def info: VersionInfo.Modifiable
 
       def forceWrite() : Unit
 
@@ -131,7 +132,7 @@ object Sys {
 
       private[confluent] def maxPrefixLength( that: Long ) : Int
 
-      private[confluent] def seminal : S#Acc
+      /* private[confluent] */ def seminal : S#Acc
 
       private[confluent] def partial: S#Acc
 
@@ -167,6 +168,33 @@ object Sys {
       private[confluent] def last : Long
       private[confluent] def isEmpty : Boolean
       private[confluent] def nonEmpty : Boolean
+
+      /**
+       * Retrieves the version information associated with the access path.
+       */
+      def info( implicit tx: S#Tx ) : VersionInfo
+
+      /**
+       * Truncates the path to a prefix corresponding to the most recent
+       * transaction along the path which has occurred not after a given
+       * point in (system) time.
+       *
+       * In other words, calling `info` on the returned path results in
+       * a `VersionInfo` object whose `timeStamp` field is less than or
+       * equal to the `timeStamp` argument of this method. The only
+       * exception is if the `timeStamp` argument is smaller than the
+       * root version of system; in that case, the root path is returned
+       * instead of an empty path.
+       *
+       * '''Note:''' This assumes that incremental versions correspond
+       * with incremental time stamps. This is not enforced and if this is not the case,
+       * the behaviour is undefined. Furthermore, if it is allowed that
+       * multiple successive versions have the same time stamp. In that
+       * case, it is undefined which of these versions is returned.
+       *
+       * @param   timeStamp  the query time (in terms of `System.currentTimeMillis`)
+       */
+      def takeUntil( timeStamp: Long )( implicit tx: S#Tx ) : S#Acc
    }
 }
 
@@ -220,4 +248,12 @@ trait Sys[ S <: Sys[ S ]] extends stm.Sys[ S ] {
 
    def cursorRoot[ A, B ]( init: S#Tx => A )( result: S#Tx => A => B )
                          ( implicit serializer: stm.Serializer[ S#Tx, S#Acc, A ]) : (S#Entry[ A ], B)
+
+   /**
+    * Retrieves the version information for a given version term.
+    */
+   private[confluent] def versionInfo( term: Long )( implicit tx: S#Tx ) : VersionInfo
+   private[confluent] def versionUntil( access: S#Acc, timeStamp: Long )( implicit tx: S#Tx ) : S#Acc
+
+//   def rootVersionInfo( implicit tx: S#Tx ) : VersionInfo
 }

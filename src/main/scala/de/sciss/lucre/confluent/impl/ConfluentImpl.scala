@@ -34,6 +34,7 @@ import de.sciss.fingertree
 import fingertree.{FingerTreeLike, FingerTree}
 import data.Ancestor
 import util.MurmurHash
+import annotation.tailrec
 
 object ConfluentImpl {
    def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = {
@@ -314,12 +315,17 @@ println( "?? partial from index " + this )
 
       def mkString( prefix: String, sep: String, suffix: String ) : String =
          tree.iterator.map( _.toInt ).mkString( prefix, sep, suffix )
+
+      def info( implicit tx: S#Tx ) : VersionInfo = tx.system.versionInfo( term )
+
+      def takeUntil( timeStamp: Long )( implicit tx: S#Tx ) : S#Acc = tx.system.versionUntil( this, timeStamp )
    }
 
    // --------------------------------------------
    // ----------------- END Path -----------------
    // --------------------------------------------
 
+   // an index tree holds the pre- and post-lists for each version (full) tree
    private final class IndexTreeImpl[ D <: stm.DurableLike[ D ]]( val tree: Ancestor.Tree[ D, Long ], val level: Int )
    extends Sys.IndexTree[ D ] {
       override def hashCode : Int = term.toInt
@@ -349,12 +355,20 @@ println( "?? partial from index " + this )
    private val anyEmptySeq = IIdxSeq.empty[ Nothing ]
 
    trait TxnMixin[ S <: Sys[ S ]]
-   extends Sys.Txn[ S ] /* with DurableCacheMapImpl[ S, Int ] */ {
+   extends Sys.Txn[ S ]
+   with VersionInfo.Modifiable
+   /* with DurableCacheMapImpl[ S, Int ] */ {
       _: S#Tx =>
 
       // ---- abstract ----
 
       protected def flushCaches( meld: MeldInfo[ S ], caches: IIdxSeq[ Cache[ S#Tx ]]) : Unit
+
+      // ---- info ----
+
+      final def info: VersionInfo.Modifiable = this
+      final var message: String = ""
+      final val timeStamp: Long = System.currentTimeMillis()
 
       // ---- init ----
 
@@ -1423,7 +1437,8 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
                   implicit val dtx = durableTx( tx )  // created on demand (now)
                   val aNew = init( tx )
                   rootVar.setInit( aNew )
-                  newIndexTree( rootPath.term, 0 )
+//                  newIndexTree( rootPath.term, 0 )
+                  writeNewTree( rootPath.index, 0 )
                   writePartialTreeVertex( partialTree.root )
                   aNew
             }
@@ -1444,7 +1459,75 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             flushOldTree()
          }
          log( "::::::: txn flush - " + (if( newTree ) "meld " else "") + "term = " + outTerm.toInt + " :::::::" )
+         writeVersionInfo( outTerm )
          flush( outTerm, caches )
+      }
+
+      // writes the version info (using cookie `4`).
+      private def writeVersionInfo( term: Long )( implicit tx: S#Tx ) {
+         store.put { out =>
+            out.writeUnsignedByte( 4 )
+            out.writeInt( term.toInt )
+         } { out =>
+            val i = tx.info
+            val m = i.message
+            out.writeString( if( m.length == 0 ) null else m ) // DataOutput optimises `null`
+            out.writeLong( i.timeStamp )
+         }
+      }
+
+      /**
+       * Retrieves the version information for a given version term.
+       */
+      final def versionInfo( term: Long )( implicit tx: S#Tx ) : VersionInfo = {
+         val vInt = term.toInt
+         val opt = store.get { out =>
+            out.writeUnsignedByte( 4 )
+            out.writeInt( vInt )
+         } { in =>
+            val m          = in.readString()
+            val timeStamp  = in.readLong()
+            VersionInfo( if( m == null ) "" else m, timeStamp )
+         }
+         opt.getOrElse( sys.error( "No version information stored for " + vInt ))
+      }
+
+      final def versionUntil( access: S#Acc, timeStamp: Long )( implicit tx: S#Tx ) : S#Acc = {
+         @tailrec def loop( low: Int, high: Int ) : Int = {
+            if( low <= high ) {
+               val index      = ((high + low) >> 1) & ~1 // we want entry vertices, thus ensure index is even
+               val thatTerm   = access( index )
+               val thatInfo   = versionInfo( thatTerm )
+               val thatTime   = thatInfo.timeStamp
+               if( thatTime == timeStamp ) {
+                  index
+               } else if( thatTime < timeStamp ){
+                  loop( index + 2, high )
+               } else {
+                  loop( low, index - 2 )
+               }
+            } else {
+               -low -1
+            }
+         }
+
+         val sz = access.size
+         require( sz % 2 == 0, "Provided path is index, not full terminating path " + access )
+         val idx = loop( 0, sz - 1 )
+         if( idx >= 0 ) {
+            val index = access._take( idx + 1 )
+            index :+ index.term
+         } else {
+            val idxP       = -idx - 1
+            if( idxP == sz ) access else {
+               val index      = access._take( idxP )
+               val treeExit   = access( idxP )
+               val anc     = readTimeStampMap( index )
+               val resOpt  = anc.nearestUntil( timeStamp = timeStamp, term = treeExit )
+               val res     = resOpt.getOrElse( sys.error( "No version info found for " + index ))
+               index :+ res._1
+            }
+         }
       }
 
       private def flush( outTerm: Long, caches: IIdxSeq[ Cache[ S#Tx ]])( implicit tx: S#Tx ) {
@@ -1460,6 +1543,8 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          val parent     = readTreeVertex( tree.tree, index, parentTerm )._1
          val child      = tree.tree.insertChild( parent, childTerm )
          writeTreeVertex( tree, child )
+         val tsMap      = readTimeStampMap( index )
+         tsMap.add( childTerm, () ) // XXX TODO: more efficient would be to pass in `child` directly
 
          // ---- partial ----
          val pParent    = readPartialTreeVertex( index, parentTerm )
@@ -1470,13 +1555,17 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       }
 
       private def flushNewTree( level: Int )( implicit tx: S#Tx ) : Long = {
-         implicit val dtx = durableTx( tx )
-         val term = newVersionID( tx )
-         newIndexTree( term, level )
+         implicit val dtx  = durableTx( tx )
+         val term          = newVersionID( tx )
+         val oldPath       = tx.inputAccess
+
+         // ---- full ----
+//         newIndexTree( term, level )
+         writeNewTree( oldPath :+ term, level )
 
          // ---- partial ----
-         val (index, parentTerm) = tx.inputAccess.splitIndex
-         val pParent    = readPartialTreeVertex( index, parentTerm )
+         val (oldIndex, parentTerm) = oldPath.splitIndex
+         val pParent    = readPartialTreeVertex( oldIndex, parentTerm )
          val pChild     = partialTree.insertChild( pParent, term ) // ( durable )
          writePartialTreeVertex( pChild )
 
@@ -1515,6 +1604,19 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             }
          }
 
+         // XXX TODO: DRY
+         def nearestUntil( timeStamp: Long, term: Long )( implicit tx: S#Tx ) : Option[ (Long, A) ] = {
+            implicit val dtx = durableTx( tx )
+            val v = readTreeVertex( map.full, index, term )._1
+            map.nearestWithFilter( v ) { vInt =>
+               // note: while versionInfo formally takes a `Long` term, it only really uses the 32-bit version int
+               val info = versionInfo( vInt )
+               info.timeStamp <= timeStamp
+            } map {
+               case (v2, value) => (v2.version, value)
+            }
+         }
+
          def add( term: Long, value: A )( implicit tx: S#Tx ) {
             implicit val dtx = durableTx( tx )
             val v = readTreeVertex( map.full, index, term )._1
@@ -1526,8 +1628,9 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          }
       }
 
+      // writes the vertex information (pre- and post-order entries) of a full tree's leaf (using cookie `0`).
       private def writeTreeVertex( tree: Sys.IndexTree[ D ], v: Ancestor.Vertex[ D, Long ])( implicit tx: D#Tx ) {
-         system.store.put { out =>
+         store.put { out =>
             out.writeUnsignedByte( 0 )
             out.writeInt( v.version.toInt )
          } { out =>
@@ -1537,17 +1640,53 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          }
       }
 
-      private def newIndexTree( term: Long, level: Int )( implicit tx: D#Tx ) : Sys.IndexTree[ D ] = {
+      // creates a new index tree. this _writes_ the tree (using cookie `1`), as well as the root vertex.
+      // it also creates and writes an empty index map for the tree, used for timeStamp search
+      // (using cookie `5`).
+      private def writeNewTree( index: S#Acc, level: Int )( implicit tx: S#Tx ) {
+         val dtx  = durableTx( tx )
+         val term = index.term
          log( "txn new tree " + term.toInt )
-         val tree = Ancestor.newTree[ D, Long ]( term )( tx, Serializer.Long, _.toInt )
-         val res  = new IndexTreeImpl( tree, level )
-         system.store.put( out => {
+         val tree = Ancestor.newTree[ D, Long ]( term )( dtx, Serializer.Long, _.toInt )
+         val it   = new IndexTreeImpl( tree, level )
+         val vInt = term.toInt
+         store.put { out =>
             out.writeUnsignedByte( 1 )
-            out.writeInt( term.toInt )
-         })( res.write )
-         writeTreeVertex( res, tree.root )
-         res
+            out.writeInt( vInt )
+         } {
+            it.write _
+         }
+         writeTreeVertex( it, tree.root )( dtx )
+
+         val map = newIndexMap( index, term, () )( tx, ImmutableSerializer.Unit )
+         store.put { out =>
+            out.writeUnsignedByte( 5 )
+            out.writeInt( vInt )
+         } {
+            map.write _
+         }
       }
+
+      // reads the index map maintained for full trees allowing time stamp search
+      // (using cookie `5`).
+      private def readTimeStampMap( index: S#Acc )( implicit tx: S#Tx ) : IndexMap[ S, Unit ] = {
+         val opt = store.get { out =>
+            out.writeUnsignedByte( 5 )
+            out.writeInt( index.term.toInt )
+         } { in =>
+            readIndexMap[ Unit ]( in, index )( tx, ImmutableSerializer.Unit )
+         }
+         opt.getOrElse( sys.error( "No time stamp map found for " + index ))
+      }
+
+//      private def updateTimeStampMap( term: Long )( implicit tx: D#Tx ) {
+//         store.get { out =>
+//            out.writeUnsignedByte( 5 )
+//            out.writeInt( term.toInt )
+//         } { in =>
+//            readIndexMap[ Unit ]( in, index )
+//         }
+//      }
 
       private def readIndexTree( term: Long )( implicit tx: D#Tx ) : Sys.IndexTree[ D ] = {
          val st = store
@@ -1591,6 +1730,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          } getOrElse sys.error( "Trying to access inexisting vertex " + term.toInt )
       }
 
+      // writes the partial tree leaf information, i.e. pre- and post-order entries (using cookie `3`).
       private def writePartialTreeVertex( v: Ancestor.Vertex[ D, Long ])( implicit tx: S#Tx ) {
          store.put { out =>
             out.writeUnsignedByte( 3 )
@@ -1602,6 +1742,8 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 
       // ---- index map handler ----
 
+      // creates a new index map for marked values and returns that map. it does not _write_ that map
+      // anywhere.
       final def newIndexMap[ A ]( index: S#Acc, rootTerm: Long, rootValue: A )
                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          implicit val dtx = durableTx( tx )
@@ -1617,7 +1759,7 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
       }
 
       final def readIndexMap[ A ]( in: DataInput, index: S#Acc )
-                           ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
+                                 ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : IndexMap[ S, A ] = {
          implicit val dtx = durableTx( tx )
          val term = index.term
          val tree = readIndexTree( term )
@@ -1660,6 +1802,10 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             map.nearestOption( v ).map {
                case (v2, value) => (v2.version, value)
             }
+         }
+
+         def nearestUntil( timeStamp: Long, term: Long )( implicit tx: S#Tx ) : Option[ (Long, A) ] = {
+            ???
          }
 
          def add( term: Long, value: A )( implicit tx: S#Tx ) {

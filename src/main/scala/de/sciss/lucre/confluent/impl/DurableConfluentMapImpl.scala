@@ -235,6 +235,16 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       )
    }
 
+//   final def getUntil[ @specialized A ]( key: K, path: S#Acc, timeStamp: Long )
+//                                       ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
+//      if( path.isEmpty ) return None
+//      val (maxIndex, maxTerm) = path.splitIndex
+//      getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm )( (preLen, writeTerm, value) =>
+//      //            (path.dropAndReplaceHead( preLen, writeTerm ), value)
+//         (writeTerm +: path.drop( preLen ), value)
+//      )
+//   }
+
    private def getWithPrefixLen[ @specialized A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (Int, Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {

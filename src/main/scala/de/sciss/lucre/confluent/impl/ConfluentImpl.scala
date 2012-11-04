@@ -1532,10 +1532,11 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
             // than the query time step. therefore, we have to look at the time stamp
             // map for the entry vertex at that index minus 2, and find the ancestor
             // of the tree's exit vetex at idxP - 1.
-            val idxP       = -idx - 1
-            if( idxP == sz ) access else {
-               val index      = access._take( idxP - 1 )
-               val treeExit   = access( idxP - 1 )
+            val idxP = -idx - 1
+            if( (idxP == sz) && (versionInfo( access.term ).timeStamp <= timeStamp) ) {
+               access
+            } else {
+               val (index, treeExit) = access._take( idxP ).splitIndex
                val anc     = readTimeStampMap( index )
                val resOpt  = anc.nearestUntil( timeStamp = timeStamp, term = treeExit )
                val res     = resOpt.getOrElse( sys.error( "No version info found for " + index ))

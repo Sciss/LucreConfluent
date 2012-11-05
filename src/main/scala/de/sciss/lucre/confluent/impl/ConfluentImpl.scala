@@ -1623,10 +1623,27 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
          def nearestUntil( timeStamp: Long, term: Long )( implicit tx: S#Tx ) : Option[ (Long, A) ] = {
             implicit val dtx = durableTx( tx )
             val v = readTreeVertex( map.full, index, term )._1
+            // timeStamp lies somewhere between the time stamp for the tree's root vertex and
+            // the exit vertex given by the `term` argument (it may indeed be greater than
+            // the time stamp of the `term` = exit vertex argument).
+            // In order to find the correct entry, we need to find the nearest ancestor of
+            // the vertex associated with `term`, i.e. `v`, for which the additional constraint
+            // holds that the versionInfo stored with any candidate vertex is smaller than or equal
+            // to the query `timeStamp`.
+            //
+            // the ancestor search may call the predicate function with any arbitrary z-coordinate,
+            // even beyond versions that have already been created. thus, a pre-check is needed
+            // before invoking `versionInfo`, so that only valid versions are checked. This is
+            // achieved by the conditional `vInt <= maxVersionInt`.
+            val maxVersionInt = term.toInt
             map.nearestWithFilter( v ) { vInt =>
-               // note: while versionInfo formally takes a `Long` term, it only really uses the 32-bit version int
-               val info = versionInfo( vInt )
-               info.timeStamp <= timeStamp
+               if( vInt <= maxVersionInt ) {
+                  // note: while versionInfo formally takes a `Long` term, it only really uses the 32-bit version int
+                  val info = versionInfo( vInt )
+                  info.timeStamp <= timeStamp
+               } else {
+                  false // query version higher than exit vertex, possibly an inexisting version!
+               }
             } map {
                case (v2, value) => (v2.version, value)
             }

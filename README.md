@@ -22,6 +22,8 @@ Builds with sbt 0.12 against Scala 2.9.2 and Java 1.6, using standard sbt target
 
 The following dependency is necessary:
 
+    resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
+    
     "de.sciss" %% "lucreconfluent" % "1.4.+"
 
 ### previous versions / tags

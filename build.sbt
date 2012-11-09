@@ -1,6 +1,6 @@
 name := "ConfluentReactive"
 
-version := "1.4.0-SNAPSHOT"
+version := "1.4.0"
 
 organization := "de.sciss"
 
@@ -12,11 +12,11 @@ licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
 scalaVersion := "2.9.2"
 
-// crossScalaVersions in ThisBuild := Seq( "2.10.0-M6", "2.9.2" )
+resolvers += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "lucreevent" % "1.3.0",
-   "de.sciss" %% "lucreconfluent" % "1.4.0-SNAPSHOT"
+   "de.sciss" %% "lucreevent" % "1.4.+",
+   "de.sciss" %% "lucreconfluent" % "1.4.+"
 )
 
 libraryDependencies <+= scalaVersion { sv =>

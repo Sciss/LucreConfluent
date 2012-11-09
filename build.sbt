@@ -4,7 +4,7 @@ version := "1.4.0"
 
 organization := "de.sciss"
 
-description := "Confluent persistence references for Scala"
+description := "Confluently persistent references for Scala"
 
 homepage := Some( url( "https://github.com/Sciss/LucreConfluent" ))
 

@@ -24,7 +24,8 @@ libraryDependencies ++= Seq(
 
 libraryDependencies <+= scalaVersion { sv =>
    val v = sv match {
-      case "2.10.0-M7" => "1.9-2.10.0-M7-B1"
+      case "2.10.0-M7"  => "1.9-2.10.0-M7-B1"
+      case "2.10.0-RC3" => "1.8-B1"
       case _ => "1.8"
    }
    "org.scalatest" %% "scalatest" % v % "test"

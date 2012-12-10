@@ -24,7 +24,7 @@ The following dependency is necessary:
 
     resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
     
-    "de.sciss" %% "lucreconfluent" % "1.4.+"
+    "de.sciss" %% "lucreconfluent" % "1.5.+"
 
 ### previous versions / tags
 

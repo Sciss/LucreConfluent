@@ -195,12 +195,15 @@ println( "?? partial from index " + this )
       }
 
       def maxPrefixLength( that: Long ) : Int = {
-         // XXX TODO more efficient
-         val sz = size
-         var i = 0; while( i < sz ) {
-            if( apply( i ) == that ) return i + 1
-         i += 2 }
-         0
+//         // XXX TODO more efficient
+//         val sz = size
+//         var i = 0; while( i < sz ) {
+//            if( apply( i ) == that ) return i + 1
+//         i += 2 }
+//         0
+
+         val pre    = tree.takeWhile( _._2 < that )
+         if( pre.isEmpty || pre.last != that ) 0 else pre.measure._1
       }
 
       def maxPrefixLength( that: S#Acc ) : Int = {
@@ -213,12 +216,25 @@ println( "?? partial from index " + this )
             same = ta.find1( _._1 > i ) == tb.find1( _._1 > i )
          i += 1 }
 //         wrap( ta.split1( _._1 > i )._1 )
-         if( same ) i else i - 1
+         val OLD = if( same ) i else i - 1
+
+         val ita = tree.iterator
+         val itb = that.tree.iterator
+         var j = 0; while( ita.hasNext && itb.hasNext ) {
+            val na = ita.next()
+            val nb = itb.next()
+            if( na != nb ) return 0
+         j += 1 }
+         val NEW = j
+         assert( OLD == NEW )
+         NEW
       }
 
       def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc = {
-         val (_, _, right) = tree.split1( _._1 > dropLen )
-         wrap( newHead +: right )
+         val (_, _, _OLD) = tree.split1( _._1 > dropLen )
+         val NEW = tree.dropWhile( _._1 < dropLen )
+         assert( _OLD == NEW )
+         wrap( newHead +: NEW )
       }
 
       def addTerm( term: Long )( implicit tx: S#Tx ) : S#Acc = {
@@ -252,7 +268,6 @@ println( "?? partial from index " + this )
       // XXX TODO should have an efficient method in finger tree
       def :-|( suffix: Long ) : S#Acc = wrap( tree.init :+ suffix )
 
-      // XXX TODO should have an efficient method in finger tree
       def drop( n: Int ) : S#Acc = {
 //         var res = tree
 //         var i = 0; while( i < n ) {
@@ -262,8 +277,10 @@ println( "?? partial from index " + this )
          if( n >= size ) return Path.empty
          val nm = n - 1
          if( nm == 0 ) return wrap( tree.tail )
-         val (_ ,_, right) = tree.split1( _._1 > nm )
-         wrap( right )
+         val (_ ,_, _OLD) = tree.split1( _._1 > nm )
+         val NEW = tree.dropWhile( _._1 < n )
+         assert( _OLD == NEW )
+         wrap( NEW )
       }
 
       // XXX TODO should have an efficient method in finger tree
@@ -286,6 +303,10 @@ println( "?? partial from index " + this )
             idx += 1
          }
          idx
+         val OLD = idx
+         val NEW = tree.takeWhile( _._2 <= hash ).measure._1
+         assert( OLD == NEW )
+         NEW
       }
 
       def write( out: DataOutput ) {
@@ -301,15 +322,23 @@ println( "?? partial from index " + this )
 
       // XXX TODO -- need an applyMeasure method in finger tree
       def sumUntil( n: Int ) : Long = {
-//         if( n <= 0 ) return 0L
-//         if( n >= size ) return sum
-//         tree.find1( _._1 >= n ).
-         tree.split( _._1 > n )._1.measure._2
+////         if( n <= 0 ) return 0L
+////         if( n >= size ) return sum
+////         tree.find1( _._1 >= n ).
+         val OLD = tree.split( _._1 > n )._1.measure._2
+         val NEW = tree.takeWhile( _._1 < n ).measure._2
+         assert( OLD == NEW )
+         NEW
       }
 
       def take( n: Int ) : PathLike = _take( n )
 
-      def _take( n: Int ) : S#Acc = wrap( tree.split( _._1 > n )._1 ) // XXX future optimization in finger tree
+      def _take( n: Int ) : S#Acc = {
+         val OLD = tree.split( _._1 > n )._1
+         val NEW = tree.takeWhile( _._1 < n )
+         assert( OLD == NEW )
+         wrap( NEW )
+      }
 
       def wrap( _tree: FingerTree[ (Int, Long), Long ]) : Path[ S ] /* S#Acc */ = new Path( _tree )
 

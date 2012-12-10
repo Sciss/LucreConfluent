@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version := "1.4.0"
+version := "1.5.0-SNAPSHOT"
 
 organization := "de.sciss"
 
@@ -17,16 +17,16 @@ scalaVersion := "2.9.2"
 resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "fingertree" % "1.0.+",
+   "de.sciss" %% "fingertree" % "1.1.+",
    "de.sciss" %% "lucredata-core" % "1.4.+",
    "de.sciss" %% "lucredata-views" % "1.4.+" % "test"
 )
 
-libraryDependencies <+= scalaVersion { sv =>
+libraryDependencies in ThisBuild <+= scalaVersion { sv =>
    val v = sv match {
-      case "2.10.0-M7"  => "1.9-2.10.0-M7-B1"
       case "2.10.0-RC3" => "1.8-B1"
-      case _ => "1.8"
+      case "2.10.0-RC5" => "1.8-B1"
+      case _            => "1.8"
    }
    "org.scalatest" %% "scalatest" % v % "test"
 }

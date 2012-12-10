@@ -153,9 +153,9 @@ object Sys {
 
       private[confluent] def splitAtSum( hash: Long ): (S#Acc, Long)
 
-      private[confluent] def indexOfSum( hash: Long ): Int
+//      private[confluent] def indexOfSum( hash: Long ): Int
 
-      private[confluent] def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc
+//      private[confluent] def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc
 
       private[confluent] def addTerm( term: Long )( implicit tx: S#Tx ) : S#Acc
 

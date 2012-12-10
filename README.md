@@ -16,4 +16,4 @@ The following dependency is necessary:
 
     resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
     
-    "de.sciss" %% "confluentreactive" % "1.4.+"
+    "de.sciss" %% "confluentreactive" % "1.5.+"

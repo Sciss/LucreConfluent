@@ -1,6 +1,6 @@
 name := "ConfluentReactive"
 
-version := "1.4.0"
+version := "1.5.0"
 
 organization := "de.sciss"
 
@@ -16,13 +16,13 @@ resolvers += "Oracle Repository" at "http://download.oracle.com/maven"  // requi
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "lucreevent" % "1.4.+",
-   "de.sciss" %% "lucreconfluent" % "1.4.+"
+   "de.sciss" %% "lucreconfluent" % "1.5.+"
 )
 
-libraryDependencies <+= scalaVersion { sv =>
+libraryDependencies in ThisBuild <+= scalaVersion { sv =>
    val v = sv match {
-      case "2.10.0-M7"  => "1.9-2.10.0-M7-B1"
       case "2.10.0-RC3" => "1.8-B1"
+      case "2.10.0-RC5" => "1.8-B1"
       case _            => "1.8"
    }
    "org.scalatest" %% "scalatest" % v % "test"

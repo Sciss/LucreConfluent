@@ -3,9 +3,10 @@ package confluent
 package reactive
 
 import event.Bang
+import stm.store.BerkeleyDB
 
 object EventTest extends App {
-   val system  = ConfluentReactive.tmp()
+   val system  = ConfluentReactive( BerkeleyDB.tmp() )
    type S      = ConfluentReactive
 
    implicit val whyOhWhy = Bang.serializer[ S ]

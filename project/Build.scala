@@ -37,7 +37,8 @@ object Build extends sbt.Build {
       dependencies = Seq( core ),
       settings     = Project.defaultSettings ++ Seq(
          libraryDependencies ++= Seq(
-            "de.sciss" %% "lucreevent-core" % "1.6.+",
+            "de.sciss" %% "lucreevent-core" % "1.6.0",
+            "de.sciss" %% "lucrestm-bdb" % "1.6.+" % "test",
             ("org.scalatest" %% "scalatest" % "1.8" cross CrossVersion.full) % "test"
          )
       )

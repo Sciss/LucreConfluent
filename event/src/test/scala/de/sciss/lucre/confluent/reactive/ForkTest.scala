@@ -2,12 +2,11 @@ package de.sciss.lucre
 package confluent
 package reactive
 
-import java.util.concurrent.Executors
 import event.Bang
-import concurrent.stm.Txn
+import stm.store.BerkeleyDB
 
 object ForkTest extends App {
-   val system  = ConfluentReactive.tmp()
+   val system  = ConfluentReactive( BerkeleyDB.tmp() )
    type S      = ConfluentReactive
 
    implicit val whyOhWhy = Bang.serializer[ S ]

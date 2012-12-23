@@ -1,0 +1,49 @@
+[23 Oct 2012, 12:54'36.519] Confluent - ::::::: atomic - input access = Path(0, 0) :::::::
+Registering fork 1
+[23 Oct 2012, 12:54'36.524] Confluent - Root get
+[23 Oct 2012, 12:54'36.524] Confluent - txn get' <0 @ 0,0>
+[23 Oct 2012, 12:54'36.531] Confluent - txn readID <1 @ 0,0>
+[23 Oct 2012, 12:54'36.531] Confluent - read evt evt.Var(<1 @ 0,0>)
+[23 Oct 2012, 12:54'36.532] Confluent - read evt evt.Var[Int](<2 @ 0,0>)
+[23 Oct 2012, 12:54'36.543] Confluent - evt.Var(<1 @ 0,0>) set Vector((1,ObserverKey(0)))
+[23 Oct 2012, 12:54'36.546] Confluent - ....... txn dirty .......
+[23 Oct 2012, 12:54'36.547] Confluent - evt.Var[Int](<2 @ 0,0>) set -2
+[23 Oct 2012, 12:54'36.575] Confluent - ::::::: txn flush - term = 1 :::::::
+[23 Oct 2012, 12:54'36.576] Confluent - txn flush write Vector((1,ObserverKey(0))) for <1 @ 0,1>	###
+[23 Oct 2012, 12:54'36.578] Confluent - txn flush write -2 for <2 @ 0,1>
+[23 Oct 2012, 12:54'36.582] Confluent - ::::::: atomic - input access = Path(0, 0) :::::::
+Registering fork 2
+[23 Oct 2012, 12:54'36.582] Confluent - Root get
+[23 Oct 2012, 12:54'36.582] Confluent - txn get' <0 @ 0,0>
+[23 Oct 2012, 12:54'36.582] Confluent - txn readID <1 @ 0,0>
+[23 Oct 2012, 12:54'36.583] Confluent - read evt evt.Var(<1 @ 0,0>)
+[23 Oct 2012, 12:54'36.583] Confluent - read evt evt.Var[Int](<2 @ 0,0>)
+[23 Oct 2012, 12:54'36.585] Confluent - evt.Var[Int](<2 @ 0,0>) get					### THIS IS ALREADY WRONG?
+[23 Oct 2012, 12:54'36.587] Confluent - evt.Var(<1 @ 0,0>) get
+[23 Oct 2012, 12:54'36.588] Confluent - evt.Var(<1 @ 0,0>) set Vector((1,ObserverKey(0)), (1,ObserverKey(1)))
+[23 Oct 2012, 12:54'36.589] Confluent - ....... txn dirty .......
+[23 Oct 2012, 12:54'36.608] Confluent - ::::::: txn flush - term = 2 :::::::
+[23 Oct 2012, 12:54'36.609] Confluent - txn flush write Vector((1,ObserverKey(0)), (1,ObserverKey(1))) for <1 @ 0,2>
+[23 Oct 2012, 12:54'36.784] Confluent - ::::::: atomic - input access = Path(0, 0) :::::::
+Registering fork 3
+[23 Oct 2012, 12:54'36.784] Confluent - Root get
+[23 Oct 2012, 12:54'36.784] Confluent - txn get' <0 @ 0,0>
+[23 Oct 2012, 12:54'36.785] Confluent - txn readID <1 @ 0,0>
+[23 Oct 2012, 12:54'36.785] Confluent - read evt evt.Var(<1 @ 0,0>)
+[23 Oct 2012, 12:54'36.785] Confluent - read evt evt.Var[Int](<2 @ 0,0>)
+[23 Oct 2012, 12:54'36.785] Confluent - evt.Var[Int](<2 @ 0,0>) get
+[23 Oct 2012, 12:54'36.786] Confluent - evt.Var(<1 @ 0,0>) get
+
+indexTerm = 0
+term 1
+
+no partials
+
+full single for index 0, term 1
+
+:::
+
+getWithSuffix
+key = 1
+path = <0, 0>
+--> max pre len = 1

@@ -28,20 +28,18 @@ package confluent
 
 import stm.{DataStoreFactory, DataStore}
 import impl.{ConfluentImpl => Impl}
-import java.io.File
-import stm.impl.BerkeleyDB
 
 object Confluent {
    var DEBUG_DISABLE_PARTIAL  = true
 
    def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = Impl( storeFactory )
 
-   def tmp() : Confluent = {
-      val dir = File.createTempFile( "confluent_", "db" )
-      dir.delete()
-//      dir.mkdir()
-      apply( BerkeleyDB.factory( dir ))
-   }
+//   def tmp() : Confluent = {
+//      val dir = File.createTempFile( "confluent_", "db" )
+//      dir.delete()
+////      dir.mkdir()
+//      apply( BerkeleyDB.factory( dir ))
+//   }
 
    trait Txn extends Sys.Txn[ Confluent ] {
       private[confluent] def durable: stm.Durable#Tx

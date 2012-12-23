@@ -4,6 +4,7 @@ package confluent
 import org.scalatest.fixture
 import org.scalatest.matchers.ShouldMatchers
 import stm.MutableSerializer
+import stm.store.BerkeleyDB
 
 /**
  * To run only this test:
@@ -35,7 +36,7 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
    }
 
    def withFixture( test: OneArgTest ) {
-      val system = Confluent.tmp()
+      val system = Confluent( BerkeleyDB.tmp() )
       try {
          val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
          test( cursor )

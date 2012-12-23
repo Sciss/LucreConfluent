@@ -29,8 +29,6 @@ package reactive
 
 import de.sciss.lucre.{event => evt}
 import stm.{DataStoreFactory, DataStore, ImmutableSerializer}
-import stm.impl.BerkeleyDB
-import java.io.File
 import impl.{ConfluentReactiveImpl => Impl}
 
 object ConfluentReactive {
@@ -38,12 +36,12 @@ object ConfluentReactive {
 
    def apply( storeFactory: DataStoreFactory[ DataStore ]) : S = Impl( storeFactory )
 
-   def tmp() : S = {
-      val dir = File.createTempFile( "confluent_", "db" )
-      dir.delete()
-//      dir.mkdir()
-      apply( BerkeleyDB.factory( dir ))
-   }
+//   def tmp() : S = {
+//      val dir = File.createTempFile( "confluent_", "db" )
+//      dir.delete()
+////      dir.mkdir()
+//      apply( BerkeleyDB.factory( dir ))
+//   }
 
    trait Txn extends ConfluentReactiveLike.Txn[ S ] {
       private[confluent] def durable : stm.Durable#Tx

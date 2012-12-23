@@ -2,13 +2,16 @@ package de.sciss.lucre
 package confluent
 
 import java.io.File
-import stm.impl.BerkeleyDB
-import data.HASkipList
-import data.gui.InteractiveSkipListView
+import stm.store.BerkeleyDB
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
+import data.gui.InteractiveSkipOctreePanel
+import data.{SpaceSerializers, DeterministicSkipOctree}
+import geom.{IntSquare, IntPoint2D, IntSpace}
+import IntSpace.TwoDim
 
-object SkipListViewTest extends App with Runnable {
+object OctreeViewTest extends App with Runnable {
+   showLog = false
    EventQueue.invokeLater( this )
 
    def run() {
@@ -19,7 +22,7 @@ object SkipListViewTest extends App with Runnable {
             dir
 
          case Some( "--db" ) =>
-            new File( new File( sys.props( "user.home" ), "Desktop" ), "skiplist_database" )
+            new File( new File( sys.props( "user.home" ), "Desktop" ), "octree_database" )
 
          case _ => println( "Invalid arguments: " + args.mkString( " " ))
             sys.exit( 1 )
@@ -31,18 +34,23 @@ object SkipListViewTest extends App with Runnable {
       build( s )
    }
 
+   private val sz = 256
+
    def build[ S <: Sys[ S ]]( system: S ) {
-      val fut = new InteractiveSkipListView.FutureObserver[ S ]
-      implicit val ser = HASkipList.Set.serializer[ S, Int ]( fut )
+      import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
+      implicit val pointView = (p: IntPoint2D, t: Any) => p
+      implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, IntPoint2D ]
       val (access, cursor) = system.cursorRoot { implicit tx =>
-         HASkipList.Set.empty[ S, Int ]( minGap = 1, keyObserver = fut )
+         DeterministicSkipOctree.empty[ S, TwoDim, IntPoint2D ](
+            IntSquare( sz, sz, sz ), skipGap = 1 )
       } { tx => _ => tx.newCursor() }
+      val model = new InteractiveSkipOctreePanel.Model2D[ S ](
+         cursor, access, { () => println( "(Consistency not checked)" )} /*, nTimes = 2 */
+      )
 
-//      println( "We are in " + cursor.step { implicit tx => cursor.position })
+      val view = new InteractiveSkipOctreePanel( model )
 
-      val view = new InteractiveSkipListView[ S ]( access )( cursor )
-
-      val f    = new JFrame( "SkipList" )
+      val f    = new JFrame( "SkipOctree" )
       val cp   = f.getContentPane
       cp.add( view, BorderLayout.CENTER )
       f.pack()

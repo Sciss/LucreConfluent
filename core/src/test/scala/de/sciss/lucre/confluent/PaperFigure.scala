@@ -2,7 +2,7 @@ package de.sciss.lucre
 package confluent
 
 import stm.{MutableSerializer, Mutable}
-import stm.impl.BerkeleyDB
+import stm.store.BerkeleyDB
 import java.io.File
 
 class Nodes[S <: stm.Sys[S]] {

@@ -1,69 +1,55 @@
 name := "LucreConfluent"
 
-version := "1.5.0"
+version in ThisBuild := "1.6.0-SNAPSHOT"
 
-organization := "de.sciss"
+organization in ThisBuild := "de.sciss"
 
-description := "Confluently persistent references for Scala"
+description in ThisBuild := "Confluently persistent references for Scala"
 
-homepage := Some( url( "https://github.com/Sciss/LucreConfluent" ))
+homepage in ThisBuild := Some( url( "https://github.com/Sciss/LucreConfluent" ))
 
-licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+licenses in ThisBuild := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
-scalaVersion := "2.9.2"
+scalaVersion in ThisBuild := "2.10.0"
 
-// crossScalaVersions in ThisBuild := Seq( "2.10.0-M6", "2.9.2" )
+crossScalaVersions in ThisBuild := Seq( "2.10.0", "2.9.2" )
 
-resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
+// libraryDependencies ++= Seq(
+//    "de.sciss" %% "fingertree" % "1.2.+",
+//    "de.sciss" %% "lucredata-core" % "1.4.+",
+//    "de.sciss" %% "lucredata-views" % "1.4.+" % "test"
+// )
 
-libraryDependencies ++= Seq(
-   "de.sciss" %% "fingertree" % "1.2.+",
-   "de.sciss" %% "lucredata-core" % "1.4.+",
-   "de.sciss" %% "lucredata-views" % "1.4.+" % "test"
-)
+retrieveManaged in ThisBuild := true
 
-libraryDependencies in ThisBuild <+= scalaVersion { sv =>
-   val v = sv match {
-      case "2.10.0-RC3" => "1.8-B1"
-      case "2.10.0-RC5" => "1.8-B1"
-      case _            => "1.8"
-   }
-   "org.scalatest" %% "scalatest" % v % "test"
-}
+scalacOptions in ThisBuild ++= Seq( "-deprecation", "-unchecked" ) // , "-Xelide-below", "INFO" ) // elide debug logging!
 
-retrieveManaged := true
-
-scalacOptions ++= Seq( "-deprecation", "-unchecked" ) // , "-Xelide-below", "INFO" ) // elide debug logging!
-
-scalacOptions += "-no-specialization" // mother*******
+scalacOptions in ThisBuild += "-no-specialization" // mother*******
 
 testOptions in Test += Tests.Argument( "-oDF" )   // ScalaTest: durations and full stack traces
 
-parallelExecution /* in Test */ := false
-
-initialCommands in console := """import de.sciss.lucre.confluent._
-"""
+parallelExecution in ThisBuild /* in Test */ := false
 
 // publishArtifact in (Compile, packageDoc) := false   // disable doc generation during development cycles
 
 // ---- build info ----
 
-buildInfoSettings
-
-sourceGenerators in Compile <+= buildInfo
-
-buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
-   BuildInfoKey.map( homepage ) { case (k, opt) => k -> opt.get },
-   BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
-)
-
-buildInfoPackage := "de.sciss.lucre.confluent"
+// buildInfoSettings
+// 
+// sourceGenerators in Compile <+= buildInfo
+// 
+// buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
+//    BuildInfoKey.map( homepage ) { case (k, opt) => k -> opt.get },
+//    BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
+// )
+// 
+// buildInfoPackage := "de.sciss.lucre.confluent"
 
 // ---- publishing ----
 
-publishMavenStyle := true
+publishMavenStyle in ThisBuild := true
 
-publishTo <<= version { (v: String) =>
+publishTo in ThisBuild <<= version { (v: String) =>
    Some( if( v.endsWith( "-SNAPSHOT" ))
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
    else
@@ -73,9 +59,9 @@ publishTo <<= version { (v: String) =>
 
 publishArtifact in Test := false
 
-pomIncludeRepository := { _ => false }
+pomIncludeRepository in ThisBuild := { _ => false }
 
-pomExtra :=
+pomExtra in ThisBuild :=
 <scm>
   <url>git@github.com:Sciss/LucreConfluent.git</url>
   <connection>scm:git:git@github.com:Sciss/LucreConfluent.git</connection>

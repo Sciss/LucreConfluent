@@ -2,7 +2,7 @@ package de.sciss.lucre
 package confluent
 
 import java.io.File
-import stm.impl.BerkeleyDB
+import stm.store.BerkeleyDB
 import stm.{MutableSerializer, Mutable}
 import annotation.tailrec
 import org.scalatest.{FunSpec, GivenWhenThen}

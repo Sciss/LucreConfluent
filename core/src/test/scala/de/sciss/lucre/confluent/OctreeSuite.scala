@@ -5,7 +5,7 @@ import org.scalatest.{FeatureSpec, GivenWhenThen}
 import collection.breakOut
 import collection.mutable.{Set => MSet}
 import java.io.File
-import stm.impl.BerkeleyDB
+import stm.store.BerkeleyDB
 import concurrent.stm.InTxn
 import data.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
 import geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D, IntSpace}

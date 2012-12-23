@@ -3,6 +3,7 @@ package confluent
 
 import org.scalatest.fixture
 import org.scalatest.matchers.ShouldMatchers
+import stm.store.BerkeleyDB
 
 // helper trait providing a fixture
 trait ConfluentSpec extends fixture.FlatSpec with ShouldMatchers {
@@ -11,7 +12,7 @@ trait ConfluentSpec extends fixture.FlatSpec with ShouldMatchers {
    final type FixtureParam = Confluent // confluent.Cursor[ S ]
 
    final def withFixture( test: OneArgTest ) {
-      val system = Confluent.tmp()
+      val system = Confluent( BerkeleyDB.tmp() )
       try {
 //         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
 //         test( cursor )

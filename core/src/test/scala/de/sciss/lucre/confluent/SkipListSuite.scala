@@ -7,7 +7,7 @@ import org.scalatest.{GivenWhenThen, FeatureSpec}
 import concurrent.stm.{InTxn, TxnExecutor, Ref}
 import java.io.File
 import data.{SkipList, HASkipList}
-import stm.impl.BerkeleyDB
+import stm.store.BerkeleyDB
 
 /**
  * To run this test copy + paste the following into sbt:

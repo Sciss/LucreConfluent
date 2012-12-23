@@ -3,7 +3,7 @@ package confluent
 
 import org.scalatest.{GivenWhenThen, FeatureSpec}
 import java.io.File
-import stm.impl.BerkeleyDB
+import stm.store.BerkeleyDB
 import data.TotalOrder
 
 /**

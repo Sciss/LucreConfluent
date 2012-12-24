@@ -14,11 +14,7 @@ scalaVersion in ThisBuild := "2.10.0"
 
 crossScalaVersions in ThisBuild := Seq( "2.10.0", "2.9.2" )
 
-// libraryDependencies ++= Seq(
-//    "de.sciss" %% "fingertree" % "1.2.+",
-//    "de.sciss" %% "lucredata-core" % "1.4.+",
-//    "de.sciss" %% "lucredata-views" % "1.4.+" % "test"
-// )
+resolvers in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 retrieveManaged in ThisBuild := true
 

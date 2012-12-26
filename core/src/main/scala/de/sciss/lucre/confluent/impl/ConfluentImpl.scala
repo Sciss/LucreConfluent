@@ -386,8 +386,7 @@ println( "?? partial from index " + this )
    private val anyEmptySeq = IIdxSeq.empty[ Nothing ]
 
    trait TxnMixin[ S <: Sys[ S ]]
-   extends Sys.Txn[ S ]
-   with VersionInfo.Modifiable
+   extends Sys.Txn[ S ] with stm.impl.BasicTxnImpl[ S ] with VersionInfo.Modifiable
    /* with DurableCacheMapImpl[ S, Int ] */ {
       _: S#Tx =>
 
@@ -451,7 +450,7 @@ println( "?? partial from index " + this )
          markBeforeCommit()
       }
 
-      final def beforeCommit( fun: S#Tx => Unit) {
+      final override def beforeCommit( fun: S#Tx => Unit) {
          beforeCommitFuns = beforeCommitFuns.enqueue( fun )
          markBeforeCommit()
       }

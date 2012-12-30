@@ -2,7 +2,7 @@
 
 ### statement
 
-LucreConfluent is (C)opyright 2009&ndash;2012 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/LucreConfluent/blob/master/licenses/LucreConfluent-License.txt).
+LucreConfluent is (C)opyright 2009&ndash;2013 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/LucreConfluent/blob/master/licenses/LucreConfluent-License.txt).
 
 LucreConfluent provides a transactional, durable, and confluently persistent memory framework for the Scala programming language. It implements a transform which was described by Fiat/Kaplan and which is extended with the support for the representation of multiplicites and quasi-retroactive fluent references as well as event propagation (provided separately through the [ConfluentReactive](https://github.com/Sciss/ConfluentReactive) library). It uses [LucreSTM](https://github.com/Sciss/LucreSTM) for the transactional layer, and builds on top of data structures provided by the [LucreData](https://github.com/Sciss/LucreData) project. The overall target is integration with a system for computer music composition.
 
@@ -24,7 +24,7 @@ The following dependency is necessary:
 
     resolvers += "Oracle Repository" at "http://download.oracle.com/maven"
     
-    "de.sciss" %% "lucreconfluent" % "1.5.+"
+    "de.sciss" %% "lucreconfluent" % "1.6.+"
 
 ### previous versions / tags
 
@@ -34,6 +34,6 @@ __Note:__ see tag v0.14 for the example using actual audio file regions and sono
 
 To develop the sources of this library, we recommend to use IntelliJ IDEA. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
 
-    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
+    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.2.0")
 
 Then to create the IDEA project, run `sbt gen-idea`.

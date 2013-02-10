@@ -53,8 +53,8 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
          tx.newHandle( ent )
       }
       val res = cursor.step { implicit tx =>
-         val ent = h.get // tx.refresh( csrStale, entStale )
-         ent.field.get
+         val ent = h() // tx.refresh( csrStale, entStale )
+         ent.field()
       }
       assert( res == value, res )
    }

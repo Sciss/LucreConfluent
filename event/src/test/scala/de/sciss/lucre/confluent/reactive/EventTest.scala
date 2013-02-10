@@ -12,7 +12,7 @@ object EventTest extends App {
    implicit val whyOhWhy = Bang.serializer[ S ]
    val (access, cursor) = system.cursorRoot { implicit tx => Bang[ S ]} { tx => _ => tx.newCursor() }
 
-   def bang( implicit tx: S#Tx ) = access.get
+   def bang( implicit tx: S#Tx ) = access()
 
    cursor.step { implicit tx =>
       bang.react { _ => println( "Bang!" )}

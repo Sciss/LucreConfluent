@@ -32,7 +32,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          ///////////////////////////// v0 /////////////////////////////
 
-         given( "v0 : Allocate node w0, with x = 1" )
+         Given( "v0 : Allocate node w0, with x = 1" )
          implicit val whyOhWhy = Node.ser
          val (access, cursor) = s.cursorRoot[ Option[ Node ], Cursor[ S ]] { implicit tx =>
             val w0 = Node( "w0", 1 )
@@ -41,73 +41,73 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          ///////////////////////////// v1 /////////////////////////////
 
-         given( "v1 : Append a new node w1 with x = 2" )
+         Given( "v1 : Append a new node w1 with x = 2" )
          cursor.step { implicit tx =>
-            val head    = access.get
+            val head    = access()
             val newLast = Node( "w1", 2 )
             @tailrec def step( last: Node ) {
-               last.next.get match {
+               last.next() match {
                   case None =>
-                     last.next.set( Some( newLast ))
-                     newLast.prev.set( Some( last ))
+                     last.next()    = Some(newLast)
+                     newLast.prev() = Some(last)
                   case Some( n1 ) => step( n1 )
                }
             }
             head match {
                case Some( n ) => step( n )
-               case None => access.set( Some( newLast ))
+               case None => access() = Some(newLast)
             }
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res1) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp1 = List( "w0" -> 1, "w1" -> 2 )
-         then( "is should equal " + exp1 )
+         Then( "is should equal " + exp1 )
          assert( res1 === exp1 )
 
          ///////////////////////////// v2 /////////////////////////////
 
-         given( "v2 : Increment all nodes by 2" )
+         Given( "v2 : Increment all nodes by 2" )
 //         timeWarp( Confluent.Path.root )
          cursor.step { implicit tx =>
             @tailrec def step( last: Option[ Node ]) { last match {
                case None =>
                case Some( n ) =>
                   n.value.transform( _ + 2 )
-                  step( n.next.get )
+                  step( n.next() )
             }}
-            step( access.get )
+            step( access() )
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res2) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp2 = List( "w0" -> 3, "w1" -> 4 )
-         then( "is should equal " + exp2 )
+         Then( "is should equal " + exp2 )
          assert( res2 === exp2 )
 
-         when( "the result is converted to a plain list going from back to front" )
+         When( "the result is converted to a plain list going from back to front" )
          val res2b = cursor.step { implicit tx =>
-            @tailrec def findLast( n: Node ) : Node = n.next.get match {
+            @tailrec def findLast( n: Node ) : Node = n.next() match {
                case None => n
                case Some( n1 ) => findLast( n1 )
             }
             @tailrec def reverseToList( n: Node, res: List[ (String, Int) ]) : List[ (String, Int) ] = {
-               val res1 = (n.name -> n.value.get) :: res
-               n.prev.get match {
+               val res1 = (n.name -> n.value()) :: res
+               n.prev() match {
                   case None => res1
                   case Some( n1 ) => reverseToList( n1, res1 )
                }
             }
 
-            access.get match {
+            access() match {
                case Some( n ) =>
                   reverseToList( findLast( n ), Nil )
 
@@ -115,39 +115,39 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
             }
          }
 
-         then( "is should have the same result" )
+         Then( "is should have the same result" )
          assert( res2b === exp2 )
 
          ///////////////////////////// v3 /////////////////////////////
 
-         given( "v3 : Increment all nodes by 2, going from back to front" )
+         Given( "v3 : Increment all nodes by 2, going from back to front" )
 //         timeWarp( Confluent.Path.root )
          cursor.step { implicit tx =>
-            @tailrec def findLast( n: Node ) : Node = n.next.get match {
+            @tailrec def findLast( n: Node ) : Node = n.next() match {
                case None => n
                case Some( n1 ) => findLast( n1 )
             }
             @tailrec def step( n: Node ) {
                n.value.transform( _ + 2 )
-               n.prev.get match {
+               n.prev() match {
                   case None =>
                   case Some( n1 ) => step( n1 )
                }
             }
-            access.get match {
+            access() match {
                case Some( n ) => step( findLast( n ))
                case None =>
             }
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res3) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp3 = List( "w0" -> 5, "w1" -> 6 )
-         then( "is should equal " + exp3 )
+         Then( "is should equal " + exp3 )
          assert( res3 === exp3 )
       }
    }
@@ -197,7 +197,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
       }
 
       def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {
-         case Some( n ) => (n.name, n.value.get) :: toList( n.next.get )
+         case Some( n ) => (n.name, n.value()) :: toList( n.next() )
          case _ => Nil
       }
    }

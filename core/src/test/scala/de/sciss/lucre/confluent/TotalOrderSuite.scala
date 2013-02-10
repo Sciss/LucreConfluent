@@ -53,7 +53,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
          info( "should yield '<' in comparison" )
 
          scenarioWithTime( "Ordering is verified on a randomly filled " + sysName + " structure" ) {
-            given( "a randomly filled structure (" + sysName + ")" )
+            Given( "a randomly filled structure (" + sysName + ")" )
 
 //            type E = TotalOrder.Set.Entry[ S ]
             implicit val system = sysCreator()
@@ -80,7 +80,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
       //        to        = to.append() // ( 0 )
 
                /* val set = */ cursor.step { implicit tx =>
-                  var e = access.get.root
+                  var e = access().root
                   var coll = Set[ TotalOrder.Set.Entry[ S ]]() // ( e )
                   for( i <- 1 until n ) {
 //if( (i % 1000) == 0 ) println( "i = " + i )
@@ -95,20 +95,20 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                }
 //println( "AQUI" )
 
-               when( "the structure size is determined" )
-               val sz = cursor.step { implicit tx => access.get.size }
+               When( "the structure size is determined" )
+               val sz = cursor.step { implicit tx => access().size }
       //        val sz = {
       //           var i = 1; var x = to; while( !x.isHead ) { x = x.prev; i +=1 }
       //           x = to; while( !x.isLast ) { x = x.next; i += 1 }
       //           i
       //        }
-               then( "it should be equal to the number of elements inserted" )
+               Then( "it should be equal to the number of elements inserted" )
                assert( sz == n, sz.toString + " != " + n )
 
-               when( "the structure is mapped to its pairwise comparisons" )
+               When( "the structure is mapped to its pairwise comparisons" )
                val result = cursor.step { implicit tx =>
                   var res   = Set.empty[ Int ]
-                  var prev  = access.get.head
+                  var prev  = access().head
                   var next  = prev.next.orNull
                   while( next != null ) {
 //                  res     += prev compare next
@@ -119,15 +119,15 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                   res
                }
 
-               then( "the resulting set should only contain -1" )
+               Then( "the resulting set should only contain -1" )
                assert( result == Set( -1 ), result.toString + " -- " + cursor.step( implicit tx =>
-                  access.get.tagList( access.get.head )
+                  access().tagList( access().head )
                ))
 
-               when( "the structure is emptied" )
+               When( "the structure is emptied" )
                val sz2 = cursor.step { implicit tx =>
 //                  set.foreach( _.removeAndDispose() )
-                  val to = access.get
+                  val to = access()
                   var prev = to.head
                   var next = prev
                   while( prev != null ) {
@@ -138,7 +138,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
 
                   to.size
                }
-               then( "the order should have size 1" )
+               Then( "the order should have size 1" )
                assert( sz2 == 1, "Size is " + sz2 + " and not 1" )
 
 //               system.step { implicit tx =>

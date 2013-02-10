@@ -33,73 +33,73 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
 
          ///////////////////////////// v0 /////////////////////////////
 
-         given( "v0 : Allocate nodes w0, w1, with x=2 and x=1, concatenate them" )
+         Given( "v0 : Allocate nodes w0, w1, with x=2 and x=1, concatenate them" )
          implicit val whyOhWhy = Node.ser
          val (access, cursor) = s.cursorRoot[ Option[ Node ], Cursor[ S ]] { implicit tx =>
             val w0      = Node( "w0", 2 )
             val w1      = Node( "w1", 1 )
-            w0.next.set( Some( w1 ))
+            w0.next()   = Some(w1)
             Some( w0 )
          } { implicit tx => _ => tx.newCursor() }
 
          val path0 = cursor.step( _.inputAccess ) // ?
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res0) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             (tx.inputAccess, toList( node ))
          }
 
          val exp0 = List( "w0" -> 2, "w1" -> 1 )
-         then( "is should equal " + exp0 )
+         Then( "is should equal " + exp0 )
          assert( res0 === exp0 )
 
          ///////////////////////////// v1 /////////////////////////////
 
-         given( "v1 : Invert order of input linked list" )
+         Given( "v1 : Invert order of input linked list" )
          cursor.step { implicit tx =>
             // urrgh, this got pretty ugly. but well, it does its job...
             access.transform { no =>
-               def reverse( node: Node ) : Node = node.next.get match {
+               def reverse( node: Node ) : Node = node.next() match {
                   case Some( pred ) =>
-                     val res = reverse( pred )
-                     pred.next.set( Some( node ))
+                     val res      = reverse( pred )
+                     pred.next()  = Some(node)
                      res
 
                   case _ => node
                }
                val newHead = no.map { n =>
-                  val res = reverse( n )
-                  n.next.set( None )
+                  val res   = reverse( n )
+                  n.next()  = None
                   res
                }
                newHead
             }
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (v1, res1) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp1 = List( "w1" -> 1, "w0" -> 2 )
-         then( "is should equal " + exp1 )
+         Then( "is should equal " + exp1 )
          assert( res1 === exp1 )
 
          ///////////////////////////// v2 /////////////////////////////
 
          // --> use a variant to better verify the results: set x=3 instead
-         given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
+         Given( "v2 : Delete first node of list, allocate new node x=3 (!), concatenate to input list" )
 //         timeWarp( path0 )( cursor ) //  Confluent.Path.root
          cursor.stepFrom( path0 ) { implicit tx =>
             access.transform {
                case Some( n ) =>
-                  val res = n.next.get
+                  val res = n.next()
                   @tailrec def step( last: Node ) {
-                     last.next.get match {
+                     last.next() match {
                         case None =>
-                           last.next.set( Some( Node( "w2", 3 )))
+                           last.next() = Some(Node("w2", 3))
                         case Some( n1 ) => step( n1 )
                      }
                   }
@@ -110,25 +110,25 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
             }
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (v2, res2) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp2 = List( "w1" -> 1, "w2" -> 3 )
-         then( "is should equal " + exp2 )
+         Then( "is should equal " + exp2 )
          assert( res2 === exp2 )
 
          ///////////////////////////// v3 /////////////////////////////
 
-         given( "v3: Add +2 to all elements of right list. Concatenate left and right lists" )
+         Given( "v3: Add +2 to all elements of right list. Concatenate left and right lists" )
 //         timeWarp( v1 )( cursor )
          cursor.stepFrom( v1 ) { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
-               pred.next.get match {
-                  case None => pred.next.set( tail )
+               pred.next() match {
+                  case None => pred.next() = tail
                   case Some( succ ) => concat( succ, tail )
                }
             }
@@ -137,45 +137,45 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
                   case None =>
                   case Some( n ) =>
                      n.value.transform( _ + amount )
-                     inc( n.next.get, amount )
+                     inc( n.next(), amount )
                }
             }
             inc( right, 2 )
-            access.get.foreach( concat( _, right ))
+            access().foreach( concat( _, right ))
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res3) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp3 = List( "w1" -> 1, "w0" -> 2, "w1" -> 3, "w2" -> 5 )
-         then( "is should equal " + exp3 )
+         Then( "is should equal " + exp3 )
          assert( res3 === exp3 )
 
          ///////////////////////////// v4 /////////////////////////////
 
-         given( "v4: Concatenate Left and Right Lists" )
+         Given( "v4: Concatenate Left and Right Lists" )
          cursor.step { implicit tx =>
             val right = access.meld( v2 )
             @tailrec def concat( pred: Node, tail: Option[ Node ]) {
-               pred.next.get match {
-                  case None => pred.next.set( tail )
+               pred.next() match {
+                  case None => pred.next() = tail
                   case Some( succ ) => concat( succ, tail )
                }
             }
-            access.get.foreach( concat( _, right ))
+            access().foreach( concat( _, right ))
          }
 
-         when( "the result is converted to a plain list in a new transaction" )
+         When( "the result is converted to a plain list in a new transaction" )
          val (_, res4) = cursor.step { implicit tx =>
-            val node = access.get
+            val node = access()
             tx.inputAccess -> toList( node )
          }
 
          val exp4 = List( "w1" -> 1, "w0" -> 2, "w1" -> 3, "w2" -> 5, "w1" -> 1, "w2" -> 3 )
-         then( "is should equal " + exp4 )
+         Then( "is should equal " + exp4 )
          assert( res4 === exp4 )
       }
    }

@@ -53,9 +53,9 @@ class Example[S <: Sys[S]](s: S) {
   val (access, cursor) = s.cursorRoot(_ => Option.empty[Node])( tx => _ => tx.newCursor() )
 
   cursor.step { implicit tx =>
-    val w1 = Node(3)
-    val w2 = Node(5)
-    w1.next set Some(w2)
-    access set Some(w1)
+    val w1    = Node(3)
+    val w2    = Node(5)
+    w1.next() = Some(w2)
+    access()  = Some(w1)
   }
 }

@@ -51,7 +51,7 @@ class CursorsSpec extends ConfluentSpec {
 
       def cursors( implicit tx: S#Tx ) : IIdxSeq[ Cursor[ S ]] = {
 //         implicit val dtx: D#Tx  = tx.durable
-         cursorsVar.get
+         cursorsVar()
       }
 
       protected def writeData( out: DataOutput ) {
@@ -69,15 +69,15 @@ class CursorsSpec extends ConfluentSpec {
 
       zipped.foreach { case (cursor, idx) =>
          cursor.step { implicit tx =>
-            val e = access.get
-            e.field.set( idx + 1 )
+            val e = access()
+            e.field() = idx + 1
          }
       }
 
       val res = cursors.map { cursor =>
          cursor.step { implicit tx =>
-            val e = access.get
-            e.field.get
+            val e = access()
+            e.field()
          }
       }
 

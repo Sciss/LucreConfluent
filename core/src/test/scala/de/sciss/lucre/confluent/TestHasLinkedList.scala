@@ -42,7 +42,7 @@ trait TestHasLinkedList {
       }
 
       def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {
-         case Some( n ) => (n.name, n.value.get) :: toList( n.next.get )
+         case Some( n ) => (n.name, n.value()) :: toList( n.next() )
          case _ => Nil
       }
    }

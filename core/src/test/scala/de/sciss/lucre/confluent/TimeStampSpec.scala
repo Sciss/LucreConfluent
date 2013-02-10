@@ -15,14 +15,14 @@ class TimeStampSpec extends ConfluentSpec {
 //      sleep()
 
       // test dummy step
-      val path0a = cursor.step { implicit tx => access.get; tx.inputAccess }
+      val path0a = cursor.step { implicit tx => access(); tx.inputAccess }
 
       sleep()
 
       // test write step
       val path0 = cursor.step { implicit tx =>
          tx.info.message = "message 1"
-         access.set( 1 )
+         access() = 1
          tx.inputAccess
       }
 
@@ -32,7 +32,7 @@ class TimeStampSpec extends ConfluentSpec {
 
       val path1 = cursor.step { implicit tx =>
          tx.info.message = "message 2"
-         access.set( 2 )
+         access() = 2
          tx.inputAccess
       }
 

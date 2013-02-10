@@ -28,29 +28,24 @@ package confluent
 
 import stm.{DataStoreFactory, DataStore}
 import impl.{ConfluentImpl => Impl}
+import language.implicitConversions
 
 object Confluent {
-   var DEBUG_DISABLE_PARTIAL  = true
+  var DEBUG_DISABLE_PARTIAL = true
 
-   def apply( storeFactory: DataStoreFactory[ DataStore ]) : Confluent = Impl( storeFactory )
+  def apply(storeFactory: DataStoreFactory[DataStore]): Confluent = Impl(storeFactory)
 
-//   def tmp() : Confluent = {
-//      val dir = File.createTempFile( "confluent_", "db" )
-//      dir.delete()
-////      dir.mkdir()
-//      apply( BerkeleyDB.factory( dir ))
-//   }
+  trait Txn extends Sys.Txn[Confluent] {
+    private[confluent] def durable:  stm.Durable#Tx
+    private[confluent] def inMemory: stm.InMemory#Tx
+  }
 
-   trait Txn extends Sys.Txn[ Confluent ] {
-      private[confluent] def durable: stm.Durable#Tx
-      private[confluent] def inMemory : stm.InMemory#Tx
-   }
-
-   implicit def inMemory( tx: Confluent#Tx ) : stm.InMemory#Tx = tx.inMemory
+  implicit def inMemory(tx: Confluent#Tx): stm.InMemory#Tx = tx.inMemory
 }
-trait Confluent extends Sys[ Confluent ] /* with stm.Cursor[ Confluent ] */ {
-   final protected type S  = Confluent
-   final type D            = stm.Durable
-   final type I            = stm.InMemory
-   final type Tx           = Confluent.Txn
+
+trait Confluent extends Sys[Confluent] {
+  final protected type S = Confluent
+  final type D  = stm.Durable
+  final type I  = stm.InMemory
+  final type Tx = Confluent.Txn
 }

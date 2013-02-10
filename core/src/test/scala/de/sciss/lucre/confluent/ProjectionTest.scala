@@ -53,12 +53,12 @@ trait ProjectionTest {
    }
 
    class DynamicVar[ -Tx, A ] extends stm.Var[ PCursor[ Tx ], A ] {
-      def get( implicit tx: PCursor[ Tx ]) : A = getAt( tx.time )( tx.peer )
+      def apply()( implicit tx: PCursor[ Tx ]) : A = getAt( tx.time )( tx.peer )
       def getAt( time: Double )( implicit tx: Tx ) : A = sys.error( "Gagaismo" )
 
-      def transform( fun: A => A )( implicit tx: PCursor[ Tx ]) { set( fun( get ))}
+      def transform( fun: A => A )( implicit tx: PCursor[ Tx ]) { this() = fun(this()) }
 
-      def set( v: A )( implicit tx: PCursor[ Tx ]) { setAt( tx.time, v )( tx.peer )}
+      def update( v: A )( implicit tx: PCursor[ Tx ]) { setAt( tx.time, v )( tx.peer )}
       def setAt( time: Double, v: A )( implicit tx: Tx ) { sys.error( "Lalaismo" )}
 
       def dispose()( implicit tx: PCursor[ Tx ]) {}

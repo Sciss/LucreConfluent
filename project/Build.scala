@@ -15,10 +15,10 @@ object Build extends sbt.Build {
       settings     = Project.defaultSettings ++ buildInfoSettings ++ Seq(
          libraryDependencies ++= Seq(
             "de.sciss" %% "fingertree" % "1.2.+",
-            "de.sciss" %% "lucredata-core" % "1.6.+",
-            "de.sciss" %% "lucredata-views" % "1.6.+" % "test",
-            "de.sciss" %% "lucrestm-bdb" % "1.6.+" % "test",
-            ("org.scalatest" %% "scalatest" % "1.8" cross CrossVersion.full) % "test"
+            "de.sciss" %% "lucredata-core" % "1.7.+",
+            "de.sciss" %% "lucredata-views" % "1.7.+" % "test",
+            "de.sciss" %% "lucrestm-bdb" % "1.7.+" % "test",
+            "org.scalatest" %% "scalatest" % "1.9.1" % "test"
          ),
          initialCommands in console := """import de.sciss.lucre.confluent._
 """,
@@ -37,9 +37,9 @@ object Build extends sbt.Build {
       dependencies = Seq( core ),
       settings     = Project.defaultSettings ++ Seq(
          libraryDependencies ++= Seq(
-            "de.sciss" %% "lucreevent-core" % "1.6.+",
-            "de.sciss" %% "lucrestm-bdb" % "1.6.+" % "test",
-            ("org.scalatest" %% "scalatest" % "1.8" cross CrossVersion.full) % "test"
+            "de.sciss" %% "lucreevent-core" % "1.7.+",
+            "de.sciss" %% "lucrestm-bdb" % "1.7.+" % "test",
+            "org.scalatest" %% "scalatest" % "1.9.1" % "test"
          )
       )
    )

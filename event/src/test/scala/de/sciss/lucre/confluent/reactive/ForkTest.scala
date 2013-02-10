@@ -12,22 +12,7 @@ object ForkTest extends App {
    implicit val whyOhWhy = Bang.serializer[ S ]
    val (access, cursor0) = system.cursorRoot { implicit tx => Bang[ S ]} { tx => _ => tx.newCursor() }
 
-   def bang( implicit tx: S#Tx ) = access.get
-
-//   val pool = Executors.newSingleThreadExecutor()
-//
-//   def fork( i: Int )( implicit tx: S#Tx ) : Cursor[ S ] = {
-//      val newCursor = tx.newCursor()
-//      Txn.afterCommit( _ => pool.submit( new Runnable {
-//         def run() {
-////            Thread.sleep(1000) // NOT a race condition
-//            newCursor.step { implicit tx =>
-//               bang.react { _ => println( "Bang in Fork " + i + "!" )}
-//            }
-//         }
-//      }))( tx.peer )
-//      newCursor
-//   }
+   def bang( implicit tx: S#Tx ) = access()
 
    println( "Creating cursors" )
 

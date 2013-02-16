@@ -29,13 +29,15 @@ package impl
 
 import concurrent.stm.TMap
 import collection.immutable.LongMap
+import scala.{specialized => spec}
+import data.{KeySpec, ValueSpec}
 
 object InMemoryConfluentMapImpl {
   private trait Entry[+A]
   private final case class EntryPre    (hash: Long)       extends Entry[Nothing]
-  private final case class EntryFull[A](term: Long, v: A) extends Entry[A]
+  private final case class EntryFull[@spec(ValueSpec) A](term: Long, v: A) extends Entry[A]
 }
-final class InMemoryConfluentMapImpl[S <: Sys[S], @specialized(Int, Long) K] extends InMemoryConfluentMap[S, K] {
+final class InMemoryConfluentMapImpl[S <: Sys[S], @spec(KeySpec) K] extends InMemoryConfluentMap[S, K] {
   import InMemoryConfluentMapImpl._
 
   private type Entries = Map[Long, Entry[Any]]
@@ -43,7 +45,7 @@ final class InMemoryConfluentMapImpl[S <: Sys[S], @specialized(Int, Long) K] ext
 
   override def toString = "InMemoryConfluentMap(" + store + ")"
 
-  def put[@specialized A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx) {
+  def put[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx) {
     implicit val itx = tx.peer
     val (index, term) = path.splitIndex
 

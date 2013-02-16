@@ -29,6 +29,8 @@ package impl
 
 import annotation.switch
 import stm.{ImmutableSerializer, Serializer, DataStore}
+import scala.{specialized => spec}
+import data.{KeySpec, ValueSpec}
 
 object DurablePartialMapImpl {
    private sealed trait Entry[ S <: Sys[ S ], A ]
@@ -36,7 +38,8 @@ object DurablePartialMapImpl {
    private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] extends DurablePersistentMap[ S, K ] {
+// XXX boom! specialized
+sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] extends DurablePersistentMap[ S, K ] {
    import DurablePartialMapImpl._
 
    protected def store: DataStore
@@ -65,7 +68,8 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
 //      } getOrElse( false )
 //   }
 
-   final def put[ @specialized A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
+  // XXX boom! specialized
+   final def put[ /* @spec(ValueSpec) */ A ]( key: K, conPath: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
 //      val path = conPath.partial
       val (index, term) = conPath.splitIndex
 //      val term = conPath.term
@@ -143,7 +147,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       }
    }
 
-   private def putFullMap[ @specialized A ]( key: K, conIndex: S#Acc, term: Long, value: A, prevTerm: Long,
+   private def putFullMap[ @spec(ValueSpec) A ]( key: K, conIndex: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
@@ -196,7 +200,7 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
 //   }
 
    // store the full value at the full hash (path.sum)
-   private def putFullSingle[ @specialized A ]( key: K, /* conIndex: S#Acc, */ term: Long, value: A )
+   private def putFullSingle[ @spec(ValueSpec) A ]( key: K, /* conIndex: S#Acc, */ term: Long, value: A )
                                               ( implicit tx: S#Tx, ser: Serializer[ S#Tx, S#Acc, A ]) {
 //      val index = conIndex.partial
 
@@ -219,14 +223,14 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       true
    }
 
-   final def get[ @specialized A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
+   final def get[ A ]( key: K, conPath: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
       if( conPath.isEmpty ) return None
       val (maxIndex, maxTerm) = conPath.splitIndex
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (/* _, */ _, value) => value )
    }
 
-   final def getWithSuffix[ @specialized A ]( key: K, conPath: S#Acc )
+   final def getWithSuffix[ A ]( key: K, conPath: S#Acc )
                                             ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
       if( conPath.isEmpty ) return None
       val (maxIndex, maxTerm) = conPath.splitIndex
@@ -247,7 +251,8 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], @specialized( Int, Long) K ] 
       }
    }
 
-   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxConIndex: S#Acc, maxTerm: Long )
+  // XXX boom! specialized
+   private def getWithPrefixLen[ /* @spec(ValueSpec) */ A, B ]( key: K, maxConIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (/* Int, */ Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {
 //      val maxIndex = maxConIndex.partial

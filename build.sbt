@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "1.7.0-SNAPSHOT"
+version in ThisBuild := "1.7.0"
 
 organization in ThisBuild := "de.sciss"
 
@@ -18,7 +18,9 @@ resolvers in ThisBuild += "Oracle Repository" at "http://download.oracle.com/mav
 
 retrieveManaged in ThisBuild := true
 
-scalacOptions in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature") // , "-Xelide-below", "INFO" ) // elide debug logging!
+scalacOptions in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
+
+scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 
 scalacOptions in ThisBuild += "-no-specialization" // mother*******
 

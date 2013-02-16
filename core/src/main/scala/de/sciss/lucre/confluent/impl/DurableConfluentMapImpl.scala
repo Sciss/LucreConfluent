@@ -29,14 +29,17 @@ package impl
 
 import annotation.switch
 import stm.{ImmutableSerializer, Serializer, DataStore}
+import scala.{specialized => spec}
+import data.{KeySpec, ValueSpec}
 
 object DurableConfluentMapImpl {
-   private sealed trait Entry[ S <: Sys[ S ], A ]
+   private sealed trait Entry[ S <: Sys[ S ], A]
    private final case class EntryPre[ S <: Sys[ S ], A ]( hash: Long ) extends Entry[ S, A ]
-   private final case class EntrySingle[ S <: Sys[ S ], A ]( term: Long, v: A ) extends Entry[ S, A ]
+   private final case class EntrySingle[ S <: Sys[ S ], @spec(ValueSpec) A ]( term: Long, v: A ) extends Entry[ S, A ]
    private final case class EntryMap[ S <: Sys[ S ], A ]( m: IndexMap[ S, A ]) extends Entry[ S, A ]
 }
-sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ] extends DurablePersistentMap[ S, K ] {
+// XXX boom! specialized
+sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] extends DurablePersistentMap[ S, K ] {
    import DurableConfluentMapImpl._
 
    protected def store: DataStore
@@ -60,7 +63,8 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       } getOrElse( false )
    }
 
-   final def put[ @specialized A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
+  // XXX boom! specialized
+   final def put[ /* @spec(ValueSpec) */ A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       val (index, term) = path.splitIndex
 //if( key == 0 ) {
 //   println( "::::: put. write path = index " + index + "; term = " + term + "; sum = " + index.sum )
@@ -138,7 +142,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       }
    }
 
-   private def putFullMap[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
+   private def putFullMap[ @spec(ValueSpec) A ]( key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) {
       //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
       //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
@@ -204,7 +208,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
    }
 
    // store the full value at the full hash (path.sum)
-   private def putFullSingle[ @specialized A ]( key: K, index: S#Acc, term: Long, value: A )
+   private def putFullSingle[ @spec(ValueSpec) A ]( key: K, index: S#Acc, term: Long, value: A )
                                               ( implicit tx: S#Tx, ser: Serializer[ S#Tx, S#Acc, A ]) {
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
@@ -219,13 +223,13 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       }
    }
 
-   final def get[ @specialized A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
+   final def get[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ A ] = {
       if( path.isEmpty ) return None
       val (maxIndex, maxTerm) = path.splitIndex
       getWithPrefixLen[ A, A ]( key, maxIndex, maxTerm )( (_, _, value) => value )
    }
 
-   final def getWithSuffix[ @specialized A ]( key: K, path: S#Acc )
+   final def getWithSuffix[ A ]( key: K, path: S#Acc )
                                             ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
       if( path.isEmpty ) return None
       val (maxIndex, maxTerm) = path.splitIndex
@@ -235,7 +239,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
       )
    }
 
-//   final def getUntil[ @specialized A ]( key: K, path: S#Acc, timeStamp: Long )
+//   final def getUntil[ A ]( key: K, path: S#Acc, timeStamp: Long )
 //                                       ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ (S#Acc, A) ] = {
 //      if( path.isEmpty ) return None
 //      val (maxIndex, maxTerm) = path.splitIndex
@@ -245,7 +249,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K
 //      )
 //   }
 
-   private def getWithPrefixLen[ @specialized A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
+   private def getWithPrefixLen[ A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
                                                     ( fun: (Int, Long, A) => B )
                                                     ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {
       val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>

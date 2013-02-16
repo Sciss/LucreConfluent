@@ -30,6 +30,8 @@ package impl
 import stm.{ImmutableSerializer, Serializer}
 import concurrent.stm.TxnLocal
 import collection.immutable.{IntMap, LongMap}
+import scala.{specialized => spec}
+import data.{KeySpec, ValueSpec}
 
 object CacheMapImpl {
    /**
@@ -41,7 +43,7 @@ object CacheMapImpl {
     * a sub system (`Durable`), serialization is a two-step process, using an intermediate
     * binary representation.
     */
-   sealed trait Entry[ S <: Sys[ S ], @specialized( Int, Long ) +K, -Store ] {
+   sealed trait Entry[ S <: Sys[ S ], @spec(KeySpec) +K, -Store ] {
       def key: K
       def path: S#Acc
       def flush( outTerm: Long, store: Store )( implicit tx: S#Tx ) : Unit
@@ -65,7 +67,7 @@ object CacheMapImpl {
  * @tparam S   the underlying system
  * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
  */
-sealed trait CacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K, Store ]
+sealed trait CacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K, Store ]
 extends CacheMap[ S, K, Store ] {
    import CacheMapImpl._
 
@@ -159,7 +161,7 @@ object DurableCacheMapImpl {
          final val store : Store[ S, Int ] = map
       }
 
-   private final class NonTxnEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   private final class NonTxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A ]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: ImmutableSerializer[ A ])
    extends Entry[ S, K, Store[ S, K ]] {
       override def toString = "NonTxnEntry(" + key + ", " + value + ")"
@@ -170,7 +172,7 @@ object DurableCacheMapImpl {
          store.put( key, pathOut, value )
       }
    }
-   private final class TxnEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, A ]
+   private final class TxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
    ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, Store[ S, K ]] {
       override def toString = "TxnEntry(" + key + ", " + value + ")"
@@ -185,7 +187,7 @@ object DurableCacheMapImpl {
       }
    }
 }
-trait DurableCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
+trait DurableCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
 extends CacheMap.Durable[ S, K, DurablePersistentMap[ S, K ]]
 with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
    import DurableCacheMapImpl._
@@ -203,7 +205,7 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
     * @param serializer the serializer to use for the value
     * @tparam A         the type of value stored
     */
-   final def putCacheTxn[ A ]( key: K, path: S#Acc, value: A )
+   final def putCacheTxn[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
                              ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new TxnEntry( key, path, value ))
    }
@@ -281,7 +283,7 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
 object InMemoryCacheMapImpl {
    private type Store[ S <: Sys[ S ], K ] = InMemoryConfluentMap[ S, K ]
 
-   private final class Entry[ S <: Sys[ S ], @specialized( Int, Long ) K, @specialized A ]
+   private final class Entry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A ]
    ( val key: K, val path: S#Acc, val value: A )
    extends CacheMapImpl.Entry[ S, K, Store[ S, K ]] {
       override def toString = "Entry(" + key + ", " + value + ")"
@@ -293,12 +295,12 @@ object InMemoryCacheMapImpl {
       }
    }
 }
-trait InMemoryCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
+trait InMemoryCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
 extends CacheMap.InMemory[ S, K, InMemoryConfluentMap[ S, K ]]
 with CacheMapImpl[         S, K, InMemoryConfluentMap[ S, K ]] {
    import InMemoryCacheMapImpl._
 
-   final def putCache[ A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
+   final def putCache[@spec(ValueSpec) A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
       putCacheOnly( new Entry( key, path, value ))
    }
 
@@ -323,7 +325,7 @@ object PartialCacheMapImpl {
          final val store : DurablePersistentMap[ S, Int ] = map
       }
 
-   private final class PartialEntry[ S <: Sys[ S ], @specialized( Int, Long ) K, A ]
+   private final class PartialEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
    ( val key: K, val fullPath: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, Store[ S, K ]] {
       override def toString = "PartialEntry(" + key + ", " + value + ")"
@@ -340,12 +342,12 @@ object PartialCacheMapImpl {
       }
    }
 }
-trait PartialCacheMapImpl[ S <: Sys[ S ], @specialized( Int, Long ) K ]
+trait PartialCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
 extends CacheMap.Partial[ S, K, DurablePersistentMap[ S, K ]]
 with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
    import PartialCacheMapImpl._
 
-   final def putPartial[ A ]( key: K, path: S#Acc, value: A )
+   final def putPartial[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
                             ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new PartialEntry( key, path, value ))
    }
@@ -364,15 +366,4 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
    final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
       removeCacheOnly( key, path ) || store.remove( key, path )
    }
-
-//   final def getFreshPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-//                                                          serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
-//      getCacheOnly( key, path.partial ).orElse {
-//         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
-//            val access  = tup._1
-//            val arr     = tup._2
-//            val in      = new DataInput( arr )
-//            serializer.read( in, access )
-//         }
-//      }
 }

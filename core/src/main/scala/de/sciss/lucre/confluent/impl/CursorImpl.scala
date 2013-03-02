@@ -28,6 +28,7 @@ package confluent
 package impl
 
 import concurrent.stm.TxnExecutor
+import io.{DataInput, DataOutput}
 
 object CursorImpl {
 //   implicit def serializer[ S <: Sys[ S ], D <: stm.DurableLike[ D ]]( implicit bridge: S#Tx => D#Tx ) : stm.Serializer[ S#Tx, S#Acc, Cursor[ S ]] =
@@ -37,7 +38,7 @@ object CursorImpl {
 //   private val anyPathSer = new PathSer[ Confluent ]
 
    private final class PathSer[ S <: Sys[ S ], D1 <: stm.DurableLike[ D1 ]]( implicit system: S { type D = D1 })
-   extends stm.Serializer[ D1#Tx, D1#Acc, S#Acc ] {
+   extends io.Serializer[ D1#Tx, D1#Acc, S#Acc ] {
       def write( v: S#Acc, out: DataOutput) { v.write( out )}
       def read( in: DataInput, access: D1#Acc )( implicit tx: D1#Tx ) : S#Acc = system.readPath( in )
    }

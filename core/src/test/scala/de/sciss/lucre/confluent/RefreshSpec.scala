@@ -5,6 +5,7 @@ import org.scalatest.fixture
 import org.scalatest.matchers.ShouldMatchers
 import stm.MutableSerializer
 import stm.store.BerkeleyDB
+import io.{DataInput, DataOutput}
 
 /**
  * To run only this test:

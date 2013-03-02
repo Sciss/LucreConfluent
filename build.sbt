@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "1.7.1"
+version in ThisBuild := "1.8.0"
 
 organization in ThisBuild := "de.sciss"
 

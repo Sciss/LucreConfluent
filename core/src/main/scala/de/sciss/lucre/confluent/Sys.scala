@@ -26,12 +26,13 @@
 package de.sciss.lucre
 package confluent
 
-import stm.{Txn => _Txn, DataStore, Disposable, ImmutableSerializer, Identifier}
+import stm.{Txn => _Txn, DataStore, Disposable, Identifier}
 import data.Ancestor
 import de.sciss.fingertree.FingerTree
 import collection.immutable.{IndexedSeq => IIdxSeq}
 import scala.{specialized => spec}
 import stm.{SpecGroup => ialized}
+import io.{ImmutableSerializer, DataInput, Writable}
 
 object Sys {
   trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
@@ -79,16 +80,16 @@ object Sys {
     private[confluent] def readTreeVertexLevel(term: Long): Int
     private[confluent] def addInputVersion(path: S#Acc): Unit
 
-    private[confluent] def putTxn[A]   (id: S#ID, value: A)(implicit ser: stm.Serializer[S#Tx, S#Acc, A]): Unit
+    private[confluent] def putTxn[A]   (id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): Unit
     private[confluent] def putNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]): Unit
 
-    private[confluent] def getTxn[A]   (id: S#ID)(implicit ser: stm.Serializer[S#Tx, S#Acc, A]): A
+    private[confluent] def getTxn[A]   (id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A
     private[confluent] def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A
 
     private[confluent] def isFresh(id: S#ID): Boolean
 
-    private[confluent] def putPartial[A](id: S#ID, value: A)(implicit ser: stm.Serializer[S#Tx, S#Acc, A]): Unit
-    private[confluent] def getPartial[A](id: S#ID)(implicit ser: stm.Serializer[S#Tx, S#Acc, A]): A
+    private[confluent] def putPartial[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): Unit
+    private[confluent] def getPartial[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A
 
     private[confluent] def removeFromCache(id: S#ID): Unit
 
@@ -236,7 +237,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   private[confluent] def readCursor(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Cursor[S]
 
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                      (implicit serializer: stm.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)
+                      (implicit serializer: io.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)
 
   /**
    * Retrieves the version information for a given version term.

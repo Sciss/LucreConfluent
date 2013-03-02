@@ -4,6 +4,7 @@ package confluent
 import stm.{MutableSerializer, Mutable}
 import stm.store.BerkeleyDB
 import java.io.File
+import io.{DataInput, DataOutput}
 
 class Nodes[S <: stm.Sys[S]] {
   object Node {

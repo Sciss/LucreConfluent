@@ -1,6 +1,8 @@
 package de.sciss.lucre
 package confluent
 
+import io.DataOutput
+
 trait ProjectionTest {
 //   trait KVar[ -Tx, ~ ] extends Var[ Tx, ~ ]
 

@@ -26,7 +26,7 @@
 package de.sciss.lucre
 package confluent
 
-import stm.ImmutableSerializer
+import io.{DataInput, DataOutput, ImmutableSerializer}
 
 object ByteArraySerializer extends ImmutableSerializer[ Array[ Byte ]] {
    def write( v: Array[ Byte ], out: DataOutput ) {
@@ -37,7 +37,7 @@ object ByteArraySerializer extends ImmutableSerializer[ Array[ Byte ]] {
    def read( in: DataInput ) : Array[ Byte ] = {
       val sz   = in.readInt()
       val v    = new Array[ Byte ]( sz )
-      in.read( v )
+      in.readFully( v )
       v
    }
 }

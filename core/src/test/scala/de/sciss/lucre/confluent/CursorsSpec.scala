@@ -3,6 +3,7 @@ package confluent
 
 import stm.MutableSerializer
 import collection.immutable.{IndexedSeq => IIdxSeq}
+import io.{DataInput, DataOutput}
 
 /**
  * To run only this test:
@@ -12,7 +13,7 @@ class CursorsSpec extends ConfluentSpec {
 //   confluent.showLog = true
 
    object Entity {
-      implicit object CursorSer extends stm.Serializer[ S#Tx, S#Acc, Cursor[ S ]] {
+      implicit object CursorSer extends io.Serializer[ S#Tx, S#Acc, Cursor[ S ]] {
          def write( c: Cursor[ S ], out: DataOutput ) { c.write( out )}
          def read( in: DataInput, access: S#Acc)( implicit tx: S#Tx ) : Cursor[ S ] = {
             tx.readCursor( in, access )

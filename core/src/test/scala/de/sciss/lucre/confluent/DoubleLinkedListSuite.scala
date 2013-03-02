@@ -6,6 +6,7 @@ import stm.store.BerkeleyDB
 import stm.{MutableSerializer, Mutable}
 import annotation.tailrec
 import org.scalatest.{FunSpec, GivenWhenThen}
+import io.{DataInput, DataOutput}
 
 /**
  * To run only this test:
@@ -159,7 +160,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          implicit object ser extends MutableSerializer[ S, Node ] {
             def readData( in: DataInput, _id: S#ID )( implicit tx: S#Tx ) : Node = new Node with Mutable.Impl[ S ] {
                val id      = _id
-               val name    = in.readString()
+               val name    = in.readUTF()
                val value   = tx.readIntVar( id, in )
                val prev    = tx.readVar[ Option[ Node ]]( id, in )
                val next    = tx.readVar[ Option[ Node ]]( id, in )
@@ -187,7 +188,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          }
 
          protected def writeData( out: DataOutput ) {
-            out.writeString( name )
+            out.writeUTF( name )
             value.write( out )
             prev.write( out )
             next.write( out )

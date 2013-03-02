@@ -27,11 +27,11 @@ package de.sciss.lucre
 package confluent
 package impl
 
-import stm.{ImmutableSerializer, Serializer}
 import concurrent.stm.TxnLocal
 import collection.immutable.{IntMap, LongMap}
 import scala.{specialized => spec}
 import data.{KeySpec, ValueSpec}
+import io.{DataInput, DataOutput, ImmutableSerializer}
 
 object CacheMapImpl {
    /**
@@ -173,14 +173,14 @@ object DurableCacheMapImpl {
       }
    }
    private final class TxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: io.Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, Store[ S, K ]] {
       override def toString = "TxnEntry(" + key + ", " + value + ")"
 
       def flush( outTerm: Long, store: Store[ S, K ])( implicit tx: S#Tx ) {
          val pathOut = path.addTerm( outTerm )
          log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         val out     = new DataOutput()
+         val out     = DataOutput()
          serializer.write( value, out )
          val arr     = out.toByteArray
          store.put( key, pathOut, arr )( tx, ByteArraySerializer )
@@ -206,7 +206,7 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
     * @tparam A         the type of value stored
     */
    final def putCacheTxn[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
-                             ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
+                             ( implicit tx: S#Tx, serializer: io.Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new TxnEntry( key, path, value ))
    }
 
@@ -243,12 +243,12 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
     *                   neither in the cache nor in the persistent store.
     */
    final def getCacheTxn[ A ]( key: K, path: S#Acc )
-                             ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+                             ( implicit tx: S#Tx, serializer: io.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
       getCacheOnly( key, path ).orElse {
          store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
             val access  = tup._1
             val arr     = tup._2
-            val in      = new DataInput( arr )
+            val in      = DataInput( arr )
             serializer.read( in, access )
          }
       }
@@ -315,55 +315,61 @@ with CacheMapImpl[         S, K, InMemoryConfluentMap[ S, K ]] {
 // ---------------------------------------------------------------------
 
 object PartialCacheMapImpl {
-   import CacheMapImpl.Entry
 
-   private type Store[ S <: Sys[ S ], K ] = DurablePersistentMap[ S, K ]
+  import CacheMapImpl.Entry
 
-   def newIntCache[ S <: Sys[ S ]]( map: Store[ S, Int ]) : CacheMap.Partial[ S, Int, Store[ S, Int ]] =
-      new PartialCacheMapImpl[ S, Int ] {
-         final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
-         final val store : DurablePersistentMap[ S, Int ] = map
-      }
+  private type Store[S <: Sys[S], K] = DurablePersistentMap[S, K]
 
-   private final class PartialEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
-   ( val key: K, val fullPath: S#Acc, val value: A )( implicit serializer: Serializer[ S#Tx, S#Acc, A ])
-   extends Entry[ S, K, Store[ S, K ]] {
-      override def toString = "PartialEntry(" + key + ", " + value + ")"
+  def newIntCache[S <: Sys[S]](map: Store[S, Int]): CacheMap.Partial[S, Int, Store[S, Int]] =
+    new PartialCacheMapImpl[S, Int] {
 
-      val path: S#Acc = fullPath.partial
+      final protected def emptyCache: Map[Int, Any] = CacheMapImpl.emptyIntMapVal
+      final val store: DurablePersistentMap[S, Int] = map
+    }
 
-      def flush( outTerm: Long, store: Store[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = fullPath.addTerm( outTerm )
-         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         val out     = new DataOutput()
-         serializer.write( value, out )
-         val arr     = out.toByteArray
-         store.put( key, pathOut, arr )( tx, ByteArraySerializer )
-      }
-   }
+  private final class PartialEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  (val key: K, val fullPath: S#Acc, val value: A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A])
+    extends Entry[S, K, Store[S, K]] {
+
+    override def toString = "PartialEntry(" + key + ", " + value + ")"
+
+    val path: S#Acc = fullPath.partial
+
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+      val pathOut = fullPath.addTerm(outTerm)
+      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      val out     = DataOutput()
+      serializer.write(value, out)
+      val arr     = out.toByteArray
+      store.put(key, pathOut, arr)(tx, ByteArraySerializer)
+    }
+  }
+
 }
-trait PartialCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
-extends CacheMap.Partial[ S, K, DurablePersistentMap[ S, K ]]
-with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
-   import PartialCacheMapImpl._
 
-   final def putPartial[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
-                            ( implicit tx: S#Tx, serializer: Serializer[ S#Tx, S#Acc, A ]) {
-      putCacheOnly( new PartialEntry( key, path, value ))
-   }
+trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+  extends CacheMap.Partial[S, K, DurablePersistentMap[S, K]]
+  with CacheMapImpl       [S, K, DurablePersistentMap[S, K]] {
 
-   final def getPartial[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx,
-                                                     serializer: Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
-      getCacheOnly( key, path.partial ).orElse {
-         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
-            val access  = tup._1
-            val arr     = tup._2
-            val in      = new DataInput( arr )
-            serializer.read( in, access )
-         }
+  import PartialCacheMapImpl._
+
+  final def putPartial[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
+                                          (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]) {
+    putCacheOnly(new PartialEntry(key, path, value))
+  }
+
+  final def getPartial[A](key: K, path: S#Acc)(implicit tx: S#Tx,
+                                               serializer: io.Serializer[S#Tx, S#Acc, A]): Option[A] =
+    getCacheOnly(key, path.partial).orElse {
+      store.getWithSuffix[Array[Byte]](key, path)(tx, ByteArraySerializer).map { tup =>
+          val access  = tup._1
+          val arr     = tup._2
+          val in      = DataInput(arr)
+          serializer.read(in, access)
       }
+    }
 
-   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
-      removeCacheOnly( key, path ) || store.remove( key, path )
-   }
+  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+    removeCacheOnly(key, path) || store.remove(key, path)
+  }
 }

@@ -28,7 +28,8 @@ package confluent
 package impl
 
 import annotation.switch
-import stm.{ImmutableSerializer, Serializer, DataStore}
+import stm.DataStore
+import io.{ImmutableSerializer, DataOutput}
 import scala.{specialized => spec}
 import data.{KeySpec, ValueSpec}
 
@@ -75,11 +76,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] exte
 //      val term = conPath.term
       // first we need to see if anything has already been written to the index of the write path
       store.flatGet { out =>
-         out.writeUnsignedByte( 2 )
+         out.writeByte( 2 )
          writeKey( key, out ) // out.writeInt( key )
 //         out.writeLong( path.indexSum /* index.sum */ )
       } { in =>
-         (in.readUnsignedByte(): @switch) match {
+         (in.readByte(): @switch) match {
             case 1 =>
                // a single 'root' value is found. extract it for successive re-write.
                val term2   = in.readLong()
@@ -160,11 +161,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] exte
 //      val index = conIndex.partial
 
       store.put { out =>
-         out.writeUnsignedByte( 2 )
+         out.writeByte( 2 )
          writeKey( key, out ) // out.writeInt( key )
 //         out.writeLong( index.sum )
       } { out =>
-         out.writeUnsignedByte( 2 ) // aka map entry
+         out.writeByte( 2 ) // aka map entry
          m.write( out )
       }
       // then add the new value
@@ -201,18 +202,18 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] exte
 
    // store the full value at the full hash (path.sum)
    private def putFullSingle[ @spec(ValueSpec) A ]( key: K, /* conIndex: S#Acc, */ term: Long, value: A )
-                                              ( implicit tx: S#Tx, ser: Serializer[ S#Tx, S#Acc, A ]) {
+                                              ( implicit tx: S#Tx, ser: io.Serializer[ S#Tx, S#Acc, A ]) {
 //      val index = conIndex.partial
 
       store.put { out =>
-         out.writeUnsignedByte( 2 )
+         out.writeByte( 2 )
          writeKey( key, out ) // out.writeInt( key )
 //         out.writeLong( index.sum )
       } { out =>
 //if( key == 0 ) {
 //   println( "::::: full single; index = " + index + "; term = " + term + "; sum = " + index.sum )
 //}
-         out.writeUnsignedByte( 1 ) // aka entry single
+         out.writeByte( 1 ) // aka entry single
          out.writeLong( term )
          ser.write( value, out )
       }
@@ -272,11 +273,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] exte
 //      val index   = conIndex.partial
 //      val preSum  = index.sum
       store.flatGet { out =>
-         out.writeUnsignedByte( 2 )
+         out.writeByte( 2 )
          writeKey( key, out ) // out.writeInt( key )
 //         out.writeLong( preSum )
       } { in =>
-         (in.readUnsignedByte(): @switch) match {
+         (in.readByte(): @switch) match {
 //            case 0 => // partial hash
 //               val hash = in.readLong()
 //               //                  EntryPre[ S ]( hash )

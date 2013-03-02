@@ -27,7 +27,8 @@ package de.sciss.lucre
 package confluent
 package impl
 
-import stm.{InMemory, DataStore, DataStoreFactory, Durable, Serializer, IdentifierMap, ImmutableSerializer}
+import stm.{InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
+import io.{ImmutableSerializer, DataInput, DataOutput}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
 import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
 import de.sciss.fingertree
@@ -61,12 +62,12 @@ object ConfluentImpl {
   }
 
   private object Path {
-    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: stm.Serializer[D#Tx, D#Acc, S#Acc] =
+    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: io.Serializer[D#Tx, D#Acc, S#Acc] =
       anySer.asInstanceOf[Ser[S, D]]
 
     private val anySer = new Ser[Confluent, Durable]
 
-    private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]] extends stm.Serializer[D#Tx, D#Acc, S#Acc] {
+    private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]] extends io.Serializer[D#Tx, D#Acc, S#Acc] {
       def write(v: S#Acc, out: DataOutput) {
         v.write(out)
       }
@@ -424,7 +425,7 @@ object ConfluentImpl {
 
     final def readTreeVertexLevel(term: Long): Int = {
       system.store.get(out => {
-        out.writeUnsignedByte(0)
+        out.writeByte(0)
         out.writeInt(term.toInt)
       })(in => {
         in.readInt() // tree index!
@@ -452,7 +453,7 @@ object ConfluentImpl {
       }
     }
 
-    final def newHandle[A](value: A)(implicit serializer: stm.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
+    final def newHandle[A](value: A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
       // val id   = new ConfluentID[ S ]( 0, Path.empty[ S ])
       val h = new HandleImpl(value, inputAccess.index)
       addDirtyCache(h)
@@ -464,12 +465,12 @@ object ConfluentImpl {
       fullCache.getCacheNonTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
-    final def getTxn[A](id: S#ID)(implicit ser: Serializer[S#Tx, S#Acc, A]): A = {
+    final def getTxn[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A = {
       log("txn get' " + id)
       fullCache.getCacheTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
-    final def putTxn[A](id: S#ID, value: A)(implicit ser: Serializer[S#Tx, S#Acc, A]) {
+    final def putTxn[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]) {
       // logConfig( "txn put " + id )
       fullCache.putCacheTxn[A](id.seminal, id.path, value)(this, ser)
       markDirty()
@@ -481,12 +482,12 @@ object ConfluentImpl {
       markDirty()
     }
 
-    final def putPartial[A](id: S#ID, value: A)(implicit ser: Serializer[S#Tx, S#Acc, A]) {
+    final def putPartial[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]) {
       partialCache.putPartial(id.seminal, id.path, value)(this, ser)
       markDirty()
     }
 
-    final def getPartial[A](id: S#ID)(implicit ser: Serializer[S#Tx, S#Acc, A]): A = {
+    final def getPartial[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A = {
       // logPartial( "txn get " + id )
       partialCache.getPartial[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
@@ -516,7 +517,7 @@ object ConfluentImpl {
     @inline final protected def alloc       (pid: S#ID): S#ID = new ConfluentID(system.newIDValue()(this), pid.path)
     @inline final protected def allocPartial(pid: S#ID): S#ID = new PartialID(system.newIDValue()  (this), pid.path)
 
-    final def newVar[A](pid: S#ID, init: A)(implicit ser: Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def newVar[A](pid: S#ID, init: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](alloc(pid))
       log("txn newVar " + res) // + " - init = " + init
       res.setInit(init)(this)
@@ -525,7 +526,7 @@ object ConfluentImpl {
 
     final def newLocalVar[A](init: S#Tx => A): stm.LocalVar[S#Tx, A] = new stm.impl.LocalVarImpl[S, A](init)
 
-    final def newPartialVar[A](pid: S#ID, init: A)(implicit ser: Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def newPartialVar[A](pid: S#ID, init: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return newVar(pid, init)
 
       val res = new PartialVarTxImpl[S, A](allocPartial(pid))
@@ -565,7 +566,7 @@ object ConfluentImpl {
       new InMemoryIDMapImpl[S, A](map)
     }
 
-    final def newDurableIDMap[A](implicit serializer: Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    final def newDurableIDMap[A](implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       mkDurableIDMap(system.newIDValue()(this))
     }
 
@@ -573,7 +574,7 @@ object ConfluentImpl {
       durableIDMaps -= map.id.seminal
     }
 
-    private def mkDurableIDMap[A](id: Int)(implicit serializer: Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    private def mkDurableIDMap[A](id: Int)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       val map = DurablePersistentMap.newConfluentLongMap[S](system.store, system.indexMap, isOblivious = false)
       val idi = new ConfluentID(id, Path.empty[S])
       val res = new DurableIDMapImpl[S, A](idi, map)
@@ -591,7 +592,7 @@ object ConfluentImpl {
       new PartialID(id, pid.path)
     }
 
-    private def makeVar[A](id: S#ID)(implicit ser: Serializer[S#Tx, S#Acc, A]): S#Var[A] /* BasicVar[ S, A ] */ = {
+    private def makeVar[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] /* BasicVar[ S, A ] */ = {
       ser match {
         case plain: ImmutableSerializer[_] =>
           new VarImpl[S, A](id, plain.asInstanceOf[ImmutableSerializer[A]])
@@ -600,13 +601,13 @@ object ConfluentImpl {
       }
     }
 
-    final def readVar[A](pid: S#ID, in: DataInput)(implicit ser: Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def readVar[A](pid: S#ID, in: DataInput)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](readSource(in, pid))
       log("txn read " + res)
       res
     }
 
-    final def readPartialVar[A](pid: S#ID, in: DataInput)(implicit ser: Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def readPartialVar[A](pid: S#ID, in: DataInput)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return readVar(pid, in)
 
       val res = new PartialVarTxImpl[S, A](readPartialSource(in, pid))
@@ -646,7 +647,7 @@ object ConfluentImpl {
       res
     }
 
-    final def readDurableIDMap[A](in: DataInput)(implicit serializer: Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    final def readDurableIDMap[A](in: DataInput)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       val id = in.readInt()
       durableIDMaps.get(id) match {
         case Some(existing) => existing.asInstanceOf[DurableIDMapImpl[S, A]]
@@ -791,7 +792,7 @@ object ConfluentImpl {
   // -------------- BEGIN variables --------------
   // ---------------------------------------------
 
-  private final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc)(implicit serializer: stm.Serializer[S#Tx, S#Acc, A])
+  private final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc)(implicit serializer: io.Serializer[S#Tx, S#Acc, A])
     extends stm.Source[S#Tx, A] with Cache[S#Tx] {
 
     private var writeTerm = 0L
@@ -807,9 +808,9 @@ object ConfluentImpl {
 
       val readPath = tx.inputAccess
 
-      val out = new DataOutput()
+      val out = DataOutput()
       serializer.write(stale, out)
-      val in = new DataInput(out)
+      val in = DataInput(out.buffer, 0, out.size)
 
       var entries = LongMap.empty[Long]
       Hashing.foreachPrefix(writeIndex, entries.contains) {
@@ -887,7 +888,7 @@ object ConfluentImpl {
   }
 
   private final class PartialVarTxImpl[S <: Sys[S], A](protected val id: S#ID)
-                                                      (implicit ser: Serializer[S#Tx, S#Acc, A])
+                                                      (implicit ser: io.Serializer[S#Tx, S#Acc, A])
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx) {
@@ -909,7 +910,7 @@ object ConfluentImpl {
   }
 
   private final class VarTxImpl[S <: Sys[S], A](protected val id: S#ID)
-                                               (implicit ser: Serializer[S#Tx, S#Acc, A])
+                                               (implicit ser: io.Serializer[S#Tx, S#Acc, A])
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx) {
@@ -931,7 +932,7 @@ object ConfluentImpl {
   }
 
   private final class RootVar[S <: Sys[S], A](id1: Int, name: String)
-                                             (implicit val ser: Serializer[S#Tx, S#Acc, A])
+                                             (implicit val ser: io.Serializer[S#Tx, S#Acc, A])
     extends Sys.Entry[S, A] {
 
     def setInit(v: A)(implicit tx: S#Tx) {
@@ -1106,7 +1107,7 @@ object ConfluentImpl {
 
   private final class DurableIDMapImpl[S <: Sys[S], A](val id: S#ID,
                                                        val store: DurablePersistentMap[S, Long])
-                                                      (implicit serializer: Serializer[S#Tx, S#Acc, A])
+                                                      (implicit serializer: io.Serializer[S#Tx, S#Acc, A])
     extends IdentifierMap[S#ID, S#Tx, A] with DurableCacheMapImpl[S, Long] {
 
     private val nid           = id.seminal.toLong << 32
@@ -1160,15 +1161,15 @@ object ConfluentImpl {
   private object GlobalState {
     private val SER_VERSION = 0
 
-    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: stm.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
+    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: io.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
       new Ser[S, D]
 
     private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]]
-      extends stm.Serializer[D#Tx, D#Acc, GlobalState[S, D]] {
+      extends io.Serializer[D#Tx, D#Acc, GlobalState[S, D]] {
 
       def write(v: GlobalState[S, D], out: DataOutput) {
         import v._
-        out.writeUnsignedByte(SER_VERSION)
+        out.writeByte(SER_VERSION)
         idCnt.write(out)
         versionLinear.write(out)
         versionRandom.write(out)
@@ -1176,7 +1177,7 @@ object ConfluentImpl {
       }
 
       def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): GlobalState[S, D] = {
-        val serVer = in.readUnsignedByte()
+        val serVer = in.readByte()
         require(serVer == SER_VERSION, "Incompatible serialized version. Found " + serVer + " but require " + SER_VERSION)
         val idCnt = tx.readCachedIntVar(in)
         val versionLinear = tx.readCachedIntVar(in)
@@ -1231,7 +1232,7 @@ object ConfluentImpl {
         val idCnt = tx.newCachedIntVar(0)
         val versionLinear = tx.newCachedIntVar(0)
         val versionRandom = tx.newCachedLongVar(TxnRandom.initialScramble(0L)) // scramble !!!
-        val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, Serializer.Long, _.toInt)
+        val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, ImmutableSerializer.Long, _.toInt)
         GlobalState[S, D](idCnt, versionLinear, versionRandom, partialTree)
       }
       root()
@@ -1279,12 +1280,12 @@ object ConfluentImpl {
       CursorImpl.read[S, D](in, access)(tx, this)
     }
 
-    final def root[A](init: S#Tx => A)(implicit serializer: Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+    final def root[A](init: S#Tx => A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
       cursorRoot[A, Unit](init)(_ => _ => ())._1
     }
 
     def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                        (implicit serializer: stm.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) = {
+                        (implicit serializer: io.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) = {
       require(ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction")
       log("::::::: root :::::::")
       TxnExecutor.defaultAtomic { itx =>
@@ -1294,7 +1295,7 @@ object ConfluentImpl {
         val arrOpt      = varMap.get[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)
         val rootVal     = arrOpt match {
           case Some(arr) =>
-            val in      = new DataInput(arr)
+            val in      = DataInput(arr)
             val aRead   = serializer.read(in, rootPath)
             aRead
 
@@ -1333,12 +1334,12 @@ object ConfluentImpl {
     // writes the version info (using cookie `4`).
     private def writeVersionInfo(term: Long)(implicit tx: S#Tx) {
       store.put { out =>
-        out.writeUnsignedByte(4)
+        out.writeByte(4)
         out.writeInt(term.toInt)
       } { out =>
         val i = tx.info
         val m = i.message
-        out.writeString(if (m.length == 0) null else m) // DataOutput optimises `null`
+        out.writeUTF(/*if (m.length == 0) null else */ m)
         out.writeLong(i.timeStamp)
       }
     }
@@ -1349,12 +1350,12 @@ object ConfluentImpl {
     final def versionInfo(term: Long)(implicit tx: S#Tx): VersionInfo = {
       val vInt = term.toInt
       val opt = store.get { out =>
-        out.writeUnsignedByte(4)
+        out.writeByte(4)
         out.writeInt(vInt)
       } { in =>
-        val m = in.readString()
+        val m = in.readUTF()
         val timeStamp = in.readLong()
-        VersionInfo(if (m == null) "" else m, timeStamp)
+        VersionInfo(/*if (m == null) "" else */ m, timeStamp)
       }
       opt.getOrElse(sys.error("No version information stored for " + vInt))
     }
@@ -1526,7 +1527,7 @@ object ConfluentImpl {
     // writes the vertex information (pre- and post-order entries) of a full tree's leaf (using cookie `0`).
     private def writeTreeVertex(tree: Sys.IndexTree[D], v: Ancestor.Vertex[D, Long])(implicit tx: D#Tx) {
       store.put { out =>
-        out.writeUnsignedByte(0)
+        out.writeByte(0)
         out.writeInt(v.version.toInt)
       } { out =>
         out.writeInt(tree.term.toInt)
@@ -1542,11 +1543,11 @@ object ConfluentImpl {
       val dtx   = durableTx(tx)
       val term  = index.term
       log("txn new tree " + term.toInt)
-      val tree  = Ancestor.newTree[D, Long](term)(dtx, Serializer.Long, _.toInt)
+      val tree  = Ancestor.newTree[D, Long](term)(dtx, ImmutableSerializer.Long, _.toInt)
       val it    = new IndexTreeImpl(tree, level)
       val vInt  = term.toInt
       store.put { out =>
-        out.writeUnsignedByte(1)
+        out.writeByte(1)
         out.writeInt(vInt)
       } {
         it.write _
@@ -1555,7 +1556,7 @@ object ConfluentImpl {
 
       val map = newIndexMap(index, term, ())(tx, ImmutableSerializer.Unit)
       store.put { out =>
-        out.writeUnsignedByte(5)
+        out.writeByte(5)
         out.writeInt(vInt)
       } {
         map.write _
@@ -1566,7 +1567,7 @@ object ConfluentImpl {
     // (using cookie `5`).
     private def readTimeStampMap(index: S#Acc)(implicit tx: S#Tx): IndexMap[S, Unit] = {
       val opt = store.get { out =>
-        out.writeUnsignedByte(5)
+        out.writeByte(5)
         out.writeInt(index.term.toInt)
       } { in =>
         readIndexMap[Unit](in, index)(tx, ImmutableSerializer.Unit)
@@ -1577,10 +1578,10 @@ object ConfluentImpl {
     private def readIndexTree(term: Long)(implicit tx: D#Tx): Sys.IndexTree[D] = {
       val st = store
       st.get { out =>
-        out.writeUnsignedByte(1)
+        out.writeByte(1)
         out.writeInt(term.toInt)
       } { in =>
-        val tree = Ancestor.readTree[D, Long](in, ())(tx, Serializer.Long, _.toInt) // tx.durable
+        val tree = Ancestor.readTree[D, Long](in, ())(tx, ImmutableSerializer.Long, _.toInt) // tx.durable
         val level = in.readInt()
         new IndexTreeImpl(tree, level)
       } getOrElse {
@@ -1590,7 +1591,7 @@ object ConfluentImpl {
         // in this conditional step, we try to (partially) read `term` as vertex, thereby retrieving
         // the underlying tree index, and then retrying with that index (`term2`).
         st.get { out =>
-          out.writeUnsignedByte(0)
+          out.writeByte(0)
           out.writeInt(term.toInt)
         } { in =>
           val term2 = in.readInt() // tree index!
@@ -1606,7 +1607,7 @@ object ConfluentImpl {
     final def readTreeVertex(tree: Ancestor.Tree[D, Long], index: S#Acc, term: Long)
                             (implicit tx: D#Tx): (Ancestor.Vertex[D, Long], Int) = {
       store.get { out =>
-        out.writeUnsignedByte(0)
+        out.writeByte(0)
         out.writeInt(term.toInt)
       } { in =>
         in.readInt() // tree index!
@@ -1620,7 +1621,7 @@ object ConfluentImpl {
     // writes the partial tree leaf information, i.e. pre- and post-order entries (using cookie `3`).
     private def writePartialTreeVertex(v: Ancestor.Vertex[D, Long])(implicit tx: S#Tx) {
       store.put { out =>
-        out.writeUnsignedByte(3)
+        out.writeByte(3)
         out.writeInt(v.version.toInt)
       } { out =>
         partialTree.vertexSerializer.write(v, out)
@@ -1709,7 +1710,7 @@ object ConfluentImpl {
 
     private def readPartialTreeVertex(index: S#Acc, term: Long)(implicit tx: D#Tx): Ancestor.Vertex[D, Long] = {
       store.get { out =>
-        out.writeUnsignedByte(3)
+        out.writeByte(3)
         out.writeInt(term.toInt)
       } { in =>
         val access = index :+ term

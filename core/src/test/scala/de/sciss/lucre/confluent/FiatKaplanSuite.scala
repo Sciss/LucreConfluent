@@ -15,9 +15,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
   type S = Confluent
 
   describe("A Confluently Persistent Linked List") {
-    val dir     = File.createTempFile("database", "db")
-    dir.delete()
-    val store   = BerkeleyDB.factory(dir)
+    val store   = BerkeleyDB.tmp()
     val _s      = Confluent(store)
     val types   = new Types(_s)
 
@@ -28,12 +26,11 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
       ///////////////////////////// v0 /////////////////////////////
 
       Given("v0 : Allocate nodes w0, w1, with x=2 and x=1, concatenate them")
-      implicit val whyOhWhy = Node.ser
-      val (access, cursor) = s.cursorRoot[Option[Node], Cursor[S]] { implicit tx =>
+      val (access, cursor) = s.cursorRoot { implicit tx =>
         val w0 = Node("w0", 2)
         val w1 = Node("w1", 1)
         w0.next() = Some(w1)
-        Some(w0)
+        Option(w0)
       } { implicit tx =>
         _ => tx.newCursor()
       }
@@ -165,6 +162,14 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
       When("the result is converted to a plain list in a new transaction")
         val (_, res4) = cursor.step { implicit tx =>
           val node = access()
+
+          def loop(opt: Option[Node]): List[S#ID] = opt match {
+            case None => Nil
+            case Some(n) => n.id :: loop(n.next())
+          }
+
+          info(s"The node succession is ${loop(node).mkString}")
+
           tx.inputAccess -> toList(node)
         }
 

@@ -3,6 +3,8 @@ import Keys._
 import sbtbuildinfo.Plugin._
 
 object Build extends sbt.Build {
+  lazy val lucreVersion = "1.8.+"
+
   lazy val root: Project = Project(
     id            = "lucreconfluent",
     base          = file("."),
@@ -30,13 +32,13 @@ object Build extends sbt.Build {
     id = "lucreconfluent-core",
     base = file("core"),
     settings = Project.defaultSettings ++ buildInfoSettings ++ Seq(
-      libraryDependencies <++= version { case Compatible(v) => Seq(
-        "de.sciss" %% "fingertree" % "1.2.+",
-        "de.sciss" %% "lucredata-core"  % v,
-        "de.sciss" %% "lucredata-views" % v % "test",
-        "de.sciss" %% "lucrestm-bdb"    % v % "test",
+      libraryDependencies ++= Seq(
+        "de.sciss" %% "fingertree" % "1.3.+",
+        "de.sciss" %% "lucredata-core"  % lucreVersion,
+        "de.sciss" %% "lucredata-views" % lucreVersion % "test",
+        "de.sciss" %% "lucrestm-bdb"    % lucreVersion % "test",
         "org.scalatest" %% "scalatest" % "1.9.1" % "test"
-      )},
+      ),
       initialCommands in console := """import de.sciss.lucre.confluent._""",
       sourceGenerators in Compile <+= buildInfo,
       buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
@@ -56,11 +58,11 @@ object Build extends sbt.Build {
     base = file("event"),
     dependencies = Seq(core),
     settings = Project.defaultSettings ++ Seq(
-      libraryDependencies <++= version { case Compatible(v) => Seq(
-        "de.sciss" %% "lucreevent-core" % v,
-        "de.sciss" %% "lucrestm-bdb"    % v % "test",
+      libraryDependencies ++= Seq(
+        "de.sciss" %% "lucreevent-core" % lucreVersion,
+        "de.sciss" %% "lucrestm-bdb"    % lucreVersion % "test",
         "org.scalatest" %% "scalatest" % "1.9.1" % "test"
-      )}
+      )
     )
   )
 }

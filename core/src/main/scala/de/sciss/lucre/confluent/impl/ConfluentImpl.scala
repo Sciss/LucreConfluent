@@ -177,10 +177,9 @@ object ConfluentImpl {
       that.isInstanceOf[PathLike] && (that.asInstanceOf[PathLike].sum == sum)
 
     def :+(last: Long): S#Acc = wrap(tree :+ last)
-
     def +:(head: Long): S#Acc = wrap(head +: tree)
 
-    def apply(idx: Int): Long = tree.find1(_._1 > idx)
+    def apply(idx: Int): Long = tree.find1(_._1 > idx)._2
 
     // XXX TODO testin one two
     def partial: S#Acc = {

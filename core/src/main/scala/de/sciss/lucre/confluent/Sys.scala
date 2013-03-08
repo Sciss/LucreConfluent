@@ -125,8 +125,7 @@ object Sys {
 
     private[confluent] def apply(idx: Int): Long
 
-    private[confluent] def maxPrefixLength(that: S#Acc): Int
-    private[confluent] def maxPrefixLength(that: Long): Int
+    private[confluent] def maxPrefixLength(term: Long): Int
 
     def seminal: S#Acc
 

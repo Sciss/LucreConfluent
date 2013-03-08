@@ -238,11 +238,11 @@ sealed trait DurablePartialMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] exte
 //      val maxTerm = conPath.term
       getWithPrefixLen[ A, (S#Acc, A) ]( key, maxIndex, maxTerm ) { (/* preLen, */ writeTerm, value) =>
          val treeTerm   = handler.getIndexTreeTerm( writeTerm )
-         val i          = maxIndex.maxPrefixLength( treeTerm )
+         val i          = maxIndex.maxPrefixLength( treeTerm )  // XXX TODO: this is wrong -- maxPrefixLength currently compares sums not terms
          // XXX TODO ugly ugly ugly
          val suffix = if( i == 0 ) {
             val inPath = tx.inputAccess
-            val j = inPath.maxPrefixLength( treeTerm )
+            val j = inPath.maxPrefixLength( treeTerm )          // XXX TODO: this is wrong -- maxPrefixLength currently compares sums not terms
             require( j > 0 )
             inPath.drop( j )
          } else {

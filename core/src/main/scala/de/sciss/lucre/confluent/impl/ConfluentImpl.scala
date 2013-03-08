@@ -94,7 +94,7 @@ object ConfluentImpl {
     def root[S <: Sys[S]]: S#Acc = new Path[S](FingerTree(1L << 32, 1L << 32)(PathMeasure))
 
     def read[S <: Sys[S]](in: DataInput): S#Acc = {
-//      implicit val m  = PathMeasure
+      // implicit val m  = PathMeasure
       val sz          = in.readInt()
       var tree        = FingerTree.empty(PathMeasure)
       var i = 0
@@ -106,50 +106,43 @@ object ConfluentImpl {
     }
 
     def readAndAppend[S <: Sys[S]](in: DataInput, acc: S#Acc)(implicit tx: S#Tx): S#Acc = {
-//      implicit val m = PathMeasure
-      val sz = in.readInt()
-      //         val accTree    = acc.tree
-      var tree = FingerTree.empty(PathMeasure)
-      val accIter = acc.tree.iterator
-      if (accIter.isEmpty) {
+      // implicit val m = PathMeasure
+      val sz      = in.readInt()
+      val accTree = acc.tree
+
+      val res     = if (accTree.isEmpty) {
         var i = 0
+        var tree = FingerTree.empty(PathMeasure)
         while (i < sz) {
           tree :+= in.readLong()
           i += 1
         }
-      } else {
-        val writeTerm = accIter.next()
-        val readTerm  = accIter.next()
-        if (sz == 0) {
-          // entity was created in the terminal version
-          //            tree = readTerm +: readTerm +: tree   // XXX TODO should have FingerTree.two
-          tree = writeTerm +: readTerm +: tree // XXX TODO should have FingerTree.two
-          //logConfig( "readAndAppend for " + acc + " finds empty path, yields " + tree )
-          // XXX is this correct? i would think that still
-          // we need to compare tree levels? -- if writeTerm level != readTerm level,
-          // wouldn't we instead need <write, write, read, read> ?
-          // --> NO, they would always have the same level, because
-          // the write path begins with the read path (they share the same initial version)
-        } else {
-          val szm = sz - 1
-          var i = 0
-          while (i < szm) {
-            tree :+= in.readLong()
-            i += 1
-          }
-          val lastTerm = in.readLong()
-          val oldLevel = tx.readTreeVertexLevel(lastTerm)
-          val newLevel = tx.readTreeVertexLevel(writeTerm)
+        tree
 
-          if (oldLevel != newLevel) {
-            tree :+= lastTerm
-            tree :+= writeTerm
-          }
-          tree :+= readTerm
+      } else if (sz == 0) {
+        accTree
+
+      } else {
+        var tree    = FingerTree.empty(PathMeasure)
+        val szm = sz - 1
+        var i = 0
+        while (i < szm) {
+          tree :+= in.readLong()
+          i += 1
         }
-        accIter.foreach(tree :+= _)
+        val lastTerm  = in.readLong()
+        val oldLevel  = tx.readTreeVertexLevel(lastTerm)
+        val writeTerm = accTree.head
+        val newLevel  = tx.readTreeVertexLevel(writeTerm)
+
+        if (oldLevel != newLevel) { // reconstruct a tree split
+          tree :+= lastTerm
+          tree ++ accTree
+        } else {
+          tree ++ accTree.tail      // replace terminal version
+        }
       }
-      new Path[S](tree)
+      new Path[S](res)
     }
   }
 
@@ -195,32 +188,32 @@ object ConfluentImpl {
       wrap(res)
     }
 
-    def maxPrefixLength(that: Long): Int = {
-      val pre = tree.takeWhile(_._2 < that)
-      if (pre.isEmpty || pre.last != that) 0 else pre.measure._1
+    def maxPrefixLength(term: Long): Int = {
+      val pre = tree.takeWhile(_._2 < term)
+      if (pre.isEmpty || pre.last != term) 0 else pre.measure._1
     }
 
-    def maxPrefixLength(that: S#Acc): Int = {
-      val ita = tree.iterator
-      val itb = that.tree.iterator
-      var j = 0
-      while (ita.hasNext && itb.hasNext) {
-        val na = ita.next()
-        val nb = itb.next()
-        if (na != nb) return 0
-        j += 1
-      }
-      j
-    }
+//    def maxPrefixLength(that: S#Acc): Int = {
+//      val ita = tree.iterator
+//      val itb = that.tree.iterator
+//      var j = 0
+//      while (ita.hasNext && itb.hasNext) {
+//        val na = ita.next()
+//        val nb = itb.next()
+//        if (na != nb) return 0
+//        j += 1
+//      }
+//      j
+//    }
 
     def addTerm(term: Long)(implicit tx: S#Tx): S#Acc = {
       val t = if (tree.isEmpty) {
-        term +: term +: FingerTree.empty(PathMeasure) // have FingerTree.two at some point
+        FingerTree.two(term, term)
       } else {
         val oldLevel = tx.readTreeVertexLevel(this.term)
         val newLevel = tx.readTreeVertexLevel(term)
         if (oldLevel == newLevel) {
-          tree.init :+ term // XXX TODO Have :-| in the finger tree at some point
+          tree.init :+ term
         } else {
           tree :+ term :+ term
         }
@@ -229,16 +222,14 @@ object ConfluentImpl {
     }
 
     def seminal: S#Acc = {
-      val (_init, term) = splitIndex
-      wrap(FingerTree(_init.term, term))
+      val e = indexTerm
+      val t = term
+      wrap(FingerTree.two(e, t))
     }
 
-    // XXX TODO should have an efficient method in finger tree
-    def indexTerm: Long = tree.init.last
+    def indexTerm: Long = apply(size - 2)
+    def indexSum : Long = sum - (last >> 32)
 
-    def indexSum: Long = sum - (last >> 32)
-
-    // XXX TODO should have an efficient method in finger tree
     def :-|(suffix: Long): S#Acc = wrap(tree.init :+ suffix)
 
     def drop(n: Int): S#Acc = {
@@ -246,22 +237,21 @@ object ConfluentImpl {
       wrap(right)
     }
 
-    // XXX TODO should have an efficient method in finger tree
     def splitIndex: (S#Acc, Long) = (init, last)
 
     def splitAtIndex(idx: Int): (S#Acc, Long) = {
-      val tup = tree.span1(_._1 <= idx)
-      (wrap(tup._1), tup._2)
+      val (pre, t, _) = tree.span1(_._1 <= idx)
+      (wrap(pre), t)
     }
 
     def splitAtSum(hash: Long): (S#Acc, Long) = {
-      val tup = tree.span1(_._2 <= hash)
-      (wrap(tup._1), tup._2)
+      val (pre, t, _) = tree.span1(_._2 <= hash)
+      (wrap(pre), t)
     }
 
     def write(out: DataOutput) {
       out.writeInt(size)
-      tree.iterator.foreach(out.writeLong)
+      tree.iterator.foreach(out.writeLong(_))
     }
 
     def index: S#Acc  = wrap(tree.init)
@@ -269,12 +259,17 @@ object ConfluentImpl {
     def size: Int     = tree.measure._1
     def sum: Long     = tree.measure._2
 
-    // XXX TODO -- need an applyMeasure method in finger tree
-    def sumUntil(n: Int): Long = {
-      tree.takeWhile(_._1 <= n).measure._2
+    def sumUntil_OLD(n: Int): Long = {
+      val res = tree.takeWhile(_._1 <= n).measure._2
+//      val test = sumUntil_X(n)
+//      if (res != test) {
+//        println(s"$this.sumUntil($n) == $res and not $test")
+//      }
+////      assert(res == sumUntil_X(n))
+      res
     }
 
-//    def take(n: Int): PathLike = _take(n)
+    def sumUntil(n: Int): Long = tree.find1(_._1 > n)._1._2
 
     def take(n: Int): S#Acc = {
       val left = tree.takeWhile(_._1 <= n)
@@ -285,6 +280,9 @@ object ConfluentImpl {
 
     def mkString(prefix: String, sep: String, suffix: String): String =
       tree.iterator.map(_.toInt).mkString(prefix, sep, suffix)
+
+//    def mkString(prefix: String, sep: String, suffix: String): String =
+//      tree.iterator.map(i => (i >> 32).toInt).mkString(prefix, sep, suffix)
 
     def info(implicit tx: S#Tx): VersionInfo = tx.system.versionInfo(term)
 

@@ -33,7 +33,7 @@ object Build extends sbt.Build {
     base = file("core"),
     settings = Project.defaultSettings ++ buildInfoSettings ++ Seq(
       libraryDependencies ++= Seq(
-        "de.sciss" %% "fingertree" % "1.3.+",
+        "de.sciss" %% "fingertree" % "1.3.1+",
         "de.sciss" %% "lucredata-core"  % lucreVersion,
         "de.sciss" %% "lucredata-views" % lucreVersion % "test",
         "de.sciss" %% "lucrestm-bdb"    % lucreVersion % "test",

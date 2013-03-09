@@ -58,7 +58,7 @@ object ConfluentImpl {
     def apply(c: Long) = (1, c >> 32)
 
     def |+|(a: (Int, Long), b: (Int, Long)) = ((a._1 + b._1), (a._2 + b._2))
-    def |+|(a: (Int, Long), b: (Int, Long), c: (Int, Long)) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
+    override def |+|(a: (Int, Long), b: (Int, Long), c: (Int, Long)) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
   }
 
   private object Path {

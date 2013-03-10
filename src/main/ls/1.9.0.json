@@ -1,0 +1,17 @@
+{
+  "organization" : "de.sciss",
+  "name" : "LucreConfluent",
+  "version" : "1.9.0",
+  "description" : "Confluently persistent references for Scala",
+  "site" : "https://github.com/Sciss/LucreConfluent",
+  "tags" : [ "confluent", "persistence" ],
+  "docs" : "",
+  "resolvers" : [ "https://oss.sonatype.org/content/repositories/releases" ],
+  "dependencies" : [ ],
+  "scalas" : [ "2.10.0" ],
+  "licenses" : [ {
+    "name" : "GPL v2+",
+    "url" : "http://www.gnu.org/licenses/gpl-2.0.txt"
+  } ],
+  "sbt" : false
+}

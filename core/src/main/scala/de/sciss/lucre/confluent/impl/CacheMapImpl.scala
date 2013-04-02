@@ -23,7 +23,8 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 package impl
 
@@ -31,7 +32,7 @@ import concurrent.stm.TxnLocal
 import collection.immutable.{IntMap, LongMap}
 import scala.{specialized => spec}
 import data.{KeySpec, ValueSpec}
-import io.{DataInput, DataOutput, ImmutableSerializer}
+import serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object CacheMapImpl {
    /**
@@ -173,7 +174,7 @@ object DurableCacheMapImpl {
       }
    }
    private final class TxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: io.Serializer[ S#Tx, S#Acc, A ])
+   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: serial.Serializer[ S#Tx, S#Acc, A ])
    extends Entry[ S, K, Store[ S, K ]] {
       override def toString = "TxnEntry(" + key + ", " + value + ")"
 
@@ -206,7 +207,7 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
     * @tparam A         the type of value stored
     */
    final def putCacheTxn[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
-                             ( implicit tx: S#Tx, serializer: io.Serializer[ S#Tx, S#Acc, A ]) {
+                             ( implicit tx: S#Tx, serializer: serial.Serializer[ S#Tx, S#Acc, A ]) {
       putCacheOnly( new TxnEntry( key, path, value ))
    }
 
@@ -243,7 +244,7 @@ with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
     *                   neither in the cache nor in the persistent store.
     */
    final def getCacheTxn[ A ]( key: K, path: S#Acc )
-                             ( implicit tx: S#Tx, serializer: io.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
+                             ( implicit tx: S#Tx, serializer: serial.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
       getCacheOnly( key, path ).orElse {
          store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
             val access  = tup._1
@@ -328,7 +329,7 @@ object PartialCacheMapImpl {
     }
 
   private final class PartialEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
-  (val key: K, val fullPath: S#Acc, val value: A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A])
+  (val key: K, val fullPath: S#Acc, val value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends Entry[S, K, Store[S, K]] {
 
     override def toString = "PartialEntry(" + key + ", " + value + ")"
@@ -354,12 +355,12 @@ trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
   import PartialCacheMapImpl._
 
   final def putPartial[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
-                                          (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]) {
+                                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
     putCacheOnly(new PartialEntry(key, path, value))
   }
 
   final def getPartial[A](key: K, path: S#Acc)(implicit tx: S#Tx,
-                                               serializer: io.Serializer[S#Tx, S#Acc, A]): Option[A] =
+                                               serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
     getCacheOnly(key, path.partial).orElse {
       store.getWithSuffix[Array[Byte]](key, path)(tx, ByteArraySerializer).map { tup =>
           val access  = tup._1

@@ -23,11 +23,12 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import stm.Disposable
-import io.Writable
+import serial.Writable
 
 trait Cursor[S <: Sys[S]] extends stm.Cursor[S] with Disposable[S#Tx] with Writable {
   def stepFrom[A](path: S#Acc)(fun: S#Tx => A): A

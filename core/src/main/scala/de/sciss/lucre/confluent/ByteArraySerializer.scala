@@ -23,21 +23,22 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
-import io.{DataInput, DataOutput, ImmutableSerializer}
+import serial.{DataInput, DataOutput, ImmutableSerializer}
 
-object ByteArraySerializer extends ImmutableSerializer[ Array[ Byte ]] {
-   def write( v: Array[ Byte ], out: DataOutput ) {
-      out.writeInt( v.length )
-      out.write( v )
-   }
+object ByteArraySerializer extends ImmutableSerializer[Array[Byte]] {
+  def write(v: Array[Byte], out: DataOutput) {
+    out.writeInt(v.length)
+    out.write(v)
+  }
 
-   def read( in: DataInput ) : Array[ Byte ] = {
-      val sz   = in.readInt()
-      val v    = new Array[ Byte ]( sz )
-      in.readFully( v )
-      v
-   }
+  def read(in: DataInput): Array[Byte] = {
+    val sz = in.readInt()
+    val v = new Array[Byte](sz)
+    in.readFully(v)
+    v
+  }
 }

@@ -1,4 +1,5 @@
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import java.io.File
@@ -6,7 +7,7 @@ import stm.store.BerkeleyDB
 import stm.{MutableSerializer, Mutable}
 import annotation.tailrec
 import org.scalatest.{FunSpec, GivenWhenThen}
-import io.{DataInput, DataOutput}
+import serial.{DataInput, DataOutput}
 
 /**
  * To run only this test:

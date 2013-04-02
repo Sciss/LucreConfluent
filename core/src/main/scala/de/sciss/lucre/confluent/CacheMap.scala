@@ -23,10 +23,11 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
-import io.ImmutableSerializer
+import serial.ImmutableSerializer
 import scala.{specialized => spec}
 import data.KeySpec
 
@@ -38,13 +39,13 @@ object CacheMap {
 
   trait Durable[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends CacheMap[S, K, Store] {
     def putCacheTxn[A](key: K, path: S#Acc, value: A)
-                      (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]): Unit
+                      (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit
 
     def putCacheNonTxn[A](key: K, path: S#Acc, value: A)
                          (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Unit
 
     def getCacheTxn[A](key: K, path: S#Acc)
-                      (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]): Option[A]
+                      (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A]
 
     def getCacheNonTxn[A](key: K, path: S#Acc)
                          (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A]
@@ -52,10 +53,10 @@ object CacheMap {
 
   trait Partial[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends CacheMap[S, K, Store] {
     def putPartial[A](key: K, path: S#Acc, value: A)
-                     (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]): Unit
+                     (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit
 
     def getPartial[A](key: K, path: S#Acc)
-                     (implicit tx: S#Tx, serializer: io.Serializer[S#Tx, S#Acc, A]): Option[A]
+                     (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A]
   }
 
 }

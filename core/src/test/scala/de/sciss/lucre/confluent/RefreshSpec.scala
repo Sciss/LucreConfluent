@@ -1,11 +1,12 @@
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import org.scalatest.fixture
 import org.scalatest.matchers.ShouldMatchers
 import stm.MutableSerializer
 import stm.store.BerkeleyDB
-import io.{DataInput, DataOutput}
+import serial.{DataInput, DataOutput}
 
 /**
  * To run only this test:

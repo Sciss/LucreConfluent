@@ -23,13 +23,14 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 package impl
 
 import annotation.switch
 import stm.DataStore
-import io.{ImmutableSerializer, DataOutput}
+import serial.{ImmutableSerializer, DataOutput}
 import scala.{specialized => spec}
 import data.{KeySpec, ValueSpec}
 
@@ -210,7 +211,7 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] ex
 
    // store the full value at the full hash (path.sum)
    private def putFullSingle[ @spec(ValueSpec) A ]( key: K, index: S#Acc, term: Long, value: A )
-                                              ( implicit tx: S#Tx, ser: io.Serializer[ S#Tx, S#Acc, A ]) {
+                                              ( implicit tx: S#Tx, ser: serial.Serializer[ S#Tx, S#Acc, A ]) {
       store.put { out =>
          writeKey( key, out ) // out.writeInt( key )
          out.writeLong( index.sum )

@@ -1,10 +1,11 @@
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import stm.{MutableSerializer, Mutable}
 import stm.store.BerkeleyDB
 import java.io.File
-import io.{DataInput, DataOutput}
+import serial.{DataInput, DataOutput}
 
 class Nodes[S <: stm.Sys[S]] {
   object Node {

@@ -1,41 +1,42 @@
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import stm.store.BerkeleyDB
-import io.{DataInput, DataOutput}
+import serial.{DataInput, DataOutput}
 
 // \ref{lst:lucre_durable_linkedlist}, \ref{lst:lucre_durable_traverse}, \ref{lst:linkedlist_init}
 object ThesisFiatKaplanExample extends App {
   object LinkedList {
-    implicit def listSer[S <: Sys[S], A](implicit peerSer: io.Serializer[S#Tx, S#Acc, A]): io.Serializer[S#Tx, S#Acc, LinkedList[S, A]] = new ListSer[S, A]
+    implicit def listSer[S <: Sys[S], A](implicit peerSer: serial.Serializer[S#Tx, S#Acc, A]): serial.Serializer[S#Tx, S#Acc, LinkedList[S, A]] = new ListSer[S, A]
 
-    private class ListSer[S <: Sys[S], A](implicit _peerSer: io.Serializer[S#Tx, S#Acc, A])
+    private class ListSer[S <: Sys[S], A](implicit _peerSer: serial.Serializer[S#Tx, S#Acc, A])
       extends stm.MutableSerializer[S, LinkedList[S, A]] {
 
       protected def readData(in: DataInput, _id: S#ID)(implicit tx: S#Tx): LinkedList[S, A] =
         new Impl[S, A] {
           val peerSer = _peerSer
           val id = _id
-          val head = tx.readVar[Option[Cell]](id, in)(io.Serializer.option(CellSer))
+          val head = tx.readVar[Option[Cell]](id, in)(serial.Serializer.option(CellSer))
         }
     }
 
-    def apply[S <: Sys[S], A]()(implicit tx: S#Tx, _peerSer: io.Serializer[S#Tx, S#Acc, A]): LinkedList[S, A] =
+    def apply[S <: Sys[S], A]()(implicit tx: S#Tx, _peerSer: serial.Serializer[S#Tx, S#Acc, A]): LinkedList[S, A] =
       new Impl[S, A] {
         val peerSer = _peerSer
         val id = tx.newID()
-        val head = tx.newVar(id, Option.empty[Cell])(io.Serializer.option(CellSer))
+        val head = tx.newVar(id, Option.empty[Cell])(serial.Serializer.option(CellSer))
     }
 
     private abstract class Impl[S <: Sys[S], A] extends LinkedList[S, A] with stm.Mutable.Impl[S] {
-      implicit def peerSer: io.Serializer[S#Tx, S#Acc, A]
+      implicit def peerSer: serial.Serializer[S#Tx, S#Acc, A]
 
       def cell(init: A)(implicit tx: S#Tx): Cell = new Cell {
         val next  = tx.newVar(id, Option.empty[Cell])
         val value = init
       }
 
-      implicit object CellSer extends io.Serializer[S#Tx, S#Acc, Cell] {
+      implicit object CellSer extends serial.Serializer[S#Tx, S#Acc, Cell] {
         def write(cell: Cell, out: DataOutput) {
           cell.next.write(out)
           peerSer.write(cell.value, out)

@@ -23,12 +23,13 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 package impl
 
 import stm.{InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
-import io.{ImmutableSerializer, DataInput, DataOutput}
+import serial.{ImmutableSerializer, DataInput, DataOutput}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
 import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
 import de.sciss.fingertree
@@ -62,12 +63,12 @@ object ConfluentImpl {
   }
 
   private object Path {
-    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: io.Serializer[D#Tx, D#Acc, S#Acc] =
+    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, S#Acc] =
       anySer.asInstanceOf[Ser[S, D]]
 
     private val anySer = new Ser[Confluent, Durable]
 
-    private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]] extends io.Serializer[D#Tx, D#Acc, S#Acc] {
+    private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]] extends serial.Serializer[D#Tx, D#Acc, S#Acc] {
       def write(v: S#Acc, out: DataOutput) {
         v.write(out)
       }
@@ -450,7 +451,7 @@ object ConfluentImpl {
       }
     }
 
-    final def newHandle[A](value: A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
+    final def newHandle[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
       // val id   = new ConfluentID[ S ]( 0, Path.empty[ S ])
       val h = new HandleImpl(value, inputAccess.index)
       addDirtyCache(h)
@@ -462,12 +463,12 @@ object ConfluentImpl {
       fullCache.getCacheNonTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
-    final def getTxn[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A = {
+    final def getTxn[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A = {
       log("txn get' " + id)
       fullCache.getCacheTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
-    final def putTxn[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]) {
+    final def putTxn[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
       // logConfig( "txn put " + id )
       fullCache.putCacheTxn[A](id.seminal, id.path, value)(this, ser)
       markDirty()
@@ -479,12 +480,12 @@ object ConfluentImpl {
       markDirty()
     }
 
-    final def putPartial[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]) {
+    final def putPartial[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
       partialCache.putPartial(id.seminal, id.path, value)(this, ser)
       markDirty()
     }
 
-    final def getPartial[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): A = {
+    final def getPartial[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A = {
       // logPartial( "txn get " + id )
       partialCache.getPartial[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
@@ -514,7 +515,7 @@ object ConfluentImpl {
     @inline final protected def alloc       (pid: S#ID): S#ID = new ConfluentID(system.newIDValue()(this), pid.path)
     @inline final protected def allocPartial(pid: S#ID): S#ID = new PartialID(system.newIDValue()  (this), pid.path)
 
-    final def newVar[A](pid: S#ID, init: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def newVar[A](pid: S#ID, init: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](alloc(pid))
       log("txn newVar " + res) // + " - init = " + init
       res.setInit(init)(this)
@@ -523,7 +524,7 @@ object ConfluentImpl {
 
     final def newLocalVar[A](init: S#Tx => A): stm.LocalVar[S#Tx, A] = new stm.impl.LocalVarImpl[S, A](init)
 
-    final def newPartialVar[A](pid: S#ID, init: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def newPartialVar[A](pid: S#ID, init: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return newVar(pid, init)
 
       val res = new PartialVarTxImpl[S, A](allocPartial(pid))
@@ -563,7 +564,7 @@ object ConfluentImpl {
       new InMemoryIDMapImpl[S, A](map)
     }
 
-    final def newDurableIDMap[A](implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    final def newDurableIDMap[A](implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       mkDurableIDMap(system.newIDValue()(this))
     }
 
@@ -571,7 +572,7 @@ object ConfluentImpl {
       durableIDMaps -= map.id.seminal
     }
 
-    private def mkDurableIDMap[A](id: Int)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    private def mkDurableIDMap[A](id: Int)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       val map = DurablePersistentMap.newConfluentLongMap[S](system.store, system.indexMap, isOblivious = false)
       val idi = new ConfluentID(id, Path.empty[S])
       val res = new DurableIDMapImpl[S, A](idi, map)
@@ -589,7 +590,7 @@ object ConfluentImpl {
       new PartialID(id, pid.path)
     }
 
-    private def makeVar[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] /* BasicVar[ S, A ] */ = {
+    private def makeVar[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] /* BasicVar[ S, A ] */ = {
       ser match {
         case plain: ImmutableSerializer[_] =>
           new VarImpl[S, A](id, plain.asInstanceOf[ImmutableSerializer[A]])
@@ -598,13 +599,13 @@ object ConfluentImpl {
       }
     }
 
-    final def readVar[A](pid: S#ID, in: DataInput)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def readVar[A](pid: S#ID, in: DataInput)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](readSource(in, pid))
       log("txn read " + res)
       res
     }
 
-    final def readPartialVar[A](pid: S#ID, in: DataInput)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
+    final def readPartialVar[A](pid: S#ID, in: DataInput)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return readVar(pid, in)
 
       val res = new PartialVarTxImpl[S, A](readPartialSource(in, pid))
@@ -644,7 +645,7 @@ object ConfluentImpl {
       res
     }
 
-    final def readDurableIDMap[A](in: DataInput)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
+    final def readDurableIDMap[A](in: DataInput)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
       val id = in.readInt()
       durableIDMaps.get(id) match {
         case Some(existing) => existing.asInstanceOf[DurableIDMapImpl[S, A]]
@@ -789,7 +790,8 @@ object ConfluentImpl {
   // -------------- BEGIN variables --------------
   // ---------------------------------------------
 
-  private final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc)(implicit serializer: io.Serializer[S#Tx, S#Acc, A])
+  private final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc)
+                                                (implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends stm.Source[S#Tx, A] with Cache[S#Tx] {
 
     private var writeTerm = 0L
@@ -885,7 +887,7 @@ object ConfluentImpl {
   }
 
   private final class PartialVarTxImpl[S <: Sys[S], A](protected val id: S#ID)
-                                                      (implicit ser: io.Serializer[S#Tx, S#Acc, A])
+                                                      (implicit ser: serial.Serializer[S#Tx, S#Acc, A])
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx) {
@@ -907,7 +909,7 @@ object ConfluentImpl {
   }
 
   private final class VarTxImpl[S <: Sys[S], A](protected val id: S#ID)
-                                               (implicit ser: io.Serializer[S#Tx, S#Acc, A])
+                                               (implicit ser: serial.Serializer[S#Tx, S#Acc, A])
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx) {
@@ -929,7 +931,7 @@ object ConfluentImpl {
   }
 
   private final class RootVar[S <: Sys[S], A](id1: Int, name: String)
-                                             (implicit val ser: io.Serializer[S#Tx, S#Acc, A])
+                                             (implicit val ser: serial.Serializer[S#Tx, S#Acc, A])
     extends Sys.Entry[S, A] {
 
     def setInit(v: A)(implicit tx: S#Tx) {
@@ -1104,7 +1106,7 @@ object ConfluentImpl {
 
   private final class DurableIDMapImpl[S <: Sys[S], A](val id: S#ID,
                                                        val store: DurablePersistentMap[S, Long])
-                                                      (implicit serializer: io.Serializer[S#Tx, S#Acc, A])
+                                                      (implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends IdentifierMap[S#ID, S#Tx, A] with DurableCacheMapImpl[S, Long] {
 
     private val nid           = id.seminal.toLong << 32
@@ -1158,11 +1160,11 @@ object ConfluentImpl {
   private object GlobalState {
     private val SER_VERSION = 0
 
-    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: io.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
+    implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
       new Ser[S, D]
 
     private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]]
-      extends io.Serializer[D#Tx, D#Acc, GlobalState[S, D]] {
+      extends serial.Serializer[D#Tx, D#Acc, GlobalState[S, D]] {
 
       def write(v: GlobalState[S, D], out: DataOutput) {
         import v._
@@ -1277,12 +1279,12 @@ object ConfluentImpl {
       CursorImpl.read[S, D](in, access)(tx, this)
     }
 
-    final def root[A](init: S#Tx => A)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+    final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
       cursorRoot[A, Unit](init)(_ => _ => ())._1
     }
 
     def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                        (implicit serializer: io.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) = {
+                        (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) = {
       require(ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction")
       log("::::::: root :::::::")
       TxnExecutor.defaultAtomic { itx =>

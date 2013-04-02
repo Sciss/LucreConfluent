@@ -23,7 +23,8 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 package reactive
 
@@ -31,7 +32,7 @@ import de.sciss.lucre.{event => evt}
 import stm.{DataStoreFactory, DataStore}
 import impl.{ConfluentReactiveImpl => Impl}
 import language.implicitConversions
-import io.ImmutableSerializer
+import serial.ImmutableSerializer
 
 object ConfluentReactive {
   private type S = ConfluentReactive
@@ -48,10 +49,10 @@ object ConfluentReactive {
 
 object ConfluentReactiveLike {
   trait Txn[S <: ConfluentReactiveLike[S]] extends confluent.Sys.Txn[S] with evt.Txn[S] {
-    private[reactive] def putEventTxn[A]   (id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): Unit
+    private[reactive] def putEventTxn[A]   (id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
     private[reactive] def putEventNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]): Unit
 
-    private[reactive] def getEventTxn[A]   (id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): Option[A]
+    private[reactive] def getEventTxn[A]   (id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Option[A]
     private[reactive] def getEventNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): Option[A]
   }
 

@@ -23,14 +23,15 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 
 import stm.DataStore
 import impl.{PartialIntMapImpl, ConfluentLongMapImpl, ConfluentIntMapImpl}
 import scala.{specialized => spec}
 import data.{KeySpec, ValueSpec}
-import io.ImmutableSerializer
+import serial.ImmutableSerializer
 
 object DurablePersistentMap {
   def newConfluentIntMap[S <: Sys[S]](store: DataStore, handler: Sys.IndexMapHandler[S],

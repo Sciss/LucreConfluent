@@ -23,18 +23,19 @@
  *	 contact@sciss.de
  */
 
-package de.sciss.lucre
+package de.sciss
+package lucre
 package confluent
 package reactive
 package impl
 
 import stm.{DataStoreFactory, DataStore}
-import de.sciss.lucre.{event => evt}
+import lucre.{event => evt}
 import concurrent.stm.InTxn
-import de.sciss.lucre.event.ReactionMap
+import evt.ReactionMap
 import confluent.impl.DurableCacheMapImpl
 import confluent.Sys
-import io.{DataInput, DataOutput, ImmutableSerializer}
+import serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object ConfluentReactiveImpl {
   private type S = ConfluentReactive
@@ -71,7 +72,7 @@ object ConfluentReactiveImpl {
   }
 
   private final class EventVarTxImpl[S <: ConfluentReactiveLike[S], A](
-    protected val id: S#ID)(implicit protected val ser: io.Serializer[S#Tx, S#Acc, A])
+    protected val id: S#ID)(implicit protected val ser: serial.Serializer[S#Tx, S#Acc, A])
     extends BasicEventVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx) {
@@ -144,7 +145,7 @@ object ConfluentReactiveImpl {
       }
     }
 
-    private[reactive] def putEventTxn[A](id: S#ID, value: A)(implicit ser: io.Serializer[S#Tx, S#Acc, A]) {
+    private[reactive] def putEventTxn[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
       eventCache.putCacheTxn[A](id.seminal, id.path, value)(this, ser)
       markEventDirty()
     }
@@ -154,7 +155,7 @@ object ConfluentReactiveImpl {
       markEventDirty()
     }
 
-    private[reactive] def getEventTxn[A](id: S#ID)(implicit ser: io.Serializer[S#Tx, S#Acc, A]): Option[A] = {
+    private[reactive] def getEventTxn[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Option[A] = {
       // OBSOLETE: note: eventCache.getCacheTxn will call store.get if the value is not in cache.
       // that assumes that the value has been written, and id.path.splitIndex is called.
       // for a fresh variable this fails obviously because the path is empty. therefore,
@@ -167,7 +168,7 @@ object ConfluentReactiveImpl {
       eventCache.getCacheNonTxn[A](id.seminal, id.path)(this, ser)
     }
 
-    private def makeEventVar[A](id: S#ID)(implicit serializer: io.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
+    private def makeEventVar[A](id: S#ID)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
       serializer match {
         case plain: ImmutableSerializer[_] =>
           new EventVarImpl[S, A](id, plain.asInstanceOf[ImmutableSerializer[A]])
@@ -177,7 +178,7 @@ object ConfluentReactiveImpl {
     }
 
     final def newEventVar[A](pid: S#ID)
-                            (implicit serializer: io.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
+                            (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
       val res = makeEventVar[A](pid)
       log("new evt var " + res)
       res
@@ -191,7 +192,7 @@ object ConfluentReactiveImpl {
     }
 
     final def readEventVar[A](pid: S#ID, in: DataInput)
-                             (implicit serializer: io.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
+                             (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
       val res = makeEventVar[A](readSource(in, pid))
       log("read evt " + res)
       res

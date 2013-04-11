@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "2.0.0"
+version in ThisBuild := "2.1.0-SNAPSHOT"
 
 organization in ThisBuild := "de.sciss"
 
@@ -32,12 +32,12 @@ parallelExecution in ThisBuild /* in Test */ := false
 
 publishMavenStyle in ThisBuild := true
 
-publishTo in ThisBuild <<= version { (v: String) =>
-   Some( if( v.endsWith( "-SNAPSHOT" ))
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-   else
-      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-   )
+publishTo in ThisBuild <<= version { v =>
+  Some(if (v endsWith "-SNAPSHOT")
+    "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  else
+    "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+  )
 }
 
 publishArtifact in Test := false
@@ -66,7 +66,3 @@ seq(lsSettings :_*)
 
 (LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
 
-(LsKeys.ghRepo in LsKeys.lsync) <<= name(Some(_))
-
-// bug in ls -- doesn't find the licenses from global scope
-(licenses in LsKeys.lsync) := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))

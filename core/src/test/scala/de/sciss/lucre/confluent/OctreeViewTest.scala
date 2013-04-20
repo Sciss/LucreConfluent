@@ -6,7 +6,7 @@ import stm.store.BerkeleyDB
 import java.awt.{BorderLayout, EventQueue}
 import javax.swing.{WindowConstants, JFrame}
 import data.gui.InteractiveSkipOctreePanel
-import data.{SpaceSerializers, DeterministicSkipOctree}
+import data.DeterministicSkipOctree
 import geom.{IntSquare, IntPoint2D, IntSpace}
 import IntSpace.TwoDim
 
@@ -37,7 +37,7 @@ object OctreeViewTest extends App with Runnable {
    private val sz = 256
 
    def build[ S <: Sys[ S ]]( system: S ) {
-      import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
+      // import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
       implicit val pointView = (p: IntPoint2D, t: Any) => p
       implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, IntPoint2D ]
       val (access, cursor) = system.cursorRoot { implicit tx =>

@@ -7,7 +7,7 @@ import collection.mutable.{Set => MSet}
 import java.io.File
 import stm.store.BerkeleyDB
 import concurrent.stm.InTxn
-import data.{SkipOctree, DeterministicSkipOctree, SpaceSerializers}
+import data.{SkipOctree, DeterministicSkipOctree}
 import geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D, IntSpace}
 import IntSpace.ThreeDim
 
@@ -39,7 +39,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit ) {
       withTree[ S ]( sysName, () => {
          implicit val sys: S = sysCreator()
-         import SpaceSerializers.{IntPoint3DSerializer, IntCubeSerializer}
+         // import SpaceSerializers.{IntPoint3DSerializer, IntCubeSerializer}
          implicit val pointView = (p: IntPoint3D, _: Any) => p
          implicit val ser = DeterministicSkipOctree.serializer[ S, ThreeDim, IntPoint3D ]
          val (access, cursor) = sys.cursorRoot { implicit tx =>

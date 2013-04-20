@@ -26,7 +26,7 @@ The following dependency is necessary:
     
     "de.sciss" %% "lucreconfluent" % v
 
-The current version `v` is `"2.0.+"`.
+The current version `v` is `"2.1.+"`.
 
 ## previous versions / tags
 

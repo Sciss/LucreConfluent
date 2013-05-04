@@ -6,6 +6,7 @@ object Build extends sbt.Build {
   lazy val stmVersion   = "2.0.+"
   lazy val dataVersion  = "2.1.+"
   lazy val eventVersion = "2.1.+"
+  lazy val fingerVersion= "1.5.+"
 
   lazy val root: Project = Project(
     id            = "lucreconfluent",
@@ -15,7 +16,7 @@ object Build extends sbt.Build {
     settings      = Project.defaultSettings ++ Seq(
       publishArtifact in(Compile, packageBin) := false, // there are no binaries
       publishArtifact in(Compile, packageDoc) := false, // there are no javadocs
-      publishArtifact in(Compile, packageSrc) := false // there are no sources
+      publishArtifact in(Compile, packageSrc) := false  // there are no sources
     )
   )
 
@@ -35,11 +36,11 @@ object Build extends sbt.Build {
     base = file("core"),
     settings = Project.defaultSettings ++ buildInfoSettings ++ Seq(
       libraryDependencies ++= Seq(
-        "de.sciss" %% "fingertree" % "1.4.+",
+        "de.sciss" %% "fingertree"      % fingerVersion,
         "de.sciss" %% "lucredata-core"  % dataVersion,
         "de.sciss" %% "lucredata-views" % dataVersion % "test",
-        "de.sciss" %% "lucrestm-bdb"    % stmVersion % "test",
-        "org.scalatest" %% "scalatest" % "1.9.1" % "test"
+        "de.sciss" %% "lucrestm-bdb"    % stmVersion  % "test",
+        "org.scalatest" %% "scalatest"  % "1.9.1"     % "test"
       ),
       initialCommands in console := """import de.sciss.lucre.confluent._""",
       sourceGenerators in Compile <+= buildInfo,

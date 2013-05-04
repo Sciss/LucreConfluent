@@ -5,7 +5,7 @@ import sbtbuildinfo.Plugin._
 object Build extends sbt.Build {
   lazy val stmVersion   = "2.0.+"
   lazy val dataVersion  = "2.1.+"
-  lazy val eventVersion = "2.1.+"
+  lazy val eventVersion = "2.2.+"
   lazy val fingerVersion= "1.5.+"
 
   lazy val root: Project = Project(

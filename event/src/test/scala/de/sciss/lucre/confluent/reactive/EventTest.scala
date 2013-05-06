@@ -15,7 +15,7 @@ object EventTest extends App {
    def bang( implicit tx: S#Tx ) = access()
 
    cursor.step { implicit tx =>
-      bang.react { _ => println( "Bang!" )}
+      bang.react { _ => _ => println( "Bang!" )}
    }
 
    cursor.step { implicit tx =>

@@ -32,7 +32,7 @@ object ForkTest extends App {
       cursor.step { implicit tx =>
          println( "Registering fork " + (j+1) )
 //         if( j == 1 ) debug()
-         bang.react { _ => println( "Bang in Fork " + (j+1) + "!" )}
+         bang.react { _ => _ => println( "Bang in Fork " + (j+1) + "!" )}
       }
    }
 

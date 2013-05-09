@@ -32,7 +32,7 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
         w0.next() = Some(w1)
         Option(w0)
       } { implicit tx =>
-        _ => tx.newCursor()
+        _ => s.newCursor()
       }
 
       val path0 = cursor.step(_.inputAccess) // ?

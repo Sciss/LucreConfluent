@@ -14,7 +14,8 @@ import serial.{DataInput, DataOutput}
  * test-only de.sciss.confluent.DoubleLinkedListSuite
  */
 class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
-   type S = Confluent
+  type S = Confluent
+  type D = S#D
 
    describe( "A Confluently Persistent Double Linked List" ) {
       val dir     = File.createTempFile( "database", "db" )
@@ -30,18 +31,18 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 //         s1.step( s1.position_=( path )( _ ))
 //      }
 
-      it( "should be possible to navigate forward and backward and do updates" ) {
+     it("should be possible to navigate forward and backward and do updates") {
 
-         ///////////////////////////// v0 /////////////////////////////
+       ///////////////////////////// v0 /////////////////////////////
 
-         Given( "v0 : Allocate node w0, with x = 1" )
-         implicit val whyOhWhy = Node.ser
-         val (access, cursor) = s.cursorRoot[ Option[ Node ], Cursor[ S ]] { implicit tx =>
-            val w0 = Node( "w0", 1 )
-            Some( w0 )
-         } { implicit tx => _ => tx.newCursor() }
+       Given("v0 : Allocate node w0, with x = 1")
+       implicit val whyOhWhy = Node.ser
+       val (access, cursor) = s.cursorRoot[Option[Node], Cursor[S, D]] { implicit tx =>
+         val w0 = Node("w0", 1)
+         Some(w0)
+       } { implicit tx => _ => tx.system.newCursor() }
 
-         ///////////////////////////// v1 /////////////////////////////
+       ///////////////////////////// v1 /////////////////////////////
 
          Given( "v1 : Append a new node w1 with x = 2" )
          cursor.step { implicit tx =>

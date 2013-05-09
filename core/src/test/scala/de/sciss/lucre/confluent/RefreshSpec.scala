@@ -13,10 +13,10 @@ import serial.{DataInput, DataOutput}
  * test-only de.sciss.lucre.confluent.RefreshSpec
  */
 class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
-   type FixtureParam = Cursor[ Confluent ]
-   type S = Confluent
+  type FixtureParam = stm.Cursor[Confluent]
+  type S = Confluent
 
-   confluent.showLog = true
+  confluent.showLog = true
 
    object Entity {
       implicit object Ser extends MutableSerializer[ S, Entity ] {
@@ -37,18 +37,18 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
       protected def writeData( out: DataOutput ) { field.write( out )}
    }
 
-   def withFixture( test: OneArgTest ) {
-      val system = Confluent( BerkeleyDB.tmp() )
-      try {
-         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
-         test( cursor )
-      }
-      finally {
-         system.close()
-      }
-   }
+  def withFixture(test: OneArgTest) {
+    val system = Confluent(BerkeleyDB.tmp())
+    try {
+      val (_, cursor) = system.cursorRoot(_ => ())(implicit tx => _ => system.newCursor())
+      test(cursor)
+    }
+    finally {
+      system.close()
+    }
+  }
 
-   "An entity" should "serialize and deserialize via tx.refresh" in { cursor =>
+  "An entity" should "serialize and deserialize via tx.refresh" in { cursor =>
       val value = 1234
       val h = cursor.step { implicit tx =>
          val ent = Entity( value )

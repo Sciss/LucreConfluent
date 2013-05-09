@@ -43,7 +43,7 @@ object OctreeViewTest extends App with Runnable {
       val (access, cursor) = system.cursorRoot { implicit tx =>
          DeterministicSkipOctree.empty[ S, TwoDim, IntPoint2D ](
             IntSquare( sz, sz, sz ), skipGap = 1 )
-      } { tx => _ => tx.newCursor() }
+      } { implicit tx => _ => system.newCursor() }
       val model = new InteractiveSkipOctreePanel.Model2D[ S ](
          cursor, access, { () => println( "(Consistency not checked)" )} /*, nTimes = 2 */
       )

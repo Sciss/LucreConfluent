@@ -48,7 +48,7 @@ object CursorImpl {
   }
 
   def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc)
-                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S] = {
+                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] = {
     implicit val pathSer  = new PathSer[S, D1]
     val id                = tx.newID()
     val path              = tx.newVar[S#Acc](id, init)
@@ -56,7 +56,7 @@ object CursorImpl {
   }
 
   def read[S <: Sys[S], D1 <: stm.DurableLike[D1]](in: DataInput)
-                                                  (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S] = {
+                                                  (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] = {
     implicit val pathSer  = new PathSer[S, D1]
     val id                = tx.readID(in, ())
     val path              = tx.readVar[S#Acc](id, in)
@@ -65,7 +65,7 @@ object CursorImpl {
 
   private final class Impl[S <: Sys[S], D1 <: stm.DurableLike[D1]](id: D1#ID, path: D1#Var[S#Acc])
                                                                   (implicit system: S {type D = D1})
-    extends Cursor[S] with Cache[S#Tx] {
+    extends Cursor[S, D1] with Cache[S#Tx] {
     override def toString = "Cursor" + id
 
     def step[A](fun: S#Tx => A): A = {
@@ -97,18 +97,16 @@ object CursorImpl {
       logCursor(s"${id.toString} flush path = $newPath")
     }
 
-    def position(implicit tx: S#Tx): S#Acc = {
-      implicit val dtx: D1#Tx = system.durableTx(tx)
-      path()
-    }
+    def position(implicit tx: S#Tx): S#Acc = position(system.durableTx(tx))
+
+    def position(implicit tx: D1#Tx): S#Acc = path()
 
     //      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ) {
     //         implicit val dtx: D1#Tx = system.durableTx( tx )
     //         path.set( pathVal )
     //      }
 
-    def dispose()(implicit tx: S#Tx) {
-      implicit val dtx: D1#Tx = system.durableTx(tx)
+    def dispose()(implicit tx: D1#Tx) {
       id  .dispose()
       path.dispose()
       logCursor(s"${id.toString} dispose")

@@ -36,7 +36,7 @@ object SkipListViewTest extends App with Runnable {
       implicit val ser = HASkipList.Set.serializer[ S, Int ]( fut )
       val (access, cursor) = system.cursorRoot { implicit tx =>
          HASkipList.Set.empty[ S, Int ]( minGap = 1, keyObserver = fut )
-      } { tx => _ => tx.newCursor() }
+      } { implicit tx => _ => system.newCursor() }
 
 //      println( "We are in " + cursor.step { implicit tx => cursor.position })
 

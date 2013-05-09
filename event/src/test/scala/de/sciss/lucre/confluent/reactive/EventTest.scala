@@ -10,7 +10,7 @@ object EventTest extends App {
    type S      = ConfluentReactive
 
    implicit val whyOhWhy = Bang.serializer[ S ]
-   val (access, cursor) = system.cursorRoot { implicit tx => Bang[ S ]} { tx => _ => tx.newCursor() }
+   val (access, cursor) = system.cursorRoot { implicit tx => Bang[ S ]} { implicit tx => _ => system.newCursor() }
 
    def bang( implicit tx: S#Tx ) = access()
 

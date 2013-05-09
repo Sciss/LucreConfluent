@@ -100,8 +100,8 @@ object Sys {
 
     // ---- cursors ----
 
-    def newCursor(init: S#Acc = inputAccess): Cursor[S]
-    def readCursor(in: DataInput): Cursor[S]
+    // def newCursor(init: S#Acc = inputAccess): Cursor[S, S#D]
+    // def readCursor(in: DataInput): Cursor[S, S#D]
   }
 
   trait ID[S <: Sys[S]] extends Identifier[S#Tx] {
@@ -233,8 +233,9 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   // ---- cursors ----
 
-  private[confluent] def newCursor (init: S#Acc  )(implicit tx: S#Tx): Cursor[S]
-  private[confluent] def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S]
+  def newCursor()(implicit tx: S#Tx): Cursor[S, D]
+  /* private[confluent] */ def newCursor (init: S#Acc  )(implicit tx: S#Tx): Cursor[S, D]
+  /* private[confluent] */ def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D]
 
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
                       (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)

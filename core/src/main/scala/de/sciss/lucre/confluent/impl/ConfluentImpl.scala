@@ -653,8 +653,8 @@ object ConfluentImpl {
       }
     }
 
-    final def newCursor (init: S#Acc  ): Cursor[S] = system.newCursor (init)(this)
-    final def readCursor(in: DataInput): Cursor[S] = system.readCursor(in  )(this)
+    //    final def newCursor (init: S#Acc  ): Cursor[S, S#D] = system.newCursor (init)(this)
+    //    final def readCursor(in: DataInput): Cursor[S, S#D] = system.readCursor(in  )(this)
 
     override def toString = "confluent.Sys#Tx" + inputAccess // + system.path.mkString( "<", ",", ">" )
   }
@@ -1270,11 +1270,13 @@ object ConfluentImpl {
 
     final def readPath(in: DataInput): S#Acc = Path.read[S](in)
 
-    final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S] = {
+    final def newCursor()(implicit tx: S#Tx): Cursor[S, D] = newCursor(tx.inputAccess)
+
+    final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S, D] = {
       Cursor[S, D](init)(durableTx(tx), this)
     }
 
-    final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S] = {
+    final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] = {
       Cursor.read[S, D](in)(durableTx(tx), this)
     }
 

@@ -38,29 +38,30 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-   def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: S => Unit ) {
-      def scenarioWithTime( descr: String )( body: => Unit ) {
-         scenario( descr ) {
-            val t1 = System.currentTimeMillis()
-            body
-            val t2 = System.currentTimeMillis()
-            println( "For " + sysName + " the tests took " + TestUtil.formatSeconds( (t2 - t1) * 0.001 ))
-         }
+  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: S => Unit) {
+    def scenarioWithTime(descr: String)(body: => Unit) {
+      scenario( descr ) {
+        val t1 = System.currentTimeMillis()
+        body
+        val t2 = System.currentTimeMillis()
+        println("For " + sysName + " the tests took " + TestUtil.formatSeconds((t2 - t1) * 0.001))
       }
+    }
 
-      feature( "The ordering of the structure should be consistent" ) {
-         info( "Each two successive elements of the structure" )
-         info( "should yield '<' in comparison" )
+    feature( "The ordering of the structure should be consistent" ) {
+      info("Each two successive elements of the structure")
+      info("should yield '<' in comparison")
 
-         scenarioWithTime( "Ordering is verified on a randomly filled " + sysName + " structure" ) {
-            Given( "a randomly filled structure (" + sysName + ")" )
+      scenarioWithTime("Ordering is verified on a randomly filled " + sysName + " structure") {
+        Given("a randomly filled structure (" + sysName + ")")
 
-//            type E = TotalOrder.Set.Entry[ S ]
-            implicit val system = sysCreator()
-            try {
-               implicit val ser = TotalOrder.Set.serializer[ S ]
-               val (access, cursor) = system.cursorRoot { implicit tx =>
-                  TotalOrder.Set.empty[ S ] /* ( new RelabelObserver[ S#Tx, E ] {
+        //            type E = TotalOrder.Set.Entry[ S ]
+        implicit val system = sysCreator()
+        try {
+          implicit val ser = TotalOrder.Set.serializer[S]
+          val (access, cursor) = system.cursorRoot {
+            implicit tx =>
+              TotalOrder.Set.empty[S] /* ( new RelabelObserver[ S#Tx, E ] {
                      def beforeRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {
                         if( MONITOR_LABELING ) {
    //                     Txn.afterCommit( _ =>
@@ -71,41 +72,46 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
 
                      def afterRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {}
                   }) */
-               } { tx => _ => tx.newCursor() }
-//               val rnd   = new util.Random( RND_SEED )
-               val rnd   = TxnRandom.plain( RND_SEED )
-               // would be nice to test maximum possible number of labels
-               // but we're running out of heap space ...
-               val n     = NUM // 113042 // 3041
-      //        to        = to.append() // ( 0 )
+          } {
+            implicit tx => _ => system.newCursor()
+          }
+          //               val rnd   = new util.Random( RND_SEED )
+          val rnd = TxnRandom.plain(RND_SEED)
+          // would be nice to test maximum possible number of labels
+          // but we're running out of heap space ...
+          val n = NUM // 113042 // 3041
+          //        to        = to.append() // ( 0 )
 
-               /* val set = */ cursor.step { implicit tx =>
-                  var e = access().root
-                  var coll = Set[ TotalOrder.Set.Entry[ S ]]() // ( e )
-                  for( i <- 1 until n ) {
-//if( (i % 1000) == 0 ) println( "i = " + i )
-                     if( rnd.nextBoolean()( tx.peer ) ) {
-                        e = e.append() // to.insertAfter( e ) // to.insertAfter( i )
-                     } else {
-                        e = e.prepend() // to.insertBefore( e ) // e.prepend() // to.insertBefore( i )
-                     }
-                     coll += e
-                  }
-                  coll
-               }
-//println( "AQUI" )
+          /* val set = */ cursor.step {
+            implicit tx =>
+              var e = access().root
+              var coll = Set[TotalOrder.Set.Entry[S]]() // ( e )
+              for (i <- 1 until n) {
+                //if( (i % 1000) == 0 ) println( "i = " + i )
+                if (rnd.nextBoolean()(tx.peer)) {
+                  e = e.append() // to.insertAfter( e ) // to.insertAfter( i )
+                } else {
+                  e = e.prepend() // to.insertBefore( e ) // e.prepend() // to.insertBefore( i )
+                }
+                coll += e
+              }
+              coll
+          }
+          //println( "AQUI" )
 
-               When( "the structure size is determined" )
-               val sz = cursor.step { implicit tx => access().size }
-      //        val sz = {
-      //           var i = 1; var x = to; while( !x.isHead ) { x = x.prev; i +=1 }
-      //           x = to; while( !x.isLast ) { x = x.next; i += 1 }
-      //           i
-      //        }
-               Then( "it should be equal to the number of elements inserted" )
-               assert( sz == n, sz.toString + " != " + n )
+          When( "the structure size is determined" )
+          val sz = cursor.step {
+            implicit tx => access().size
+          }
+          //        val sz = {
+          //           var i = 1; var x = to; while( !x.isHead ) { x = x.prev; i +=1 }
+          //           x = to; while( !x.isLast ) { x = x.next; i += 1 }
+          //           i
+          //        }
+          Then("it should be equal to the number of elements inserted")
+          assert(sz == n, sz.toString + " != " + n)
 
-               When( "the structure is mapped to its pairwise comparisons" )
+          When( "the structure is mapped to its pairwise comparisons" )
                val result = cursor.step { implicit tx =>
                   var res   = Set.empty[ Int ]
                   var prev  = access().head

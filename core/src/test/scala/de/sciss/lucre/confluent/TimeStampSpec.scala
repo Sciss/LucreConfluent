@@ -10,7 +10,7 @@ class TimeStampSpec extends ConfluentSpec {
 
    "Time stamps and version info" should "work in a non-melded graph" in { system =>
       val (access, cursor) = system.cursorRoot { implicit tx => 0
-      } { implicit tx => _ => tx.newCursor() }
+      } { implicit tx => _ => system.newCursor() }
 
 //      sleep()
 

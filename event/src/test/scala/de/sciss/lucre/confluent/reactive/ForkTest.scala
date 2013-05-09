@@ -10,14 +10,14 @@ object ForkTest extends App {
    type S      = ConfluentReactive
 
    implicit val whyOhWhy = Bang.serializer[ S ]
-   val (access, cursor0) = system.cursorRoot { implicit tx => Bang[ S ]} { tx => _ => tx.newCursor() }
+   val (access, cursor0) = system.cursorRoot { implicit tx => Bang[ S ]} { implicit tx => _ => system.newCursor() }
 
    def bang( implicit tx: S#Tx ) = access()
 
    println( "Creating cursors" )
 
    val cursors = cursor0.step { implicit tx =>
-      for( i <- 1 to 3 ) yield tx.newCursor() // fork( i )
+      for( i <- 1 to 3 ) yield system.newCursor() // fork( i )
    }
 
    def debug() {

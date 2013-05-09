@@ -80,7 +80,7 @@ object ThesisFiatKaplanExample extends App {
     list.head() = Some(w0)
     w0.next()   = Some(w1)
     list
-  } { implicit tx => _ => tx.newCursor() }
+  } { implicit tx => _ => s.newCursor() }
 
   cursor.step { implicit tx =>
     val list      = access()

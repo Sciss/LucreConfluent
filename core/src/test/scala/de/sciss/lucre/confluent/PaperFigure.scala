@@ -48,11 +48,11 @@ object PaperFigure extends App {
    new Example( s )
 }
 
-class Example[S <: Sys[S]](s: S) {
+class Example[S <: Sys[S]](val s: S) {
   val nodes = new Nodes[S]
   import nodes._
 
-  val (access, cursor) = s.cursorRoot(_ => Option.empty[Node])( tx => _ => tx.newCursor() )
+  val (access, cursor) = s.cursorRoot(_ => Option.empty[Node])(implicit tx => _ => s.newCursor())
 
   cursor.step { implicit tx =>
     val w1    = Node(3)

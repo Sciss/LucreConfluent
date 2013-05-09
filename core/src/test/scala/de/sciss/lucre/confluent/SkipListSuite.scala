@@ -45,17 +45,19 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
             implicit val ser = HASkipList.Set.serializer[ S, Int ]( oo )
             val (access, cursor) = sys.cursorRoot { implicit tx =>
                HASkipList.Set.empty[ S, Int ]( minGap = 1, keyObserver = oo )
-            } { tx => _ => tx.newCursor() }
+            } { implicit tx => _ => sys.newCursor() }
             (cursor, access, () => sysCleanUp( sys ))
          })
       }
       withList[ S ]( "HA-2 (" + sysName + ")", { oo =>
          implicit val sys = sysCreator()
          implicit val ser = HASkipList.Set.serializer[ S, Int ]( oo )
-         val (access, cursor) = sys.cursorRoot[ HASkipList.Set[ S, Int ], Cursor[ S ]] { implicit tx =>
-            HASkipList.Set.empty[ S, Int ]( minGap = 2, keyObserver = oo )
-         } { tx => _ => tx.newCursor() }
-         (cursor, access, () => sysCleanUp( sys ))
+        val (access, cursor) = sys.cursorRoot[HASkipList.Set[S, Int], stm.Cursor[S]] { implicit tx =>
+          HASkipList.Set.empty[ S, Int ]( minGap = 2, keyObserver = oo )
+        } {
+          implicit tx => _ => sys.newCursor()
+        }
+        (cursor, access, () => sysCleanUp(sys))
       })
    }
 

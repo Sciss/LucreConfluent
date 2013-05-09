@@ -653,9 +653,8 @@ object ConfluentImpl {
       }
     }
 
-    final def newCursor(init: S#Acc): Cursor[S] = system.newCursor(init)(this)
-
-    final def readCursor(in: DataInput, access: S#Acc): Cursor[S] = system.readCursor(in, access)(this)
+    final def newCursor (init: S#Acc  ): Cursor[S] = system.newCursor (init)(this)
+    final def readCursor(in: DataInput): Cursor[S] = system.readCursor(in  )(this)
 
     override def toString = "confluent.Sys#Tx" + inputAccess // + system.path.mkString( "<", ",", ">" )
   }
@@ -1272,11 +1271,11 @@ object ConfluentImpl {
     final def readPath(in: DataInput): S#Acc = Path.read[S](in)
 
     final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S] = {
-      CursorImpl[S, D](init)(tx, this)
+      Cursor[S, D](init)(durableTx(tx), this)
     }
 
-    final def readCursor(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Cursor[S] = {
-      CursorImpl.read[S, D](in, access)(tx, this)
+    final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S] = {
+      Cursor.read[S, D](in)(durableTx(tx), this)
     }
 
     final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
@@ -1419,14 +1418,14 @@ object ConfluentImpl {
       val childTerm           = newVersionID(tx)
       val (index, parentTerm) = tx.inputAccess.splitIndex
       val tree                = readIndexTree(index.term)
-      val parent              = readTreeVertex(tree.tree, index, parentTerm)._1
+      val parent              = readTreeVertex(tree.tree, /* index, */ parentTerm)._1
       val child               = tree.tree.insertChild(parent, childTerm)
       writeTreeVertex(tree, child)
       val tsMap               = readTimeStampMap(index)
       tsMap.add(childTerm, ()) // XXX TODO: more efficient would be to pass in `child` directly
 
       // ---- partial ----
-      val pParent             = readPartialTreeVertex(index, parentTerm)
+      val pParent             = readPartialTreeVertex(/* index, */ parentTerm)
       val pChild              = partialTree.insertChild(pParent, childTerm)
       writePartialTreeVertex(pChild)
 
@@ -1442,8 +1441,9 @@ object ConfluentImpl {
       writeNewTree(oldPath :+ term, level)
 
       // ---- partial ----
-      val (oldIndex, parentTerm) = oldPath.splitIndex
-      val pParent   = readPartialTreeVertex(oldIndex, parentTerm)
+      // val (oldIndex, parentTerm) = oldPath.splitIndex
+      val parentTerm = oldPath.term
+      val pParent   = readPartialTreeVertex(/* oldIndex, */ parentTerm)
       val pChild    = partialTree.insertChild(pParent, term) // ( durable )
       writePartialTreeVertex(pChild)
 
@@ -1460,15 +1460,15 @@ object ConfluentImpl {
 
     // ---- index tree handler ----
 
-    private final class IndexMapImpl[A](protected val index: S#Acc,
+    private final class IndexMapImpl[A](/* protected val index: S#Acc, */
                                         protected val map: Ancestor.Map[D, Long, A])
       extends IndexMap[S, A] {
 
-      override def toString = index.mkString("IndexMap(<", ",", ">, " + map + ")")
+      override def toString = s"IndexMap($map)" // index.mkString("IndexMap(<", ",", ">, " + map + ")")
 
       def nearest(term: Long)(implicit tx: S#Tx): (Long, A) = {
         implicit val dtx = durableTx(tx)
-        val v = readTreeVertex(map.full, index, term)._1
+        val v = readTreeVertex(map.full, /* index, */ term)._1
         val (v2, value) = map.nearest(v)
         (v2.version, value)
       }
@@ -1476,7 +1476,7 @@ object ConfluentImpl {
       // XXX TODO: DRY
       def nearestOption(term: Long)(implicit tx: S#Tx): Option[(Long, A)] = {
         implicit val dtx = durableTx(tx)
-        val v = readTreeVertex(map.full, index, term)._1
+        val v = readTreeVertex(map.full, /* index, */ term)._1
         map.nearestOption(v) map {
           case (v2, value) => (v2.version, value)
         }
@@ -1485,7 +1485,7 @@ object ConfluentImpl {
       // XXX TODO: DRY
       def nearestUntil(timeStamp: Long, term: Long)(implicit tx: S#Tx): Option[(Long, A)] = {
         implicit val dtx = durableTx(tx)
-        val v = readTreeVertex(map.full, index, term)._1
+        val v = readTreeVertex(map.full, /* index, */ term)._1
         // timeStamp lies somewhere between the time stamp for the tree's root vertex and
         // the exit vertex given by the `term` argument (it may indeed be greater than
         // the time stamp of the `term` = exit vertex argument).
@@ -1514,7 +1514,7 @@ object ConfluentImpl {
 
       def add(term: Long, value: A)(implicit tx: S#Tx) {
         implicit val dtx = durableTx(tx)
-        val v = readTreeVertex(map.full, index, term)._1
+        val v = readTreeVertex(map.full, /* index, */ term)._1
         map.add((v, value))
       }
 
@@ -1603,16 +1603,16 @@ object ConfluentImpl {
     }
 
     // reeds the vertex along with the tree level
-    final def readTreeVertex(tree: Ancestor.Tree[D, Long], index: S#Acc, term: Long)
+    final def readTreeVertex(tree: Ancestor.Tree[D, Long], /* index: S#Acc, */ term: Long)
                             (implicit tx: D#Tx): (Ancestor.Vertex[D, Long], Int) = {
       store.get { out =>
         out.writeByte(0)
         out.writeInt(term.toInt)
       } { in =>
         in.readInt() // tree index!
-        val access = index :+ term
-        val level = in.readInt()
-        val v = tree.vertexSerializer.read(in, access) // durableTx( tx )) // tx.durable )
+        // val access  = index :+ term
+        val level   = in.readInt()
+        val v       = tree.vertexSerializer.read(in, ()) // , access) // durableTx( tx )) // tx.durable )
         (v, level)
       } getOrElse sys.error("Trying to access inexisting vertex " + term.toInt)
     }
@@ -1639,10 +1639,10 @@ object ConfluentImpl {
       val rootVertex    = if (rootTerm == tree.term) {
         full.root
       } else {
-        readTreeVertex(full, index, rootTerm)._1
+        readTreeVertex(full, /* index, */ rootTerm)._1
       }
       val map           = Ancestor.newMap[D, Long, A](full, rootVertex, rootValue)
-      new IndexMapImpl[ /* S, D, */ A](index, map)
+      new IndexMapImpl[ /* S, D, */ A](/* index, */ map)
     }
 
     final def readIndexMap[A](in: DataInput, index: S#Acc)
@@ -1651,11 +1651,11 @@ object ConfluentImpl {
       val term          = index.term
       val tree          = readIndexTree(term)
       val map           = Ancestor.readMap[D, Long, A](in, (), tree.tree)
-      new IndexMapImpl[A](index, map)
+      new IndexMapImpl[A](/* index, */ map)
     }
 
     // true is term1 is ancestor of term2
-    def isAncestor(index: S#Acc, term1: Long, term2: Long)(implicit tx: S#Tx): Boolean = {
+    def isAncestor(/* index: S#Acc, */ term1: Long, term2: Long)(implicit tx: S#Tx): Boolean = {
       implicit val dtx = durableTx(tx)
       if (term1 == term2) return true // same vertex
       if (term1.toInt > term2.toInt) return false // can't be an ancestor if newer
@@ -1663,22 +1663,22 @@ object ConfluentImpl {
       val tree = readIndexTree(term1)
       if (tree.term == term1) return true // if term1 is the root then it must be ancestor of term2
 
-      val v1 = readTreeVertex(tree.tree, index, term1)._1
-      val v2 = readTreeVertex(tree.tree, index, term2)._1
+      val v1 = readTreeVertex(tree.tree, /* index, */ term1)._1
+      val v2 = readTreeVertex(tree.tree, /* index, */ term2)._1
       v1.isAncestorOf(v2)
     }
 
     // ---- partial map handler ----
 
-    private final class PartialMapImpl[A](protected val index: S#Acc,
+    private final class PartialMapImpl[A](/* protected val index: S#Acc, */
                                           protected val map: Ancestor.Map[D, Long, A])
       extends IndexMap[S, A] {
 
-      override def toString = index.mkString("PartialMap(<", ",", ">, " + map + ")")
+      override def toString = s"PartialMap($map)" // index.mkString("PartialMap(<", ",", ">, " + map + ")")
 
       def nearest(term: Long)(implicit tx: S#Tx): (Long, A) = {
         implicit val dtx = durableTx(tx)
-        val v = readPartialTreeVertex(index, term)
+        val v = readPartialTreeVertex(/* index, */ term)
         val (v2, value) = map.nearest(v)
         (v2.version, value)
       }
@@ -1686,7 +1686,7 @@ object ConfluentImpl {
       // XXX TODO: DRY
       def nearestOption(term: Long)(implicit tx: S#Tx): Option[(Long, A)] = {
         implicit val dtx = durableTx(tx)
-        val v = readPartialTreeVertex(index, term)
+        val v = readPartialTreeVertex(/*  index, */ term)
         map.nearestOption(v).map {
           case (v2, value) => (v2.version, value)
         }
@@ -1698,7 +1698,7 @@ object ConfluentImpl {
 
       def add(term: Long, value: A)(implicit tx: S#Tx) {
         implicit val dtx = durableTx(tx)
-        val v = readPartialTreeVertex(index, term)
+        val v = readPartialTreeVertex(/* index, */ term)
         map.add((v, value))
       }
 
@@ -1707,13 +1707,13 @@ object ConfluentImpl {
       }
     }
 
-    private def readPartialTreeVertex(index: S#Acc, term: Long)(implicit tx: D#Tx): Ancestor.Vertex[D, Long] = {
+    private def readPartialTreeVertex(/* index: S#Acc, */ term: Long)(implicit tx: D#Tx): Ancestor.Vertex[D, Long] = {
       store.get { out =>
         out.writeByte(3)
         out.writeInt(term.toInt)
       } { in =>
-        val access = index :+ term
-        partialTree.vertexSerializer.read(in, access)
+        // val access = index :+ term
+        partialTree.vertexSerializer.read(in, ()) // access)
       } getOrElse {
         sys.error("Trying to access inexisting vertex " + term.toInt)
       }
@@ -1724,20 +1724,20 @@ object ConfluentImpl {
       readIndexTree(term).term
     }
 
-    final def newPartialMap[A](access: S#Acc, rootTerm: Long, rootValue: A)
+    final def newPartialMap[A](/* access: S#Acc, rootTerm: Long, */ rootValue: A)
                               (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A] = {
       implicit val dtx = durableTx(tx)
       val map   = Ancestor.newMap[D, Long, A](partialTree, partialTree.root, rootValue)
-      val index = access.take(1) // XXX correct ?
-      new PartialMapImpl[A](index, map)
+      // val index = access.take(1) // XXX correct ?
+      new PartialMapImpl[A](/* index, */ map)
     }
 
-    final def readPartialMap[A](access: S#Acc, in: DataInput)
+    final def readPartialMap[A](/* access: S#Acc, */ in: DataInput)
                                (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A] = {
       implicit val dtx = durableTx(tx)
       val map   = Ancestor.readMap[D, Long, A](in, (), partialTree)
-      val index = access.take(1) // XXX correct ?
-      new PartialMapImpl[A](index, map)
+      // val index = access.take(1) // XXX correct ?
+      new PartialMapImpl[A](/* index, */ map)
     }
   }
 

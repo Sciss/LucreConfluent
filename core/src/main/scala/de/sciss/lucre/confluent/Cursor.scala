@@ -28,8 +28,18 @@ package lucre
 package confluent
 
 import stm.Disposable
-import serial.Writable
+import serial.{DataInput, Writable}
+import impl.{CursorImpl => Impl}
 
+object Cursor {
+  def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc)
+                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S] =
+    Impl[S, D1](init)
+
+  def read[S <: Sys[S], D1 <: stm.DurableLike[D1]](in: DataInput)
+                                                  (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S] =
+    Impl.read[S, D1](in)
+}
 trait Cursor[S <: Sys[S]] extends stm.Cursor[S] with Disposable[S#Tx] with Writable {
   def stepFrom[A](path: S#Acc)(fun: S#Tx => A): A
 }

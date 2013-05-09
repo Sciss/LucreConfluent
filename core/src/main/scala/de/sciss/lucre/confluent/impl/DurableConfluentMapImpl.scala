@@ -251,77 +251,77 @@ sealed trait DurableConfluentMapImpl[ S <: Sys[ S ], /* @spec(KeySpec) */ K ] ex
 //      )
 //   }
 
-   private def getWithPrefixLen[ A, B ]( key: K, maxIndex: S#Acc, maxTerm: Long )
-                                                    ( fun: (Int, Long, A) => B )
-                                                    ( implicit tx: S#Tx, ser: ImmutableSerializer[ A ]) : Option[ B ] = {
-      val preLen = Hashing.maxPrefixLength( maxIndex, hash => store.contains { out =>
-         writeKey( key, out ) // out.writeInt( key )
-         out.writeLong( hash )
-      })
-      val (index, term) = if( preLen == maxIndex.size ) {
-         // maximum prefix lies in last tree
-         (maxIndex, maxTerm)
-      } else {
-         // prefix lies in other tree
-         maxIndex.splitAtIndex( preLen )
+  private def getWithPrefixLen[A, B](key: K, maxIndex: S#Acc, maxTerm: Long)
+                                    (fun: (Int, Long, A) => B)
+                                    (implicit tx: S#Tx, ser: ImmutableSerializer[A]): Option[B] = {
+    val preLen = Hashing.maxPrefixLength(maxIndex, hash => store.contains { out =>
+      writeKey(key, out) // out.writeInt( key )
+      out.writeLong(hash)
+    })
+    val (index, term) = if( preLen == maxIndex.size ) {
+      // maximum prefix lies in last tree
+      (maxIndex, maxTerm)
+    } else {
+      // prefix lies in other tree
+      maxIndex.splitAtIndex(preLen)
+    }
+    val preSum = index.sum
+    store.flatGet { out =>
+      writeKey( key, out ) // out.writeInt( key )
+      out.writeLong( preSum )
+    } { in =>
+      (in.readByte(): @switch) match {
+        case 0 => // partial hash
+          val hash = in.readLong()
+          //                  EntryPre[ S ]( hash )
+          val (fullIndex, fullTerm) = maxIndex.splitAtSum(hash)
+          getWithPrefixLen(key, fullIndex, fullTerm)(fun)
+
+        case 1 =>
+          // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
+          // if the terms match, we have Some result. If not, we need to ask the index tree if
+          // term2 is ancestor of term. If so, we have Some result, if not we have None.
+          //                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
+
+          // --- ADDENDUM: I believe we do not need to store `term2` at all, it simply doesn't
+          // matter. Given a correct variable system, there is no notion of uninitialised values.
+          // Therefore, we cannot end up in this case without the previous stored value being
+          // correctly the nearest ancestor of the search term. For example, say the index tree
+          // is v0, and the variable was created in v2. Then there is no way that we try to
+          // read that variable with v0. The value stored here is always the initialisation.
+          // If there was a second assignment for the same index tree, we'd have found an
+          // entry map, and we can safely _coerce_ the previous value to be the map's
+          // _root_ value.
+
+          // --- ADDENDUM 2 (23-Oct-12): the above addendum fails for event variables which may well be
+          // uninitialised. Therefore go back to the original thought...
+
+          val term2 = in.readLong()
+          val isOk  = if (isOblivious) {
+            handler.isAncestor(/* index, */ term2, term)
+          } else true
+
+          if (isOk) {
+            val value = ser.read(in)
+            Some(fun(preLen, term2, value))
+          } else {
+            None
+          }
+
+        case 2 =>
+          val m = handler.readIndexMap[A](in, index)
+          if (isOblivious) {
+            m.nearestOption(term).map {
+              case (term2, value) => fun(preLen, term2, value)
+            }
+
+          } else {
+            val (term2, value) = m.nearest(term)
+            Some(fun(preLen, term2, value))
+          }
       }
-      val preSum = index.sum
-      store.flatGet { out =>
-         writeKey( key, out ) // out.writeInt( key )
-         out.writeLong( preSum )
-      } { in =>
-         (in.readByte(): @switch) match {
-            case 0 => // partial hash
-               val hash = in.readLong()
-               //                  EntryPre[ S ]( hash )
-               val (fullIndex, fullTerm) = maxIndex.splitAtSum( hash )
-               getWithPrefixLen( key, fullIndex, fullTerm )( fun )
-
-            case 1 =>
-               // --- THOUGHT: This assertion is wrong. We need to replace store.get by store.flatGet.
-               // if the terms match, we have Some result. If not, we need to ask the index tree if
-               // term2 is ancestor of term. If so, we have Some result, if not we have None.
-               //                  assert( term == term2, "Accessed version " + term.toInt + " but found " + term2.toInt )
-
-               // --- ADDENDUM: I believe we do not need to store `term2` at all, it simply doesn't
-               // matter. Given a correct variable system, there is no notion of uninitialised values.
-               // Therefore, we cannot end up in this case without the previous stored value being
-               // correctly the nearest ancestor of the search term. For example, say the index tree
-               // is v0, and the variable was created in v2. Then there is no way that we try to
-               // read that variable with v0. The value stored here is always the initialisation.
-               // If there was a second assignment for the same index tree, we'd have found an
-               // entry map, and we can safely _coerce_ the previous value to be the map's
-               // _root_ value.
-
-               // --- ADDENDUM 2 (23-Oct-12): the above addendum fails for event variables which may well be
-               // uninitialised. Therefore go back to the original thought...
-
-               val term2   = in.readLong()
-               val isOk    = if( isOblivious ) {
-                  handler.isAncestor( index, term2, term )
-               } else true
-
-               if( isOk ) {
-                  val value = ser.read( in )
-                  Some( fun( preLen, term2, value ))
-               } else {
-                  None
-               }
-
-            case 2 =>
-               val m = handler.readIndexMap[ A ]( in, index )
-               if( isOblivious ) {
-                  m.nearestOption( term ).map {
-                     case (term2, value) => fun( preLen, term2, value )
-                  }
-
-               } else {
-                  val (term2, value) = m.nearest( term )
-                  Some( fun( preLen, term2, value ))
-               }
-         }
-      }
-   }
+    }
+  }
 }
 final class ConfluentIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.IndexMapHandler[ S ],
                                                  protected val isOblivious: Boolean )

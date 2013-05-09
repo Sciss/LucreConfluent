@@ -58,16 +58,16 @@ object Sys {
                       (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
 
     // true is term1 is ancestor of term2
-    def isAncestor(index: S#Acc, term1: Long, term2: Long)(implicit tx: S#Tx): Boolean
+    def isAncestor(/* index: S#Acc, */ term1: Long, term2: Long)(implicit tx: S#Tx): Boolean
   }
 
   trait PartialMapHandler[S <: Sys[S]] {
     def getIndexTreeTerm(term: Long)(implicit tx: S#Tx): Long
 
-    def readPartialMap[A](access: S#Acc, in: DataInput)
+    def readPartialMap[A](/* access: S#Acc, */ in: DataInput)
                          (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
 
-    def newPartialMap[A](access: S#Acc, rootTerm: Long, rootValue: A)
+    def newPartialMap[A](/* access: S#Acc, rootTerm: Long, */ rootValue: A)
                         (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
   }
 
@@ -101,7 +101,7 @@ object Sys {
     // ---- cursors ----
 
     def newCursor(init: S#Acc = inputAccess): Cursor[S]
-    def readCursor(in: DataInput, access: S#Acc): Cursor[S]
+    def readCursor(in: DataInput): Cursor[S]
   }
 
   trait ID[S <: Sys[S]] extends Identifier[S#Tx] {
@@ -233,8 +233,8 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   // ---- cursors ----
 
-  private[confluent] def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S]
-  private[confluent] def readCursor(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Cursor[S]
+  private[confluent] def newCursor (init: S#Acc  )(implicit tx: S#Tx): Cursor[S]
+  private[confluent] def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S]
 
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
                       (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)

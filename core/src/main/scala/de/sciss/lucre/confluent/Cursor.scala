@@ -28,17 +28,20 @@ package lucre
 package confluent
 
 import stm.Disposable
-import serial.{DataInput, Writable}
+import de.sciss.serial.{ImmutableSerializer, DataInput, Writable}
 import impl.{CursorImpl => Impl}
 
 object Cursor {
-  def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc)
+  def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc = Sys.Acc.root[S])
                                                    (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] =
     Impl[S, D1](init)
 
   def read[S <: Sys[S], D1 <: stm.DurableLike[D1]](in: DataInput)
                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] =
     Impl.read[S, D1](in)
+
+  implicit def serializer[S <: Sys[S], D1 <: stm.DurableLike[D1]](
+    implicit system: S { type D = D1 }): serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] = Impl.serializer[S, D1]
 }
 trait Cursor[S <: Sys[S], D <: stm.DurableLike[D]] extends stm.Cursor[S] with Disposable[D#Tx] with Writable {
   def stepFrom[A](path: S#Acc)(fun: S#Tx => A): A

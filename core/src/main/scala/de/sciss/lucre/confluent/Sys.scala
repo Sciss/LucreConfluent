@@ -109,6 +109,10 @@ object Sys {
     def path: S#Acc
   }
 
+  object Acc {
+    def root[S <: Sys[S]]: Acc[S] = impl.PathImpl.root[S]
+  }
+
   trait Acc[S <: Sys[S]] extends Writable with PathLike {
     def mkString(prefix: String, sep: String, suffix: String): String
 
@@ -189,7 +193,6 @@ object Sys {
      */
     def takeUntil(timeStamp: Long)(implicit tx: S#Tx): S#Acc
   }
-
 }
 
 /**

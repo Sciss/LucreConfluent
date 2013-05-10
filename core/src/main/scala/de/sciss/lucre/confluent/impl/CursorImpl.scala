@@ -29,14 +29,27 @@ package confluent
 package impl
 
 import concurrent.stm.TxnExecutor
-import serial.{DataInput, DataOutput}
+import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
 
 object CursorImpl {
-  //   implicit def serializer[ S <: Sys[ S ], D <: stm.DurableLike[ D ]]( implicit bridge: S#Tx => D#Tx ) : stm.Serializer[ S#Tx, S#Acc, Cursor[ S ]] =
+  private final val COOKIE  = 0x4375  // "Cu"
+
+  implicit def serializer[S <: Sys[S], D1 <: stm.DurableLike[D1]](
+    implicit system: S { type D = D1 }): serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] = new Ser
 
   //   private def pathSerializer[ S <: Sys[ S ]]( system: S ) : stm.Serializer[ S#Tx, S#Acc, S#Acc ] = anyPathSer.asInstanceOf[ PathSer[ S ]]
   //
   //   private val anyPathSer = new PathSer[ Confluent ]
+
+  private final class Ser[S <: Sys[S], D1 <: stm.DurableLike[D1]](implicit system: S { type D = D1 })
+    extends serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] {
+
+    def write(v: Cursor[S, D1], out: DataOutput) {
+      println(s"Cursor serializer writes $v")
+      v.write(out)
+    }
+    def read(in: DataInput, access: D1#Acc)(implicit tx: D1#Tx): Cursor[S, D1] = CursorImpl.read[S, D1](in)
+  }
 
   private final class PathSer[S <: Sys[S], D1 <: stm.DurableLike[D1]](implicit system: S { type D = D1 })
     extends serial.Serializer[D1#Tx, D1#Acc, S#Acc] {
@@ -58,6 +71,8 @@ object CursorImpl {
   def read[S <: Sys[S], D1 <: stm.DurableLike[D1]](in: DataInput)
                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] = {
     implicit val pathSer  = new PathSer[S, D1]
+    val cookie            = in.readShort()
+    require(cookie == COOKIE, s"Unexpected cookie $cookie (should be $COOKIE)")
     val id                = tx.readID(in, ())
     val path              = tx.readVar[S#Acc](id, in)
     new Impl[S, D1](id, path)
@@ -66,6 +81,7 @@ object CursorImpl {
   private final class Impl[S <: Sys[S], D1 <: stm.DurableLike[D1]](id: D1#ID, path: D1#Var[S#Acc])
                                                                   (implicit system: S {type D = D1})
     extends Cursor[S, D1] with Cache[S#Tx] {
+
     override def toString = "Cursor" + id
 
     def step[A](fun: S#Tx => A): A = {
@@ -113,6 +129,8 @@ object CursorImpl {
     }
 
     def write(out: DataOutput) {
+      println(s"Wridin $COOKIE")
+      out.writeShort(COOKIE)
       id  .write(out)
       path.write(out)
     }

@@ -911,7 +911,7 @@ object ConfluentImpl {
   // ----------------------------------------------
 
   private object GlobalState {
-    private val SER_VERSION = 0
+    private val SER_VERSION = 0x436F6E666C6E7400L  // "Conflnt\0"
 
     implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
       new Ser[S, D]
@@ -921,28 +921,32 @@ object ConfluentImpl {
 
       def write(v: GlobalState[S, D], out: DataOutput) {
         import v._
-        out.writeByte(SER_VERSION)
-        idCnt.write(out)
+        out.writeLong(SER_VERSION)
+        out.writeInt(durRootID)
+        idCnt        .write(out)
         versionLinear.write(out)
         versionRandom.write(out)
-        partialTree.write(out)
+        partialTree  .write(out)
       }
 
       def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): GlobalState[S, D] = {
-        val serVer = in.readByte()
-        require(serVer == SER_VERSION, "Incompatible serialized version. Found " + serVer + " but require " + SER_VERSION)
-        val idCnt = tx.readCachedIntVar(in)
+        val serVer = in.readLong()
+        require(serVer == SER_VERSION, s"Incompatible serialized version. Found $serVer but require $SER_VERSION")
+        val durRootID     = in.readInt()
+        val idCnt         = tx.readCachedIntVar(in)
         val versionLinear = tx.readCachedIntVar(in)
         val versionRandom = tx.readCachedLongVar(in)
-        val partialTree = Ancestor.readTree[D, Long](in, acc)(tx, ImmutableSerializer.Long, _.toInt)
-        GlobalState[S, D](idCnt, versionLinear, versionRandom, partialTree)
+        val partialTree   = Ancestor.readTree[D, Long](in, acc)(tx, ImmutableSerializer.Long, _.toInt)
+        GlobalState[S, D](durRootID = durRootID, idCnt = idCnt, versionLinear = versionLinear,
+          versionRandom = versionRandom, partialTree = partialTree)
       }
     }
 
   }
 
   private final case class GlobalState[S <: Sys[S], D <: stm.DurableLike[D]](
-    idCnt: D#Var[Int], versionLinear: D#Var[Int], versionRandom: D#Var[Long], partialTree: Ancestor.Tree[D, Long])
+    durRootID: Int, idCnt: D#Var[Int], versionLinear: D#Var[Int], versionRandom: D#Var[Long],
+    partialTree: Ancestor.Tree[D, Long])
 
   // ---------------------------------------------
   // --------------- BEGIN systems ---------------
@@ -981,11 +985,13 @@ object ConfluentImpl {
 
     private val global: GlobalState[S, D] = durable.step { implicit tx =>
       val root = durable.root { implicit tx =>
+        val durRootID     = stm.DurableSurgery.newIDValue(durable)
         val idCnt         = tx.newCachedIntVar(0)
         val versionLinear = tx.newCachedIntVar(0)
         val versionRandom = tx.newCachedLongVar(TxnRandom.initialScramble(0L)) // scramble !!!
         val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, ImmutableSerializer.Long, _.toInt)
-        GlobalState[S, D](idCnt, versionLinear, versionRandom, partialTree)
+        GlobalState[S, D](durRootID = durRootID, idCnt = idCnt, versionLinear = versionLinear,
+          versionRandom = versionRandom, partialTree = partialTree)
       }
       root()
     }
@@ -1050,13 +1056,15 @@ object ConfluentImpl {
                                              bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B) =
       executeRoot { implicit tx =>
         implicit val dtx = durableTx(tx)
-        lazy val did = stm.DurableSurgery.newIDValue(durable)
         val (_, confV, durV) = initRoot(confInt, { tx =>
           // read durable
-          stm.DurableSurgery.read(durable)(did)(bSer.read(_, ()))
+          val did = global.durRootID
+          stm.DurableSurgery.read (durable)(did)(bSer.read(_, ()))
         }, { tx =>
           // create durable
           val _durV = durInit(dtx)
+          val did = global.durRootID // val did   = stm.DurableSurgery.newIDValue(durable)
+          // println(s"DURABLE ROOT ID $did")
           stm.DurableSurgery.write(durable)(did)(bSer.write(_durV, _))
           _durV
         })

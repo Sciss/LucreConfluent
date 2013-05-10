@@ -45,7 +45,7 @@ object CursorImpl {
     extends serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] {
 
     def write(v: Cursor[S, D1], out: DataOutput) {
-      println(s"Cursor serializer writes $v")
+      // println(s"Cursor serializer writes $v")
       v.write(out)
     }
     def read(in: DataInput, access: D1#Acc)(implicit tx: D1#Tx): Cursor[S, D1] = CursorImpl.read[S, D1](in)
@@ -129,7 +129,7 @@ object CursorImpl {
     }
 
     def write(out: DataOutput) {
-      println(s"Wridin $COOKIE")
+      // println(s"Writing $COOKIE")
       out.writeShort(COOKIE)
       id  .write(out)
       path.write(out)

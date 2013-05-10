@@ -240,8 +240,26 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   /* private[confluent] */ def newCursor (init: S#Acc  )(implicit tx: S#Tx): Cursor[S, D]
   /* private[confluent] */ def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D]
 
+  /** Initializes the data structure, by either reading an existing entry or generating the root entry
+    * with the `init` function. The method than allows the execution of another function within the
+    * same transaction, passing it the data structure root of type `A`. This is typically used to
+    * generate access mechanisms, such as extracting a cursor from the data structure, or instantiating
+    * a new cursor. The method then returns both the access point to the data structure and the result
+    * of the second function.
+    *
+    * @param init         a function to initialize the data structure (if the database is fresh)
+    * @param result       a function to process the data structure
+    * @param serializer   a serializer to read or write the data structure
+    * @tparam A           type of data structure
+    * @tparam B           type of result from the second function. typically this is an `stm.Cursor[S]`
+    * @return             the access to the data structure along with the result of the second function.
+    */
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
                       (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)
+
+  def rootWithDurable[A, B](confluent: S#Tx => A)(durable: D#Tx => B)
+                           (implicit aSer: serial.Serializer[S#Tx, S#Acc, A],
+                                     bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B)
 
   /**
    * Retrieves the version information for a given version term.

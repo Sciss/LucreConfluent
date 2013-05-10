@@ -981,7 +981,7 @@ object ConfluentImpl {
 
     private val global: GlobalState[S, D] = durable.step { implicit tx =>
       val root = durable.root { implicit tx =>
-        val idCnt = tx.newCachedIntVar(0)
+        val idCnt         = tx.newCachedIntVar(0)
         val versionLinear = tx.newCachedIntVar(0)
         val versionRandom = tx.newCachedLongVar(TxnRandom.initialScramble(0L)) // scramble !!!
         val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, ImmutableSerializer.Long, _.toInt)
@@ -1026,44 +1026,75 @@ object ConfluentImpl {
 
     final def newCursor()(implicit tx: S#Tx): Cursor[S, D] = newCursor(tx.inputAccess)
 
-    final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S, D] = {
+    final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S, D] =
       Cursor[S, D](init)(durableTx(tx), this)
-    }
 
-    final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] = {
+    final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] =
       Cursor.read[S, D](in)(durableTx(tx), this)
-    }
 
-    final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
-      cursorRoot[A, Unit](init)(_ => _ => ())._1
-    }
+    final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] =
+      executeRoot { implicit tx =>
+        val (rootVar, _, _) = initRoot(init, _ => (), _ => ())
+        rootVar
+      }
 
     def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                        (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) = {
+                        (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) =
+      executeRoot { implicit tx =>
+        val (rootVar, rootVal, _) = initRoot(init, _ => (), _ => ())
+        rootVar -> result(tx)(rootVal)
+      }
+
+    final def rootWithDurable[A, B](confInt: S#Tx => A)(durInit: D#Tx => B)
+                                   (implicit aSer: serial.Serializer[S#Tx, S#Acc, A],
+                                             bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B) =
+      executeRoot { implicit tx =>
+        implicit val dtx = durableTx(tx)
+        lazy val did = stm.DurableSurgery.newIDValue(durable)
+        val (_, confV, durV) = initRoot(confInt, { tx =>
+          // read durable
+          stm.DurableSurgery.read(durable)(did)(bSer.read(_, ()))
+        }, { tx =>
+          // create durable
+          val _durV = durInit(dtx)
+          stm.DurableSurgery.write(durable)(did)(bSer.write(_durV, _))
+          _durV
+        })
+        tx.newHandle(confV) -> durV
+      }
+
+    private def executeRoot[A](fun: S#Tx => A): A = {
       require(ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction")
       log("::::::: root :::::::")
       TxnExecutor.defaultAtomic { itx =>
-        implicit val tx = wrapRoot(itx)
-        val rootVar     = new RootVar[S, A](0, "Root") // serializer
-        val rootPath    = tx.inputAccess
-        val arrOpt      = varMap.get[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)
-        val rootVal     = arrOpt match {
-          case Some(arr) =>
-            val in      = DataInput(arr)
-            val aRead   = serializer.read(in, rootPath)
-            aRead
-
-          case _ =>
-            implicit val dtx = durableTx(tx) // created on demand (now)
-            val aNew    = init(tx)
-            rootVar.setInit(aNew)
-            // newIndexTree( rootPath.term, 0 )
-            writeNewTree(rootPath.index, 0)
-            writePartialTreeVertex(partialTree.root)
-            aNew
-        }
-        rootVar -> result(tx)(rootVal)
+        val tx = wrapRoot(itx)
+        fun(tx)
       }
+    }
+
+    private def initRoot[A, B](initA: S#Tx => A, readB: S#Tx => B, initB: S#Tx => B)
+                              (implicit tx: S#Tx, serA: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], A, B) = {
+      val rootVar     = new RootVar[S, A](0, "Root") // serializer
+      val rootPath    = tx.inputAccess
+      val arrOpt      = varMap.get[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)
+      val (aVal, bVal) = arrOpt match {
+        case Some(arr) =>
+          val in      = DataInput(arr)
+          val aRead   = serA.read(in, rootPath)
+          val bRead   = readB(tx)
+          (aRead, bRead)
+
+        case _ =>
+          implicit val dtx = durableTx(tx) // created on demand (now)
+          val aNew    = initA(tx)
+          rootVar.setInit(aNew)
+          val bNew    = initB(tx)
+
+          writeNewTree(rootPath.index, 0)
+          writePartialTreeVertex(partialTree.root)
+          (aNew, bNew)
+      }
+      (rootVar, aVal, bVal)
     }
 
     final def flushRoot(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {

@@ -110,6 +110,8 @@ object Sys {
 
   object Acc {
     def root[S <: Sys[S]]: Acc[S] = impl.PathImpl.root[S]
+    def info[S <: Sys[S]](access: Acc[S])(implicit tx: TxnLike, system: S): VersionInfo =
+      system.versionInfo(access.term)
   }
 
   trait Acc[S <: Sys[S]] extends Writable with PathLike {

@@ -28,7 +28,7 @@ package lucre
 package confluent
 package impl
 
-import stm.{InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
+import de.sciss.lucre.stm.{TxnLike, InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
 import serial.{ImmutableSerializer, DataInput, DataOutput}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
 import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
@@ -1140,7 +1140,7 @@ object ConfluentImpl {
     /**
      * Retrieves the version information for a given version term.
      */
-    final def versionInfo(term: Long)(implicit tx: S#Tx): VersionInfo = {
+    final def versionInfo(term: Long)(implicit tx: TxnLike): VersionInfo = {
       val vInt = term.toInt
       val opt = store.get { out =>
         out.writeByte(4)
@@ -1297,7 +1297,7 @@ object ConfluentImpl {
         map.nearestWithFilter(v) { vInt =>
           if (vInt <= maxVersionInt) {
             // note: while versionInfo formally takes a `Long` term, it only really uses the 32-bit version int
-            val info = versionInfo(vInt)
+            val info = versionInfo(vInt)(dtx) // any txn will do
             info.timeStamp <= timeStamp
           } else {
             false // query version higher than exit vertex, possibly an inexisting version!

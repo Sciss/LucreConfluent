@@ -27,12 +27,11 @@ package de.sciss
 package lucre
 package confluent
 
-import stm.{Txn => _Txn, DataStore, Disposable, Identifier}
+import de.sciss.lucre.stm.{Txn => _Txn, SpecGroup => ialized, TxnLike, DataStore, Disposable, Identifier}
 import data.Ancestor
 import de.sciss.fingertree.FingerTree
 import collection.immutable.{IndexedSeq => IIdxSeq}
 import scala.{specialized => spec}
-import stm.{SpecGroup => ialized}
 import serial.{ImmutableSerializer, DataInput, Writable}
 
 object Sys {
@@ -262,9 +261,9 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
                                      bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B)
 
   /**
-   * Retrieves the version information for a given version term.
+   * Retrieves the In information for a given version term.
    */
-  private[confluent] def versionInfo(term: Long)(implicit tx: S#Tx): VersionInfo
+  private[confluent] def versionInfo(term: Long)(implicit tx: TxnLike): VersionInfo
 
-  private[confluent] def versionUntil(access: S#Acc, timeStamp: Long)(implicit tx: S#Tx): S#Acc
+  private[confluent] def versionUntil(access: S#Acc, timeStamp: Long)(implicit tx: S#Tx): S#Acc // XXX TODO: can we get to TxnLike here, too?
 }

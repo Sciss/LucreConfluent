@@ -1,0 +1,20 @@
+val invalid   = tx.newEventIntVar(id)
+
+d.h. es wird kein Wert geschrieben.
+entsprechend fuehrt isFresh ausser bei den Sonderkonditionen (wie leerer Path) immer zu `false`.
+
+wenn das Dokument geschlossen und wieder geoeffnet wird, werden `Target` Instanzen gelesen, fuer die invalidVar ebenfalls keinen Wert besitzt. Es macht also keinen Sinn, den Wert `0` beim Erzeugen einer neuen Target zu schreiben, da dieser Wert hier sowieso wieder futsch ist.
+
+Das Problem ist, dass isFresh prueft, ob ein ein einzelner wert bzw. eine map under `path.indexSum` gespeichert ist. Mit der Annahme, dass wenn dies nicht der Fall ist, der Pfad durch Melding erweitert wurde und deswegen eben nicht frisch ist (childrenVar).
+
+Ein Loesungsansaetz koennte sein, ebenfalls bei auf `path.head.sum` zu testen. Falls das nicht existiert, wurde das target neu initialisiert, und kann als frisch betrachtet werden. Aber: das problem ist, wenn children z.B. dann in <v0, v1, v2, v2> geschrieben werden, fehlt nach wie vor der eintrag unter <v0>, d.h. nach einem meld zu <v0, v1, v2, v3, v4, v4> wuerde zunaechst <v0, v1, v2, v3, v4> geprueft --> existiert nicht, dann wuerde <v0> geprueft --> existiert nicht, und der falsche schluss waere, dass das Target frisch ist (was nicht der fall ist). Und das API laesst auch nicht zu, dass wir das schreiben von <v0> bei jedem udpate erzwingen.
+
+::::::::::::::
+
+Alternative
+
+statt invalidVar eine variable, die vermerkt, in welchem index tree children geschrieben wurden. also
+
+lastUpdate   = tx.newEventIntVar(id)
+lastUpdate() = tx.inputAccess.indexTerm
+

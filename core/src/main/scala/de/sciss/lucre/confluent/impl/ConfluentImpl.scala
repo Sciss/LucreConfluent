@@ -118,6 +118,8 @@ object ConfluentImpl {
     // (either dirtyMaps got non-empty, or a user before-commit handler got registered)
     private var markBeforeCommitFlag = false
 
+    final protected def meldInfo: MeldInfo[S] = meld
+
     final private def markDirty() {
       if (!markDirtyFlag) {
         markDirtyFlag = true
@@ -226,56 +228,38 @@ object ConfluentImpl {
 
     final def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A = {
       log("txn get " + id)
-      fullCache.getCacheNonTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
+      fullCache.getCacheNonTxn[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
     final def getTxn[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A = {
       log("txn get' " + id)
-      fullCache.getCacheTxn[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
+      fullCache.getCacheTxn[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
     final def putTxn[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
       // logConfig( "txn put " + id )
-      fullCache.putCacheTxn[A](id.seminal, id.path, value)(this, ser)
+      fullCache.putCacheTxn[A](id.base, id.path, value)(this, ser)
       markDirty()
     }
 
     final def putNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]) {
       // logConfig( "txn put " + id )
-      fullCache.putCacheNonTxn[A](id.seminal, id.path, value)(this, ser)
+      fullCache.putCacheNonTxn[A](id.base, id.path, value)(this, ser)
       markDirty()
     }
 
     final def putPartial[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
-      partialCache.putPartial(id.seminal, id.path, value)(this, ser)
+      partialCache.putPartial(id.base, id.path, value)(this, ser)
       markDirty()
     }
 
     final def getPartial[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A = {
       // logPartial( "txn get " + id )
-      partialCache.getPartial[A](id.seminal, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
-    }
-
-    final def isFresh(id: S#ID): Boolean = {
-      val id1   = id.seminal
-      val path  = id.path
-      // either the value was written during this transaction (implies freshness)...
-      // ...or the path is empty (it was just created) -> also implies freshness...
-      fullCache.cacheContains(id1, path)(this) || path.isEmpty || {
-        // ...or we have currently an ongoing meld which will produce a new
-        // index tree---in that case (it wasn't in the cache!) the value is definitely not fresh...
-        if (meld.requiresNewTree) false
-        else {
-          // ...or otherwise freshness means the most recent write index corresponds
-          // to the input access index
-          // store....
-          fullCache.store.isFresh(id1, path)(this)
-        }
-      }
+      partialCache.getPartial[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
     final def removeFromCache(id: S#ID) {
-      fullCache.removeCacheOnly(id.seminal, id.path)(this)
+      fullCache.removeCacheOnly(id.base, id.path)(this)
     }
 
     @inline final protected def alloc       (pid: S#ID): S#ID = new ConfluentID(system.newIDValue()(this), pid.path)
@@ -335,7 +319,7 @@ object ConfluentImpl {
     }
 
     final def removeDurableIDMap[A](map: IdentifierMap[S#ID, S#Tx, A]) {
-      durableIDMaps -= map.id.seminal
+      durableIDMaps -= map.id.base
     }
 
     private def mkDurableIDMap[A](id: Int)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
@@ -478,11 +462,11 @@ object ConfluentImpl {
   // -------------- BEGIN identifiers --------------
   // -----------------------------------------------
 
-  private final class ConfluentID[S <: Sys[S]](val seminal: Int, val path: S#Acc) extends Sys.ID[S] {
+  private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Sys.ID[S] {
     override def hashCode = {
       import MurmurHash3._
       val h0  = productSeed
-      val h1  = mix(h0, seminal)
+      val h1  = mix(h0, base)
       val h2  = mixLast(h1, path.##)
       finalizeHash(h2, 2)
     }
@@ -490,28 +474,28 @@ object ConfluentImpl {
     override def equals(that: Any): Boolean =
       that.isInstanceOf[Sys.ID[_]] && {
         val b = that.asInstanceOf[Sys.ID[_]]
-        seminal == b.seminal && path == b.path
+        base == b.base && path == b.path
       }
 
     def write(out: DataOutput) {
-      out.writeInt(seminal)
+      out.writeInt(base)
       path.write(out)
     }
 
-    override def toString = "<" + seminal + path.mkString(" @ ", ",", ">")
+    override def toString = "<" + base + path.mkString(" @ ", ",", ">")
 
     def dispose()(implicit tx: S#Tx) {}
   }
 
-  private final class PartialID[S <: Sys[S]](val seminal: Int, val path: S#Acc) extends Sys.ID[S] {
+  private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Sys.ID[S] {
     override def hashCode = {
       import MurmurHash3._
       val h0  = productSeed
       if (path.isEmpty) {
-        val h1  = mixLast(h0, seminal)
+        val h1  = mixLast(h0, base)
         finalizeHash(h1, 1)
       } else {
-        val h1  = mix(h0, seminal)
+        val h1  = mix(h0, base)
         val h2  = mix(h1, (path.head >> 32).toInt)
         val h3  = mixLast(h2, (path.last >> 32).toInt)
         finalizeHash(h3, 3)
@@ -523,18 +507,18 @@ object ConfluentImpl {
         val b  = that.asInstanceOf[PartialID[_]]
         val bp = b.path
         if (path.isEmpty) {
-          seminal == b.seminal && bp.isEmpty
+          base == b.base && bp.isEmpty
         } else {
-          seminal == b.seminal && bp.nonEmpty && path.head == bp.head && path.last == bp.last
+          base == b.base && bp.nonEmpty && path.head == bp.head && path.last == bp.last
         }
       }
 
     def write(out: DataOutput) {
-      out.writeInt(seminal)
+      out.writeInt(base)
       path.write(out)
     }
 
-    override def toString = "<" + seminal + " @ " + {
+    override def toString = "<" + base + " @ " + {
       if (path.isEmpty) ">"
       else {
         val head = path.head
@@ -613,7 +597,7 @@ object ConfluentImpl {
     protected def id: S#ID
 
     final def write(out: DataOutput) {
-      out.writeInt(id.seminal)
+      out.writeInt(id.base)
     }
 
     final def dispose()(implicit tx: S#Tx) {
@@ -627,7 +611,7 @@ object ConfluentImpl {
       this() = f(this())
     }
 
-    final def isFresh(implicit tx: S#Tx): Boolean = tx.isFresh(id)
+    // final def isFresh(implicit tx: S#Tx): Boolean = tx.isFresh(id)
   }
 
   private final class VarImpl[S <: Sys[S], A](protected val id: S#ID, protected val ser: ImmutableSerializer[A])
@@ -728,7 +712,7 @@ object ConfluentImpl {
       this() = f(this())
     }
 
-    def isFresh(implicit tx: S#Tx): Boolean = tx.isFresh(id)
+    // def isFresh(implicit tx: S#Tx): Boolean = tx.isFresh(id)
 
     def write(out: DataOutput) {
       sys.error("Unsupported Operation -- access.write")
@@ -846,7 +830,7 @@ object ConfluentImpl {
     protected def emptyCache: Map[Int, Any] = CacheMapImpl.emptyIntMapVal
 
     def get(id: S#ID)(implicit tx: S#Tx): Option[A] = {
-      getCache[A](id.seminal, id.path)
+      getCache[A](id.base, id.path)
     }
 
     def getOrElse(id: S#ID, default: => A)(implicit tx: S#Tx): A = {
@@ -854,7 +838,7 @@ object ConfluentImpl {
     }
 
     def put(id: S#ID, value: A)(implicit tx: S#Tx) {
-      putCache[A](id.seminal, id.path, value)
+      putCache[A](id.base, id.path, value)
       markDirty()
     }
 
@@ -863,7 +847,7 @@ object ConfluentImpl {
     }
 
     def remove(id: S#ID)(implicit tx: S#Tx) {
-      if (removeCache(id.seminal, id.path)) markDirty()
+      if (removeCache(id.base, id.path)) markDirty()
     }
 
     def write(out: DataOutput) {}
@@ -877,7 +861,7 @@ object ConfluentImpl {
                                                       (implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends IdentifierMap[S#ID, S#Tx, A] with DurableCacheMapImpl[S, Long] {
 
-    private val nid           = id.seminal.toLong << 32
+    private val nid           = id.base.toLong << 32
     private val markDirtyFlag = TxnLocal(false)
 
     private def markDirty()(implicit tx: S#Tx) {
@@ -889,7 +873,7 @@ object ConfluentImpl {
     protected def emptyCache: Map[Long, Any] = CacheMapImpl.emptyLongMapVal
 
     def get(id: S#ID)(implicit tx: S#Tx): Option[A] = {
-      val key = nid | (id.seminal.toLong & 0xFFFFFFFFL)
+      val key = nid | (id.base.toLong & 0xFFFFFFFFL)
       getCacheTxn[A](key, id.path)
     }
 
@@ -898,7 +882,7 @@ object ConfluentImpl {
     }
 
     def put(id: S#ID, value: A)(implicit tx: S#Tx) {
-      val key = nid | (id.seminal.toLong & 0xFFFFFFFFL)
+      val key = nid | (id.base.toLong & 0xFFFFFFFFL)
       putCacheTxn[A](key, id.path, value)
       markDirty()
     }
@@ -908,11 +892,11 @@ object ConfluentImpl {
     }
 
     def remove(id: S#ID)(implicit tx: S#Tx) {
-      if (removeCacheOnly(id.seminal, id.path)) markDirty()
+      if (removeCacheOnly(id.base, id.path)) markDirty()
     }
 
     def write(out: DataOutput) {
-      out.writeInt(id.seminal)
+      out.writeInt(id.base)
     }
 
     def dispose()(implicit tx: S#Tx) {
@@ -920,7 +904,7 @@ object ConfluentImpl {
       tx.removeDurableIDMap(this)
     }
 
-    override def toString = "IdentifierMap<" + id.seminal + ">"
+    override def toString = "IdentifierMap<" + id.base + ">"
   }
 
   // ----------------------------------------------

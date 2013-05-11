@@ -86,7 +86,7 @@ object Sys {
     private[confluent] def getTxn[A]   (id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
     private[confluent] def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A
 
-    private[confluent] def isFresh(id: S#ID): Boolean
+    // private[confluent] def isFresh(id: S#ID): Boolean
 
     private[confluent] def putPartial[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
     private[confluent] def getPartial[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
@@ -105,7 +105,7 @@ object Sys {
   }
 
   trait ID[S <: Sys[S]] extends Identifier[S#Tx] {
-    def seminal: Int
+    def base: Int  // name, origin, base, agent, ancestry, germ, parent, root
     def path: S#Acc
   }
 

@@ -18,7 +18,7 @@ retrieveManaged in ThisBuild := true
 
 scalacOptions in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
 
-scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
+// scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 
 scalacOptions in ThisBuild += "-no-specialization" // mother*******
 

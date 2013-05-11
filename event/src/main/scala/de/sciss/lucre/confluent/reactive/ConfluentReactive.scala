@@ -49,6 +49,8 @@ object ConfluentReactive {
 
 object ConfluentReactiveLike {
   trait Txn[S <: ConfluentReactiveLike[S]] extends confluent.Sys.Txn[S] with evt.Txn[S] {
+    // private[reactive] def isFresh(id: S#ID): Boolean
+
     private[reactive] def putEventTxn[A]   (id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
     private[reactive] def putEventNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]): Unit
 

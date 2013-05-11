@@ -16,7 +16,7 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
   type FixtureParam = stm.Cursor[Confluent]
   type S = Confluent
 
-  confluent.showLog = true
+  // confluent.showLog = true
 
    object Entity {
       implicit object Ser extends MutableSerializer[ S, Entity ] {

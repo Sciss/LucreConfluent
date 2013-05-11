@@ -279,7 +279,7 @@ object ConfluentImpl {
     }
 
     @inline final protected def alloc       (pid: S#ID): S#ID = new ConfluentID(system.newIDValue()(this), pid.path)
-    @inline final protected def allocPartial(pid: S#ID): S#ID = new PartialID(system.newIDValue()  (this), pid.path)
+    @inline final protected def allocPartial(pid: S#ID): S#ID = new PartialID  (system.newIDValue()(this), pid.path)
 
     final def newVar[A](pid: S#ID, init: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](alloc(pid))

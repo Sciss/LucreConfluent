@@ -109,12 +109,12 @@ object ConfluentReactiveImpl {
 
     def setInit(v: Int)(implicit tx: S#Tx) {
       log(this.toString + " ini " + v)
-      tx.putNonTxn(id, v)(this)
+      tx.putEventNonTxn(id, v)(this)
     }
 
     def update(v: Int)(implicit tx: S#Tx) {
       log(this.toString + " set " + v)
-      tx.putNonTxn(id, v)(this)
+      tx.putEventNonTxn(id, v)(this)
     }
 
     override def toString = "evt.Var[Int](" + id + ")"
@@ -180,13 +180,14 @@ object ConfluentReactiveImpl {
 
     final def newEventVar[A](pid: S#ID)
                             (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
-      val res = makeEventVar[A](pid)
+      val id  = alloc(pid)
+      val res = makeEventVar[A](id)
       log("new evt var " + res)
       res
     }
 
     final def newEventIntVar[A](pid: S#ID): evt.Var[S, Int] = {
-      val id = alloc(pid)
+      val id  = alloc(pid)
       val res = new IntEventVar(id)
       log("new evt var " + res)
       res

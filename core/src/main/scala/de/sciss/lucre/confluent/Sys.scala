@@ -75,7 +75,7 @@ object Sys {
 
     def info: VersionInfo.Modifiable
 
-    def forceWrite(): Unit
+    // def forceWrite(): Unit
 
     private[confluent] def readTreeVertexLevel(term: Long): Int
     private[confluent] def addInputVersion(path: S#Acc): Unit
@@ -93,7 +93,8 @@ object Sys {
 
     private[confluent] def removeFromCache(id: S#ID): Unit
 
-    private[confluent] def addDirtyCache(cache: Cache[S#Tx]): Unit
+    private[confluent] def addDirtyCache     (cache: Cache[S#Tx]): Unit
+    private[confluent] def addDirtyLocalCache(cache: Cache[S#Tx]): Unit
 
     private[confluent] def removeDurableIDMap[A](map: stm.IdentifierMap[S#ID, S#Tx, A]): Unit
 

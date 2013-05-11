@@ -34,7 +34,7 @@ import data.{KeySpec, ValueSpec}
 
 object InMemoryConfluentMapImpl {
   private trait Entry[+A]
-  private final case class EntryPre    (hash: Long)       extends Entry[Nothing]
+  private final case class EntryPre                     (hash: Long)       extends Entry[Nothing]
   private final case class EntryFull[@spec(ValueSpec) A](term: Long, v: A) extends Entry[A]
 }
 final class InMemoryConfluentMapImpl[S <: Sys[S], @spec(KeySpec) K] extends InMemoryConfluentMap[S, K] {

@@ -126,9 +126,9 @@ object ConfluentImpl {
       }
     }
 
-    final def forceWrite() {
-      markDirty()
-    }
+    // final def forceWrite() {
+    //   markDirty()
+    // }
 
     final def addDirtyCache(map: Cache[S#Tx]) {
       dirtyMaps :+= map
@@ -166,7 +166,7 @@ object ConfluentImpl {
         beforeCommitFuns = q
         fun(this)
       }
-      flushCaches(meld, markBeforeCommitFlag, dirtyMaps)
+      flushCaches(meld, markNewVersionFlag, dirtyMaps)
     }
 
     final protected def fullCache     = system.fullCache
@@ -219,7 +219,8 @@ object ConfluentImpl {
     final def newHandle[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
       // val id   = new ConfluentID[ S ]( 0, Path.empty[ S ])
       val h = new HandleImpl(value, inputAccess.index)
-      addDirtyCache(h)
+      // addDirtyCache(h)
+      addDirtyLocalCache(h)
       h
     }
 
@@ -836,7 +837,10 @@ object ConfluentImpl {
     def id: S#ID = new ConfluentID(0, Path.empty[S])
 
     private def markDirty()(implicit tx: S#Tx) {
-      if (!markDirtyFlag.swap(true)(tx.peer)) tx.addDirtyCache(this)
+      if (!markDirtyFlag.swap(true)(tx.peer)) {
+        // tx.addDirtyCache(this)
+        tx.addDirtyLocalCache(this)
+      }
     }
 
     protected def emptyCache: Map[Int, Any] = CacheMapImpl.emptyIntMapVal
@@ -877,7 +881,9 @@ object ConfluentImpl {
     private val markDirtyFlag = TxnLocal(false)
 
     private def markDirty()(implicit tx: S#Tx) {
-      if (!markDirtyFlag.swap(true)(tx.peer)) tx.addDirtyCache(this)
+      if (!markDirtyFlag.swap(true)(tx.peer)) {
+        tx.addDirtyCache(this)
+      }
     }
 
     protected def emptyCache: Map[Long, Any] = CacheMapImpl.emptyLongMapVal

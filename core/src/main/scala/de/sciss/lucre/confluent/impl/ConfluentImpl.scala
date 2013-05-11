@@ -978,7 +978,7 @@ object ConfluentImpl {
 
     // ---- init ----
 
-    final val store         = storeFactory.open("data")
+    final val store         = storeFactory.open("k-main")
     private val varMap      = DurablePersistentMap.newConfluentIntMap[S](store, this, isOblivious = false)
     final val fullCache     = DurableCacheMapImpl.newIntCache(varMap)
     final val partialCache  = PartialCacheMapImpl.newIntCache(DurablePersistentMap.newPartialMap[S](store, this))

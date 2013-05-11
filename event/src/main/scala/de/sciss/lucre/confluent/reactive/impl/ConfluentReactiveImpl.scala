@@ -141,7 +141,8 @@ object ConfluentReactiveImpl {
     final private def markEventDirty() {
       if (!markDirtyFlag) {
         markDirtyFlag = true
-        addDirtyCache(eventCache)
+        // addDirtyCache(eventCache)
+        addDirtyLocalCache(eventCache)
       }
     }
 

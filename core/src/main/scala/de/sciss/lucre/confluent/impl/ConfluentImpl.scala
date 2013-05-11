@@ -32,8 +32,6 @@ import de.sciss.lucre.stm.{TxnLike, InMemory, DataStore, DataStoreFactory, Durab
 import serial.{ImmutableSerializer, DataInput, DataOutput}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
 import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
-import de.sciss.fingertree
-import fingertree.{FingerTreeLike, FingerTree}
 import data.Ancestor
 import annotation.tailrec
 import util.hashing.MurmurHash3
@@ -86,7 +84,7 @@ object ConfluentImpl {
 
     // ---- abstract ----
 
-    protected def flushCaches(meld: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]]): Unit
+    protected def flushCaches(meld: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]): Unit
 
     // ---- info ----
 
@@ -112,8 +110,10 @@ object ConfluentImpl {
     private var dirtyMaps         = emptySeq[Cache[S#Tx]]
     private var beforeCommitFuns  = IQueue.empty[S#Tx => Unit]
 
-    // indicates whether we have added the cache maps to dirty maps
-    private var markDirtyFlag = false
+    // indicates whether we have added cache maps to dirty maps
+    private var markDirtyFlag       = false
+    // indicates whether we have added cache maps that require version updates (e.g. non-event writes)
+    private var markNewVersionFlag  = false
     // indicates whether any before commit handling is needed
     // (either dirtyMaps got non-empty, or a user before-commit handler got registered)
     private var markBeforeCommitFlag = false
@@ -131,6 +131,17 @@ object ConfluentImpl {
     }
 
     final def addDirtyCache(map: Cache[S#Tx]) {
+      dirtyMaps :+= map
+      markNewVersionFlag = true
+      markBeforeCommit()
+    }
+
+    /** A local cache is one which is re-created upon application restart. It should
+      * probably be called transient instead of local, but we already have `stm.LocalVar`...
+      *
+      * If the dirty maps only contain local caches, no new version is created upon flush.
+      */
+    final def addDirtyLocalCache(map: Cache[S#Tx]) {
       dirtyMaps :+= map
       markBeforeCommit()
     }
@@ -155,7 +166,7 @@ object ConfluentImpl {
         beforeCommitFuns = q
         fun(this)
       }
-      flushCaches(meld, dirtyMaps)
+      flushCaches(meld, markBeforeCommitFlag, dirtyMaps)
     }
 
     final protected def fullCache     = system.fullCache
@@ -418,8 +429,8 @@ object ConfluentImpl {
 
     protected def cursorCache: Cache[S#Tx]
 
-    final protected def flushCaches(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]]) {
-      system.flushRegular(meldInfo, caches :+ cursorCache)(this)
+    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]) {
+      system.flushRegular(meldInfo, newVersion, caches :+ cursorCache)(this)
     }
 
     override def toString = "Confluent#Tx" + inputAccess
@@ -431,8 +442,8 @@ object ConfluentImpl {
 
     final val inputAccess = Path.root[S]
 
-    final protected def flushCaches(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]]) {
-      system.flushRoot(meldInfo, caches)(this)
+    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]) {
+      system.flushRoot(meldInfo, newVersion, caches)(this)
     }
 
     override def toString = "Confluent.RootTxn"
@@ -1094,41 +1105,47 @@ object ConfluentImpl {
 
         case _ =>
           implicit val dtx = durableTx(tx) // created on demand (now)
+          writeNewTree(rootPath.index, 0)
+          writePartialTreeVertex(partialTree.root)
+          writeVersionInfo(rootPath.term)
+
           val aNew    = initA(tx)
           rootVar.setInit(aNew)
           val bNew    = initB(tx)
-
-          writeNewTree(rootPath.index, 0)
-          writePartialTreeVertex(partialTree.root)
           (aNew, bNew)
       }
       (rootVar, aVal, bVal)
     }
 
-    final def flushRoot(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {
+    final def flushRoot(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {
       require(!meldInfo.requiresNewTree, "Cannot meld in the root version")
       val outTerm = tx.inputAccess.term
-      writeVersionInfo(outTerm)
+      // writeVersionInfo(outTerm)
       flush(outTerm, caches)
     }
 
-    final def flushRegular(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {
+    final def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {
       val newTree = meldInfo.requiresNewTree
       val outTerm = if (newTree) {
         flushNewTree(meldInfo.outputLevel)
       } else {
-        flushOldTree()
+        if (newVersion) flushOldTree() else tx.inputAccess.term
       }
       log("::::::: txn flush - " + (if (newTree) "meld " else "") + "term = " + outTerm.toInt + " :::::::")
-      writeVersionInfo(outTerm)
+      if (newVersion) writeVersionInfo(outTerm)
       flush(outTerm, caches)
     }
 
     // writes the version info (using cookie `4`).
     private def writeVersionInfo(term: Long)(implicit tx: S#Tx) {
+      val tint = term.toInt
+      //      if (!store.contains { out =>
+      //        out.writeByte(4)
+      //        out.writeInt(tint)
+      //      })
       store.put { out =>
         out.writeByte(4)
-        out.writeInt(term.toInt)
+        out.writeInt(tint)
       } { out =>
         val i = tx.info
         val m = i.message

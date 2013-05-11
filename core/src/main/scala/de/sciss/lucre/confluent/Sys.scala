@@ -228,8 +228,8 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   private[confluent] def indexMap: Sys.IndexMapHandler[S]
 
-  private[confluent] def flushRegular(meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
-  private[confluent] def flushRoot   (meldInfo: MeldInfo[S], caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
+  private[confluent] def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
+  private[confluent] def flushRoot   (meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
 
   /* private[confluent] */ def readPath(in: DataInput): S#Acc
 

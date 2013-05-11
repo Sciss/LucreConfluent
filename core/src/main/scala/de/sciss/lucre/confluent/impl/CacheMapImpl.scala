@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2013 Hanns Holger Rutz. All rights reserved.
  *
- *	 This software is free software; you can redistribute it and/or
+ *	 This software is free software; you can refdistribute it and/or
  *	 modify it under the terms of the GNU General Public License
  *	 as published by the Free Software Foundation; either
  *	 version 2, june 1991 of the License, or (at your option) any later version.
@@ -68,255 +68,263 @@ object CacheMapImpl {
  * @tparam S   the underlying system
  * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
  */
-sealed trait CacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K, Store ]
-extends CacheMap[ S, K, Store ] {
-   import CacheMapImpl._
+sealed trait CacheMapImpl[S <: Sys[S], @spec(KeySpec) K, Store]
+  extends CacheMap[S, K, Store] {
 
-   private val cache = TxnLocal( emptyCache.asInstanceOf[ Map[ K, LongMap[ Entry[ S, K, Store ]]]])
+  import CacheMapImpl._
 
-   /**
-    * Implementations may provide a particular map implementation for the cache (e.g. `IntMap` or `LongMap`).
-    * The value type of the returned map (which must be immutable and empty) is cast to the internal cache
-    * entries.
-    */
-   protected def emptyCache : Map[ K, Any ]
+  private val cache = TxnLocal(emptyCache.asInstanceOf[Map[K, LongMap[Entry[S, K, Store]]]])
 
-   // ---- implementation ----
+  /**
+   * Implementations may provide a particular map implementation for the cache (e.g. `IntMap` or `LongMap`).
+   * The value type of the returned map (which must be immutable and empty) is cast to the internal cache
+   * entries.
+   */
+  protected def emptyCache: Map[K, Any]
 
-   final def getCacheOnly[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
-      cache.get( tx.peer ).get( key ).flatMap( _.get( path.sum ).map { e =>
-         e.value.asInstanceOf[ A ]
-      })
+  // ---- implementation ----
 
-   final def cacheContains( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
-      cache.get( tx.peer ).get( key ) match {
-         case Some( map ) => map.contains( path.sum )
-         case _           => false
-      }
+  final def getCacheOnly[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A] =
+    cache.get(tx.peer).get(key).flatMap(_.get(path.sum).map { e =>
+      e.value.asInstanceOf[A]
+    })
 
-   /**
-    * Removes an entry from the cache, and only the cache. This will not affect any
-    * values also persisted to `persistent`! If the cache does not contain an entry
-    * at the given `key`, this method simply returns.
-    *
-    * @param key        key at which the entry is stored
-    * @param tx         the current transaction
-    */
-   final def removeCacheOnly( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
-      implicit val itx = tx.peer
-//      cache.transform( _ - key )( tx.peer )
-      val m    = cache.get
-      val km   = m.getOrElse( key, LongMap.empty )
-      val hash = path.sum
-      if( km.contains( hash )) {
-         val km1  = km - hash
-         val m1   = if( km1.isEmpty ) {
-            m - key
-         } else {
-            m + (key -> km1)
-         }
-         cache.set( m1 )
-         true
+  final def cacheContains(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean =
+    cache.get(tx.peer).get(key) match {
+      case Some(map) => map.contains(path.sum)
+      case _ => false
+    }
+
+  /**
+   * Removes an entry from the cache, and only the cache. This will not affect any
+   * values also persisted to `persistent`! If the cache does not contain an entry
+   * at the given `key`, this method simply returns.
+   *
+   * @param key        key at which the entry is stored
+   * @param tx         the current transaction
+   */
+  final def removeCacheOnly(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+    implicit val itx = tx.peer
+    //      cache.transform( _ - key )( tx.peer )
+    val m = cache.get
+    val km = m.getOrElse(key, LongMap.empty)
+    val hash = path.sum
+    if (km.contains(hash)) {
+      val km1 = km - hash
+      val m1 = if (km1.isEmpty) {
+        m - key
       } else {
-         false
+        m + (key -> km1)
       }
-   }
-   
-   final protected def putCacheOnly( e: Entry[ S, K, Store ])( implicit tx: S#Tx ) {
-      implicit val itx = tx.peer
-      cache.transform( mapMap => {
-         val mapOld  = mapMap.getOrElse( e.key, emptyLongMap[ Entry[ S, K, Store ]])
-         val mapNew  = mapOld + (e.path.sum -> e)
-         mapMap + ((e.key, mapNew))
-      })
-   }
+      cache.set(m1)
+      true
+    } else {
+      false
+    }
+  }
 
-   /**
-    * This method should be invoked from the implementations flush hook after it has
-    * determined the terminal version at which the entries in the cache are written
-    * to the persistent store. If this method is not called, the cache will just
-    * vanish and not be written out to the `persistent` store.
-    *
-    * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
-    * @param tx      the current transaction (should be in commit or right-before commit phase)
-    */
-   final def flushCache( term: Long )( implicit tx: S#Tx ) {
-      val p = store
-      cache.get( tx.peer ).foreach { tup1 =>
-         val map  = tup1._2
-         map.foreach { tup2 =>
-            val e    = tup2._2
-            e.flush( term, p )
-         }
+  final protected def putCacheOnly(e: Entry[S, K, Store])(implicit tx: S#Tx) {
+    implicit val itx = tx.peer
+    cache.transform { mapMap =>
+      val mapOld = mapMap.getOrElse(e.key, emptyLongMap[Entry[S, K, Store]])
+      val mapNew = mapOld + (e.path.sum -> e)
+      mapMap + ((e.key, mapNew))
+    }
+  }
+
+  /**
+   * This method should be invoked from the implementations flush hook after it has
+   * determined the terminal version at which the entries in the cache are written
+   * to the persistent store. If this method is not called, the cache will just
+   * vanish and not be written out to the `persistent` store.
+   *
+   * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
+   * @param tx      the current transaction (should be in commit or right-before commit phase)
+   */
+  final def flushCache(term: Long)(implicit tx: S#Tx) {
+    val p = store
+    cache.get(tx.peer).foreach { tup1 =>
+      val map = tup1._2
+      map.foreach { tup2 =>
+        val e = tup2._2
+        e.flush(term, p)
       }
-   }
+    }
+  }
 }
+
 object DurableCacheMapImpl {
-   import CacheMapImpl.Entry
+  import CacheMapImpl.Entry
 
-   private type Store[ S <: Sys[ S ], K ] = DurablePersistentMap[ S, K ]
+  private type Store[S <: Sys[S], K] = DurablePersistentMap[S, K]
 
-   def newIntCache[ S <: Sys[ S ]]( map: Store[ S, Int ]) : CacheMap.Durable[ S, Int, Store[ S, Int ]] =
-      new DurableCacheMapImpl[ S, Int ] {
-         final protected def emptyCache : Map[ Int, Any ] = CacheMapImpl.emptyIntMapVal
-         final val store : Store[ S, Int ] = map
-      }
+  def newIntCache[S <: Sys[S]](map: Store[S, Int]): CacheMap.Durable[S, Int, Store[S, Int]] =
+    new DurableCacheMapImpl[S, Int] {
+      final protected def emptyCache: Map[Int, Any] = CacheMapImpl.emptyIntMapVal
 
-   private final class NonTxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A ]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: ImmutableSerializer[ A ])
-   extends Entry[ S, K, Store[ S, K ]] {
-      override def toString = "NonTxnEntry(" + key + ", " + value + ")"
+      final val store: Store[S, Int] = map
+    }
 
-      def flush( outTerm: Long, store: Store[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = path.addTerm( outTerm )
-         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         store.put( key, pathOut, value )
-      }
-   }
-   private final class TxnEntry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A]
-   ( val key: K, val path: S#Acc, val value: A )( implicit serializer: serial.Serializer[ S#Tx, S#Acc, A ])
-   extends Entry[ S, K, Store[ S, K ]] {
-      override def toString = "TxnEntry(" + key + ", " + value + ")"
+  private final class NonTxnEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  (val key: K, val path: S#Acc, val value: A)(implicit serializer: ImmutableSerializer[A])
+    extends Entry[S, K, Store[S, K]] {
+    override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: Store[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = path.addTerm( outTerm )
-         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         val out     = DataOutput()
-         serializer.write( value, out )
-         val arr     = out.toByteArray
-         store.put( key, pathOut, arr )( tx, ByteArraySerializer )
-      }
-   }
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+      val pathOut = path.addTerm(outTerm)
+      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      store.put(key, pathOut, value)
+    }
+  }
+
+  private final class TxnEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  (val key: K, val path: S#Acc, val value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
+    extends Entry[S, K, Store[S, K]] {
+    override def toString = "TxnEntry(" + key + ", " + value + ")"
+
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+      val pathOut = path.addTerm(outTerm)
+      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      val out = DataOutput()
+      serializer.write(value, out)
+      val arr = out.toByteArray
+      store.put(key, pathOut, arr)(tx, ByteArraySerializer)
+    }
+  }
 }
-trait DurableCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
-extends CacheMap.Durable[ S, K, DurablePersistentMap[ S, K ]]
-with CacheMapImpl[        S, K, DurablePersistentMap[ S, K ]] {
-   import DurableCacheMapImpl._
 
-   /**
-    * Stores an entry in the cache for which 'only' a transactional serializer exists.
-    *
-    * Note that the caller is responsible for monitoring this call, and if necessary installing
-    * a before-commit handler which will call into the abstract method `flushCache()`.
-    *
-    * @param key        key at which the entry will be stored
-    * @param path       write path when persisting
-    * @param value      value to be stored (entry)
-    * @param tx         the current transaction
-    * @param serializer the serializer to use for the value
-    * @tparam A         the type of value stored
-    */
-   final def putCacheTxn[@spec(ValueSpec) A]( key: K, path: S#Acc, value: A )
-                             ( implicit tx: S#Tx, serializer: serial.Serializer[ S#Tx, S#Acc, A ]) {
-      putCacheOnly( new TxnEntry( key, path, value ))
-   }
+trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+  extends CacheMap.Durable[S, K, DurablePersistentMap[S, K]]
+  with CacheMapImpl[S, K, DurablePersistentMap[S, K]] {
 
-   /**
-    * Stores an entry in the cache for which a non-transactional serializer exists.
-    *
-    * Note that the caller is responsible for monitoring this call, and if necessary installing
-    * a before-commit handler which will call into the abstract method `flushCache()`.
-    *
-    * @param key        key at which the entry will be stored
-    * @param path       write path when persisting
-    * @param value      value to be stored (entry)
-    * @param tx         the current transaction
-    * @param serializer the serializer to use for the value
-    * @tparam A         the type of value stored
-    */
-   final def putCacheNonTxn[ A ]( key: K, path: S#Acc, value: A )
-                                ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) {
-      putCacheOnly( new NonTxnEntry( key, path, value ))
-   }
+  import DurableCacheMapImpl._
 
-   /**
-    * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
-    * a transactional serializer exists.
-    *
-    * If no value is found for the current path, this will try to read the most recent entry along the path.
-    *
-    * @param key        key at which the entry is stored
-    * @param path       access path for the read
-    * @param tx         the current transaction
-    * @param serializer the serializer to use for the value
-    * @tparam A         the type of value stored
-    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
-    *                   neither in the cache nor in the persistent store.
-    */
-   final def getCacheTxn[ A ]( key: K, path: S#Acc )
-                             ( implicit tx: S#Tx, serializer: serial.Serializer[ S#Tx, S#Acc, A ]) : Option[ A ] =
-      getCacheOnly( key, path ).orElse {
-         store.getWithSuffix[ Array[ Byte ]]( key, path )( tx, ByteArraySerializer ).map { tup =>
-            val access  = tup._1
-            val arr     = tup._2
-            val in      = DataInput( arr )
-            serializer.read( in, access )
-         }
+  /**
+   * Stores an entry in the cache for which 'only' a transactional serializer exists.
+   *
+   * Note that the caller is responsible for monitoring this call, and if necessary installing
+   * a before-commit handler which will call into the abstract method `flushCache()`.
+   *
+   * @param key        key at which the entry will be stored
+   * @param path       write path when persisting
+   * @param value      value to be stored (entry)
+   * @param tx         the current transaction
+   * @param serializer the serializer to use for the value
+   * @tparam A         the type of value stored
+   */
+  final def putCacheTxn[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
+                                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
+    putCacheOnly(new TxnEntry(key, path, value))
+  }
+
+  /**
+   * Stores an entry in the cache for which a non-transactional serializer exists.
+   *
+   * Note that the caller is responsible for monitoring this call, and if necessary installing
+   * a before-commit handler which will call into the abstract method `flushCache()`.
+   *
+   * @param key        key at which the entry will be stored
+   * @param path       write path when persisting
+   * @param value      value to be stored (entry)
+   * @param tx         the current transaction
+   * @param serializer the serializer to use for the value
+   * @tparam A         the type of value stored
+   */
+  final def putCacheNonTxn[A](key: K, path: S#Acc, value: A)
+                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]) {
+    putCacheOnly(new NonTxnEntry(key, path, value))
+  }
+
+  /**
+   * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
+   * a transactional serializer exists.
+   *
+   * If no value is found for the current path, this will try to read the most recent entry along the path.
+   *
+   * @param key        key at which the entry is stored
+   * @param path       access path for the read
+   * @param tx         the current transaction
+   * @param serializer the serializer to use for the value
+   * @tparam A         the type of value stored
+   * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+   *                   neither in the cache nor in the persistent store.
+   */
+  final def getCacheTxn[A](key: K, path: S#Acc)
+                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
+    getCacheOnly(key, path).orElse {
+      store.getWithSuffix[Array[Byte]](key, path)(tx, ByteArraySerializer).map { tup =>
+        val access = tup._1
+        val arr = tup._2
+        val in = DataInput(arr)
+        serializer.read(in, access)
       }
+    }
 
-   /**
-    * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
-    * non-transactional serializer exists.
-    *
-    * If no value is found for the current path, this will try to read the most recent entry along the path.
-    *
-    * @param key        key at which the entry is stored
-    * @param path       access path for the read
-    * @param tx         the current transaction
-    * @param serializer the serializer to use for the value
-    * @tparam A         the type of value stored
-    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
-    *                   neither in the cache nor in the persistent store.
-    */
-   final def getCacheNonTxn[ A ]( key: K, path: S#Acc )
-                                ( implicit tx: S#Tx, serializer: ImmutableSerializer[ A ]) : Option[ A ] =
-      getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
+  /**
+   * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
+   * non-transactional serializer exists.
+   *
+   * If no value is found for the current path, this will try to read the most recent entry along the path.
+   *
+   * @param key        key at which the entry is stored
+   * @param path       access path for the read
+   * @param tx         the current transaction
+   * @param serializer the serializer to use for the value
+   * @tparam A         the type of value stored
+   * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+   *                   neither in the cache nor in the persistent store.
+   */
+  final def getCacheNonTxn[A](key: K, path: S#Acc)
+                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A] =
+    getCacheOnly(key, path).orElse(store.get[A](key, path))
 
-//   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
-//      cacheContains( key, path ) || {
-//         store.getWithSuffix()
-//      }
+  //   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
+  //      cacheContains( key, path ) || {
+  //         store.getWithSuffix()
+  //      }
 
-   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
-      removeCacheOnly( key, path ) || store.remove( key, path )
-   }
+  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+    removeCacheOnly(key, path) || store.remove(key, path)
+  }
 }
+
 object InMemoryCacheMapImpl {
-   private type Store[ S <: Sys[ S ], K ] = InMemoryConfluentMap[ S, K ]
+  private type Store[S <: Sys[S], K] = InMemoryConfluentMap[S, K]
 
-   private final class Entry[ S <: Sys[ S ], @spec(KeySpec) K, @spec(ValueSpec) A ]
-   ( val key: K, val path: S#Acc, val value: A )
-   extends CacheMapImpl.Entry[ S, K, Store[ S, K ]] {
-      override def toString = "Entry(" + key + ", " + value + ")"
+  private final class Entry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  (val key: K, val path: S#Acc, val value: A)
+    extends CacheMapImpl.Entry[S, K, Store[S, K]] {
+    override def toString = "Entry(" + key + ", " + value + ")"
 
-      def flush( outTerm: Long, store: Store[ S, K ])( implicit tx: S#Tx ) {
-         val pathOut = path.addTerm( outTerm )
-         log( "txn flush write " + value + " for " + pathOut.mkString( "<" + key + " @ ", ",", ">" ))
-         store.put( key, pathOut, value )
-      }
-   }
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+      val pathOut = path.addTerm(outTerm)
+      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      store.put(key, pathOut, value)
+    }
+  }
 }
-trait InMemoryCacheMapImpl[ S <: Sys[ S ], @spec(KeySpec) K ]
-extends CacheMap.InMemory[ S, K, InMemoryConfluentMap[ S, K ]]
-with CacheMapImpl[         S, K, InMemoryConfluentMap[ S, K ]] {
-   import InMemoryCacheMapImpl._
 
-   final def putCache[@spec(ValueSpec) A ]( key: K, path: S#Acc, value: A )( implicit tx: S#Tx ) {
-      putCacheOnly( new Entry( key, path, value ))
-   }
+trait InMemoryCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+  extends CacheMap.InMemory[S, K, InMemoryConfluentMap[S, K]]
+  with CacheMapImpl[S, K, InMemoryConfluentMap[S, K]] {
 
-   final def getCache[ A ]( key: K, path: S#Acc )( implicit tx: S#Tx ) : Option[ A ] =
-      getCacheOnly( key, path ).orElse( store.get[ A ]( key, path ))
+  import InMemoryCacheMapImpl._
 
-   final def removeCache( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean = {
-      removeCacheOnly( key, path ) || store.remove( key, path )
-   }
+  final def putCache[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx) {
+    putCacheOnly(new Entry(key, path, value))
+  }
+
+  final def getCache[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A] =
+    getCacheOnly(key, path).orElse(store.get[A](key, path))
+
+  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+    removeCacheOnly(key, path) || store.remove(key, path)
+  }
 }
 
 // ---------------------------------------------------------------------
 
 object PartialCacheMapImpl {
-
   import CacheMapImpl.Entry
 
   private type Store[S <: Sys[S], K] = DurablePersistentMap[S, K]
@@ -345,7 +353,6 @@ object PartialCacheMapImpl {
       store.put(key, pathOut, arr)(tx, ByteArraySerializer)
     }
   }
-
 }
 
 trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]

@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "2.3.0-SNAPSHOT"
+version in ThisBuild := "2.3.0"
 
 organization in ThisBuild := "de.sciss"
 
@@ -18,7 +18,7 @@ retrieveManaged in ThisBuild := true
 
 scalacOptions in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
 
-// scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
+scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 
 scalacOptions in ThisBuild += "-no-specialization" // mother*******
 

@@ -75,6 +75,8 @@ object Sys {
 
     def info: VersionInfo.Modifiable
 
+    def isRetroactive: Boolean
+
     // def forceWrite(): Unit
 
     private[confluent] def readTreeVertexLevel(term: Long): Int
@@ -234,7 +236,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   /* private[confluent] */ def readPath(in: DataInput): S#Acc
 
-  private[confluent] def createTxn(dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[S#Tx]): S#Tx
+  private[confluent] def createTxn(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx
 
   // ---- cursors ----
 

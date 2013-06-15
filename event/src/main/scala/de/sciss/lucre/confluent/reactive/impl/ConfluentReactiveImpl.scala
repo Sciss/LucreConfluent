@@ -34,7 +34,6 @@ import lucre.{event => evt}
 import concurrent.stm.InTxn
 import evt.ReactionMap
 import confluent.impl.DurableCacheMapImpl
-import confluent.Sys
 import serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object ConfluentReactiveImpl {
@@ -301,7 +300,8 @@ object ConfluentReactiveImpl {
   }
 
   private final class RegularTxn(val system: S, val durable: stm.Durable#Tx,
-                                 val inputAccess: S#Acc, val cursorCache: Cache[S#Tx])
+                                 val inputAccess: S#Acc, val isRetroactive: Boolean,
+                                 val cursorCache: Cache[S#Tx])
     extends confluent.impl.ConfluentImpl.RegularTxnMixin[S, stm.Durable] with TxnImpl {
 
     lazy val peer = durable.peer
@@ -335,7 +335,6 @@ object ConfluentReactiveImpl {
       DurableCacheMapImpl.newIntCache(eventVarMap)
   }
 
-
   private final class System(protected val storeFactory: DataStoreFactory[DataStore],
                              protected val eventStore: DataStore, val durable: stm.Durable)
     extends Mixin[S] with ConfluentReactive {
@@ -344,8 +343,8 @@ object ConfluentReactiveImpl {
     def durableTx (tx: S#Tx)  = tx.durable
     def inMemoryTx(tx: S#Tx)  = tx.inMemory
 
-    protected def wrapRegular(dtx: stm.Durable#Tx, inputAccess: S#Acc, cursorCache: Cache[S#Tx]) =
-      new RegularTxn(this, dtx, inputAccess, cursorCache)
+    protected def wrapRegular(dtx: stm.Durable#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]) =
+      new RegularTxn(this, dtx, inputAccess, retroactive, cursorCache)
 
     protected def wrapRoot(peer: InTxn) = new RootTxn(this, peer)
   }

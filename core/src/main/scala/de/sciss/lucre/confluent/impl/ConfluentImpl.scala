@@ -220,7 +220,7 @@ object ConfluentImpl {
 
     final def newHandle[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
       // val id   = new ConfluentID[ S ]( 0, Path.empty[ S ])
-      val h = new HandleImpl(value, inputAccess.index)
+      val h = new HandleImpl[S, A](value, inputAccess.index)
       // addDirtyCache(h)
       addDirtyLocalCache(h)
       h
@@ -427,6 +427,8 @@ object ConfluentImpl {
 
     final val inputAccess = Path.root[S]
 
+    final def isRetroactive = false
+
     final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]) {
       system.flushRoot(meldInfo, newVersion, caches)(this)
     }
@@ -439,7 +441,8 @@ object ConfluentImpl {
   }
 
   private final class RegularTxn(val system: Confluent, val durable: Durable#Tx,
-                                 val inputAccess: Confluent#Acc, val cursorCache: Cache[Confluent#Tx])
+                                 val inputAccess: Confluent#Acc, val isRetroactive: Boolean,
+                                 val cursorCache: Cache[Confluent#Tx])
     extends RegularTxnMixin[Confluent, Durable] with TxnImpl {
 
     lazy val peer = durable.peer
@@ -562,9 +565,9 @@ object ConfluentImpl {
 
       var entries = LongMap.empty[Long]
       Hashing.foreachPrefix(writeIndex, entries.contains) {
-        case (_hash, _preSum) => entries += (_hash, _preSum)
+        case (_hash, _preSum) => entries += ((_hash, _preSum))
       }
-      entries += (writeIndex.sum, 0L) // full cookie
+      entries += ((writeIndex.sum, 0L)) // full cookie
 
       var (maxIndex, maxTerm) = readPath.splitIndex
       while (true) {
@@ -961,8 +964,8 @@ object ConfluentImpl {
     def durableTx (tx: S#Tx): D#Tx = tx.durable
     def inMemoryTx(tx: S#Tx): I#Tx = tx.inMemory
 
-    protected def wrapRegular(dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[S#Tx]): S#Tx =
-      new RegularTxn(this, dtx, inputAccess, cursorCache)
+    protected def wrapRegular(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx =
+      new RegularTxn(this, dtx, inputAccess, retroactive, cursorCache)
 
     protected def wrapRoot(peer: InTxn): S#Tx = new RootTxn(this, peer)
   }
@@ -974,7 +977,7 @@ object ConfluentImpl {
 
     protected def storeFactory: DataStoreFactory[DataStore]
 
-    protected def wrapRegular(dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[S#Tx]): S#Tx
+    protected def wrapRegular(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx
     protected def wrapRoot(peer: InTxn): S#Tx
 
     // ---- init ----
@@ -1024,9 +1027,9 @@ object ConfluentImpl {
       res
     }
 
-    final def createTxn(dtx: D#Tx, inputAccess: S#Acc, cursorCache: Cache[S#Tx]): S#Tx = {
-      log("::::::: atomic - input access = " + inputAccess + " :::::::")
-      wrapRegular(dtx, inputAccess, cursorCache)
+    final def createTxn(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx = {
+      log(s"::::::: atomic - input access = $inputAccess${if (retroactive) " - retroactive" else ""}:::::::")
+      wrapRegular(dtx, inputAccess, retroactive, cursorCache)
     }
 
     final def readPath(in: DataInput): S#Acc = Path.read[S](in)
@@ -1117,6 +1120,7 @@ object ConfluentImpl {
     final def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx) {
       val newTree = meldInfo.requiresNewTree
       val outTerm = if (newTree) {
+        require(!tx.isRetroactive, "Cannot meld in a retroactive transaction")
         flushNewTree(meldInfo.outputLevel)
       } else {
         if (newVersion) flushOldTree() else tx.inputAccess.term
@@ -1221,14 +1225,28 @@ object ConfluentImpl {
       val (index, parentTerm) = tx.inputAccess.splitIndex
       val tree                = readIndexTree(index.term)
       val parent              = readTreeVertex(tree.tree, /* index, */ parentTerm)._1
-      val child               = tree.tree.insertChild(parent, childTerm)
+      val retro               = tx.isRetroactive
+
+      val child = if (retro) {
+        tree.tree.insertRetroChild(parent, childTerm)
+        // tree.tree.insertRetroParent(parent, childTerm)
+      } else {
+        tree.tree.insertChild(parent, childTerm)
+      }
+
       writeTreeVertex(tree, child)
       val tsMap               = readTimeStampMap(index)
       tsMap.add(childTerm, ()) // XXX TODO: more efficient would be to pass in `child` directly
 
       // ---- partial ----
-      val pParent             = readPartialTreeVertex(/* index, */ parentTerm)
-      val pChild              = partialTree.insertChild(pParent, childTerm)
+      val pParent = readPartialTreeVertex(/* index, */ parentTerm)
+
+      val pChild = if (retro)
+        partialTree.insertRetroChild(pParent, childTerm)
+        // partialTree.insertRetroParent(pParent, childTerm)
+      else
+        partialTree.insertChild(pParent, childTerm)
+
       writePartialTreeVertex(pChild)
 
       childTerm

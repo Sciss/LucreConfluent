@@ -29,7 +29,7 @@ package confluent
 package impl
 
 import concurrent.stm.TxnExecutor
-import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
+import serial.{DataInput, DataOutput}
 
 object CursorImpl {
   private final val COOKIE  = 0x4375  // "Cu"
@@ -88,20 +88,20 @@ object CursorImpl {
       TxnExecutor.defaultAtomic { itx =>
         implicit val dtx  = system.durable.wrap(itx)
         val inputAccess   = path()
-        performStep(inputAccess, dtx, fun)
+        performStep(inputAccess, retroactive = false, dtx = dtx, fun = fun)
       }
     }
 
-    def stepFrom[A](inputAccess: S#Acc)(fun: S#Tx => A): A = {
+    def stepFrom[A](inputAccess: S#Acc, retroactive: Boolean)(fun: S#Tx => A): A = {
       TxnExecutor.defaultAtomic { itx =>
         implicit val dtx  = system.durable.wrap(itx)
         path()            = inputAccess
-        performStep(inputAccess, dtx, fun)
+        performStep(inputAccess, retroactive, dtx, fun)
       }
     }
 
-    private def performStep[A](inputAccess: S#Acc, dtx: D1#Tx, fun: S#Tx => A): A = {
-      val tx = system.createTxn(dtx, inputAccess, this)
+    private def performStep[A](inputAccess: S#Acc, retroactive: Boolean, dtx: D1#Tx, fun: S#Tx => A): A = {
+      val tx = system.createTxn(dtx, inputAccess, retroactive, this)
       logCursor(s"${id.toString} step. input path = $inputAccess")
       fun(tx)
     }

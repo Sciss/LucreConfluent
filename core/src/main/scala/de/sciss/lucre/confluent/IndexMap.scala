@@ -36,4 +36,6 @@ trait IndexMap[S <: Sys[S], A] extends Writable {
   def nearestOption(term: Long)(implicit tx: S#Tx): Option[(Long, A)]
 
   def nearestUntil(timeStamp: Long, term: Long)(implicit tx: S#Tx): Option[(Long, A)]
+
+  def debugPrint(implicit tx: S#Tx): String
 }

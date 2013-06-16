@@ -1028,7 +1028,7 @@ object ConfluentImpl {
     }
 
     final def createTxn(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx = {
-      log(s"::::::: atomic - input access = $inputAccess${if (retroactive) " - retroactive" else ""}:::::::")
+      log(s"::::::: atomic - input access = $inputAccess${if (retroactive) " - retroactive" else ""} :::::::")
       wrapRegular(dtx, inputAccess, retroactive, cursorCache)
     }
 
@@ -1286,6 +1286,8 @@ object ConfluentImpl {
 
       override def toString = s"IndexMap($map)" // index.mkString("IndexMap(<", ",", ">, " + map + ")")
 
+      def debugPrint(implicit tx: S#Tx): String = map.debugPrint(durableTx(tx))
+
       def nearest(term: Long)(implicit tx: S#Tx): (Long, A) = {
         implicit val dtx = durableTx(tx)
         val v = readTreeVertex(map.full, /* index, */ term)._1
@@ -1381,6 +1383,8 @@ object ConfluentImpl {
         map.write _
       }
     }
+
+    def debugPrintIndex(index: S#Acc)(implicit tx: S#Tx): String = readTimeStampMap(index).debugPrint
 
     // reads the index map maintained for full trees allowing time stamp search
     // (using cookie `5`).
@@ -1495,6 +1499,8 @@ object ConfluentImpl {
       extends IndexMap[S, A] {
 
       override def toString = s"PartialMap($map)" // index.mkString("PartialMap(<", ",", ">, " + map + ")")
+
+      def debugPrint(implicit tx: S#Tx): String = map.debugPrint(durableTx(tx))
 
       def nearest(term: Long)(implicit tx: S#Tx): (Long, A) = {
         implicit val dtx = durableTx(tx)

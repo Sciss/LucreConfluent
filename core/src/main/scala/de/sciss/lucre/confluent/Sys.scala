@@ -271,4 +271,6 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   private[confluent] def versionInfo(term: Long)(implicit tx: TxnLike): VersionInfo
 
   private[confluent] def versionUntil(access: S#Acc, timeStamp: Long)(implicit tx: S#Tx): S#Acc // XXX TODO: can we get to TxnLike here, too?
+
+  def debugPrintIndex(index: S#Acc)(implicit tx: S#Tx): String
 }

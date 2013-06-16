@@ -13,45 +13,59 @@ object RetroactiveEvents extends App {
 
   implicit object Ser extends evt.NodeSerializer[S, Foo] {
     def read(in: DataInput, access: S#Acc, targets: evt.Targets[S])(implicit tx: S#Tx) =
-      new Foo(targets, tx.readIntVar(targets.id, in))
+      new Foo(targets, tx.readIntVar(targets.id, in), tx.readVar[String](targets.id, in))
   }
 
-  final class Foo(val targets: evt.Targets[S], vr: S#Var[Int]) extends evt.impl.SingleGenerator[S, Int, Foo] {
+  final class Foo(val targets: evt.Targets[S], _a: S#Var[Int], _b: S#Var[String])
+    extends evt.impl.SingleGenerator[S, Either[Int, String], Foo] {
+
     def reader = Ser
 
-    def apply()(implicit tx: S#Tx): Int = vr()
-    def update(value: Int)(implicit tx: S#Tx) {
-      val old = vr()
+    def a(implicit tx: S#Tx): Int = _a()
+    def a_=(value: Int)(implicit tx: S#Tx) {
+      val old = _a()
       if (old != value) {
-        vr() = value
-        fire(value)
+        _a() = value
+        fire(Left(value))
+      }
+    }
+
+    def b(implicit tx: S#Tx): String = _b()
+    def b_=(value: String)(implicit tx: S#Tx) {
+      val old = _b()
+      if (old != value) {
+        _b() = value
+        fire(Right(value))
       }
     }
 
     def writeData(out: DataOutput) {
-      vr.write(out)
+      _a.write(out)
+      _b.write(out)
     }
 
-    def disposeData()(implicit tx: RetroactiveEvents.S#Tx) {
-      vr.dispose()
+    def disposeData()(implicit tx: S#Tx) {
+      _a.dispose()
+      _b.dispose()
     }
+
+    def print(implicit tx: S#Tx): String = s"Foo(a = ${_a()}, b = ${_b()})"
   }
 
-  val (access, cursor1) = system.cursorRoot { implicit tx =>
+  val (access, Seq(cursor1, cursor2, cursor3)) = system.cursorRoot { implicit tx =>
     val tgt = evt.Targets[S]
-    new Foo(tgt, tx.newIntVar(tgt.id, 0))
+    val id  = tgt.id
+    new Foo(tgt, tx.newIntVar(id, 0), tx.newVar(id, "foo"))
   } { implicit tx => _ =>
-    system.newCursor()
+    Seq.fill(3)(system.newCursor())
   }
-
-  val cursor2 = cursor1.step { implicit tx => system.newCursor() }
 
   cursor1.step { implicit tx =>
-    access().update(1)
+    access().b_=("bar")
   }
 
   cursor2.step { implicit tx =>
-    access().update(2)
+    access().b_=("baz")
   }
 
   cursor1.step { implicit tx =>
@@ -68,31 +82,32 @@ object RetroactiveEvents extends App {
     }
   }
 
-  cursor1.step { implicit tx =>
-    access().update(3)
-  }
-
-  cursor2.step { implicit tx =>
-    access().update(4)
-  }
-
-  println(s"(A) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().apply() }}")
-  println(s"(A) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().apply() }}")
-
-  val retroAcc = cursor1.stepFrom(Sys.Acc.root, retroactive = true) { implicit tx =>
-    access().update(5)
+  val retroAcc = cursor3.stepFrom(Sys.Acc.root, retroactive = true) { implicit tx =>
+    access().a_=(666)
     tx.inputAccess
   }
   println(s"Retro input access was $retroAcc")
 
-  println(s"(B) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().apply() }}")
-  println(s"(B) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().apply() }}")
+  println(s"(B) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().print }}")
+  println(s"(B) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().print }}")
 
   cursor2.step { implicit tx =>
     val id = tx.newID()
     tx.newIntVar(id, 666)   // enforce write version
   }
 
-  println(s"(C) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().apply() }}")
-  println(s"(C) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().apply() }}")
+  println(s"(C) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().print }}")
+  println(s"(C) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().print }}")
+
+  cursor1.step { implicit tx =>
+    access().a_=(3)
+  }
+
+  cursor2.step { implicit tx =>
+    access().a_=(4)
+  }
+
+  println(s"(A) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().print }}")
+  println(s"(A) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().print }}")
+
 }

@@ -10,7 +10,7 @@ homepage in ThisBuild := Some(url("https://github.com/Sciss/LucreConfluent"))
 
 licenses in ThisBuild := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion in ThisBuild := "2.10.1"
+scalaVersion in ThisBuild := "2.10.2"
 
 resolvers in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
@@ -18,7 +18,7 @@ retrieveManaged in ThisBuild := true
 
 scalacOptions in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
 
-scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
+// scalacOptions in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 
 scalacOptions in ThisBuild += "-no-specialization" // mother*******
 

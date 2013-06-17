@@ -8,6 +8,8 @@ import lucre.{event => evt}
 import serial.{DataInput, DataOutput}
 
 object RetroactiveEvents extends App {
+  def partial = false
+
   val system  = ConfluentReactive(BerkeleyDB.tmp())
   type S      = ConfluentReactive
 
@@ -53,7 +55,7 @@ object RetroactiveEvents extends App {
   }
 
   val (access, Seq(cursor1, cursor2, cursor3)) = system.cursorRoot { implicit tx =>
-    val tgt = evt.Targets[S]
+    val tgt = if (partial) evt.Targets.partial[S] else evt.Targets[S]
     val id  = tgt.id
     new Foo(tgt, tx.newIntVar(id, 0), tx.newVar(id, "foo"))
   } { implicit tx => _ =>
@@ -109,5 +111,4 @@ object RetroactiveEvents extends App {
 
   println(s"(A) In cursor 1: ${cursor1.step { implicit tx => tx.inputAccess -> access().print }}")
   println(s"(A) In cursor 2: ${cursor2.step { implicit tx => tx.inputAccess -> access().print }}")
-
 }

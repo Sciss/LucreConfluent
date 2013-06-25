@@ -32,7 +32,7 @@ import annotation.switch
 import stm.DataStore
 import serial.{ImmutableSerializer, DataOutput}
 import scala.{specialized => spec}
-import data.{KeySpec, ValueSpec}
+import data.ValueSpec
 
 object DurablePartialMapImpl {
   private sealed trait Entry[S <: Sys[S], A]

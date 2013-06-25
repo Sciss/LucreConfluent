@@ -100,7 +100,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
     type Branch = DeterministicSkipOctree[S, D, D#Point]#Branch
     //      type Leaf   = DeterministicSkipOctree[ S, D, D#Point ]#Leaf
 
-      val (t, q, h0, numOrthants) = cursor.step { implicit tx =>
+      val (t: DeterministicSkipOctree[S, D, D#Point], q, h0, numOrthants) = cursor.step { implicit tx =>
          val _t = access()
          (_t, _t.hyperCube, _t.lastTreeImpl, _t.numOrthants)
       }
@@ -268,9 +268,9 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       val dy = if( p.y < cube.cy ) (cube.cy + (cube.extent - 1)).toLong - p.y else p.y - (cube.cy - cube.extent)
       val dz = if( p.z < cube.cz ) (cube.cz + (cube.extent - 1)).toLong - p.z else p.z - (cube.cz - cube.extent)
       dx <= 0xB504F300L && dy <= 0xB504F300L && dz <= 0xB504F300L &&
-         (dx * dx + dy * dy > 0L) &&
-         (dx * dx + dz * dz > 0L) &&
-         (dy * dy + dz * dz > 0L)
+         dx * dx + dy * dy > 0L &&
+         dx * dx + dz * dz > 0L &&
+         dy * dy + dz * dz > 0L
    }
 
    val euclideanDist3D = IntDistanceMeasure3D.euclideanSq
@@ -298,7 +298,9 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
       val nnM: Map[ D#Point , D#Point ] = ps.map( p => p -> ks.minBy( p2 => euclideanDist.distance( p2, p )))( breakOut )
       Then( "the results should match brute force with the corresponding set" )
       assert( nnT == nnM, {
-         (nnT.collect { case (q, v) if( nnM( q ) != v ) => (q, v, nnM( q ))}).take( 10 ).toString()
+         nnT.collect {
+           case (q, v) if nnM(q) != v => (q, v, nnM(q))
+         }.take( 10 ).toString()
       })
    }
 

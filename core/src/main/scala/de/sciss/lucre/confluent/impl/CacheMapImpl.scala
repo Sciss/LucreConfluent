@@ -214,7 +214,7 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
    */
   final def putCacheTxn[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
                                            (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
-    putCacheOnly(new TxnEntry(key, path, value))
+    putCacheOnly(new TxnEntry[S, K, A](key, path, value))
   }
 
   /**
@@ -232,7 +232,7 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
    */
   final def putCacheNonTxn[A](key: K, path: S#Acc, value: A)
                              (implicit tx: S#Tx, serializer: ImmutableSerializer[A]) {
-    putCacheOnly(new NonTxnEntry(key, path, value))
+    putCacheOnly(new NonTxnEntry[S, K, A](key, path, value))
   }
 
   /**
@@ -363,7 +363,7 @@ trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
 
   final def putPartial[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
                                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
-    putCacheOnly(new PartialEntry(key, path, value))
+    putCacheOnly(new PartialEntry[S, K, A](key, path, value))
   }
 
   final def getPartial[A](key: K, path: S#Acc)(implicit tx: S#Tx,

@@ -35,7 +35,7 @@ object CursorImpl {
   private final val COOKIE  = 0x4375  // "Cu"
 
   implicit def serializer[S <: Sys[S], D1 <: stm.DurableLike[D1]](
-    implicit system: S { type D = D1 }): serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] = new Ser
+    implicit system: S { type D = D1 }): serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] = new Ser[S, D1]
 
   //   private def pathSerializer[ S <: Sys[ S ]]( system: S ) : stm.Serializer[ S#Tx, S#Acc, S#Acc ] = anyPathSer.asInstanceOf[ PathSer[ S ]]
   //

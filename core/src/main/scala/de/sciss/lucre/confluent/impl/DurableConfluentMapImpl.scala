@@ -32,7 +32,7 @@ import annotation.switch
 import stm.DataStore
 import serial.{ImmutableSerializer, DataOutput}
 import scala.{specialized => spec}
-import data.{KeySpec, ValueSpec}
+import data.ValueSpec
 
 object DurableConfluentMapImpl {
   private sealed trait     Entry      [S <: Sys[S], A]
@@ -63,7 +63,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
         case 2 => true // a map is found
         case _ => false // only a partial hash is found
       }
-    } getOrElse (false)
+    } getOrElse false
   }
 
   // XXX boom! specialized

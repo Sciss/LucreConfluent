@@ -91,14 +91,14 @@ object ThesisFiatKaplanExample extends App {
     w1.next()     = Some(w0)
   }
 
-  def traverse[S <: Sys[S]](l: LinkedList[S, _])
+  def traverse[S <: Sys[S], A](l: LinkedList[S, A])
                            (implicit tx: S#Tx) {
-    def loop(opt: Option[l.Cell]): Unit = opt match {
+    def loop(opt: Option[l.Cell]) { opt match {
       case Some(cell) =>
         println(cell.value)
         loop(cell.next())
       case _ =>
-    }
+    }}
     loop(l.head())
   }
 

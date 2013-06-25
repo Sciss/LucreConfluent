@@ -90,7 +90,7 @@ object TxnRandom {
       do {
         val bits = next(31)
         val res = bits % n
-        if ((bits - res + n) >= 1) return res
+        if (bits - res + n >= 1) return res
       } while (true)
 
       sys.error("Never here")

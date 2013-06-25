@@ -16,8 +16,8 @@ private[confluent] object PathImpl {
 
     def apply(c: Long) = (1, c >> 32)
 
-    def |+|(a: (Int, Long), b: (Int, Long)) = ((a._1 + b._1), (a._2 + b._2))
-    override def |+|(a: (Int, Long), b: (Int, Long), c: (Int, Long)) = ((a._1 + b._1 + c._1), (a._2 + b._2 + c._2))
+    def |+|(a: (Int, Long), b: (Int, Long)) = (a._1 + b._1, a._2 + b._2)
+    override def |+|(a: (Int, Long), b: (Int, Long), c: (Int, Long)) = (a._1 + b._1 + c._1, a._2 + b._2 + c._2)
   }
 
   implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, S#Acc] =
@@ -124,7 +124,7 @@ private[confluent] object PathImpl {
     }
 
     override def equals(that: Any): Boolean =
-      that.isInstanceOf[PathLike] && (that.asInstanceOf[PathLike].sum == sum)
+      that.isInstanceOf[PathLike] && that.asInstanceOf[PathLike].sum == sum
 
     def :+(last: Long): S#Acc = wrap(tree :+ last)
     def +:(head: Long): S#Acc = wrap(head +: tree)
@@ -165,7 +165,7 @@ private[confluent] object PathImpl {
 
     def addTerm(term: Long)(implicit tx: S#Tx): S#Acc = {
       val t = if (tree.isEmpty) {
-        FingerTree.two(term, term)
+        FingerTree.two[(Int, Long), Long](term, term)
       } else {
         val oldLevel = tx.readTreeVertexLevel(this.term)
         val newLevel = tx.readTreeVertexLevel(term)
@@ -181,7 +181,7 @@ private[confluent] object PathImpl {
     def seminal: S#Acc = {
       val e = indexTerm
       val t = term
-      wrap(FingerTree.two(e, t))
+      wrap(FingerTree.two[(Int, Long), Long](e, t))
     }
 
     def indexTerm: Long = apply(size - 2)

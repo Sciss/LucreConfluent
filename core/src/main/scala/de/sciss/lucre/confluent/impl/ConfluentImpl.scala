@@ -55,7 +55,7 @@ object ConfluentImpl {
     def term: Long = tree.root.version
 
     override def equals(that: Any): Boolean = {
-      that.isInstanceOf[Sys.IndexTree[_]] && (term == that.asInstanceOf[Sys.IndexTree[_]].term)
+      that.isInstanceOf[Sys.IndexTree[_]] && term == that.asInstanceOf[Sys.IndexTree[_]].term
     }
 
     def write(out: DataOutput) {
@@ -1203,7 +1203,7 @@ object ConfluentImpl {
         // map for the entry vertex at that index minus 2, and find the ancestor
         // of the tree's exit vetex at idxP - 1.
         val idxP = -idx - 1
-        if ((idxP == sz) && (versionInfo(access.term).timeStamp <= timeStamp)) {
+        if (idxP == sz && versionInfo(access.term).timeStamp <= timeStamp) {
           access
         } else {
           val (index, treeExit) = access.take(idxP).splitIndex

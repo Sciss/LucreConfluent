@@ -1,7 +1,6 @@
 package de.sciss.lucre
 package confluent
 
-import java.io.File
 import stm.store.BerkeleyDB
 import annotation.tailrec
 import org.scalatest.{FunSpec, GivenWhenThen}

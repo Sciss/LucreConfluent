@@ -30,7 +30,7 @@ package confluent
 import stm.DataStore
 import impl.{PartialIntMapImpl, ConfluentLongMapImpl, ConfluentIntMapImpl}
 import scala.{specialized => spec}
-import data.{KeySpec, ValueSpec}
+import data.KeySpec
 import serial.ImmutableSerializer
 
 object DurablePersistentMap {

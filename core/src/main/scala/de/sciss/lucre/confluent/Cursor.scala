@@ -28,7 +28,7 @@ package lucre
 package confluent
 
 import stm.Disposable
-import de.sciss.serial.{ImmutableSerializer, DataInput, Writable}
+import de.sciss.serial.{DataInput, Writable}
 import impl.{CursorImpl => Impl}
 
 object Cursor {

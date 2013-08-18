@@ -31,7 +31,7 @@ package impl
 import de.sciss.lucre.stm.{TxnLike, InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
 import serial.{ImmutableSerializer, DataInput, DataOutput}
 import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
-import collection.immutable.{IndexedSeq => IIdxSeq, LongMap, IntMap, Queue => IQueue}
+import collection.immutable.{IndexedSeq => Vec, LongMap, IntMap, Queue => IQueue}
 import data.Ancestor
 import annotation.tailrec
 import util.hashing.MurmurHash3
@@ -72,9 +72,9 @@ object ConfluentImpl {
   // ------------- BEGIN transactions -------------
   // ----------------------------------------------
 
-  private def emptySeq[A]: IIdxSeq[A] = anyEmptySeq
+  private def emptySeq[A]: Vec[A] = anyEmptySeq
 
-  private val anyEmptySeq = IIdxSeq.empty[Nothing]
+  private val anyEmptySeq = Vec.empty[Nothing]
 
   trait TxnMixin[S <: Sys[S]]
     extends Sys.Txn[S] with stm.impl.BasicTxnImpl[S] with VersionInfo.Modifiable {
@@ -82,7 +82,7 @@ object ConfluentImpl {
 
     // ---- abstract ----
 
-    protected def flushCaches(meld: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]): Unit
+    protected def flushCaches(meld: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]]): Unit
 
     // ---- info ----
 
@@ -408,7 +408,7 @@ object ConfluentImpl {
 
     protected def cursorCache: Cache[S#Tx]
 
-    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]): Unit =
+    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]]): Unit =
       system.flushRegular(meldInfo, newVersion, caches :+ cursorCache)(this)
 
     override def toString = "Confluent#Tx" + inputAccess
@@ -422,7 +422,7 @@ object ConfluentImpl {
 
     final def isRetroactive = false
 
-    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]]): Unit =
+    final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]]): Unit =
       system.flushRoot(meldInfo, newVersion, caches)(this)
 
     override def toString = "Confluent.RootTxn"
@@ -1080,7 +1080,7 @@ object ConfluentImpl {
       (rootVar, aVal, bVal)
     }
 
-    final def flushRoot(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])
+    final def flushRoot(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])
                        (implicit tx: S#Tx): Unit = {
       require(!meldInfo.requiresNewTree, "Cannot meld in the root version")
       val outTerm = tx.inputAccess.term
@@ -1088,7 +1088,7 @@ object ConfluentImpl {
       flush(outTerm, caches)
     }
 
-    final def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])
+    final def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])
                           (implicit tx: S#Tx): Unit = {
       val newTree = meldInfo.requiresNewTree
       val outTerm = if (newTree) {
@@ -1187,7 +1187,7 @@ object ConfluentImpl {
       }
     }
 
-    private def flush(outTerm: Long, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit =
+    private def flush(outTerm: Long, caches: Vec[Cache[S#Tx]])(implicit tx: S#Tx): Unit =
       caches.foreach(_.flushCache(outTerm))
 
     private def flushOldTree()(implicit tx: S#Tx): Long = {

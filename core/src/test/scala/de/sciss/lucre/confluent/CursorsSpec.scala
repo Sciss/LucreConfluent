@@ -3,7 +3,7 @@ package lucre
 package confluent
 
 import stm.MutableSerializer
-import collection.immutable.{IndexedSeq => IIdxSeq}
+import collection.immutable.{IndexedSeq => Vec}
 import serial.{DataInput, DataOutput}
 
 /**
@@ -27,8 +27,8 @@ class CursorsSpec extends ConfluentSpec {
         val field = tx.readIntVar(id, in)
         //            val dtx: D#Tx  = tx.durable
         //            val did        = dtx.readID( in, () )
-        //            val cursors    = dtx.readVar[ IIdxSeq[ Cursor[ S ]]]( did, in )
-        val cursors = tx.readVar[IIdxSeq[Cursor[S, D]]](id, in)
+        //            val cursors    = dtx.readVar[ Vec[ Cursor[ S ]]]( did, in )
+        val cursors = tx.readVar[Vec[Cursor[S, D]]](id, in)
         new Entity(id, field, cursors)
       }
     }
@@ -38,14 +38,14 @@ class CursorsSpec extends ConfluentSpec {
       val field = tx.newIntVar(id, init)
       //         val dtx: D#Tx  = tx.durable
       //         val did        = dtx.newID()
-      val initCsr = IIdxSeq(tx.system.newCursor(tx.inputAccess), tx.system.newCursor(tx.inputAccess))
-      //         val cursors    = dtx.newVar[ IIdxSeq[ Cursor[ S ]]]( did, initCsr )
-      val cursors = tx.newVar[IIdxSeq[Cursor[S, D]]](id, initCsr)
+      val initCsr = Vec(tx.system.newCursor(tx.inputAccess), tx.system.newCursor(tx.inputAccess))
+      //         val cursors    = dtx.newVar[ Vec[ Cursor[ S ]]]( did, initCsr )
+      val cursors = tx.newVar[Vec[Cursor[S, D]]](id, initCsr)
       new Entity(id, field, cursors)
     }
   }
 
-  class Entity(val id: S#ID, val field: S#Var[Int], cursorsVar: S#Var[IIdxSeq[Cursor[S, D]]])
+  class Entity(val id: S#ID, val field: S#Var[Int], cursorsVar: S#Var[Vec[Cursor[S, D]]])
     extends stm.Mutable.Impl[S] {
     protected def disposeData()(implicit tx: S#Tx): Unit = {
       //         implicit val dtx: D#Tx  = tx.durable
@@ -53,7 +53,7 @@ class CursorsSpec extends ConfluentSpec {
       cursorsVar.dispose()
     }
 
-    def cursors(implicit tx: S#Tx): IIdxSeq[Cursor[S, D]] = {
+    def cursors(implicit tx: S#Tx): Vec[Cursor[S, D]] = {
       //         implicit val dtx: D#Tx  = tx.durable
       cursorsVar()
     }
@@ -85,6 +85,6 @@ class CursorsSpec extends ConfluentSpec {
          }
       }
 
-      assert( res === IIdxSeq( 1, 2 ))
+      assert( res === Vec( 1, 2 ))
    }
 }

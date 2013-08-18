@@ -90,6 +90,6 @@ class TimeStampSpec extends ConfluentSpec {
       assert( path2u4 === path2 )
       assert( path2u5 === path2 )
 
-//      assert( res === IIdxSeq( 1, 2 ))
+//      assert( res === Vec( 1, 2 ))
    }
 }

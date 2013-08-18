@@ -30,7 +30,7 @@ package confluent
 import de.sciss.lucre.stm.{Txn => _Txn, SpecGroup => ialized, TxnLike, DataStore, Disposable, Identifier}
 import data.Ancestor
 import de.sciss.fingertree.FingerTree
-import collection.immutable.{IndexedSeq => IIdxSeq}
+import collection.immutable.{IndexedSeq => Vec}
 import scala.{specialized => spec}
 import serial.{ImmutableSerializer, DataInput, Writable}
 
@@ -44,9 +44,9 @@ object Sys {
   }
 
   private[confluent] trait IndexTree[D <: stm.DurableLike[D]] extends Writable with Disposable[D#Tx] {
-    def tree: Ancestor.Tree[D, Long]
+    def tree : Ancestor.Tree[D, Long]
     def level: Int
-    def term: Long
+    def term : Long
   }
 
   trait IndexMapHandler[S <: Sys[S]] {
@@ -231,8 +231,8 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   private[confluent] def indexMap: Sys.IndexMapHandler[S]
 
-  private[confluent] def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
-  private[confluent] def flushRoot   (meldInfo: MeldInfo[S], newVersion: Boolean, caches: IIdxSeq[Cache[S#Tx]])(implicit tx: S#Tx): Unit
+  private[confluent] def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])(implicit tx: S#Tx): Unit
+  private[confluent] def flushRoot   (meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])(implicit tx: S#Tx): Unit
 
   /* private[confluent] */ def readPath(in: DataInput): S#Acc
 

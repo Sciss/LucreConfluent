@@ -30,7 +30,7 @@
 //import javax.swing.{AbstractAction, JButton, Box, JComponent, JTextField, BorderFactory, JLabel, GroupLayout, JPanel, WindowConstants, JFrame}
 //import collection.mutable.Buffer
 //import de.sciss.lucre.expr.{Spans, Longs, Strings, Span}
-//import collection.immutable.{IndexedSeq => IIdxSeq}
+//import collection.immutable.{IndexedSeq => Vec}
 //
 //import concurrent.stm.InTxn
 //import de.sciss.lucre.{DataInput, DataOutput, expr, event}
@@ -192,7 +192,7 @@
 //      val infra = System[ S ]()
 //      import infra._
 //      import regions._
-//      val access = system.root { _ => IIdxSeq.empty[ EventRegion ]}
+//      val access = system.root { _ => Vec.empty[ EventRegion ]}
 //
 //      system.step { implicit tx =>
 //         import strings.stringOps
@@ -209,7 +209,7 @@
 ////            _r1.span_#.stop_# // .max( 12000L ))
 //         )
 //         val _r3   = EventRegion( _r1.name_#.append( "+" ).append( _r2.name_# ), _span3 )
-//         access.transform( _ ++ IIdxSeq( _r1, _r2, _r3 ))
+//         access.transform( _ ++ Vec( _r1, _r2, _r3 ))
 //      }
 //
 ////      val (infra, vs) = system.step { implicit tx =>
@@ -217,7 +217,7 @@
 ////         (_infra, _vs, _rvs.last)
 ////      }
 //
-//      val rvs = IIdxSeq.tabulate( 3 ) { i => (tx: S#Tx) => access.get( tx )( i )}
+//      val rvs = Vec.tabulate( 3 ) { i => (tx: S#Tx) => access.get( tx )( i )}
 //
 //      val vs = rvs.zipWithIndex.map {
 //         case (rv, i) => new RegionView[ EventRegion ]( rv, "Region #" + (i+1) )

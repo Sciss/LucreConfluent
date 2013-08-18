@@ -1,7 +1,7 @@
 //package de.sciss.lucre
 //package confluent
 //
-//import collection.immutable.{IndexedSeq => IIdxSeq}
+//import collection.immutable.{IndexedSeq => Vec}
 //import de.sciss.lucre.{event => evt}
 //import java.io.File
 //import stm.impl.BerkeleyDB
@@ -28,7 +28,7 @@
 //   }
 //}
 //class EventMeld[ S <: KSys[ S ]] {
-//   implicit def seqSer[ A ]( implicit peer: ImmutableSerializer[ A ]) : ImmutableSerializer[ IIdxSeq[ A ]] =
+//   implicit def seqSer[ A ]( implicit peer: ImmutableSerializer[ A ]) : ImmutableSerializer[ Vec[ A ]] =
 //      ImmutableSerializer.indexedSeq[ A ]
 //
 //   object Group extends evt.Decl[ S, Group ] {
@@ -38,25 +38,25 @@
 //      declare[ Element ](    _.elementChanged    )
 //
 //      sealed trait Update { def group: Group }
-//      sealed trait Collection extends Update { def children: IIdxSeq[ Child ]}
-//      final case class Added(   group: Group, children: IIdxSeq[ Child ]) extends Collection
-//      final case class Removed( group: Group, children: IIdxSeq[ Child ]) extends Collection
-//      final case class Element( group: Group, changes: IIdxSeq[ Child.Update ]) extends Update
+//      sealed trait Collection extends Update { def children: Vec[ Child ]}
+//      final case class Added(   group: Group, children: Vec[ Child ]) extends Collection
+//      final case class Removed( group: Group, children: Vec[ Child ]) extends Collection
+//      final case class Element( group: Group, changes: Vec[ Child.Update ]) extends Update
 //
 //      def empty( implicit tx: S#Tx ) : Group = new Group {
 //         protected val targets = evt.Targets[ S ]
-//         protected val childrenVar  = tx.newVar[ IIdxSeq[ Child ]]( targets.id, IIdxSeq.empty )
+//         protected val childrenVar  = tx.newVar[ Vec[ Child ]]( targets.id, Vec.empty )
 //      }
 //
 //      private object Ser extends evt.NodeSerializer[ S, Group ] {
 //         def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])( implicit tx: S#Tx ) : Group = new Group {
 //            protected val targets   = _targets
-//            protected val childrenVar  = tx.readVar[ IIdxSeq[ Child ]]( id, in )
+//            protected val childrenVar  = tx.readVar[ Vec[ Child ]]( id, in )
 //         }
 //      }
 //   }
 //   trait Group extends evt.Compound[ S, Group.type, Group ] {
-//      protected def childrenVar: S#Var[ IIdxSeq[ Child ]]
+//      protected def childrenVar: S#Var[ Vec[ Child ]]
 //      protected def decl = Group
 //
 //      lazy val collectionChanged : evt.Trigger[ S, Group.Collection, Group ] = event[ Group.Collection ]
@@ -71,7 +71,7 @@
 //         collectionChanged( Group.Added( this, seq ))
 //      }
 //
-//      def elements( implicit tx: S#Tx ) : IIdxSeq[ Child ] = childrenVar.get
+//      def elements( implicit tx: S#Tx ) : Vec[ Child ] = childrenVar.get
 //
 //      protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //         childrenVar.dispose()
@@ -146,7 +146,7 @@
 //
 //      import Observation._
 //
-//      val observations = STMRef( IIdxSeq.empty[ Observation ])
+//      val observations = STMRef( Vec.empty[ Observation ])
 //
 //      def group( implicit tx: S#Tx )   = access.get._1
 //      def nameVar( implicit tx: S#Tx ) = access.get._2
@@ -154,11 +154,11 @@
 //
 //      def assertObservations( expected: Observation* ): Unit = {
 //         val expSeq  = expected.toIndexedSeq
-//         val obs     = observations.single.swap( IIdxSeq.empty )
+//         val obs     = observations.single.swap( Vec.empty )
 //         assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
 //      }
 //
-//      def traverse() : IIdxSeq[ String ] = {
+//      def traverse() : Vec[ String ] = {
 //         val pairs = cursor.step { implicit tx =>
 //            group.elements.map( c => c -> c.name.value )
 //         }

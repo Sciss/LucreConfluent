@@ -26,7 +26,7 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
       import types._
 
-//      def timeWarp( path: Sys#Acc ) {
+//      def timeWarp( path: Sys#Acc ): Unit = {
 //         val s1 = s.asInstanceOf[ Confluent.System ]   // XXX ugly
 //         s1.step( s1.position_=( path )( _ ))
 //      }
@@ -46,20 +46,20 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          Given( "v1 : Append a new node w1 with x = 2" )
          cursor.step { implicit tx =>
-            val head    = access()
-            val newLast = Node( "w1", 2 )
-            @tailrec def step( last: Node ) {
-               last.next() match {
-                  case None =>
-                     last.next()    = Some(newLast)
-                     newLast.prev() = Some(last)
-                  case Some( n1 ) => step( n1 )
-               }
-            }
-            head match {
-               case Some( n ) => step( n )
-               case None => access() = Some(newLast)
-            }
+           val head     = access()
+           val newLast  = Node("w1", 2)
+           @tailrec def step(last: Node): Unit =
+             last.next() match {
+               case None =>
+                 last.next() = Some(newLast)
+                 newLast.prev() = Some(last)
+               case Some(n1) => step(n1)
+             }
+
+           head match {
+             case Some(n) => step(n)
+             case None    => access() = Some(newLast)
+           }
          }
 
          When( "the result is converted to a plain list in a new transaction" )
@@ -74,19 +74,21 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
 
          ///////////////////////////// v2 /////////////////////////////
 
-         Given( "v2 : Increment all nodes by 2" )
-//         timeWarp( Confluent.Path.root )
-         cursor.step { implicit tx =>
-            @tailrec def step( last: Option[ Node ]) { last match {
-               case None =>
-               case Some( n ) =>
-                  n.value.transform( _ + 2 )
-                  step( n.next() )
-            }}
-            step( access() )
-         }
+       Given("v2 : Increment all nodes by 2")
+       //         timeWarp( Confluent.Path.root )
+       cursor.step { implicit tx =>
+         @tailrec def step(last: Option[Node]): Unit =
+           last match {
+             case None    =>
+             case Some(n) =>
+               n.value.transform(_ + 2)
+               step(n.next())
+           }
 
-         When( "the result is converted to a plain list in a new transaction" )
+         step(access())
+       }
+
+       When( "the result is converted to a plain list in a new transaction" )
          val (_, res2) = cursor.step { implicit tx =>
             val node = access()
             tx.inputAccess -> toList( node )
@@ -130,17 +132,17 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
                case None => n
                case Some( n1 ) => findLast( n1 )
             }
-            @tailrec def step( n: Node ) {
-               n.value.transform( _ + 2 )
-               n.prev() match {
-                  case None =>
-                  case Some( n1 ) => step( n1 )
-               }
-            }
-            access() match {
-               case Some( n ) => step( findLast( n ))
+           @tailrec def step(n: Node): Unit = {
+             n.value.transform(_ + 2)
+             n.prev() match {
                case None =>
-            }
+               case Some(n1) => step(n1)
+             }
+           }
+           access() match {
+             case Some(n) => step(findLast(n))
+             case None    =>
+           }
          }
 
          When( "the result is converted to a plain list in a new transaction" )
@@ -155,10 +157,10 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
       }
    }
 
-   class Types[ S <: Sys[ S ]]( val s: S ) {
-      type Sys = S
+  class Types[S <: Sys[S]](val s: S) {
+    type Sys = S
 
-      object Node {
+    object Node {
          implicit object ser extends MutableSerializer[ S, Node ] {
             def readData( in: DataInput, _id: S#ID )( implicit tx: S#Tx ) : Node = new Node with Mutable.Impl[ S ] {
                val id      = _id
@@ -183,25 +185,26 @@ class  DoubleLinkedListSuite extends FunSpec with GivenWhenThen {
          def prev: S#Var[ Option[ Node ]]
          def next: S#Var[ Option[ Node ]]
 
-         protected def disposeData()( implicit tx: S#Tx ) {
-            value.dispose()
-            prev.dispose()
-            next.dispose()
-         }
+        protected def disposeData()(implicit tx: S#Tx): Unit = {
+          value.dispose()
+          prev .dispose()
+          next .dispose()
+        }
 
-         protected def writeData( out: DataOutput ) {
-            out.writeUTF( name )
-            value.write( out )
-            prev.write( out )
-            next.write( out )
-         }
+        protected def writeData(out: DataOutput): Unit = {
+          out.writeUTF(name)
+          value.write(out)
+          prev .write(out)
+          next .write(out)
+        }
 
-         override def toString = "Node(" + name + ", " + id + ")"
+        override def toString = "Node(" + name + ", " + id + ")"
       }
 
-      def toList( next: Option[ Node ])( implicit tx: S#Tx ) : List[ (String, Int) ] = next match {
-         case Some( n ) => (n.name, n.value()) :: toList( n.next() )
-         case _ => Nil
-      }
-   }
+    def toList(next: Option[Node])(implicit tx: S#Tx): List[(String, Int)] = next match {
+      case Some(n) => (n.name, n.value()) :: toList(n.next())
+      case _ => Nil
+    }
+  }
+
 }

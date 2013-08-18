@@ -36,15 +36,12 @@ package object confluent {
   var showPartialLog  = false
   var showCursorLog   = false
 
-  @elidable(CONFIG) private[confluent] def log(what: => String) {
+  @elidable(CONFIG) private[confluent] def log(what: => String): Unit =
     if (showLog) Console.out.println(logHeader.format(new Date()) + what)
-  }
 
-  @elidable(CONFIG) private[confluent] def logPartial(what: => String) {
+  @elidable(CONFIG) private[confluent] def logPartial(what: => String): Unit =
     if (showPartialLog) Console.out.println(logHeader.format(new Date()) + "partial " + what)
-  }
 
-  @elidable(CONFIG) private[confluent] def logCursor(what: => String) {
+  @elidable(CONFIG) private[confluent] def logCursor(what: => String): Unit =
     if (showCursorLog) Console.out.println(logHeader.format(new Date()) + "cursor " + what)
-  }
 }

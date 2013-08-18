@@ -30,7 +30,7 @@ package confluent
 import serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object ByteArraySerializer extends ImmutableSerializer[Array[Byte]] {
-  def write(v: Array[Byte], out: DataOutput) {
+  def write(v: Array[Byte], out: DataOutput): Unit = {
     out.writeInt(v.length)
     out.write(v)
   }

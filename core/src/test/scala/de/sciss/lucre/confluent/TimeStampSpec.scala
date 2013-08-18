@@ -6,7 +6,7 @@ package de.sciss.lucre.confluent
  */
 class TimeStampSpec extends ConfluentSpec {
    // ensure time stamps are distinct
-   def sleep() { Thread.sleep( 10 )}
+   def sleep(): Unit = Thread.sleep(10)
 
    "Time stamps and version info" should "work in a non-melded graph" in { system =>
       val (access, cursor) = system.cursorRoot { implicit tx => 0

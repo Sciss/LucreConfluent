@@ -26,9 +26,7 @@ private[confluent] object PathImpl {
   private val anySer = new Ser[Confluent, Durable]
 
   private final class Ser[S <: Sys[S], D <: stm.DurableLike[D]] extends serial.Serializer[D#Tx, D#Acc, S#Acc] {
-    def write(v: S#Acc, out: DataOutput) {
-      v.write(out)
-    }
+    def write(v: S#Acc, out: DataOutput): Unit = v.write(out)
 
     def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): S#Acc = {
       //        implicit val m  = PathMeasure
@@ -206,9 +204,9 @@ private[confluent] object PathImpl {
       (wrap(pre), t)
     }
 
-    def write(out: DataOutput) {
+    def write(out: DataOutput): Unit = {
       out.writeInt(size)
-      tree.iterator.foreach(out.writeLong(_))
+      tree.iterator.foreach(out.writeLong)
     }
 
     def index: S#Acc  = wrap(tree.init)

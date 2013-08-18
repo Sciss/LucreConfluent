@@ -66,7 +66,7 @@ object Hashing {
     *                   prefixes are provided for hashes which are not already present according to this function
     * @return  an iterator over the prefixes.
     */
-   def foreachPrefix( s: PathLike, contains: Long => Boolean )( fun: (Long, Long) => Unit ) {
+   def foreachPrefix(s: PathLike, contains: Long => Boolean)(fun: (Long, Long) => Unit): Unit = {
       val sz = s.size
       val m  = bitCount( sz )
       var j  = 1

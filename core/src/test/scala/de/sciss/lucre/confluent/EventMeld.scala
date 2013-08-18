@@ -63,7 +63,7 @@
 //      lazy val elementChanged    = collection( (c: Child) => c.renamed ).map( Group.Element( this, _ ))
 //      lazy val changed           = collectionChanged | elementChanged
 //
-//      def add( c: Child* )( implicit tx: S#Tx ) {
+//      def add( c: Child* )( implicit tx: S#Tx ): Unit = {
 //         val seq = c.toIndexedSeq
 //         if( seq.isEmpty ) return
 //         childrenVar.transform( _ ++ seq )
@@ -73,11 +73,11 @@
 //
 //      def elements( implicit tx: S#Tx ) : IIdxSeq[ Child ] = childrenVar.get
 //
-//      protected def disposeData()( implicit tx: S#Tx ) {
+//      protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //         childrenVar.dispose()
 //      }
 //
-//      protected def writeData( out: DataOutput ) {
+//      protected def writeData( out: DataOutput ): Unit = {
 //         childrenVar.write( out )
 //      }
 //   }
@@ -94,7 +94,7 @@
 //      final case class Renamed( child: Child, change: evt.Change[ String ]) extends Update
 //
 //      implicit val serializer : evt.NodeSerializer[ S, Child ] = new evt.NodeSerializer[ S, Child ] {
-////         def write( c: Child, out: DataOutput ) { out.writeString( c.name )}
+////         def write( c: Child, out: DataOutput ): Unit = out.writeString( c.name )
 //         def read( in: DataInput, access: S#Acc, _targets: evt.Targets[ S ])( implicit tx: S#Tx ) : Child =
 //            new Child {
 //               protected val targets   = _targets
@@ -111,13 +111,13 @@
 //      override def toString() = "Child" + id
 //
 //      def name( implicit tx: S#Tx ) : Expr[ S, String ] = name_#.get
-//      def name_=( ex: Expr[ S, String ])( implicit tx: S#Tx ) { name_#.set( ex )}
+//      def name_=( ex: Expr[ S, String ])( implicit tx: S#Tx ): Unit = name_#.set( ex )
 //
-//      protected def disposeData()( implicit tx: S#Tx ) {
+//      protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //         name_#.dispose()
 //      }
 //
-//      protected def writeData( out: DataOutput ) {
+//      protected def writeData( out: DataOutput ): Unit = {
 //         name_#.write( out )
 //      }
 //   }
@@ -129,12 +129,12 @@
 //   }
 //   sealed trait Observation
 //
-//   def run()( implicit system: S, cursor: Cursor[ S ]) {
+//   def run()( implicit system: S, cursor: Cursor[ S ]): Unit = {
 //      val imp = new EventMeld.ExprImplicits[ S ]
 //      import imp._
 //
 //      implicit object stringVarSerializer extends Serializer[ S#Tx, S#Acc, Expr.Var[ S, String ]] {
-//         def write( v: Expr.Var[ S, String ], out: DataOutput ) { v.write( out )}
+//         def write( v: Expr.Var[ S, String ], out: DataOutput ): Unit = v.write( out )
 //         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Expr.Var[ S, String ] =
 //            Strings2.readVar[ S ]( in, access )
 //      }
@@ -152,7 +152,7 @@
 //      def nameVar( implicit tx: S#Tx ) = access.get._2
 //      def proc( implicit tx: S#Tx )    = group.elements.head
 //
-//      def assertObservations( expected: Observation* ) {
+//      def assertObservations( expected: Observation* ): Unit = {
 //         val expSeq  = expected.toIndexedSeq
 //         val obs     = observations.single.swap( IIdxSeq.empty )
 //         assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )
@@ -166,7 +166,7 @@
 //         pairs.map( _._2 )
 //      }
 //
-//      def assertSequence( names: String* ) {
+//      def assertSequence( names: String* ): Unit = {
 //         val expSeq  = names.toIndexedSeq
 //         val obs     = traverse()
 //         assert( obs == expSeq, "Expected " + expSeq + " but observed " + obs )

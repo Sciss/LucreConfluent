@@ -15,9 +15,7 @@ class CursorsSpec extends ConfluentSpec {
 
   object Entity {
     implicit object CursorSer extends serial.Serializer[S#Tx, S#Acc, Cursor[S, D]] {
-      def write(c: Cursor[S, D], out: DataOutput) {
-        c.write(out)
-      }
+      def write(c: Cursor[S, D], out: DataOutput): Unit = c.write(out)
 
       def read(in: DataInput, access: S#Acc)(implicit tx: S#Tx): Cursor[S, D] = {
         tx.system.readCursor(in)
@@ -49,9 +47,9 @@ class CursorsSpec extends ConfluentSpec {
 
   class Entity(val id: S#ID, val field: S#Var[Int], cursorsVar: S#Var[IIdxSeq[Cursor[S, D]]])
     extends stm.Mutable.Impl[S] {
-    protected def disposeData()(implicit tx: S#Tx) {
+    protected def disposeData()(implicit tx: S#Tx): Unit = {
       //         implicit val dtx: D#Tx  = tx.durable
-      field.dispose()
+      field     .dispose()
       cursorsVar.dispose()
     }
 
@@ -60,8 +58,8 @@ class CursorsSpec extends ConfluentSpec {
       cursorsVar()
     }
 
-    protected def writeData(out: DataOutput) {
-       field.write(out)
+    protected def writeData(out: DataOutput): Unit = {
+       field     .write(out)
        cursorsVar.write(out)
      }
    }

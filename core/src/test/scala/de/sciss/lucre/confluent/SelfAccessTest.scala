@@ -12,7 +12,7 @@
 ////   dur()
 //   conf()
 //
-//   def inMem() {
+//   def inMem(): Unit = {
 //      type S = InMemory
 //      implicit val sys = InMemory()
 //      implicit val cSer = Counter.serializer[ S ]
@@ -29,7 +29,7 @@
 //
 //   private def durFact() = BerkeleyDB.factory( tmpDir(), createIfNecessary = true )
 //
-//   def dur() {
+//   def dur(): Unit = {
 //      type S = Durable
 //      implicit val sys = Durable( durFact() )
 //      implicit val cSer = Counter.serializer[ S ]
@@ -37,7 +37,7 @@
 //      new SelfAccessTest( access )
 //   }
 //
-//   def conf() {
+//   def conf(): Unit = {
 //      type S = Confluent
 //      implicit val sys = Confluent( durFact() )
 ////      LucreConfluent.showConfluentLog = true
@@ -74,7 +74,7 @@
 //      private final class Ser[ S <: stm.Sys[ S ]]( implicit cursor: stm.Cursor[ S ]) extends Serializer[ S#Tx, S#Acc, Counter[ S ]] {
 //         ser =>
 //
-//         def write( c: Counter[ S ], out: DataOutput ) {
+//         def write( c: Counter[ S ], out: DataOutput ): Unit = {
 ////            if( c == null ) {
 ////               out.writeUnsignedByte( 0 )
 ////            } else {
@@ -109,7 +109,7 @@
 //
 //         override def toString = "Counter" + id
 //
-//         final def write( out: DataOutput ) {
+//         final def write( out: DataOutput ): Unit = {
 ////            out.writeUnsignedByte( 1 )
 //            id.write( out )
 //            cnt.write( out )
@@ -117,14 +117,14 @@
 ////            self.write( out )
 //         }
 //
-//         final def dispose()( implicit tx: S#Tx ) {
+//         final def dispose()( implicit tx: S#Tx ): Unit = {
 //            id.dispose()
 //            cnt.dispose()
 //            play.dispose()
 ////            self.dispose()
 //         }
 //
-//         final def run() {
+//         final def run(): Unit = {
 //            cursor.step { implicit tx =>
 ////               val icke = self.get
 ////               val ickeO = map.get( id )
@@ -135,7 +135,7 @@
 //            }
 //         }
 //
-//         final def step()( implicit tx: S#Tx ) {
+//         final def step()( implicit tx: S#Tx ): Unit = {
 //            val p = play.get
 ////            println( "Step in " + tx + " found " + p )
 //            if( p ) {
@@ -151,7 +151,7 @@
 //            }
 //         }
 //
-//         final def start()( implicit tx: S#Tx ) {
+//         final def start()( implicit tx: S#Tx ): Unit = {
 //            val wasPlaying = play.get
 //            if( !wasPlaying ) {
 ////               println( "Setting in " + tx + " play = true " )
@@ -160,14 +160,14 @@
 //            }
 //         }
 //
-//         final def stop()( implicit tx: S#Tx ) {
+//         final def stop()( implicit tx: S#Tx ): Unit = {
 //            val wasPlaying = play.get
 //            if( wasPlaying ) {
 //               play.set( false )
 //            }
 //         }
 //
-//         private def spawn()( implicit tx: S#Tx ) {
+//         private def spawn()( implicit tx: S#Tx ): Unit = {
 //            implicit val itx = tx.peer
 //            Txn.afterCommit { _ =>
 //               pool.schedule( this, 1, TimeUnit.SECONDS )
@@ -201,7 +201,7 @@
 //   cursor.step { implicit tx => access.get.start() }
 //
 //   pool.schedule( new Runnable {
-//      def run() {
+//      def run(): Unit = {
 //         cursor.step { implicit tx =>
 //            implicit val itx = tx.peer
 //            val c = access.get

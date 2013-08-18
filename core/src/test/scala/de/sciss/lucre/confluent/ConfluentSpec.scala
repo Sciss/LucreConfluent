@@ -7,19 +7,19 @@ import stm.store.BerkeleyDB
 
 // helper trait providing a fixture
 trait ConfluentSpec extends fixture.FlatSpec with ShouldMatchers {
-   final type S = Confluent
-   final type D = stm.Durable
-   final type FixtureParam = Confluent // confluent.Cursor[ S ]
+  final type S = Confluent
+  final type D = stm.Durable
+  final type FixtureParam = Confluent // confluent.Cursor[ S ]
 
-   final def withFixture( test: OneArgTest ) {
-      val system = Confluent( BerkeleyDB.tmp() )
-      try {
-//         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
-//         test( cursor )
-         test( system )
-      }
-      finally {
-         system.close()
-      }
-   }
+  final def withFixture(test: OneArgTest): Unit = {
+    val system = Confluent(BerkeleyDB.tmp())
+    try {
+      //         val (_, cursor) = system.cursorRoot( _ => () )( tx => _ => tx.newCursor() )
+      //         test( cursor )
+      test(system)
+    }
+    finally {
+      system.close()
+    }
+  }
 }

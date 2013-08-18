@@ -34,39 +34,42 @@ trait ProjectionTest {
 //      override type Var[ @specialized ~ ] = BiVar[ ~ ]
    }
 
-   def test( implicit tx: KTemp#Tx ) {}
+  def test(implicit tx: KTemp#Tx) = ()
 
-   def test2( implicit tx: BiTemp#Tx ) { test }
+  def test2(implicit tx: BiTemp#Tx): Unit = test
 
-//   def txDownCastWorks[ S <: KTempLike[ S ]]( x: S#Var[ Int ])( implicit tx: BiTemp#Tx ) {
-//      x.set( 33 )( tx )
-//   }
-//
-//   def txUpCastFails[ S <: KTempLike[ S ]]( x: BiTemp#Var[ Int ])( implicit tx: S#Tx ) {
-////      x.set( 33 )
-//   }
+  //   def txDownCastWorks[ S <: KTempLike[ S ]]( x: S#Var[ Int ])( implicit tx: BiTemp#Tx ): Unit = {
+  //      x.set( 33 )( tx )
+  //   }
+  //
+  //   def txUpCastFails[ S <: KTempLike[ S ]]( x: BiTemp#Var[ Int ])( implicit tx: S#Tx ): Unit = {
+  ////      x.set( 33 )
+  //   }
 
-   def test3[ S <: stm.Sys[ S ], Time ]( dynVar: stm.Var[ Time, Int ])( implicit tx: S#Tx, dynView: S#Tx => Time ) {
-      dynVar.transform( _ + 33 )( tx )
-   }
+  def test3[S <: stm.Sys[S], Time](dynVar: stm.Var[Time, Int])(implicit tx: S#Tx, dynView: S#Tx => Time): Unit =
+    dynVar.transform(_ + 33)(tx)
 
-   trait PCursor[ +Tx ] {
-      def time: Double
-      def peer: Tx
-   }
+  trait PCursor[+Tx] {
+    def time: Double
 
-   class DynamicVar[ -Tx, A ] extends stm.Var[ PCursor[ Tx ], A ] {
-      def apply()( implicit tx: PCursor[ Tx ]) : A = getAt( tx.time )( tx.peer )
-      def getAt( time: Double )( implicit tx: Tx ) : A = sys.error( "Gagaismo" )
+    def peer: Tx
+  }
 
-      def transform( fun: A => A )( implicit tx: PCursor[ Tx ]) { this() = fun(this()) }
+  class DynamicVar[-Tx, A] extends stm.Var[PCursor[Tx], A] {
+    def apply()(implicit tx: PCursor[Tx]): A = getAt(tx.time)(tx.peer)
 
-      def update( v: A )( implicit tx: PCursor[ Tx ]) { setAt( tx.time, v )( tx.peer )}
-      def setAt( time: Double, v: A )( implicit tx: Tx ) { sys.error( "Lalaismo" )}
+    def getAt(time: Double)(implicit tx: Tx): A = ???
 
-      def dispose()( implicit tx: PCursor[ Tx ]) {}
-      def write( out: DataOutput ) {}
+    def transform(fun: A => A)(implicit tx: PCursor[Tx]): Unit = this() = fun(this())
 
-      def isFresh( implicit tx: PCursor[ Tx ]) : Boolean = sys.error( "TODO" )
-   }
+    def update(v: A)(implicit tx: PCursor[Tx]): Unit = setAt(tx.time, v)(tx.peer)
+
+    def setAt(time: Double, v: A)(implicit tx: Tx): Unit = ???
+
+    def dispose()( implicit tx: PCursor[ Tx ]) = ()
+
+    def write(out: DataOutput) = ()
+
+    def isFresh(implicit tx: PCursor[Tx]): Boolean = ???
+  }
 }

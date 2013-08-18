@@ -14,7 +14,7 @@ object OctreeViewTest extends App with Runnable {
    showLog = false
    EventQueue.invokeLater( this )
 
-   def run() {
+   def run(): Unit = {
       val dir  = args.headOption match {
          case Some( "--dbtmp" ) =>
             val dir  = File.createTempFile( "database", "db" )
@@ -36,7 +36,7 @@ object OctreeViewTest extends App with Runnable {
 
    private val sz = 256
 
-   def build[ S <: Sys[ S ]]( system: S ) {
+  def build[S <: Sys[S]](system: S): Unit = {
       // import SpaceSerializers.{IntPoint2DSerializer, IntSquareSerializer}
       implicit val pointView = (p: IntPoint2D, t: Any) => p
       implicit val reader = DeterministicSkipOctree.serializer[ S, TwoDim, IntPoint2D ]

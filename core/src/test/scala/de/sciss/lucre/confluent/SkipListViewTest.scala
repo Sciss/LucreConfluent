@@ -11,7 +11,7 @@ import javax.swing.{WindowConstants, JFrame}
 object SkipListViewTest extends App with Runnable {
    EventQueue.invokeLater( this )
 
-   def run() {
+   def run(): Unit = {
       val dir  = args.headOption match {
          case Some( "--dbtmp" ) =>
             val dir  = File.createTempFile( "database", "db" )
@@ -31,7 +31,7 @@ object SkipListViewTest extends App with Runnable {
       build( s )
    }
 
-   def build[ S <: Sys[ S ]]( system: S ) {
+  def build[S <: Sys[S]](system: S): Unit = {
       val fut = new InteractiveSkipListView.FutureObserver[ S ]
       implicit val ser = HASkipList.Set.serializer[ S, Int ]( fut )
       val (access, cursor) = system.cursorRoot { implicit tx =>

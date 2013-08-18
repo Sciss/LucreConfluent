@@ -45,7 +45,7 @@ final class InMemoryConfluentMapImpl[S <: Sys[S], @spec(KeySpec) K] extends InMe
 
   override def toString = "InMemoryConfluentMap(" + store + ")"
 
-  def put[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx) {
+  def put[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
     val (index, term) = path.splitIndex
 

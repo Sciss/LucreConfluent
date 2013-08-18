@@ -37,7 +37,7 @@ object ThesisFiatKaplanExample extends App {
       }
 
       implicit object CellSer extends serial.Serializer[S#Tx, S#Acc, Cell] {
-        def write(cell: Cell, out: DataOutput) {
+        def write(cell: Cell, out: DataOutput): Unit = {
           cell.next.write(out)
           peerSer.write(cell.value, out)
         }
@@ -48,13 +48,9 @@ object ThesisFiatKaplanExample extends App {
         }
       }
 
-      def disposeData()(implicit tx: S#Tx) {
-        head.dispose()
-      }
+      def disposeData()(implicit tx: S#Tx): Unit = head.dispose()
 
-      def writeData(out: DataOutput) {
-        head.write(out)
-      }
+      def writeData(out: DataOutput): Unit = head.write(out)
     }
   }
   trait LinkedList[S <: Sys[S], A] extends stm.Mutable[S#ID, S#Tx] {
@@ -91,14 +87,15 @@ object ThesisFiatKaplanExample extends App {
     w1.next()     = Some(w0)
   }
 
-  def traverse[S <: Sys[S], A](l: LinkedList[S, A])
-                           (implicit tx: S#Tx) {
-    def loop(opt: Option[l.Cell]) { opt match {
-      case Some(cell) =>
-        println(cell.value)
-        loop(cell.next())
-      case _ =>
-    }}
+  def traverse[S <: Sys[S], A](l: LinkedList[S, A])(implicit tx: S#Tx): Unit = {
+    def loop(opt: Option[l.Cell]): Unit =
+      opt match {
+        case Some(cell) =>
+          println(cell.value)
+          loop(cell.next())
+        case _ =>
+      }
+
     loop(l.head())
   }
 

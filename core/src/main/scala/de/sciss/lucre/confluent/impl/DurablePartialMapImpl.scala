@@ -73,7 +73,8 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
   //   }
 
   // XXX boom! specialized
-  final def put[ /* @spec(ValueSpec) */ A](key: K, conPath: S#Acc, value: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]) {
+  final def put[ /* @spec(ValueSpec) */ A](key: K, conPath: S#Acc, value: A)
+                                          (implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //      val path = conPath.partial
     // val (index, term) = conPath.splitIndex
     val term = conPath.term
@@ -153,7 +154,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
   }
 
   private def putFullMap[@spec(ValueSpec) A](key: K, /* conIndex: S#Acc, */ term: Long, value: A, /* prevTerm: Long, */
-                                             prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]) {
+                                             prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
     //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
     // create new map with previous value
@@ -206,9 +207,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
 
   // store the full value at the full hash (path.sum)
   private def putFullSingle[@spec(ValueSpec) A](key: K, /* conIndex: S#Acc, */ term: Long, value: A)
-                                               (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]) {
-    //      val index = conIndex.partial
-
+                                               (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     store.put { out =>
       out.writeByte(2)
       writeKey(key, out) // out.writeInt( key )
@@ -221,7 +220,6 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
       out.writeLong(term)
       ser.write(value, out)
     }
-  }
 
   def remove(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
     println("Durable partial map : remove not yet implemented")
@@ -342,11 +340,14 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
   }
 }
 
-final class PartialIntMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.PartialMapHandler[ S ])
-extends DurablePartialMapImpl[ S, Int ] {
-   protected def writeKey( key: Int, out: DataOutput ) { out.writeInt( key )}
+final class PartialIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.PartialMapHandler[S])
+  extends DurablePartialMapImpl[S, Int] {
+
+  protected def writeKey(key: Int, out: DataOutput): Unit = out.writeInt(key)
 }
-final class PartialLongMapImpl[ S <: Sys[ S ]]( protected val store: DataStore, protected val handler: Sys.PartialMapHandler[ S ])
-extends DurablePartialMapImpl[ S, Long ] {
-   protected def writeKey( key: Long, out: DataOutput ) { out.writeLong( key )}
+
+final class PartialLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.PartialMapHandler[S])
+  extends DurablePartialMapImpl[S, Long] {
+
+  protected def writeKey(key: Long, out: DataOutput): Unit = out.writeLong(key)
 }

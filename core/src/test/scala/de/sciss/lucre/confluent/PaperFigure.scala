@@ -27,14 +27,14 @@ class Nodes[S <: stm.Sys[S]] {
     def value: S#Var[Int]
     def next: S#Var[Option[Node]]
 
-    def disposeData()(implicit tx: S#Tx) {
+    def disposeData()(implicit tx: S#Tx): Unit = {
       value.dispose()
-      next.dispose()
+      next .dispose()
     }
 
-    def writeData(out: DataOutput) {
+    def writeData(out: DataOutput): Unit = {
       value.write(out)
-      next.write(out)
+      next .write(out)
     }
   }
 }

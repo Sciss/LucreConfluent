@@ -33,11 +33,12 @@ class RefreshSpec extends fixture.FlatSpec with ShouldMatchers {
       }
    }
    class Entity( val id: S#ID, val field: S#Var[ Int ]) extends stm.Mutable.Impl[ S ] {
-      protected def disposeData()( implicit tx: S#Tx ) { field.dispose() }
-      protected def writeData( out: DataOutput ) { field.write( out )}
+     protected def disposeData()(implicit tx: S#Tx): Unit = field.dispose()
+
+     protected def writeData(out: DataOutput)      : Unit = field.write(out)
    }
 
-  def withFixture(test: OneArgTest) {
+  def withFixture(test: OneArgTest): Unit = {
     val system = Confluent(BerkeleyDB.tmp())
     try {
       val (_, cursor) = system.cursorRoot(_ => ())(implicit tx => _ => system.newCursor())

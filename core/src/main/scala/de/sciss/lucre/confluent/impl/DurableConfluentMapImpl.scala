@@ -67,7 +67,8 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   }
 
   // XXX boom! specialized
-  final def put[ /* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]) {
+  final def put[ /* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)
+                                          (implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     val (index, term) = path.splitIndex
     //if( key == 0 ) {
     //   println( "::::: put. write path = index " + index + "; term = " + term + "; sum = " + index.sum )
@@ -146,7 +147,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   }
 
   private def putFullMap[@spec(ValueSpec) A](key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
-                                             prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]) {
+                                             prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
     //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
     // create new map with previous value
@@ -185,7 +186,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   }
 
   // stores the prefixes
-  private def putPartials(key: K, index: S#Acc)(implicit tx: S#Tx) {
+  private def putPartials(key: K, index: S#Acc)(implicit tx: S#Tx): Unit =
     Hashing.foreachPrefix(index, hash => {
       val res = store.contains { out =>
         writeKey(key, out) // out.writeInt( key )
@@ -208,11 +209,10 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
         out.writeLong(preSum)
       }
     }
-  }
 
   // store the full value at the full hash (path.sum)
   private def putFullSingle[@spec(ValueSpec) A](key: K, index: S#Acc, term: Long, value: A)
-                                               (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]) {
+                                               (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     store.put { out =>
       writeKey(key, out) // out.writeInt( key )
       out.writeLong(index.sum)
@@ -224,7 +224,6 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
       out.writeLong(term)
       ser.write(value, out)
     }
-  }
 
   final def get[A](key: K, path: S#Acc)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Option[A] = {
     if (path.isEmpty) return None
@@ -328,15 +327,13 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
 final class ConfluentIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.IndexMapHandler[S],
                                              protected val isOblivious: Boolean)
   extends DurableConfluentMapImpl[S, Int] {
-  protected def writeKey(key: Int, out: DataOutput) {
-    out.writeInt(key)
-  }
+
+  protected def writeKey(key: Int, out: DataOutput): Unit = out.writeInt(key)
 }
 
 final class ConfluentLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.IndexMapHandler[S],
                                               protected val isOblivious: Boolean)
   extends DurableConfluentMapImpl[S, Long] {
-  protected def writeKey(key: Long, out: DataOutput) {
-    out.writeLong(key)
-  }
+
+  protected def writeKey(key: Long, out: DataOutput): Unit = out.writeLong(key)
 }

@@ -32,15 +32,15 @@ trait TestHasLinkedList {
       def value: S#Var[Int]
       def next: S#Var[Option[Node]]
 
-      protected def disposeData()(implicit tx: S#Tx) {
+      protected def disposeData()(implicit tx: S#Tx): Unit = {
         value.dispose()
-        next.dispose()
+        next .dispose()
       }
 
-      protected def writeData(out: DataOutput) {
+      protected def writeData(out: DataOutput): Unit = {
         out.writeUTF(name)
         value.write(out)
-        next.write(out)
+        next .write(out)
       }
 
       override def toString = "Node(" + name + ", " + id + ")"

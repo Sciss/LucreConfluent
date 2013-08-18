@@ -67,7 +67,7 @@
 //      }
 //
 //      implicit val serializer : Serializer[ S#Tx, S#Acc, Region ] = new Serializer[ S#Tx, S#Acc, Region ] {
-//         def write( v: Region, out: DataOutput ) { v.write( out )}
+//         def write( v: Region, out: DataOutput ): Unit = v.write( out )
 //         def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : Region =
 //            new Read( in, access, tx )
 //      }
@@ -79,17 +79,17 @@
 //         def span_# : spans.Var
 //
 //         final def name( implicit tx: Tx ) : StringEx = name_#.get
-//         final def name_=( value: StringEx )( implicit tx: Tx ) { name_#.set( value )}
+//         final def name_=( value: StringEx )( implicit tx: Tx ): Unit = name_#.set( value )
 //
 //         final def span( implicit tx: Tx ) : SpanEx = span_#.get
-//         final def span_=( value: SpanEx )( implicit tx: Tx ) { span_#.set( value )}
+//         final def span_=( value: SpanEx )( implicit tx: Tx ): Unit = span_#.set( value )
 //
-//         final protected def writeData( out: DataOutput ) {
+//         final protected def writeData( out: DataOutput ): Unit = {
 //            name_#.write( out )
 //            span_#.write( out )
 //         }
 //
-//         final protected def disposeData()( implicit tx: S#Tx ) {
+//         final protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //            name_#.dispose()
 //            span_#.dispose()
 //         }
@@ -156,7 +156,7 @@
 //      }
 //
 //      implicit val serializer : NodeSerializer[ S, EventRegion ] = new NodeSerializer[ S, EventRegion ] {
-////            def write( v: EventRegion, out: DataOutput ) { v.write( out )}
+////            def write( v: EventRegion, out: DataOutput ): Unit = v.write( out )
 //         def read( in: DataInput, access: S#Acc, targets: Targets[ S ])( implicit tx: S#Tx ) : EventRegion =
 //            new Read( in, access, targets, tx )
 //      }
@@ -200,21 +200,21 @@
 //
 //         override def toString = "RegionList" + id
 //
-//         final protected def writeData( out: DataOutput ) {
+//         final protected def writeData( out: DataOutput ): Unit = {
 //            sizeRef.write( out )
 //            headRef.write( out )
 //         }
 //
-//         final protected def disposeData()( implicit tx: S#Tx ) {
+//         final protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //            sizeRef.dispose()
 //            headRef.dispose()
 //         }
 //
 //         final def size( implicit tx: S#Tx ) : Int = sizeRef.get
 //
-//         final def insert( idx: Int, r: Elem )( implicit tx: S#Tx ) {
+//         final def insert( idx: Int, r: Elem )( implicit tx: S#Tx ): Unit = {
 //            if( idx < 0 ) throw new IllegalArgumentException( idx.toString )
-//            @tailrec def step( i: Int, pred: S#Var[ LO ]) {
+//            @tailrec def step( i: Int, pred: S#Var[ LO ]): Unit = {
 //               if( i == idx ) insert( pred, r, idx ) else pred.get match {
 //                  case None => throw new IndexOutOfBoundsException( idx.toString )
 //                  case Some( l ) => step( i + 1, l.next_# )
@@ -223,7 +223,7 @@
 //            step( 0, headRef )
 //         }
 //
-//         private def insert( pred: S#Var[ LO ], r: Elem, idx: Int )( implicit tx: S#Tx ) {
+//         private def insert( pred: S#Var[ LO ], r: Elem, idx: Int )( implicit tx: S#Tx ): Unit = {
 //            val l = LinkedList[ EventRegion ]( r, pred.get )
 //            pred.set( Some( l ))
 //            sizeRef.transform( _ + 1 )
@@ -232,9 +232,9 @@
 //            collectionChanged( Added( this, idx, r ))
 //         }
 //
-//         final def removeAt( idx: Int )( implicit tx: S#Tx ) {
+//         final def removeAt( idx: Int )( implicit tx: S#Tx ): Unit = {
 //            if( idx < 0 ) throw new IllegalArgumentException( idx.toString )
-//            @tailrec def step( i: Int, pred: S#Var[ LO ]) {
+//            @tailrec def step( i: Int, pred: S#Var[ LO ]): Unit = {
 //               pred.get match {
 //                  case None => throw new IndexOutOfBoundsException( idx.toString )
 //                  case Some( l ) =>
@@ -273,7 +273,7 @@
 //            step( 0, headRef )
 //         }
 //
-//         private def remove( pred: S#Var[ LO ], lr: L, idx: Int )( implicit tx: S#Tx ) {
+//         private def remove( pred: S#Var[ LO ], lr: L, idx: Int )( implicit tx: S#Tx ): Unit = {
 //            val r = lr.value
 //            pred.set( lr.next )
 //            sizeRef.transform( _ - 1 )
@@ -324,7 +324,7 @@
 //
 //      def size( implicit tx: S#Tx ) : Int
 //      def insert( idx: Int, r: Elem )( implicit tx: S#Tx ) : Unit
-//      final def add( r: Elem )( implicit tx: S#Tx ) { insert( size, r )}
+//      final def add( r: Elem )( implicit tx: S#Tx ): Unit = insert( size, r )
 //      def removeAt( idx: Int )( implicit tx: S#Tx ) : Unit
 //      def indexOf( r: Elem )( implicit tx: S#Tx ) : Int
 //      def remove( r: Elem )( implicit tx: S#Tx ) : Boolean
@@ -347,12 +347,12 @@
 //
 //      private sealed trait Impl[ A ] extends LinkedList[ A ] with Mutable.Impl[ S ] {
 //         protected def peerSer: Serializer[ S#Tx, S#Acc, A ]
-//         final protected def writeData( out: DataOutput ) {
+//         final protected def writeData( out: DataOutput ): Unit = {
 //            peerSer.write( value, out )
 //            next_#.write( out )
 //         }
 //
-//         final protected def disposeData()( implicit tx: S#Tx ) {
+//         final protected def disposeData()( implicit tx: S#Tx ): Unit = {
 //            next_#.dispose()
 //         }
 //
@@ -374,7 +374,7 @@
 //
 //      implicit def serializer[ A ]( implicit peerSer: Serializer[ S#Tx, S#Acc, A ]) : Serializer[ S#Tx, S#Acc, LinkedList[ A ]] =
 //         new Serializer[ S#Tx, S#Acc, LinkedList[ A ]] {
-//            def write( v: LinkedList[ A ], out: DataOutput ) { v.write( out )}
+//            def write( v: LinkedList[ A ], out: DataOutput ): Unit = v.write( out )
 //            def read( in: DataInput, access: S#Acc )( implicit tx: S#Tx ) : LinkedList[ A ] =
 //               new Read[ A ]( in, access, tx, peerSer )
 //         }
@@ -384,6 +384,6 @@
 //      def value: A
 //      def next_# : S#Var[ Option[ LinkedList[ A ]]]
 //      final def next( implicit tx: Tx ) : Option[ LinkedList[ A ]] = next_#.get
-//      final def next_=( elem: Option[ LinkedList[ A ]])( implicit tx: Tx ) { next_#.set( elem )}
+//      final def next_=( elem: Option[ LinkedList[ A ]])( implicit tx: Tx ): Unit = next_#.set( elem )
 //   }
 //}

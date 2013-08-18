@@ -18,12 +18,12 @@ object RetroactiveTest extends App {
   }
 
   final class Foo(val id: S#ID, val a: S#Var[Int], val b: S#Var[String]) extends stm.Mutable.Impl[S] {
-    def writeData(out: DataOutput) {
+    def writeData(out: DataOutput): Unit = {
       a.write(out)
       b.write(out)
     }
 
-    def disposeData()(implicit tx: S#Tx) {
+    def disposeData()(implicit tx: S#Tx): Unit = {
       a.dispose()
       b.dispose()
     }

@@ -98,9 +98,7 @@ object TxnRandom {
 
     def nextLong()(implicit tx: Txn): Long = (next(32).toLong << 32) + next(32)
 
-    def setSeed(seed: Long)(implicit tx: Txn) {
-      refSet(initialScramble(seed))
-    }
+    def setSeed(seed: Long)(implicit tx: Txn): Unit = refSet(initialScramble(seed))
 
     private def next(bits: Int)(implicit tx: Txn): Int = {
       val oldSeed = refGet
@@ -111,17 +109,13 @@ object TxnRandom {
   }
 
   private final class PlainImpl(seedRef: Ref[Long]) extends Impl[InTxn] {
-    protected def refSet(value: Long)(implicit tx: InTxn) {
-      seedRef() = value
-    }
+    protected def refSet(value: Long)(implicit tx: InTxn): Unit = seedRef() = value
 
     protected def refGet(implicit tx: InTxn): Long = seedRef()
   }
 
   private final class SysImpl[Txn](seedRef: stm.Var[Txn, Long]) extends Impl[Txn] {
-    protected def refSet(value: Long)(implicit tx: Txn) {
-      seedRef() = value
-    }
+    protected def refSet(value: Long)(implicit tx: Txn): Unit = seedRef() = value
 
     protected def refGet(implicit tx: Txn): Long = seedRef()
   }

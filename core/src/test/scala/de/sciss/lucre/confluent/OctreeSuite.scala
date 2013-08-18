@@ -36,7 +36,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    // make sure we don't look tens of thousands of actions
    showLog = false
 
-  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit) {
+  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: (S, Boolean) => Unit): Unit = {
     withTree[S](sysName, () => {
       implicit val sys: S = sysCreator()
       // import SpaceSerializers.{IntPoint3DSerializer, IntCubeSerializer}
@@ -77,23 +77,23 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 
   def randFill[S <: Sys[S], D <: Space[D]](access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]],
                                            m: MSet[D#Point],
-                                           pointFun: InTxn => Int => D#Point)(implicit cursor: stm.Cursor[S]) {
+                                           pointFun: InTxn => Int => D#Point)(implicit cursor: stm.Cursor[S]): Unit = {
     Given("a randomly filled structure")
 
-    for( i <- 0 until n ) {
-//         if( i == n - 1 ) {
-//            println( "here" )
-//         }
-         m += cursor.step { implicit tx =>
-            val k = pointFun( tx.peer )( 0x7FFFFFFF )
-            access() += k
-            k
-         }
+    for (i <- 0 until n) {
+      //         if( i == n - 1 ) {
+      //            println( "here" )
+      //         }
+      m += cursor.step { implicit tx =>
+        val k = pointFun(tx.peer)(0x7FFFFFFF)
+        access() += k
+        k
       }
-   }
+    }
+  }
 
   def verifyConsistency[S <: Sys[S], D <: Space[D]](access: stm.Source[S#Tx, DeterministicSkipOctree[S, D, D#Point]])
-                                                   (implicit cursor: stm.Cursor[S]) {
+                                                   (implicit cursor: stm.Cursor[S]): Unit = {
     When("the internals of the structure are checked")
     Then("they should be consistent with the underlying algorithm")
 
@@ -115,7 +115,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
          currUnlinkedOcs      = Set.empty
          currPoints           = Set.empty
 
-         def checkChildren( n: Branch, depth: Int )( implicit tx: S#Tx ) {
+        def checkChildren(n: Branch, depth: Int)(implicit tx: S#Tx): Unit = {
             def assertInfo = " in level n-" + prevs + " / depth " + depth
 
             var i = 0; while( i < numOrthants ) {
@@ -156,7 +156,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    }
 
   def verifyElems[S <: Sys[S], D <: Space[D]](access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]],
-                                              m: MSet[D#Point])(implicit cursor: stm.Cursor[S]) {
+                                              m: MSet[D#Point])(implicit cursor: stm.Cursor[S]): Unit = {
     When( "the structure t is compared to an independently maintained map m" )
       val onlyInM  = cursor.step { implicit tx =>
          val t = access()
@@ -176,7 +176,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
   def verifyContainsNot[S <: Sys[S], D <: Space[D]](access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]],
                                                     m: MSet[D#Point],
                                                     pointFun: InTxn => Int => D#Point)
-                                                   (implicit cursor: stm.Cursor[S]) {
+                                                   (implicit cursor: stm.Cursor[S]): Unit = {
     When( "the structure t is queried for keys not in the independently maintained map m" )
       var testSet = Set.empty[ D#Point ]
       while( testSet.size < 100 ) {
@@ -192,7 +192,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
    }
 
   def verifyAddRemoveAll[S <: Sys[S], D <: Space[D]](access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]],
-                                                     m: MSet[D#Point])(implicit cursor: stm.Cursor[S]) {
+                                                     m: MSet[D#Point])(implicit cursor: stm.Cursor[S]): Unit = {
 
     When( "all elements of the independently maintained map are added again to t" )
       val szBefore = cursor.step { implicit tx => access().size }
@@ -243,7 +243,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
   def verifyRangeSearch[S <: Sys[S], A, D <: Space[D], Sort](
       access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]], m: MSet[D#Point],
       queryFun: InTxn => (Int, Int, Int) => QueryShape[A, D],
-      sortFun: D#PointLike => Sort)(implicit ord: math.Ordering[Sort], cursor: stm.Cursor[S]) {
+      sortFun: D#PointLike => Sort)(implicit ord: math.Ordering[Sort], cursor: stm.Cursor[S]): Unit = {
 
     When( "the octree is range searched" )
       val qs = cursor.step { tx =>
@@ -327,22 +327,21 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
 //   }
 
   def withTree[S <: Sys[S]](name: String, tf: () => (stm.Cursor[S],
-      stm.Source[ S#Tx, DeterministicSkipOctree[ S, ThreeDim, ThreeDim#Point ]], Boolean => Unit) ) {
+    stm.Source[S#Tx, DeterministicSkipOctree[S, ThreeDim, ThreeDim#Point]], Boolean => Unit)): Unit = {
 
-      feature( "The " + name + " octree structure should be consistent" ) {
+    feature( "The " + name + " octree structure should be consistent" ) {
          info( "Several mass operations on the structure" )
          info( "are tried and expected behaviour verified" )
 
-         def scenarioWithTime( descr: String )( body: => Unit ) {
-            scenario( descr ) {
-               val t1 = System.currentTimeMillis()
-               body
-               val t2 = System.currentTimeMillis()
-               println( "For " + name + " the tests took " + TestUtil.formatSeconds( (t2 - t1) * 0.001 ))
-            }
-         }
+      def scenarioWithTime(descr: String)(body: => Unit): Unit =
+        scenario(descr) {
+          val t1 = System.currentTimeMillis()
+          body
+          val t2 = System.currentTimeMillis()
+          println("For " + name + " the tests took " + TestUtil.formatSeconds((t2 - t1) * 0.001))
+        }
 
-         scenarioWithTime( "Consistency is verified on a randomly filled structure" ) {
+      scenarioWithTime( "Consistency is verified on a randomly filled structure" ) {
             val (_sys, access, cleanUp)  = tf()
             implicit val system    = _sys
             var success = false

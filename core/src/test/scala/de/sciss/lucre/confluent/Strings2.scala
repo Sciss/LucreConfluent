@@ -9,7 +9,7 @@
 //   private val typeID = 8
 //
 //   def readValue( in: DataInput ) : String = in.readString()
-//   def writeValue( value: String, out: DataOutput ) { out.writeString( value )}
+//   def writeValue( value: String, out: DataOutput ): Unit = out.writeString( value )
 //
 //   final class Ops[ S <: evt.Sys[ S ]]( ex: Ex[ S ])( implicit tx: S#Tx ) {
 //      private type E = Ex[ S ]

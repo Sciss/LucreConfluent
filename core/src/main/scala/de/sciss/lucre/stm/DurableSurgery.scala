@@ -12,9 +12,8 @@ object DurableSurgery {
     system.newIDValue()
 
   private[lucre] def write[D <: stm.DurableLike[D]](system: D)(id: Int)(valueFun: DataOutput => Unit)
-                                                   (implicit tx: D#Tx) {
+                                                   (implicit tx: D#Tx): Unit =
     system.write(id)(valueFun)
-  }
 
   private[lucre] def read[D <: stm.DurableLike[D], A](system: D)(id: Int)(valueFun: DataInput => A)
                                                      (implicit tx: D#Tx): A =

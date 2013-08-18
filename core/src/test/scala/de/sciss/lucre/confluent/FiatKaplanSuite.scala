@@ -87,12 +87,12 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
         access.transform {
           case Some(n) =>
             val res = n.next()
-            @tailrec def step(last: Node) {
+            @tailrec def step(last: Node): Unit =
               last.next() match {
                 case None     => last.next() = Some(Node("w2", 3))
                 case Some(n1) => step(n1)
               }
-            }
+
             step(n)
             res
 
@@ -116,20 +116,20 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
       Given("v3: Add +3 to all elements of right list. Concatenate left and right lists")
       cursor.stepFrom(v1) { implicit tx =>
         val right = access.meld(v2)
-        @tailrec def concat(pred: Node, tail: Option[Node]) {
+        @tailrec def concat(pred: Node, tail: Option[Node]): Unit =
           pred.next() match {
             case None       => pred.next() = tail
             case Some(succ) => concat(succ, tail)
           }
-        }
-        @tailrec def inc(pred: Option[Node], amount: Int) {
+
+        @tailrec def inc(pred: Option[Node], amount: Int): Unit =
           pred match {
             case None =>
             case Some(n) =>
               n.value.transform(_ + amount)
               inc(n.next(), amount)
           }
-        }
+
         inc(right, 3)
         access().foreach(concat(_, right))
       }
@@ -149,12 +149,12 @@ class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList 
       Given("v4: Concatenate Left and Right Lists")
       cursor.step { implicit tx =>
         val right = access.meld(v2)
-        @tailrec def concat(pred: Node, tail: Option[Node]) {
+        @tailrec def concat(pred: Node, tail: Option[Node]): Unit =
           pred.next() match {
             case None       => pred.next() = tail
             case Some(succ) => concat(succ, tail)
           }
-        }
+
         access().foreach(concat(_, right))
       }
 

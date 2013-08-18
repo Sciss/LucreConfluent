@@ -38,15 +38,14 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
       s.close()
    })
 
-  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: S => Unit) {
-    def scenarioWithTime(descr: String)(body: => Unit) {
+  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: S => Unit): Unit = {
+    def scenarioWithTime(descr: String)(body: => Unit): Unit =
       scenario( descr ) {
         val t1 = System.currentTimeMillis()
         body
         val t2 = System.currentTimeMillis()
         println("For " + sysName + " the tests took " + TestUtil.formatSeconds((t2 - t1) * 0.001))
       }
-    }
 
     feature( "The ordering of the structure should be consistent" ) {
       info("Each two successive elements of the structure")
@@ -62,7 +61,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
           val (access, cursor) = system.cursorRoot {
             implicit tx =>
               TotalOrder.Set.empty[S] /* ( new RelabelObserver[ S#Tx, E ] {
-                     def beforeRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {
+                     def beforeRelabeling( first: E, num: Int )( implicit tx: S#Tx ): Unit = {
                         if( MONITOR_LABELING ) {
    //                     Txn.afterCommit( _ =>
                               println( "...relabeling " + num + " entries" )
@@ -70,7 +69,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
                         }
                      }
 
-                     def afterRelabeling( first: E, num: Int )( implicit tx: S#Tx ) {}
+                     def afterRelabeling( first: E, num: Int )( implicit tx: S#Tx ) = ()
                   }) */
           } {
             implicit tx => _ => system.newCursor()

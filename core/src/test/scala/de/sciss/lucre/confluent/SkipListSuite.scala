@@ -38,7 +38,7 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
    // make sure we don't look tens of thousands of actions
    showLog = false
 
-   def withSys[ S <: Sys[ S ]]( sysName: String, sysCreator: () => S, sysCleanUp: S => Unit ) {
+  def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: S => Unit): Unit = {
       if( TWO_GAP_SIZES ) {
          withList[ S ]( "HA-1 (" + sysName + ")", { oo =>
             implicit val sys = sysCreator()
@@ -80,7 +80,8 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
 
    def atomic[ A ]( fun: InTxn => A ) : A = TxnExecutor.defaultAtomic( fun )
 
-   def randFill[ S <: stm.Sys[ S ]]( access: stm.Source[ S#Tx, SkipList.Set[ S, Int ]], s: MSet[ Int ])( implicit cursor: stm.Cursor[ S ]) {
+  def randFill[S <: stm.Sys[S]](access: stm.Source[S#Tx, SkipList.Set[S, Int]], s: MSet[Int])
+                               (implicit cursor: stm.Cursor[S]): Unit = {
       Given( "a randomly filled structure" )
       val s1 = cursor.step { implicit tx =>
          implicit val itx = tx.peer
@@ -111,7 +112,8 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       res
    }
 
-   def verifyOrder[ S <: stm.Sys[ S ]]( access: stm.Source[ S#Tx, SkipList.Set[ S, Int ]])( implicit cursor: stm.Cursor[ S ]) {
+  def verifyOrder[S <: stm.Sys[S]](access: stm.Source[S#Tx, SkipList.Set[S, Int]])
+                                  (implicit cursor: stm.Cursor[S]): Unit = {
       When( "the structure is mapped to its pairwise comparisons" )
 //atomic { implicit tx => println( l.toList )}
       var res  = Set.empty[ Int ]
@@ -127,9 +129,10 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       Then( "the resulting set should only contain -1" )
       assert( res == Set( -1 ), res.toString() )
    }
-   def verifyElems[ S <: stm.Sys[ S ]]( access: stm.Source[ S#Tx, SkipList.Set[ S, Int ]], s: MSet[ Int ])
-                                  ( implicit cursor: stm.Cursor[ S ]) {
-      When( "the structure l is compared to an independently maintained set s" )
+
+  def verifyElems[S <: stm.Sys[S]](access: stm.Source[S#Tx, SkipList.Set[S, Int]], s: MSet[Int])
+                                  (implicit cursor: stm.Cursor[S]): Unit = {
+    When( "the structure l is compared to an independently maintained set s" )
       val ll       = cursor.step { implicit tx => access().toIndexedSeq }
       val onlyInS  = cursor.step { implicit tx => val l = access(); s.filterNot( l.contains( _ ))}
       val onlyInL  = ll.filterNot( s.contains( _ ))
@@ -147,9 +150,9 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       assert( ll.size == szL, "skip list has size " + szL + " / iterator has size " + ll.size )
    }
 
-   def verifyContainsNot[ S <: stm.Sys[ S ]]( access: stm.Source[ S#Tx, SkipList.Set[ S, Int ]], s: MSet[ Int ])
-                                        ( implicit cursor: stm.Cursor[ S ]) {
-      When( "the structure l is queried for keys not in the independently maintained set s" )
+  def verifyContainsNot[S <: stm.Sys[S]](access: stm.Source[S#Tx, SkipList.Set[S, Int]], s: MSet[Int])
+                                        (implicit cursor: stm.Cursor[S]): Unit = {
+    When( "the structure l is queried for keys not in the independently maintained set s" )
       var testSet = Set.empty[ Int ]
       val inL = cursor.step { implicit tx =>
          val l = access()
@@ -163,9 +166,9 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       assert( inL.isEmpty, inL.take( 10 ).toString() )
    }
 
-   def verifyAddRemoveAll[ S <: stm.Sys[ S ]]( access: stm.Source[ S#Tx, SkipList.Set[ S, Int ]], s: MSet[ Int ])
-                                         ( implicit cursor: stm.Cursor[ S ]) {
-      When( "all elements of the independently maintained set are added again to l" )
+  def verifyAddRemoveAll[S <: stm.Sys[S]](access: stm.Source[S#Tx, SkipList.Set[S, Int]], s: MSet[Int])
+                                         (implicit cursor: stm.Cursor[S]): Unit = {
+    When( "all elements of the independently maintained set are added again to l" )
       val szBefore = cursor.step { implicit tx => access().size }
       val newInL   = cursor.step { implicit tx => val l = access(); s.filter( l.add( _ ))}
       val szAfter  = cursor.step { implicit tx => access().size }
@@ -185,20 +188,19 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       }
    }
 
-   private def withList[ S <: stm.Sys[ S ]]( name: String,
-      lf: SkipList.KeyObserver[ S#Tx, Int ] => (stm.Cursor[ S ], stm.Source[ S#Tx, SkipList.Set[ S, Int ]], () => Unit) ) {
+  private def withList[S <: stm.Sys[S]](name: String,
+      lf: SkipList.KeyObserver[S#Tx, Int] => (stm.Cursor[S], stm.Source[S#Tx, SkipList.Set[S, Int]], () => Unit)): Unit = {
 
-      def scenarioWithTime( descr: String )( body: => Unit ) {
-         scenario( descr ) {
-            val t1 = System.currentTimeMillis()
-            body
-            val t2 = System.currentTimeMillis()
-            println( "For " + name + " the tests took " + TestUtil.formatSeconds( (t2 - t1) * 0.001 ))
-         }
-      }
+    def scenarioWithTime(descr: String)(body: => Unit): Unit =
+       scenario(descr) {
+         val t1 = System.currentTimeMillis()
+         body
+         val t2 = System.currentTimeMillis()
+         println("For " + name + " the tests took " + TestUtil.formatSeconds((t2 - t1) * 0.001))
+       }
 
-      if( CONSISTENCY ) {
-         feature( "The " + name + " skip list structure should be consistent" ) {
+     if (CONSISTENCY) {
+       feature( "The " + name + " skip list structure should be consistent" ) {
             info( "Several mass operations on the structure" )
             info( "are tried and expected behaviour verified" )
 
@@ -296,20 +298,20 @@ class SkipListSuite extends FeatureSpec with GivenWhenThen {
       }
    }
 
-   final class Obs[ S <: stm.Sys[ S ]] extends SkipList.KeyObserver[ S#Tx, Int ] {
-      var allUp = Ref( IntMap.empty[ Int ])
-      var allDn = Ref( IntMap.empty[ Int ])
-      var oneUp = Ref( IntMap.empty[ Int ])
+  final class Obs[S <: stm.Sys[S]] extends SkipList.KeyObserver[S#Tx, Int] {
+    var allUp = Ref(IntMap.empty[Int])
+    var allDn = Ref(IntMap.empty[Int])
+    var oneUp = Ref(IntMap.empty[Int])
 
-      def keyUp( key: Int )( implicit tx: S#Tx ) {
-         implicit val itx = tx.peer
-         allUp.transform( m => m + (key -> (m.getOrElse( key, 0 ) + 1)))
-         oneUp.transform( m => m + (key -> (m.getOrElse( key, 0 ) + 1)))
-      }
+    def keyUp(key: Int)(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
+      allUp.transform(m => m + (key -> (m.getOrElse(key, 0) + 1)))
+      oneUp.transform(m => m + (key -> (m.getOrElse(key, 0) + 1)))
+    }
 
-      def keyDown( key: Int )( implicit tx: S#Tx ) {
-         implicit val itx = tx.peer
-         allDn.transform( m => m + (key -> (m.getOrElse( key, 0 ) + 1)))
-      }
-   }
+    def keyDown(key: Int)(implicit tx: S#Tx): Unit = {
+      implicit val itx = tx.peer
+      allDn.transform(m => m + (key -> (m.getOrElse(key, 0) + 1)))
+    }
+  }
 }

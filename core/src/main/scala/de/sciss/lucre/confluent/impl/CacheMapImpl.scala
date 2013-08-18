@@ -123,7 +123,7 @@ sealed trait CacheMapImpl[S <: Sys[S], @spec(KeySpec) K, Store]
     }
   }
 
-  final protected def putCacheOnly(e: Entry[S, K, Store])(implicit tx: S#Tx) {
+  final protected def putCacheOnly(e: Entry[S, K, Store])(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
     cache.transform { mapMap =>
       val mapOld = mapMap.getOrElse(e.key, emptyLongMap[Entry[S, K, Store]])
@@ -141,7 +141,7 @@ sealed trait CacheMapImpl[S <: Sys[S], @spec(KeySpec) K, Store]
    * @param term    the new version to append to the paths in the cache (using the `PathLike`'s `addTerm` method)
    * @param tx      the current transaction (should be in commit or right-before commit phase)
    */
-  final def flushCache(term: Long)(implicit tx: S#Tx) {
+  final def flushCache(term: Long)(implicit tx: S#Tx): Unit = {
     val p = store
     cache.get(tx.peer).foreach { tup1 =>
       val map = tup1._2
@@ -170,7 +170,7 @@ object DurableCacheMapImpl {
     extends Entry[S, K, Store[S, K]] {
     override def toString = "NonTxnEntry(" + key + ", " + value + ")"
 
-    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
       store.put(key, pathOut, value)
@@ -182,7 +182,7 @@ object DurableCacheMapImpl {
     extends Entry[S, K, Store[S, K]] {
     override def toString = "TxnEntry(" + key + ", " + value + ")"
 
-    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
       val out = DataOutput()
@@ -199,56 +199,51 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
 
   import DurableCacheMapImpl._
 
-  /**
-   * Stores an entry in the cache for which 'only' a transactional serializer exists.
-   *
-   * Note that the caller is responsible for monitoring this call, and if necessary installing
-   * a before-commit handler which will call into the abstract method `flushCache()`.
-   *
-   * @param key        key at which the entry will be stored
-   * @param path       write path when persisting
-   * @param value      value to be stored (entry)
-   * @param tx         the current transaction
-   * @param serializer the serializer to use for the value
-   * @tparam A         the type of value stored
-   */
+  /** Stores an entry in the cache for which 'only' a transactional serializer exists.
+    *
+    * Note that the caller is responsible for monitoring this call, and if necessary installing
+    * a before-commit handler which will call into the abstract method `flushCache()`.
+    *
+    * @param key        key at which the entry will be stored
+    * @param path       write path when persisting
+    * @param value      value to be stored (entry)
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    */
   final def putCacheTxn[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
-                                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
+                                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     putCacheOnly(new TxnEntry[S, K, A](key, path, value))
-  }
 
-  /**
-   * Stores an entry in the cache for which a non-transactional serializer exists.
-   *
-   * Note that the caller is responsible for monitoring this call, and if necessary installing
-   * a before-commit handler which will call into the abstract method `flushCache()`.
-   *
-   * @param key        key at which the entry will be stored
-   * @param path       write path when persisting
-   * @param value      value to be stored (entry)
-   * @param tx         the current transaction
-   * @param serializer the serializer to use for the value
-   * @tparam A         the type of value stored
-   */
+  /** Stores an entry in the cache for which a non-transactional serializer exists.
+    *
+    * Note that the caller is responsible for monitoring this call, and if necessary installing
+    * a before-commit handler which will call into the abstract method `flushCache()`.
+    *
+    * @param key        key at which the entry will be stored
+    * @param path       write path when persisting
+    * @param value      value to be stored (entry)
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    */
   final def putCacheNonTxn[A](key: K, path: S#Acc, value: A)
-                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]) {
+                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Unit =
     putCacheOnly(new NonTxnEntry[S, K, A](key, path, value))
-  }
 
-  /**
-   * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
-   * a transactional serializer exists.
-   *
-   * If no value is found for the current path, this will try to read the most recent entry along the path.
-   *
-   * @param key        key at which the entry is stored
-   * @param path       access path for the read
-   * @param tx         the current transaction
-   * @param serializer the serializer to use for the value
-   * @tparam A         the type of value stored
-   * @return           the most recent value found, or `None` if a value cannot be found for the given path,
-   *                   neither in the cache nor in the persistent store.
-   */
+  /** Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where 'only'
+    * a transactional serializer exists.
+    *
+    * If no value is found for the current path, this will try to read the most recent entry along the path.
+    *
+    * @param key        key at which the entry is stored
+    * @param path       access path for the read
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+    *                   neither in the cache nor in the persistent store.
+    */
   final def getCacheTxn[A](key: K, path: S#Acc)
                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
     getCacheOnly(key, path).orElse {
@@ -260,20 +255,19 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
       }
     }
 
-  /**
-   * Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
-   * non-transactional serializer exists.
-   *
-   * If no value is found for the current path, this will try to read the most recent entry along the path.
-   *
-   * @param key        key at which the entry is stored
-   * @param path       access path for the read
-   * @param tx         the current transaction
-   * @param serializer the serializer to use for the value
-   * @tparam A         the type of value stored
-   * @return           the most recent value found, or `None` if a value cannot be found for the given path,
-   *                   neither in the cache nor in the persistent store.
-   */
+  /** Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
+    * non-transactional serializer exists.
+    *
+    * If no value is found for the current path, this will try to read the most recent entry along the path.
+    *
+    * @param key        key at which the entry is stored
+    * @param path       access path for the read
+    * @param tx         the current transaction
+    * @param serializer the serializer to use for the value
+    * @tparam A         the type of value stored
+    * @return           the most recent value found, or `None` if a value cannot be found for the given path,
+    *                   neither in the cache nor in the persistent store.
+    */
   final def getCacheNonTxn[A](key: K, path: S#Acc)
                              (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A] =
     getCacheOnly(key, path).orElse(store.get[A](key, path))
@@ -296,7 +290,7 @@ object InMemoryCacheMapImpl {
     extends CacheMapImpl.Entry[S, K, Store[S, K]] {
     override def toString = "Entry(" + key + ", " + value + ")"
 
-    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
       store.put(key, pathOut, value)
@@ -310,9 +304,8 @@ trait InMemoryCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
 
   import InMemoryCacheMapImpl._
 
-  final def putCache[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx) {
+  final def putCache[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit =
     putCacheOnly(new Entry(key, path, value))
-  }
 
   final def getCache[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A] =
     getCacheOnly(key, path).orElse(store.get[A](key, path))
@@ -344,7 +337,7 @@ object PartialCacheMapImpl {
 
     val path: S#Acc = fullPath.partial
 
-    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx) {
+    def flush(outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = fullPath.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
       val out     = DataOutput()
@@ -362,9 +355,8 @@ trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
   import PartialCacheMapImpl._
 
   final def putPartial[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
-                                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]) {
+                                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     putCacheOnly(new PartialEntry[S, K, A](key, path, value))
-  }
 
   final def getPartial[A](key: K, path: S#Acc)(implicit tx: S#Tx,
                                                serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
@@ -377,7 +369,6 @@ trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
       }
     }
 
-  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean =
     removeCacheOnly(key, path) || store.remove(key, path)
-  }
 }

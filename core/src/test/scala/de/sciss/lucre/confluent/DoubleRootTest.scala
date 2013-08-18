@@ -22,7 +22,7 @@ object DoubleRootTest extends App {
   class Data(val id: S#ID, val vr: S#Var[Int])
 
   implicit object DataSer extends serial.Serializer[S#Tx, S#Acc, Data] {
-    def write(v: Data, out: DataOutput) {
+    def write(v: Data, out: DataOutput): Unit = {
       v.id.write(out)
       v.vr.write(out)
     }
@@ -34,7 +34,7 @@ object DoubleRootTest extends App {
     }
   }
 
-  def iter() {
+  def iter(): Unit = {
     val database            = BerkeleyDB.factory(dir, createIfNecessary = true)
     implicit val confluent  = Confluent(database)
     val durable             = confluent.durable

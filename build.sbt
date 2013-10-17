@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "1.6.0"
+version in ThisBuild := "1.6.1-SNAPSHOT"
 
 organization in ThisBuild := "de.sciss"
 
@@ -72,13 +72,13 @@ pomExtra in ThisBuild :=
 
 // ---- ls.implicit.ly ----
 
-seq( lsSettings :_* )
-
-(LsKeys.tags in LsKeys.lsync) := Seq( "confluent", "persistence" )
-
-(LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
-
-(LsKeys.ghRepo in LsKeys.lsync) := Some( "LucreConfluent" )
-
-// bug in ls -- doesn't find the licenses from global scope
-(licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+// seq( lsSettings :_* )
+// 
+// (LsKeys.tags in LsKeys.lsync) := Seq( "confluent", "persistence" )
+// 
+// (LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
+// 
+// (LsKeys.ghRepo in LsKeys.lsync) := Some( "LucreConfluent" )
+// 
+// // bug in ls -- doesn't find the licenses from global scope
+// (licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))

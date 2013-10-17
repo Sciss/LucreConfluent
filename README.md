@@ -1,5 +1,7 @@
 ## LucreConfluent
 
+__experimental side branch for internal use only__
+
 ### statement
 
 LucreConfluent is (C)opyright 2009&ndash;2013 Hanns Holger Rutz. It is released under the [GNU General Public License](http://github.com/Sciss/LucreConfluent/blob/master/licenses/LucreConfluent-License.txt).

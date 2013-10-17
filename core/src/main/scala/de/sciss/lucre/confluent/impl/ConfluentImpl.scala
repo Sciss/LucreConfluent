@@ -1750,7 +1750,8 @@ println( "WARNING: Durable IDMap.dispose : not yet implemented" )
 //         }
 //      }
 
-      private def readIndexTree( term: Long )( implicit tx: D#Tx ) : Sys.IndexTree[ D ] = {
+     // make accessible
+      /* private */ def readIndexTree( term: Long )( implicit tx: D#Tx ) : Sys.IndexTree[ D ] = {
          val st = store
          st.get { out =>
             out.writeUnsignedByte( 1 )

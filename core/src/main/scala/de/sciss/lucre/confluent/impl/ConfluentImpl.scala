@@ -805,7 +805,7 @@ object ConfluentImpl {
         tx.addDirtyLocalCache(this)
       }
 
-    protected def emptyCache: Map[Int, Any] = CacheMapImpl.emptyIntMapVal
+    // protected def emptyCache: Map[Int, Any] = Map.empty
 
     def get(id: S#ID)(implicit tx: S#Tx): Option[A] = {
       getCache[A](id.base, id.path)
@@ -846,7 +846,7 @@ object ConfluentImpl {
         tx.addDirtyCache(this)
       }
 
-    protected def emptyCache: Map[Long, Any] = CacheMapImpl.emptyLongMapVal
+    // protected def emptyCache: Map[Long, Any] = Map.empty
 
     def get(id: S#ID)(implicit tx: S#Tx): Option[A] = {
       val key = nid | (id.base.toLong & 0xFFFFFFFFL)

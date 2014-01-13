@@ -69,13 +69,6 @@ trait CacheMap[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends Cache[S#Tx] {
    */
   def store: Store
 
-  /**
-   * Implementations may provide a particular map implementation for the cache (e.g. `IntMap` or `LongMap`).
-   * The value type of the returned map (which must be immutable and empty) is cast to the internal cache
-   * entries.
-   */
-  protected def emptyCache: Map[K, Any]
-
   // ---- implementation ----
 
   def getCacheOnly[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A]

@@ -2,7 +2,7 @@
  *  CacheMapImpl.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2013 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
  *	 This software is free software; you can refdistribute it and/or
  *	 modify it under the terms of the GNU General Public License

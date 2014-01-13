@@ -1,6 +1,6 @@
 name := "LucreConfluent"
 
-version in ThisBuild := "2.5.0"
+version in ThisBuild := "2.6.0-SNAPSHOT"
 
 organization in ThisBuild := "de.sciss"
 
@@ -10,7 +10,7 @@ homepage in ThisBuild := Some(url("https://github.com/Sciss/LucreConfluent"))
 
 licenses in ThisBuild := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion in ThisBuild := "2.10.2"
+scalaVersion in ThisBuild := "2.10.3"
 
 resolvers in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 

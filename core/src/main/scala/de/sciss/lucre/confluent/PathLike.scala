@@ -27,7 +27,9 @@ package de.sciss.lucre
 package confluent
 
 trait PathLike {
-   def sum: Long
-   def size: Int
-   def sumUntil( n: Int ) : Long
+  def sum: Long
+
+  def size: Int
+
+  def sumUntil(n: Int): Long
 }

@@ -41,13 +41,11 @@ final case class MeldInfo[S <: Sys[S]](highestLevel: Int, highestTrees: Set[S#Ac
     * highest level, or if it has the same level but was not recorded in the set
     * of highest trees.
     */
-  def isRelevant(level: Int, seminal: S#Acc): Boolean = {
+  def isRelevant(level: Int, seminal: S#Acc): Boolean =
     level > highestLevel || level == highestLevel && !highestTrees.contains(seminal)
-  }
 
-  def add(level: Int, seminal: S#Acc): MeldInfo[S] = {
+  def add(level: Int, seminal: S#Acc): MeldInfo[S] =
     if (isRelevant(level, seminal)) MeldInfo[S](level, highestTrees + seminal) else this
-  }
 
   def isEmpty: Boolean = highestLevel < 0
 }

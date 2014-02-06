@@ -1173,7 +1173,7 @@ object ConfluentImpl {
         // and the entry vertex at that index minus 2 would have a time stamp less
         // than the query time step. therefore, we have to look at the time stamp
         // map for the entry vertex at that index minus 2, and find the ancestor
-        // of the tree's exit vetex at idxP - 1.
+        // of the tree's exit vertex at idxP - 1.
         val idxP = -idx - 1
         if (idxP == sz && versionInfo(access.term).timeStamp <= timeStamp) {
           access
@@ -1296,7 +1296,7 @@ object ConfluentImpl {
             val info = versionInfo(vInt)(dtx) // any txn will do
             info.timeStamp <= timeStamp
           } else {
-            false // query version higher than exit vertex, possibly an inexisting version!
+            false // query version higher than exit vertex, possibly an inexistent version!
           }
         } map {
           case (v2, value) => (v2.version, value)
@@ -1374,7 +1374,7 @@ object ConfluentImpl {
         val level = in.readInt()
         new IndexTreeImpl(tree, level)
       } getOrElse {
-        // sys.error( "Trying to access inexisting tree " + term.toInt )
+        // sys.error( "Trying to access inexistent tree " + term.toInt )
 
         // `term` does not form a tree index. it may be a tree vertex, though. thus,
         // in this conditional step, we try to (partially) read `term` as vertex, thereby retrieving
@@ -1384,10 +1384,10 @@ object ConfluentImpl {
           out.writeInt(term.toInt)
         } { in =>
           val term2 = in.readInt() // tree index!
-          require(term2 != term, "Trying to access inexisting tree " + term.toInt)
+          require(term2 != term, "Trying to access inexistent tree " + term.toInt)
           readIndexTree(term2)
         } getOrElse {
-          sys.error("Trying to access inexisting tree " + term.toInt)
+          sys.error("Trying to access inexistent tree " + term.toInt)
         }
       }
     }
@@ -1404,7 +1404,7 @@ object ConfluentImpl {
         val level   = in.readInt()
         val v       = tree.vertexSerializer.read(in, ()) // , access) // durableTx( tx )) // tx.durable )
         (v, level)
-      } getOrElse sys.error("Trying to access inexisting vertex " + term.toInt)
+      } getOrElse sys.error("Trying to access inexistent vertex " + term.toInt)
     }
 
     // writes the partial tree leaf information, i.e. pre- and post-order entries (using cookie `3`).
@@ -1502,7 +1502,7 @@ object ConfluentImpl {
         // val access = index :+ term
         partialTree.vertexSerializer.read(in, ()) // access)
       } getOrElse {
-        sys.error("Trying to access inexisting vertex " + term.toInt)
+        sys.error("Trying to access inexistent vertex " + term.toInt)
       }
 
     final def getIndexTreeTerm(term: Long)(implicit tx: S#Tx): Long = {

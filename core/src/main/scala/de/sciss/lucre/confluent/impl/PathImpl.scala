@@ -154,7 +154,7 @@ private[confluent] object PathImpl {
 
     def apply(idx: Int): Long = tree.find1(_._1 > idx)._2
 
-    // XXX TODO testin one two
+    // XXX TODO testing one two
     def partial: S#Acc = {
       val sz = size
       if (sz == 0) return this

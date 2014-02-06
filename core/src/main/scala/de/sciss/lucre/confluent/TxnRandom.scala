@@ -29,19 +29,16 @@ package confluent
 import concurrent.stm.{Ref, InTxn}
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Like java's random, but within a transactional cell
- */
+/** Like java's random, but within a transactional cell. */
 object TxnRandom {
   private val multiplier  = 0x5DEECE66DL
   private val mask        = (1L << 48) - 1
   private val addend      = 11L
 
-  /**
-   * Scrambles a seed value for initializing the underlying long variable.
-   * Callers who use the `wrap` method may use this to initially fill the
-   * wrapped variabled based on a given seed.
-   */
+  /** Scrambles a seed value for initializing the underlying long variable.
+    * Callers who use the `wrap` method may use this to initially fill the
+    * wrapped variabled based on a given seed.
+    */
   def initialScramble(seed: Long): Long = (seed ^ multiplier) & mask
 
   private def calcSeedUniquifier(): Long = {
@@ -122,12 +119,12 @@ object TxnRandom {
 }
 
 trait TxnRandom[-Txn] {
-  def nextBoolean()(implicit tx: Txn): Boolean
-  def nextDouble() (implicit tx: Txn): Double
-  def nextFloat()  (implicit tx: Txn): Float
-  def nextInt()    (implicit tx: Txn): Int
+  def nextBoolean  ()(implicit tx: Txn): Boolean
+  def nextDouble   ()(implicit tx: Txn): Double
+  def nextFloat    ()(implicit tx: Txn): Float
+  def nextInt      ()(implicit tx: Txn): Int
   def nextInt(n: Int)(implicit tx: Txn): Int
-  def nextLong()   (implicit tx: Txn): Long
+  def nextLong     ()(implicit tx: Txn): Long
 
   def setSeed(seed: Long)(implicit tx: Txn): Unit
 }

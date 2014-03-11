@@ -1,6 +1,6 @@
 name                         := "LucreConfluent"
 
-version         in ThisBuild := "2.6.0"
+version         in ThisBuild := "2.7.0-SNAPSHOT"
 
 organization    in ThisBuild := "de.sciss"
 
@@ -14,7 +14,7 @@ scalaVersion    in ThisBuild := "2.10.3"
 
 resolvers       in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
-retrieveManaged in ThisBuild := true
+// retrieveManaged in ThisBuild := true
 
 scalacOptions   in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
 

@@ -3,10 +3,11 @@ import Keys._
 import sbtbuildinfo.Plugin._
 
 object Build extends sbt.Build {
-  lazy val stmVersion   = "2.0.1+"
-  lazy val dataVersion  = "2.2.1+"
-  lazy val eventVersion = "2.6.+"
-  lazy val fingerVersion= "1.5.+"
+  lazy val stmVersion       = "2.0.3+"
+  lazy val dataVersion      = "2.2.3+"
+  lazy val eventVersion     = "2.6.+"
+  lazy val fingerVersion    = "1.5.+"
+  lazy val scalaTestVersion = "2.1.2"
 
   lazy val root: Project = Project(
     id            = "lucreconfluent",
@@ -38,9 +39,9 @@ object Build extends sbt.Build {
       libraryDependencies ++= Seq(
         "de.sciss" %% "fingertree"      % fingerVersion,
         "de.sciss" %% "lucredata-core"  % dataVersion,
-        "de.sciss" %% "lucredata-views" % dataVersion % "test",
-        "de.sciss" %% "lucrestm-bdb"    % stmVersion  % "test",
-        "org.scalatest" %% "scalatest"  % "2.0"       % "test"
+        "de.sciss" %% "lucredata-views" % dataVersion      % "test",
+        "de.sciss" %% "lucrestm-bdb"    % stmVersion       % "test",
+        "org.scalatest" %% "scalatest"  % scalaTestVersion % "test"
       ),
       initialCommands in console := """import de.sciss.lucre.confluent._""",
       sourceGenerators in Compile <+= buildInfo,
@@ -63,8 +64,8 @@ object Build extends sbt.Build {
     settings = Project.defaultSettings ++ Seq(
       libraryDependencies ++= Seq(
         "de.sciss" %% "lucreevent-core" % eventVersion,
-        "de.sciss" %% "lucrestm-bdb"    % stmVersion % "test",
-        "org.scalatest" %% "scalatest"  % "2.0"      % "test"
+        "de.sciss" %% "lucrestm-bdb"    % stmVersion       % "test",
+        "org.scalatest" %% "scalatest"  % scalaTestVersion % "test"
       )
     )
   )

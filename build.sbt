@@ -1,6 +1,6 @@
 name                         := "LucreConfluent"
 
-version         in ThisBuild := "2.7.0-SNAPSHOT"
+version         in ThisBuild := "2.7.0"
 
 organization    in ThisBuild := "de.sciss"
 
@@ -10,19 +10,19 @@ homepage        in ThisBuild := Some(url("https://github.com/Sciss/LucreConfluen
 
 licenses        in ThisBuild := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion    in ThisBuild := "2.11.0-RC3"
+scalaVersion    in ThisBuild := "2.11.0"
 
-crossScalaVersions in ThisBuild := Seq("2.11.0-RC3", "2.10.4")
+crossScalaVersions in ThisBuild := Seq("2.11.0", "2.10.4")
 
 resolvers       in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 // retrieveManaged in ThisBuild := true
 
-scalacOptions   in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature")
+scalacOptions   in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture")
 
 scalacOptions   in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 
-scalacOptions   in ThisBuild += "-no-specialization" // mother*******
+// scalacOptions   in ThisBuild += "-no-specialization" // mother*******
 
 testOptions in Test += Tests.Argument("-oDF")   // ScalaTest: durations and full stack traces
 

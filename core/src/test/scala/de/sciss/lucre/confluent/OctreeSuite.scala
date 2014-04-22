@@ -11,12 +11,11 @@ import data.{SkipOctree, DeterministicSkipOctree}
 import geom.{DistanceMeasure, IntDistanceMeasure3D, QueryShape, IntCube, Space, IntPoint3D, IntSpace}
 import IntSpace.ThreeDim
 
-/**
- *
- * To run this test copy + paste the following into sbt:
- * {{
- * test-only de.sciss.confluent.OctreeSuite
- * }}
+/*
+ To run this test copy + paste the following into sbt:
+
+test-only de.sciss.confluent.OctreeSuite
+
  */
 class OctreeSuite extends FeatureSpec with GivenWhenThen {
    val CONSISTENCY   = true
@@ -279,7 +278,7 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
   def verifyNN[S <: Sys[S], M, D <: Space[D]](access: stm.Source[S#Tx, SkipOctree[S, D, D#Point]], m: MSet[D#Point],
                                               pointFun: InTxn => Int => D#Point, pointFilter: D#PointLike => Boolean,
                                               euclideanDist: DistanceMeasure[M, D])
-                                             (implicit ord: math.Ordering[M], cursor: stm.Cursor[S]) {
+                                             (implicit ord: math.Ordering[M], cursor: stm.Cursor[S]): Unit = {
 
     When( "the quadtree is searched for nearest neighbours" )
       val ps0 = cursor.step { tx =>
@@ -303,28 +302,6 @@ class OctreeSuite extends FeatureSpec with GivenWhenThen {
          }.take( 10 ).toString()
       })
    }
-
-//   def no[ S <: Sys[ S ], @specialized( Long ) M, D <: Space[ D ]](
-//      t: SkipOctree[ S, D, D#Point ], euclideanDist: DistanceMeasure[ M, D ]) {
-//      t.system.step( implicit tx => () )
-//   }
-//
-//   def yes1[ S <: Sys[ S ], @specialized( Long ) M, D <: Space[ D ]](
-//      t: SkipOctree[ S, D, D#Point ], euclideanDist: DistanceMeasure[ M, D ]) {
-//      t.system.step( tx => () )
-//   }
-//
-//   def yes2[ S <: Sys[ S ], M, D <: Space[ D ]](
-//      t: SkipOctree[ S, D, D#Point ], euclideanDist: DistanceMeasure[ M, D ]) {
-//      t.system.step( implicit tx => () )
-//   }
-
-//   def yes[ S <: Sys[ S ], D <: Space[ D ]]( t: SkipOctree[ S, D, D#Point ], pointFun: Int => D#Point ) {
-//      val ps = Seq.empty[ D#Point ]
-//      t.system.step { implicit tx =>
-//         ps.map( p => p -> p )
-//      }
-//   }
 
   def withTree[S <: Sys[S]](name: String, tf: () => (stm.Cursor[S],
     stm.Source[S#Tx, DeterministicSkipOctree[S, ThreeDim, ThreeDim#Point]], Boolean => Unit)): Unit = {

@@ -20,7 +20,7 @@ object ForkTest extends App {
       for( i <- 1 to 3 ) yield system.newCursor() // fork( i )
    }
 
-   def debug() {
+   def debug(): Unit = {
       println( "Debug" )
    }
 

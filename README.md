@@ -16,7 +16,7 @@ Further reading:
 
 ## building
 
-Builds with sbt 0.13 against Scala 2.10, using standard sbt targets. The dependencies, [LucreData](https://github.com/Sciss/LucreData) and [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt.
+Builds with sbt 0.13 against Scala 2.11, 2.10, using standard sbt targets. The dependencies, [LucreData](https://github.com/Sciss/LucreData) and [FingerTree](https://github.com/Sciss/FingerTree) should be found automatically by sbt.
 
 ## linking
 
@@ -26,7 +26,7 @@ The following dependency is necessary:
     
     "de.sciss" %% "lucreconfluent" % v
 
-The current version `v` is `"2.6.+"`.
+The current version `v` is `"2.7.+"`.
 
 ## previous versions / tags
 

@@ -55,20 +55,17 @@ object ConfluentReactiveImpl {
   private sealed trait BasicEventVar[S <: ConfluentReactiveLike[S], A] extends evt.Var[S, A] {
     protected def id: S#ID
 
-    final def write(out: DataOutput) {
-      out.writeInt(id.base)
-    }
+    final def write(out: DataOutput): Unit = out.writeInt(id.base)
 
-    final def dispose()(implicit tx: S#Tx) {
+    final def dispose()(implicit tx: S#Tx): Unit = {
       tx.removeFromCache(id)
       id.dispose()
     }
 
     final def getOrElse(default: => A)(implicit tx: S#Tx): A = get.getOrElse(default)
 
-    final def transform(default: => A)(f: A => A)(implicit tx: S#Tx) {
+    final def transform(default: => A)(f: A => A)(implicit tx: S#Tx): Unit =
       this() = f(getOrElse(default))
-    }
 
     // final def isFresh(implicit tx: S#Tx): Boolean = tx.isFresh(id)
 
@@ -79,7 +76,7 @@ object ConfluentReactiveImpl {
     protected val id: S#ID)(implicit protected val ser: serial.Serializer[S#Tx, S#Acc, A])
     extends BasicEventVar[S, A] {
 
-    def update(v: A)(implicit tx: S#Tx) {
+    def update(v: A)(implicit tx: S#Tx): Unit = {
       log(this.toString + " set " + v)
       tx.putEventTxn(id, v)
     }
@@ -93,7 +90,7 @@ object ConfluentReactiveImpl {
   private final class EventVarImpl[S <: ConfluentReactiveLike[S], A](protected val id: S#ID,
                                                                      protected val ser: ImmutableSerializer[A])
     extends BasicEventVar[S, A] {
-    def update(v: A)(implicit tx: S#Tx) {
+    def update(v: A)(implicit tx: S#Tx): Unit = {
       log(this.toString + " set " + v)
       tx.putEventNonTxn(id, v)(ser)
     }
@@ -118,12 +115,12 @@ object ConfluentReactiveImpl {
     }
 
     // mark as validated
-    def update()(implicit tx: S#Tx) {
+    def update()(implicit tx: S#Tx): Unit = {
       val v = tx.inputAccess.index.term.toInt
       update(v)
     }
 
-    def update(v: Int)(implicit tx: S#Tx) {
+    def update(v: Int)(implicit tx: S#Tx): Unit = {
       log(this.toString + " set " + v)
       tx.putEventNonTxn(id, v)(this)
     }
@@ -133,13 +130,11 @@ object ConfluentReactiveImpl {
       tx.getEventNonTxn[Int](id)(this)
     }
 
-    def write(v: Int, out: DataOutput) {
-      out.writeInt(v)
-    }
+    def write(v: Int, out: DataOutput): Unit = out.writeInt(v)
 
     def read(in: DataInput): Int = in.readInt()
 
-    override def toString = "evt.Validity(" + id + ")"
+    override def toString = s"evt.Validity($id)"
   }
 
   //  private final class IntEventVar[S <: ConfluentReactiveLike[S]](protected val id: S#ID)
@@ -149,12 +144,12 @@ object ConfluentReactiveImpl {
   //      tx.getEventNonTxn[Int](id)(this)
   //    }
   //
-  //    def setInit(v: Int)(implicit tx: S#Tx) {
+  //    def setInit(v: Int)(implicit tx: S#Tx): Unit = {
   //      log(this.toString + " ini " + v)
   //      tx.putEventNonTxn(id, v)(this)
   //    }
   //
-  //    def update(v: Int)(implicit tx: S#Tx) {
+  //    def update(v: Int)(implicit tx: S#Tx): Unit = {
   //      log(this.toString + " set " + v)
   //      tx.putEventNonTxn(id, v)(this)
   //    }
@@ -162,7 +157,7 @@ object ConfluentReactiveImpl {
   //    override def toString = "evt.Var[Int](" + id + ")"
   //
   //    // ---- Serializer ----
-  //    def write(v: Int, out: DataOutput) {
+  //    def write(v: Int, out: DataOutput): Unit = {
   //      out.writeInt(v)
   //    }
   //
@@ -212,20 +207,19 @@ object ConfluentReactiveImpl {
     //      }
     //    }
 
-    final private def markEventDirty() {
+    final private def markEventDirty(): Unit =
       if (!markDirtyFlag) {
         markDirtyFlag = true
         // addDirtyCache(eventCache)
         addDirtyLocalCache(eventCache)
       }
-    }
 
-    private[reactive] def putEventTxn[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]) {
+    private[reactive] def putEventTxn[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit = {
       eventCache.putCacheTxn[A](id.base, id.path, value)(this, ser)
       markEventDirty()
     }
 
-    private[reactive] def putEventNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]) {
+    private[reactive] def putEventNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]): Unit = {
       eventCache.putCacheNonTxn(id.base, id.path, value)(this, ser)
       markEventDirty()
     }

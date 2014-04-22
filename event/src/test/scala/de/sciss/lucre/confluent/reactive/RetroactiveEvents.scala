@@ -24,7 +24,7 @@ object RetroactiveEvents extends App {
     def reader = Ser
 
     def a(implicit tx: S#Tx): Int = _a()
-    def a_=(value: Int)(implicit tx: S#Tx) {
+    def a_=(value: Int)(implicit tx: S#Tx): Unit = {
       val old = _a()
       if (old != value) {
         _a() = value
@@ -33,7 +33,7 @@ object RetroactiveEvents extends App {
     }
 
     def b(implicit tx: S#Tx): String = _b()
-    def b_=(value: String)(implicit tx: S#Tx) {
+    def b_=(value: String)(implicit tx: S#Tx): Unit = {
       val old = _b()
       if (old != value) {
         _b() = value
@@ -41,12 +41,12 @@ object RetroactiveEvents extends App {
       }
     }
 
-    def writeData(out: DataOutput) {
+    def writeData(out: DataOutput): Unit = {
       _a.write(out)
       _b.write(out)
     }
 
-    def disposeData()(implicit tx: S#Tx) {
+    def disposeData()(implicit tx: S#Tx): Unit = {
       _a.dispose()
       _b.dispose()
     }

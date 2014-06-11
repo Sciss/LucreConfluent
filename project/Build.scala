@@ -6,8 +6,8 @@ object Build extends sbt.Build {
   lazy val stmVersion       = "2.0.4"
   lazy val dataVersion      = "2.2.3"
   lazy val eventVersion     = "2.6.1"
-  lazy val fingerVersion    = "1.5.1"
-  lazy val scalaTestVersion = "2.1.3"
+  lazy val fingerVersion    = "1.5.2"
+  lazy val scalaTestVersion = "2.2.0"
 
   lazy val root: Project = Project(
     id            = "lucreconfluent",

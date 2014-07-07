@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -66,7 +66,8 @@ object CursorImpl {
   }
 
   private final class Impl[S <: Sys[S], D1 <: stm.DurableLike[D1]](id: D1#ID, path: D1#Var[S#Acc])
-                                                                  (implicit system: S {type D = D1})
+                                                          // (implicit system: ConfluentImpl.Mixin[S {type D = D1}])
+                                                          (implicit system: S { type D = D1 })
     extends Cursor[S, D1] with Cache[S#Tx] {
 
     override def toString = "Cursor" + id
@@ -94,13 +95,13 @@ object CursorImpl {
     }
 
     def flushCache(term: Long)(implicit tx: S#Tx): Unit = {
-      implicit val dtx: D1#Tx = system.durableTx(tx)
+      implicit val dtx: D1#Tx = /* tx.durable */ system.durableTx(tx)
       val newPath = tx.inputAccess.addTerm(term)
       path()      = newPath
       logCursor(s"${id.toString} flush path = $newPath")
     }
 
-    def position(implicit tx: S#Tx): S#Acc = position(system.durableTx(tx))
+    def position(implicit tx: S#Tx): S#Acc = position(/* tx.durable */ system.durableTx(tx))
 
     def position(implicit tx: D1#Tx): S#Acc = path()
 

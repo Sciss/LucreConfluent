@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -17,7 +17,7 @@ package confluent
 
 import stm.Disposable
 import de.sciss.serial.{DataInput, Writable}
-import impl.{CursorImpl => Impl}
+import de.sciss.lucre.confluent.impl.{CursorImpl => Impl, ConfluentImpl}
 
 object Cursor {
   def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc = Sys.Acc.root[S])

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -17,8 +17,6 @@ package confluent
 package impl
 
 import concurrent.stm.TxnLocal
-import scala.{specialized => spec}
-import data.{KeySpec, ValueSpec}
 import serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object CacheMapImpl {
@@ -30,7 +28,7 @@ object CacheMapImpl {
      * a sub system (`Durable`), serialization is a two-step process, using an intermediate
      * binary representation.
      */
-   sealed trait Entry[S <: Sys[S], @spec(KeySpec) -K, -Store] {
+   sealed trait Entry[S <: Sys[S], /* @spec(KeySpec) */ -K, -Store] {
      def path: S#Acc
 
      def flush(key: K, outTerm: Long, store: Store)(implicit tx: S#Tx): Unit
@@ -49,7 +47,7 @@ object CacheMapImpl {
   * @tparam S   the underlying system
   * @tparam K   the key type (typically `Int` for a variable map or `Long` for an identifier map)
   */
-sealed trait CacheMapImpl[S <: Sys[S], @spec(KeySpec) K, Store]
+sealed trait CacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K, Store]
   extends CacheMap[S, K, Store] {
 
   import CacheMapImpl._
@@ -136,7 +134,7 @@ object DurableCacheMapImpl {
       final val store: Store[S, Int] = map
     }
 
-  private final class NonTxnEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  private final class NonTxnEntry[S <: Sys[S], /* @spec(KeySpec) */ K, /* @spec(ValueSpec) */ A]
   (val path: S#Acc, val value: A)(implicit serializer: ImmutableSerializer[A])
     extends Entry[S, K, Store[S, K]] {
     override def toString = s"NonTxnEntry($value)"
@@ -148,7 +146,7 @@ object DurableCacheMapImpl {
     }
   }
 
-  private final class TxnEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  private final class TxnEntry[S <: Sys[S], /* @spec(KeySpec) */ K, /* @spec(ValueSpec) */ A]
   (val path: S#Acc, val value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends Entry[S, K, Store[S, K]] {
     override def toString = s"TxnEntry($value)"
@@ -164,7 +162,7 @@ object DurableCacheMapImpl {
   }
 }
 
-trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
   extends CacheMap.Durable[S, K, DurablePersistentMap[S, K]]
   with CacheMapImpl[S, K, DurablePersistentMap[S, K]] {
 
@@ -182,7 +180,7 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
     * @param serializer the serializer to use for the value
     * @tparam A         the type of value stored
     */
-  final def putCacheTxn[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
+  final def putCacheTxn[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)
                                            (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     putCacheOnly(key, new TxnEntry[S, K, A](path, value))
 
@@ -256,26 +254,26 @@ trait DurableCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
 object InMemoryCacheMapImpl {
   private type Store[S <: Sys[S], K] = InMemoryConfluentMap[S, K]
 
-  private final class Entry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  private final class Entry[S <: Sys[S], /* @spec(KeySpec) */ K, /* @spec(ValueSpec) */ A]
   (val path: S#Acc, val value: A)
     extends CacheMapImpl.Entry[S, K, Store[S, K]] {
     override def toString = s"Entry($value)"
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
-      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      log(s"txn flush write $value for ${pathOut.mkString(s"<$key @ ", ",", ">")}")
       store.put(key, pathOut, value)
     }
   }
 }
 
-trait InMemoryCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+trait InMemoryCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
   extends CacheMap.InMemory[S, K, InMemoryConfluentMap[S, K]]
   with CacheMapImpl[S, K, InMemoryConfluentMap[S, K]] {
 
   import InMemoryCacheMapImpl._
 
-  final def putCache[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit =
+  final def putCache[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit =
     putCacheOnly(key, new Entry(path, value))
 
   final def getCache[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A] =
@@ -300,7 +298,7 @@ object PartialCacheMapImpl {
       final val store: DurablePersistentMap[S, Int] = map
     }
 
-  private final class PartialEntry[S <: Sys[S], @spec(KeySpec) K, @spec(ValueSpec) A]
+  private final class PartialEntry[S <: Sys[S], /* @spec(KeySpec) */ K, /* @spec(ValueSpec) */ A]
   (val fullPath: S#Acc, val value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
     extends Entry[S, K, Store[S, K]] {
 
@@ -310,7 +308,7 @@ object PartialCacheMapImpl {
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = fullPath.addTerm(outTerm)
-      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      log(s"txn flush write $value for ${pathOut.mkString(s"<$key @ ", ",", ">")}")
       val out     = DataOutput()
       serializer.write(value, out)
       val arr     = out.toByteArray
@@ -319,13 +317,13 @@ object PartialCacheMapImpl {
   }
 }
 
-trait PartialCacheMapImpl[S <: Sys[S], @spec(KeySpec) K]
+trait PartialCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
   extends CacheMap.Partial[S, K, DurablePersistentMap[S, K]]
   with CacheMapImpl       [S, K, DurablePersistentMap[S, K]] {
 
   import PartialCacheMapImpl._
 
-  final def putPartial[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)
+  final def putPartial[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)
                                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     putCacheOnly(key, new PartialEntry[S, K, A](path, value))
 

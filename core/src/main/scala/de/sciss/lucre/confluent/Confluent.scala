@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -24,11 +24,11 @@ object Confluent {
   def apply(storeFactory: DataStoreFactory[DataStore]): Confluent = Impl(storeFactory)
 
   trait Txn extends Sys.Txn[Confluent] {
-    private[confluent] def durable:  stm.Durable#Tx
-    private[confluent] def inMemory: stm.InMemory#Tx
+    // implicit def durable:  stm.Durable#Tx
+    // implicit def inMemory: stm.InMemory#Tx
   }
 
-  implicit def inMemory(tx: Confluent#Tx): stm.InMemory#Tx = tx.inMemory
+  // implicit def inMemory(tx: Confluent#Tx): stm.InMemory#Tx = tx.inMemory
 }
 
 trait Confluent extends Sys[Confluent] {

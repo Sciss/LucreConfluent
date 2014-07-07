@@ -1,6 +1,6 @@
 name                         := "LucreConfluent"
 
-version         in ThisBuild := "2.8.0"
+version         in ThisBuild := "2.9.0-SNAPSHOT"
 
 organization    in ThisBuild := "de.sciss"
 
@@ -8,7 +8,7 @@ description     in ThisBuild := "Confluently persistent references for Scala"
 
 homepage        in ThisBuild := Some(url("https://github.com/Sciss/LucreConfluent"))
 
-licenses        in ThisBuild := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
+licenses        in ThisBuild := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
 scalaVersion    in ThisBuild := "2.11.1"
 

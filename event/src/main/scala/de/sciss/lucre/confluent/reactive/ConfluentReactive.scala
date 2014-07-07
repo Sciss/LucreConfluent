@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -28,11 +28,11 @@ object ConfluentReactive {
   def apply(storeFactory: DataStoreFactory[DataStore]): S = Impl(storeFactory)
 
   trait Txn extends ConfluentReactiveLike.Txn[S] {
-    private[confluent] def durable:  stm.Durable#Tx
-    private[confluent] def inMemory: stm.InMemory#Tx
+//    private[confluent] def durable:  stm.Durable#Tx
+//    private[confluent] def inMemory: stm.InMemory#Tx
   }
 
-  implicit def inMemory(tx: S#Tx): stm.InMemory#Tx = tx.inMemory
+  // implicit def inMemory(tx: S#Tx): stm.InMemory#Tx = tx.inMemory
 }
 
 object ConfluentReactiveLike {
@@ -45,7 +45,6 @@ object ConfluentReactiveLike {
     private[reactive] def getEventTxn[A]   (id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Option[A]
     private[reactive] def getEventNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): Option[A]
   }
-
 }
 
 trait ConfluentReactiveLike[S <: ConfluentReactiveLike[S]] extends confluent.Sys[S] with evt.Sys[S] {
@@ -56,7 +55,7 @@ trait ConfluentReactiveLike[S <: ConfluentReactiveLike[S]] extends confluent.Sys
 
 trait ConfluentReactive extends ConfluentReactiveLike[ConfluentReactive] {
   final protected type S = ConfluentReactive
-  final type D  = stm.Durable
-  final type I  = stm.InMemory
+  final type D  = event.Durable
+  final type I  = event.InMemory
   final type Tx = ConfluentReactive.Txn
 }

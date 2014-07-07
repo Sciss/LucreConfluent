@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -19,8 +19,6 @@ package impl
 import annotation.switch
 import stm.DataStore
 import serial.{ImmutableSerializer, DataOutput}
-import scala.{specialized => spec}
-import data.ValueSpec
 
 object DurablePartialMapImpl {
   private sealed trait Entry[S <: Sys[S], A]
@@ -141,7 +139,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
     }
   }
 
-  private def putFullMap[@spec(ValueSpec) A](key: K, /* conIndex: S#Acc, */ term: Long, value: A, /* prevTerm: Long, */
+  private def putFullMap[/* @spec(ValueSpec) */ A](key: K, /* conIndex: S#Acc, */ term: Long, value: A, /* prevTerm: Long, */
                                              prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
     //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
@@ -194,7 +192,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
 //   }
 
   // store the full value at the full hash (path.sum)
-  private def putFullSingle[@spec(ValueSpec) A](key: K, /* conIndex: S#Acc, */ term: Long, value: A)
+  private def putFullSingle[/* @spec(ValueSpec) */ A](key: K, /* conIndex: S#Acc, */ term: Long, value: A)
                                                (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     store.put { out =>
       out.writeByte(2)

@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -928,7 +928,9 @@ object ConfluentImpl {
     protected def wrapRoot(peer: InTxn): S#Tx = new RootTxn(this, peer)
   }
 
-  trait Mixin[S <: Sys[S]] extends Sys[S] with Sys.IndexMapHandler[S] with Sys.PartialMapHandler[S] {
+  trait Mixin[S <: Sys[S]]
+    extends Sys[S] with Sys.IndexMapHandler[S] with Sys.PartialMapHandler[S] {
+
     system: S =>
 
     // ---- abstract methods ----
@@ -937,6 +939,8 @@ object ConfluentImpl {
 
     protected def wrapRegular(dtx: D#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]): S#Tx
     protected def wrapRoot(peer: InTxn): S#Tx
+
+    def durableTx(tx: S#Tx): D#Tx
 
     // ---- init ----
 
@@ -998,7 +1002,7 @@ object ConfluentImpl {
       Cursor[S, D](init)(durableTx(tx), this)
 
     final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] =
-      Cursor.read[S, D](in)(durableTx(tx), this)
+      Cursor.read[S, D](in)(/* tx.durable */ durableTx(tx), this)
 
     final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] =
       executeRoot { implicit tx =>

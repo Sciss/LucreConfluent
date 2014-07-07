@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -17,15 +17,13 @@ package impl
 
 import concurrent.stm.TMap
 import collection.immutable.LongMap
-import scala.{specialized => spec}
-import data.{KeySpec, ValueSpec}
 
 object InMemoryConfluentMapImpl {
   private trait Entry[+A]
   private final case class EntryPre                     (hash: Long)       extends Entry[Nothing]
-  private final case class EntryFull[@spec(ValueSpec) A](term: Long, v: A) extends Entry[A]
+  private final case class EntryFull[/* @spec(ValueSpec) */ A](term: Long, v: A) extends Entry[A]
 }
-final class InMemoryConfluentMapImpl[S <: Sys[S], @spec(KeySpec) K] extends InMemoryConfluentMap[S, K] {
+final class InMemoryConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends InMemoryConfluentMap[S, K] {
   import InMemoryConfluentMapImpl._
 
   private type Entries = Map[Long, Entry[Any]]
@@ -33,7 +31,7 @@ final class InMemoryConfluentMapImpl[S <: Sys[S], @spec(KeySpec) K] extends InMe
 
   override def toString = "InMemoryConfluentMap(" + store + ")"
 
-  def put[@spec(ValueSpec) A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit = {
+  def put[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer
     val (index, term) = path.splitIndex
 

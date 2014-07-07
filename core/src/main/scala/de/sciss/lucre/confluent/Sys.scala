@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -59,6 +59,8 @@ object Sys {
   }
 
   trait Txn[S <: Sys[S]] extends _Txn[S] {
+    implicit def durable: S#D#Tx
+
     def inputAccess: S#Acc
 
     def info: VersionInfo.Modifiable
@@ -194,7 +196,7 @@ object Sys {
  * @tparam S   the implementing system
  */
 trait Sys[S <: Sys[S]] extends stm.Sys[S] {
-  type D <: stm.DurableLike[D]
+  type D <: stm.DurableLike [D]
   type I <: stm.InMemoryLike[I]
 
   type Tx                          <: Sys.Txn[S]
@@ -204,10 +206,10 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   final type Entry[A]               = Sys.Entry[S, A]
 
   def durable : D
-  def inMemory: I
+  // def inMemory: I
 
-  /* private[lucre] */ def durableTx (tx: S#Tx): D#Tx
-  /* private[lucre] */ def inMemoryTx(tx: S#Tx): I#Tx
+  def durableTx (tx: S#Tx): D#Tx
+  //  /* private[lucre] */ def inMemoryTx(tx: S#Tx): I#Tx
 
   private[confluent] def fullCache:    CacheMap.Durable[S, Int, DurablePersistentMap[S, Int]]
   private[confluent] def partialCache: CacheMap.Partial[S, Int, DurablePersistentMap[S, Int]]

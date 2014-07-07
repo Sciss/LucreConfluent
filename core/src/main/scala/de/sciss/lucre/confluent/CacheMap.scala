@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -16,16 +16,14 @@ package lucre
 package confluent
 
 import serial.ImmutableSerializer
-import scala.{specialized => spec}
-import data.KeySpec
 
 object CacheMap {
-  trait InMemory[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends CacheMap[S, K, Store] {
+  trait InMemory[S <: stm.Sys[S], /* @spec(KeySpec) */ K, +Store] extends CacheMap[S, K, Store] {
     def putCache[A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit
     def getCache[A](key: K, path: S#Acc)(implicit tx: S#Tx): Option[A]
   }
 
-  trait Durable[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends CacheMap[S, K, Store] {
+  trait Durable[S <: stm.Sys[S], /* @spec(KeySpec) */ K, +Store] extends CacheMap[S, K, Store] {
     def putCacheTxn[A](key: K, path: S#Acc, value: A)
                       (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit
 
@@ -39,7 +37,7 @@ object CacheMap {
                          (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A]
   }
 
-  trait Partial[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends CacheMap[S, K, Store] {
+  trait Partial[S <: stm.Sys[S], /* @spec(KeySpec) */ K, +Store] extends CacheMap[S, K, Store] {
     def putPartial[A](key: K, path: S#Acc, value: A)
                      (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Unit
 
@@ -49,7 +47,7 @@ object CacheMap {
 
 }
 
-trait CacheMap[S <: stm.Sys[S], @spec(KeySpec) K, +Store] extends Cache[S#Tx] {
+trait CacheMap[S <: stm.Sys[S], /* @spec(KeySpec) */ K, +Store] extends Cache[S#Tx] {
   // ---- abstract ----
 
   /**

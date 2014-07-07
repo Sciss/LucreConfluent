@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -19,13 +19,11 @@ package impl
 import annotation.switch
 import stm.DataStore
 import serial.{ImmutableSerializer, DataOutput}
-import scala.{specialized => spec}
-import data.ValueSpec
 
 object DurableConfluentMapImpl {
   private sealed trait     Entry      [S <: Sys[S], A]
   private final case class EntryPre   [S <: Sys[S], A](hash: Long) extends Entry[S, A]
-  private final case class EntrySingle[S <: Sys[S], @spec(ValueSpec) A](term: Long, v: A) extends Entry[S, A]
+  private final case class EntrySingle[S <: Sys[S], /* @spec(ValueSpec) */ A](term: Long, v: A) extends Entry[S, A]
   private final case class EntryMap   [S <: Sys[S], A](m: IndexMap[S, A]) extends Entry[S, A]
 }
 
@@ -134,7 +132,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
     }
   }
 
-  private def putFullMap[@spec(ValueSpec) A](key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
+  private def putFullMap[/* @spec(ValueSpec) */ A](key: K, index: S#Acc, term: Long, value: A, prevTerm: Long,
                                              prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
     //         require( prevTerm == index.term, "Expected initial assignment term " + index.term.toInt + ", but found " + prevTerm.toInt )
@@ -199,7 +197,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
     }
 
   // store the full value at the full hash (path.sum)
-  private def putFullSingle[@spec(ValueSpec) A](key: K, index: S#Acc, term: Long, value: A)
+  private def putFullSingle[/* @spec(ValueSpec) */ A](key: K, index: S#Acc, term: Long, value: A)
                                                (implicit tx: S#Tx, ser: serial.Serializer[S#Tx, S#Acc, A]): Unit =
     store.put { out =>
       writeKey(key, out) // out.writeInt( key )

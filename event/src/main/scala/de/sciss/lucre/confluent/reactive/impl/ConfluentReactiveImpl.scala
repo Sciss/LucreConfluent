@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
  *
- *  This software is published under the GNU General Public License v2+
+ *  This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *  For further information, please contact Hanns Holger Rutz at
@@ -31,8 +31,9 @@ object ConfluentReactiveImpl {
     // tricky: before `durable` was a `val` in `System`, this caused
     // a NPE with `Mixin` initialising `global`.
     // (http://stackoverflow.com/questions/12647326/avoiding-npe-in-trait-initialization-without-using-lazy-vals)
-    val durable     = stm.Durable(storeFactory)
+    val mainStore   = storeFactory.open("data")
     val eventStore  = storeFactory.open("event", overwrite = true)
+    val durable     = event.Durable(mainStore, eventStore)
     new System(storeFactory, eventStore, durable)
   }
 
@@ -278,21 +279,21 @@ object ConfluentReactiveImpl {
   }
 
   private sealed trait TxnImpl extends TxnMixin[S] with ConfluentReactive.Txn {
-    final lazy val inMemory: stm.InMemory#Tx = system.inMemory.wrap(peer)
+    final lazy val inMemory: event.InMemory#Tx = system.inMemory.wrap(peer)
   }
 
-  private final class RegularTxn(val system: S, val durable: stm.Durable#Tx,
+  private final class RegularTxn(val system: S, val durable: event.Durable#Tx,
                                  val inputAccess: S#Acc, val isRetroactive: Boolean,
                                  val cursorCache: Cache[S#Tx])
-    extends confluent.impl.ConfluentImpl.RegularTxnMixin[S, stm.Durable] with TxnImpl {
+    extends confluent.impl.ConfluentImpl.RegularTxnMixin[S, event.Durable] with TxnImpl {
 
     lazy val peer = durable.peer
   }
 
   private final class RootTxn(val system: S, val peer: InTxn)
-    extends confluent.impl.ConfluentImpl.RootTxnMixin[S, stm.Durable] with TxnImpl {
+    extends confluent.impl.ConfluentImpl.RootTxnMixin[S, event.Durable] with TxnImpl {
 
-    lazy val durable: stm.Durable#Tx = {
+    lazy val durable: event.Durable#Tx = {
       log("txn durable")
       system.durable.wrap(peer)
     }
@@ -323,14 +324,14 @@ object ConfluentReactiveImpl {
   }
 
   private final class System(protected val storeFactory: DataStoreFactory[DataStore],
-                             protected val eventStore: DataStore, val durable: stm.Durable)
+                             protected val eventStore: DataStore, val durable: event.Durable)
     extends Mixin[S] with ConfluentReactive {
 
     def inMemory              = durable.inMemory
     def durableTx (tx: S#Tx)  = tx.durable
     def inMemoryTx(tx: S#Tx)  = tx.inMemory
 
-    protected def wrapRegular(dtx: stm.Durable#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]) =
+    protected def wrapRegular(dtx: event.Durable#Tx, inputAccess: S#Acc, retroactive: Boolean, cursorCache: Cache[S#Tx]) =
       new RegularTxn(this, dtx, inputAccess, retroactive, cursorCache)
 
     protected def wrapRoot(peer: InTxn) = new RootTxn(this, peer)

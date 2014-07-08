@@ -950,7 +950,7 @@ object ConfluentImpl {
     final val partialCache  = PartialCacheMapImpl.newIntCache(DurablePersistentMap.newPartialMap[S](store, this))
 
     private val global: GlobalState[S, D] = durable.step { implicit tx =>
-      val root = durable.root { implicit tx =>
+      val root = durable.rootJoin { implicit tx =>
         val durRootID     = stm.DurableSurgery.newIDValue(durable)
         val idCnt         = tx.newCachedIntVar(0)
         val versionLinear = tx.newCachedIntVar(0)
@@ -1006,9 +1006,23 @@ object ConfluentImpl {
 
     final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] =
       executeRoot { implicit tx =>
-        val (rootVar, _, _) = initRoot(init, _ => (), _ => ())
-        rootVar
+        rootBody(init)
       }
+
+    final def rootJoin[A](init: S#Tx => A)
+                         (implicit itx: TxnLike, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+      log("::::::: rootJoin :::::::")
+      TxnExecutor.defaultAtomic { itx =>
+        implicit val tx = wrapRoot(itx)
+        rootBody(init)
+      }
+    }
+
+    private def rootBody[A](init: S#Tx => A)
+                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+      val (rootVar, _, _) = initRoot(init, _ => (), _ => ())
+      rootVar
+    }
 
     def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
                         (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) =
@@ -1038,7 +1052,8 @@ object ConfluentImpl {
       }
 
     private def executeRoot[A](fun: S#Tx => A): A = {
-      require(ScalaTxn.findCurrent.isEmpty, "root must be called outside of a transaction")
+      if (ScalaTxn.findCurrent.isDefined)
+        throw new IllegalStateException("Nested transactions not supported yet by Durable system.")
       log("::::::: root :::::::")
       TxnExecutor.defaultAtomic { itx =>
         val tx = wrapRoot(itx)

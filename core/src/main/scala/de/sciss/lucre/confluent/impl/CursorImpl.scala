@@ -16,7 +16,7 @@ package lucre
 package confluent
 package impl
 
-import concurrent.stm.TxnExecutor
+import scala.concurrent.stm.{Txn, TxnExecutor}
 import serial.{DataInput, DataOutput}
 
 object CursorImpl {
@@ -70,20 +70,27 @@ object CursorImpl {
                                                           (implicit system: S { type D = D1 })
     extends Cursor[S, D1] with Cache[S#Tx] {
 
-    override def toString = "Cursor" + id
+    override def toString = s"Cursor$id"
+
+    private def topLevelAtomic[A](fun: D1#Tx => A): A = {
+      if (Txn.findCurrent.isDefined)
+        throw new IllegalStateException("Nested transactions not supported yet by Durable system.")
+      TxnExecutor.defaultAtomic { itx =>
+        val dtx = system.durable.wrap(itx)
+        fun(dtx)
+      }
+    }
 
     def step[A](fun: S#Tx => A): A = {
-      TxnExecutor.defaultAtomic { itx =>
-        implicit val dtx  = system.durable.wrap(itx)
-        val inputAccess   = path()
+      topLevelAtomic { implicit dtx =>
+        val inputAccess = path()
         performStep(inputAccess, retroactive = false, dtx = dtx, fun = fun)
       }
     }
 
     def stepFrom[A](inputAccess: S#Acc, retroactive: Boolean)(fun: S#Tx => A): A = {
-      TxnExecutor.defaultAtomic { itx =>
-        implicit val dtx  = system.durable.wrap(itx)
-        path()            = inputAccess
+      topLevelAtomic { implicit dtx =>
+        path() = inputAccess
         performStep(inputAccess, retroactive, dtx, fun)
       }
     }
@@ -101,8 +108,7 @@ object CursorImpl {
       logCursor(s"${id.toString} flush path = $newPath")
     }
 
-    def position(implicit tx: S#Tx): S#Acc = position(/* tx.durable */ system.durableTx(tx))
-
+    def position(implicit tx: S #Tx): S#Acc = position(/* tx.durable */ system.durableTx(tx))
     def position(implicit tx: D1#Tx): S#Acc = path()
 
     //      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ): Unit = {

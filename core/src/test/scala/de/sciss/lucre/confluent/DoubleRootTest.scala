@@ -37,7 +37,7 @@ object DoubleRootTest extends App {
   def iter(): Unit = {
     val database            = BerkeleyDB.factory(dir, createIfNecessary = true)
     implicit val confluent  = Confluent(database)
-    val durable             = confluent.durable
+    // val durable             = confluent.durable
 
     //    val cursorAcc = durable.root { implicit tx =>
     //      println("New cursor")

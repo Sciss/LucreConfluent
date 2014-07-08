@@ -59,7 +59,7 @@ object CursorImpl {
                                                   (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] = {
     implicit val pathSer  = new PathSer[S, D1]
     val cookie            = in.readShort()
-    require(cookie == COOKIE, s"Unexpected cookie $cookie (should be $COOKIE)")
+    if (cookie != COOKIE) throw new IllegalStateException(s"Unexpected cookie $cookie (should be $COOKIE)")
     val id                = tx.readID(in, ())
     val path              = tx.readVar[S#Acc](id, in)
     new Impl[S, D1](id, path)

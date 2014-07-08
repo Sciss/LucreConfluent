@@ -53,7 +53,7 @@ object ConfluentImpl {
 
     def dispose()(implicit tx: D#Tx): Unit = tree.dispose()
 
-    override def toString = "IndexTree<v=" + term.toInt + ", l=" + level + ">"
+    override def toString = s"IndexTree<v=${term.toInt}, l=$level>"
   }
 
   // ----------------------------------------------
@@ -893,7 +893,8 @@ object ConfluentImpl {
 
       def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): GlobalState[S, D] = {
         val serVer = in.readLong()
-        require(serVer == SER_VERSION, s"Incompatible serialized version. Found $serVer but require $SER_VERSION")
+        if (serVer != SER_VERSION)
+          throw new IllegalStateException(s"Incompatible serialized version. Found $serVer but require $SER_VERSION")
         val durRootID     = in.readInt()
         val idCnt         = tx.readCachedIntVar(in)
         val versionLinear = tx.readCachedIntVar(in)
@@ -1089,7 +1090,7 @@ object ConfluentImpl {
 
     final def flushRoot(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])
                        (implicit tx: S#Tx): Unit = {
-      require(!meldInfo.requiresNewTree, "Cannot meld in the root version")
+      if (meldInfo.requiresNewTree) throw new IllegalStateException("Cannot meld in the root version")
       val outTerm = tx.inputAccess.term
       // writeVersionInfo(outTerm)
       flush(outTerm, caches)
@@ -1099,7 +1100,7 @@ object ConfluentImpl {
                           (implicit tx: S#Tx): Unit = {
       val newTree = meldInfo.requiresNewTree
       val outTerm = if (newTree) {
-        require(!tx.isRetroactive, "Cannot meld in a retroactive transaction")
+        if (tx.isRetroactive) throw new IllegalStateException("Cannot meld in a retroactive transaction")
         flushNewTree(meldInfo.outputLevel)
       } else {
         if (newVersion) flushOldTree() else tx.inputAccess.term
@@ -1163,7 +1164,7 @@ object ConfluentImpl {
       }
 
       val sz = access.size
-      require(sz % 2 == 0, "Provided path is index, not full terminating path " + access)
+      if (sz % 2 != 0) throw new IllegalStateException(s"Provided path is index, not full terminating path $access")
       val idx = loop(0, sz - 1)
       // if idx is zero or positive, a time stamp was found, we can simply return
       // the appropriate prefix. if idx is -1, it means the query time is smaller
@@ -1384,7 +1385,7 @@ object ConfluentImpl {
         val level = in.readInt()
         new IndexTreeImpl(tree, level)
       } getOrElse {
-        // sys.error( "Trying to access inexistent tree " + term.toInt )
+        // sys.error( "Trying to access nonexistent tree " + term.toInt )
 
         // `term` does not form a tree index. it may be a tree vertex, though. thus,
         // in this conditional step, we try to (partially) read `term` as vertex, thereby retrieving
@@ -1394,10 +1395,10 @@ object ConfluentImpl {
           out.writeInt(term.toInt)
         } { in =>
           val term2 = in.readInt() // tree index!
-          require(term2 != term, "Trying to access inexistent tree " + term.toInt)
+          if (term2 == term) throw new IllegalStateException(s"Trying to access nonexistent tree ${term.toInt}")
           readIndexTree(term2)
         } getOrElse {
-          sys.error("Trying to access inexistent tree " + term.toInt)
+          throw new IllegalStateException(s"Trying to access nonexistent tree ${term.toInt}")
         }
       }
     }

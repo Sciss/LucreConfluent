@@ -26,7 +26,7 @@ The following dependency is necessary:
     
     "de.sciss" %% "lucreconfluent" % v
 
-The current stable version `v` is `"2.8.0"`. Snapshot is `"2.9.0-SNAPSHOT"`.
+The current version `v` is `"2.9.0"`.
 
 ## previous versions / tags
 

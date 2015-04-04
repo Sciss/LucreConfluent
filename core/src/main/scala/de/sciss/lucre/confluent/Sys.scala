@@ -11,24 +11,23 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 
 import de.sciss.fingertree.FingerTree
 import de.sciss.lucre.data.Ancestor
-import de.sciss.lucre.stm.{DataStore, Disposable, Identifier, SpecGroup => ialized, Txn => _Txn, TxnLike}
+import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{DataStore, Disposable, Identifier, Txn => _Txn, TxnLike}
+import de.sciss.serial
 import de.sciss.serial.{DataInput, ImmutableSerializer, Writable}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
-import scala.{specialized => spec}
 
 object Sys {
   trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
     def meld(from: S#Acc)(implicit tx: S#Tx): A
   }
 
-  trait Var[S <: Sys[S], @spec(ialized) A] extends stm.Var[S#Tx, A] {
+  trait Var[S <: Sys[S], /* @spec(ialized) */ A] extends stm.Var[S#Tx, A] {
     private[confluent] def setInit(value: A)(implicit tx: S#Tx): Unit
   }
 
@@ -46,16 +45,16 @@ object Sys {
                       (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
 
     // true is term1 is ancestor of term2
-    def isAncestor(/* index: S#Acc, */ term1: Long, term2: Long)(implicit tx: S#Tx): Boolean
+    def isAncestor(term1: Long, term2: Long)(implicit tx: S#Tx): Boolean
   }
 
   trait PartialMapHandler[S <: Sys[S]] {
     def getIndexTreeTerm(term: Long)(implicit tx: S#Tx): Long
 
-    def readPartialMap[A](/* access: S#Acc, */ in: DataInput)
+    def readPartialMap[A](in: DataInput)
                          (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
 
-    def newPartialMap[A](/* access: S#Acc, rootTerm: Long, */ rootValue: A)
+    def newPartialMap[A](rootValue: A)
                         (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
   }
 
@@ -199,7 +198,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   type Tx                          <: Sys.Txn[S]
   final type ID                     = Sys.ID[S]
   final type Acc                    = Sys.Acc[S]
-  final type Var[@spec(ialized) A]  = Sys.Var[S, A]
+  final type Var[/* @spec(ialized) */ A]  = Sys.Var[S, A]
   final type Entry[A]               = Sys.Entry[S, A]
 
   def durable : D

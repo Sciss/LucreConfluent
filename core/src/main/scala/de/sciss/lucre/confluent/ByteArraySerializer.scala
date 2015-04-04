@@ -11,11 +11,9 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 
-import serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object ByteArraySerializer extends ImmutableSerializer[Array[Byte]] {
   def write(v: Array[Byte], out: DataOutput): Unit = {

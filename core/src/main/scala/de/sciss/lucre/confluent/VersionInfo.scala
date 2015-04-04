@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
@@ -28,8 +27,10 @@ object VersionInfo {
   private val df = new SimpleDateFormat("d MMM yyyy, HH:mm''ss.SSS", Locale.US)
 
   private final case class Impl(message: String, timeStamp: Long) extends VersionInfo {
-    override def toString = "VersionInfo(" + (if (message != "") message + ", " else "") +
-      "date = " + df.format(new Date(timeStamp)) + ")"
+    override def toString = {
+      val m = if (message != "") s"$message, " else ""
+      s"VersionInfo(${m}date = ${df.format(new Date(timeStamp))})"
+    }
   }
 
 }

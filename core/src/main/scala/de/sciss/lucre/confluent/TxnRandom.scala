@@ -11,21 +11,23 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
-import concurrent.stm.{Ref, InTxn}
 import java.util.concurrent.atomic.AtomicLong
+
+import de.sciss.lucre.stm
+
+import scala.concurrent.stm.{InTxn, Ref}
 
 /** Like java's random, but within a transactional cell. */
 object TxnRandom {
-  private val multiplier  = 0x5DEECE66DL
-  private val mask        = (1L << 48) - 1
-  private val addend      = 11L
+  private final val multiplier  = 0x5DEECE66DL
+  private final val mask        = (1L << 48) - 1
+  private final val addend      = 11L
 
   /** Scrambles a seed value for initializing the underlying long variable.
     * Callers who use the `wrap` method may use this to initially fill the
-    * wrapped variabled based on a given seed.
+    * wrapped variable based on a given seed.
     */
   def initialScramble(seed: Long): Long = (seed ^ multiplier) & mask
 

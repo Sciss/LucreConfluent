@@ -11,14 +11,14 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 package impl
 
-import annotation.switch
-import stm.DataStore
-import serial.{ImmutableSerializer, DataOutput}
+import de.sciss.lucre.stm.DataStore
+import de.sciss.serial
+import de.sciss.serial.{DataOutput, ImmutableSerializer}
+
+import scala.annotation.switch
 
 object DurableConfluentMapImpl {
   private sealed trait     Entry      [S <: Sys[S], A]
@@ -34,8 +34,6 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   protected def store: DataStore
   protected def handler: Sys.IndexMapHandler[S]
   protected def isOblivious: Boolean
-
-  //   override def toString = "VarMap(" + store + ")"
 
   protected def writeKey(key: K, out: DataOutput): Unit
 

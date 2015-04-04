@@ -11,14 +11,15 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre.confluent.impl
+package de.sciss.lucre.confluent
+package impl
 
-import de.sciss.{serial, fingertree}
-import de.sciss.lucre.confluent.{VersionInfo, PathLike, Confluent, Sys}
+import de.sciss.fingertree.{FingerTree, FingerTreeLike}
 import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Durable
 import de.sciss.serial.{DataInput, DataOutput}
-import de.sciss.fingertree.{FingerTreeLike, FingerTree}
+import de.sciss.{fingertree, serial}
+
 import scala.util.hashing.MurmurHash3
 
 private[confluent] object PathImpl {
@@ -149,7 +150,7 @@ private[confluent] object PathImpl {
 
       var res = FingerTree.empty(PathMeasure)
       if (sz % 2 != 0) {
-        println("?? partial from index " + this)
+        println(s"?? partial from index $this")
       }
       res :+= head
       res :+= last

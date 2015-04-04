@@ -11,11 +11,9 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 
-import serial.Writable
+import de.sciss.serial.Writable
 
 trait IndexMap[S <: Sys[S], A] extends Writable {
   def add(term: Long, value: A)(implicit tx: S#Tx): Unit

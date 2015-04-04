@@ -11,12 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
-import stm.{DataStoreFactory, DataStore}
-import impl.{ConfluentImpl => Impl}
-import language.implicitConversions
+import de.sciss.lucre.confluent.impl.{ConfluentImpl => Impl}
+import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{DataStore, DataStoreFactory}
+
+import scala.language.implicitConversions
 
 object Confluent {
   var DEBUG_DISABLE_PARTIAL = true

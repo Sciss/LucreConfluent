@@ -13,10 +13,11 @@
 
 package de.sciss.lucre
 
-import annotation.elidable
-import elidable.CONFIG
-import java.util.{Locale, Date}
 import java.text.SimpleDateFormat
+import java.util.{Date, Locale}
+
+import scala.annotation.elidable
+import scala.annotation.elidable.CONFIG
 
 package object confluent {
   private lazy val logHeader = new SimpleDateFormat("[d MMM yyyy, HH:mm''ss.SSS] 'Confluent' - ", Locale.US)

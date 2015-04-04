@@ -162,7 +162,7 @@ object ConfluentReactiveImpl {
   // ----------------------------------------------
 
   trait TxnMixin[S <: ConfluentReactiveLike[S]]
-    extends confluent.impl.ConfluentImpl.TxnMixin[S] // gimme `alloc` and `readSource`
+    extends confluent.impl.TxnMixin[S] // gimme `alloc` and `readSource`
     with ConfluentReactiveLike.Txn[S] {
     _: S#Tx =>
 
@@ -285,13 +285,13 @@ object ConfluentReactiveImpl {
   private final class RegularTxn(val system: S, val durable: event.Durable#Tx,
                                  val inputAccess: S#Acc, val isRetroactive: Boolean,
                                  val cursorCache: Cache[S#Tx])
-    extends confluent.impl.ConfluentImpl.RegularTxnMixin[S, event.Durable] with TxnImpl {
+    extends confluent.impl.RegularTxnMixin[S, event.Durable] with TxnImpl {
 
     lazy val peer = durable.peer
   }
 
   private final class RootTxn(val system: S, val peer: InTxn)
-    extends confluent.impl.ConfluentImpl.RootTxnMixin[S, event.Durable] with TxnImpl {
+    extends confluent.impl.RootTxnMixin[S, event.Durable] with TxnImpl {
 
     lazy val durable: event.Durable#Tx = {
       log("txn durable")
@@ -308,7 +308,7 @@ object ConfluentReactiveImpl {
   // ------------------------------------------
 
   trait Mixin[S <: ConfluentReactiveLike[S]]
-    extends confluent.impl.ConfluentImpl.Mixin[S] with evt.impl.ReactionMapImpl.Mixin[S] {
+    extends confluent.impl.Mixin[S] with evt.impl.ReactionMapImpl.Mixin[S] {
     _: S =>
 
     protected def eventStore: DataStore

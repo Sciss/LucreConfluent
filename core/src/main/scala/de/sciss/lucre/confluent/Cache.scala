@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
 trait Cache[-Tx] {
   def flushCache(term: Long)(implicit tx: Tx): Unit

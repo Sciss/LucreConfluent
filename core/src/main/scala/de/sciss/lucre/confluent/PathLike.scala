@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
 trait PathLike {
   def sum: Long

@@ -11,8 +11,7 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 
 /** A utility object implementing the prefix calculation for the randomized hash approach to storing
   * access paths.

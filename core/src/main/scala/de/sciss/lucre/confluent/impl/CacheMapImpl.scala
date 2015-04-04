@@ -11,13 +11,13 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 package impl
 
-import concurrent.stm.TxnLocal
-import serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+
+import scala.concurrent.stm.TxnLocal
 
 object CacheMapImpl {
    /** Instances of `Entry` are stored for each variable write in a transaction. They

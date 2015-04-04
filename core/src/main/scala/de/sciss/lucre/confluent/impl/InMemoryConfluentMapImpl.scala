@@ -11,12 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss.lucre
-package confluent
+package de.sciss.lucre.confluent
 package impl
 
-import concurrent.stm.TMap
-import collection.immutable.LongMap
+import scala.collection.immutable.LongMap
+import scala.concurrent.stm.TMap
 
 object InMemoryConfluentMapImpl {
   private trait Entry[+A]
@@ -29,7 +28,7 @@ final class InMemoryConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   private type Entries = Map[Long, Entry[Any]]
   private val store = TMap.empty[K, Entries]
 
-  override def toString = "InMemoryConfluentMap(" + store + ")"
+  override def toString = s"InMemoryConfluentMap($store)"
 
   def put[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx): Unit = {
     implicit val itx = tx.peer

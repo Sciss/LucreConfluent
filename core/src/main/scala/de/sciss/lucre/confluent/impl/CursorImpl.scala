@@ -29,10 +29,8 @@ object CursorImpl {
   private final class Ser[S <: Sys[S], D1 <: stm.DurableLike[D1]](implicit system: S { type D = D1 })
     extends serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] {
 
-    def write(v: Cursor[S, D1], out: DataOutput): Unit = {
-      // println(s"Cursor serializer writes $v")
-      v.write(out)
-    }
+    def write(v: Cursor[S, D1], out: DataOutput): Unit = v.write(out)
+
     def read(in: DataInput, access: D1#Acc)(implicit tx: D1#Tx): Cursor[S, D1] = CursorImpl.read[S, D1](in)
   }
 
@@ -63,7 +61,6 @@ object CursorImpl {
   }
 
   private final class Impl[S <: Sys[S], D1 <: stm.DurableLike[D1]](id: D1#ID, path: D1#Var[S#Acc])
-                                                          // (implicit system: ConfluentImpl.Mixin[S {type D = D1}])
                                                           (implicit system: S { type D = D1 })
     extends Cursor[S, D1] with Cache[S#Tx] {
 
@@ -99,19 +96,14 @@ object CursorImpl {
     }
 
     def flushCache(term: Long)(implicit tx: S#Tx): Unit = {
-      implicit val dtx: D1#Tx = /* tx.durable */ system.durableTx(tx)
+      implicit val dtx: D1#Tx = system.durableTx(tx)
       val newPath = tx.inputAccess.addTerm(term)
       path()      = newPath
       logCursor(s"${id.toString} flush path = $newPath")
     }
 
-    def position(implicit tx: S #Tx): S#Acc = position(/* tx.durable */ system.durableTx(tx))
+    def position(implicit tx: S #Tx): S#Acc = position(system.durableTx(tx))
     def position(implicit tx: D1#Tx): S#Acc = path()
-
-    //      def position_=( pathVal: S#Acc )( implicit tx: S#Tx ): Unit = {
-    //         implicit val dtx: D1#Tx = system.durableTx( tx )
-    //         path.set( pathVal )
-    //      }
 
     def dispose()(implicit tx: D1#Tx): Unit = {
       id  .dispose()
@@ -120,7 +112,6 @@ object CursorImpl {
     }
 
     def write(out: DataOutput): Unit = {
-      // println(s"Writing $COOKIE")
       out.writeShort(COOKIE)
       id  .write(out)
       path.write(out)

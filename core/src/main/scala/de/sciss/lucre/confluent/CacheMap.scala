@@ -11,11 +11,11 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 
-import serial.ImmutableSerializer
+import de.sciss.lucre.stm
+import de.sciss.serial
+import de.sciss.serial.ImmutableSerializer
 
 object CacheMap {
   trait InMemory[S <: stm.Sys[S], /* @spec(KeySpec) */ K, +Store] extends CacheMap[S, K, Store] {

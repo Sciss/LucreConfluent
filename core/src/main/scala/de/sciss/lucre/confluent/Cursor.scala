@@ -11,12 +11,12 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 
 import de.sciss.lucre.confluent.impl.{CursorImpl => Impl}
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.Disposable
+import de.sciss.serial
 import de.sciss.serial.{DataInput, Writable}
 
 object Cursor {

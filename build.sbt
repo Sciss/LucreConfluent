@@ -1,6 +1,6 @@
 name                         := "LucreConfluent"
 
-version         in ThisBuild := "2.9.0"
+version         in ThisBuild := "2.9.1-SNAPSHOT"
 
 organization    in ThisBuild := "de.sciss"
 
@@ -10,15 +10,15 @@ homepage        in ThisBuild := Some(url("https://github.com/Sciss/LucreConfluen
 
 licenses        in ThisBuild := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
-scalaVersion    in ThisBuild := "2.11.1"
+scalaVersion    in ThisBuild := "2.11.6"
 
-crossScalaVersions in ThisBuild := Seq("2.11.1", "2.10.4")
+crossScalaVersions in ThisBuild := Seq("2.11.6", "2.10.5")
 
 resolvers       in ThisBuild += "Oracle Repository" at "http://download.oracle.com/maven"  // required for sleepycat
 
 // retrieveManaged in ThisBuild := true
 
-scalacOptions   in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture")
+scalacOptions   in ThisBuild ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8")
 
 scalacOptions   in ThisBuild ++= Seq("-Xelide-below", "INFO") // elide debug logging!
 

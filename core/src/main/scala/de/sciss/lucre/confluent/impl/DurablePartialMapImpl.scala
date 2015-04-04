@@ -2,7 +2,7 @@
  *  DurablePartialMapImpl.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -266,7 +266,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
       writeKey(key, out) // out.writeInt( key )
       //         out.writeLong( preSum )
     } { in =>
-      (in.readByte(): @switch) match {
+      in.readByte() /*: @switch */ match {
         //            case 0 => // partial hash
         //               val hash = in.readLong()
         //               //                  EntryPre[ S ]( hash )

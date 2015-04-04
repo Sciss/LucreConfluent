@@ -2,7 +2,7 @@
  *  ConfluentImpl.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -11,18 +11,20 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 package impl
 
+import de.sciss.lucre.data.Ancestor
+import de.sciss.lucre.stm
 import de.sciss.lucre.stm.{TxnLike, InMemory, DataStore, DataStoreFactory, Durable, IdentifierMap}
-import serial.{ImmutableSerializer, DataInput, DataOutput}
-import concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
-import collection.immutable.{IndexedSeq => Vec, LongMap, IntMap, Queue => IQueue}
-import data.Ancestor
-import annotation.tailrec
-import util.hashing.MurmurHash3
+import de.sciss.serial
+import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
+
+import scala.annotation.tailrec
+import scala.collection.immutable.{IndexedSeq => Vec, LongMap, IntMap, Queue => IQueue}
+import scala.concurrent.stm.{InTxn, TxnExecutor, TxnLocal, Txn => ScalaTxn}
+import scala.util.hashing.MurmurHash3
+
 import impl.{PathImpl => Path}
 
 object ConfluentImpl {
@@ -82,15 +84,15 @@ object ConfluentImpl {
     // ---- init ----
 
     /*
-       * Because durable maps are persisted, they may be deserialized multiple times per transaction.
-       * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
-       * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
-       * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
-       * was marked after A1, it's cached value will override A2's, even though it is older.
-       *
-       * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
-       * only one instance per id is available in a single transaction.
-       */
+     * Because durable maps are persisted, they may be deserialized multiple times per transaction.
+     * This could potentially cause a problem: imagine two instances A1 and A2. A1 is read, a `put`
+     * is performed, making A1 call `markDirty`. Next, A2 is read, again a `put` performed, and A2
+     * calls `markDirty`. Next, another `put` on A1 is performed. In the final flush, because A2
+     * was marked after A1, it's cached value will override A2's, even though it is older.
+     *
+     * To avoid that, durable maps are maintained by their id's in a transaction local map. That way,
+     * only one instance per id is available in a single transaction.
+     */
     private var durableIDMaps     = IntMap.empty[DurableIDMapImpl[_, _]]
     private var meld              = MeldInfo.empty[S]
     private var dirtyMaps         = emptySeq[Cache[S#Tx]]
@@ -160,7 +162,7 @@ object ConfluentImpl {
 
     final def newID(): S#ID = {
       val res = new ConfluentID[S](system.newIDValue()(this), Path.empty[S])
-      log("txn newID " + res)
+      log(s"txn newID $res")
       res
     }
 
@@ -168,7 +170,7 @@ object ConfluentImpl {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return newID()
 
       val res = new PartialID[S](system.newIDValue()(this), Path.empty[S])
-      log("txn newPartialID " + res)
+      log(s"txn newPartialID $res")
       res
     }
 
@@ -179,7 +181,7 @@ object ConfluentImpl {
       })(in => {
         in.readInt() // tree index!
         in.readInt()
-      })(this).getOrElse(sys.error("Trying to access inexistent vertex " + term.toInt))
+      })(this).getOrElse(sys.error(s"Trying to access inexistent vertex ${term.toInt}"))
     }
 
     final def addInputVersion(path: S#Acc): Unit = {
@@ -211,12 +213,12 @@ object ConfluentImpl {
     }
 
     final def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A = {
-      log("txn get " + id)
+      log(s"txn get $id")
       fullCache.getCacheNonTxn[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
     final def getTxn[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A = {
-      log("txn get' " + id)
+      log(s"txn get' $id")
       fullCache.getCacheTxn[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))
     }
 
@@ -250,7 +252,7 @@ object ConfluentImpl {
 
     final def newVar[A](pid: S#ID, init: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](alloc(pid))
-      log("txn newVar " + res) // + " - init = " + init
+      log(s"txn newVar $res") // + " - init = " + init
       res.setInit(init)(this)
       res
     }
@@ -261,7 +263,7 @@ object ConfluentImpl {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return newVar(pid, init)
 
       val res = new PartialVarTxImpl[S, A](allocPartial(pid))
-      log("txn newPartialVar " + res)
+      log(s"txn newPartialVar $res")
       res.setInit(init)(this)
       res
     }
@@ -269,7 +271,7 @@ object ConfluentImpl {
     final def newBooleanVar(pid: S#ID, init: Boolean): S#Var[Boolean] = {
       val id  = alloc(pid)
       val res = new BooleanVar(id)
-      log("txn newVar " + res) // + " - init = " + init
+      log(s"txn newVar $res") // + " - init = " + init
       res.setInit(init)(this)
       res
     }
@@ -277,7 +279,7 @@ object ConfluentImpl {
     final def newIntVar(pid: S#ID, init: Int): S#Var[Int] = {
       val id  = alloc(pid)
       val res = new IntVar(id)
-      log("txn newVar " + res) // + " - init = " + init
+      log(s"txn newVar $res") // + " - init = " + init
       res.setInit(init)(this)
       res
     }
@@ -285,7 +287,7 @@ object ConfluentImpl {
     final def newLongVar(pid: S#ID, init: Long): S#Var[Long] = {
       val id  = alloc(pid)
       val res = new LongVar(id)
-      log("txn newVar " + res) // + " - init = " + init
+      log(s"txn newVar $res") // + " - init = " + init
       res.setInit(init)(this)
       res
     }
@@ -333,7 +335,7 @@ object ConfluentImpl {
 
     final def readVar[A](pid: S#ID, in: DataInput)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
       val res = makeVar[A](readSource(in, pid))
-      log("txn read " + res)
+      log(s"txn read $res")
       res
     }
 
@@ -341,31 +343,31 @@ object ConfluentImpl {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return readVar(pid, in)
 
       val res = new PartialVarTxImpl[S, A](readPartialSource(in, pid))
-      log("txn read " + res)
+      log(s"txn read $res")
       res
     }
 
     final def readBooleanVar(pid: S#ID, in: DataInput): S#Var[Boolean] = {
       val res = new BooleanVar(readSource(in, pid))
-      log("txn read " + res)
+      log(s"txn read $res")
       res
     }
 
     final def readIntVar(pid: S#ID, in: DataInput): S#Var[Int] = {
       val res = new IntVar(readSource(in, pid))
-      log("txn read " + res)
+      log(s"txn read $res")
       res
     }
 
     final def readLongVar(pid: S#ID, in: DataInput): S#Var[Long] = {
       val res = new LongVar(readSource(in, pid))
-      log("txn read " + res)
+      log(s"txn read $res")
       res
     }
 
     final def readID(in: DataInput, acc: S#Acc): S#ID = {
       val res = new ConfluentID(in.readInt(), Path.readAndAppend[S](in, acc)(this))
-      log("txn readID " + res)
+      log(s"txn readID $res")
       res
     }
 
@@ -373,7 +375,7 @@ object ConfluentImpl {
       if (Confluent.DEBUG_DISABLE_PARTIAL) return readID(in, acc)
 
       val res = new PartialID(in.readInt(), Path.readAndAppend(in, acc)(this))
-      log("txn readPartialID " + res)
+      log(s"txn readPartialID $res")
       res
     }
 
@@ -388,7 +390,7 @@ object ConfluentImpl {
     //    final def newCursor (init: S#Acc  ): Cursor[S, S#D] = system.newCursor (init)(this)
     //    final def readCursor(in: DataInput): Cursor[S, S#D] = system.readCursor(in  )(this)
 
-    override def toString = "confluent.Sys#Tx" + inputAccess // + system.path.mkString( "<", ",", ">" )
+    override def toString = s"confluent.Sys#Tx$inputAccess" // + system.path.mkString( "<", ",", ">" )
   }
 
   trait RegularTxnMixin[S <: Sys[S], D <: stm.DurableLike[D]] extends TxnMixin[S] {
@@ -399,7 +401,7 @@ object ConfluentImpl {
     final protected def flushCaches(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]]): Unit =
       system.flushRegular(meldInfo, newVersion, caches :+ cursorCache)(this)
 
-    override def toString = "Confluent#Tx" + inputAccess
+    override def toString = s"Confluent#Tx$inputAccess"
   }
 
   trait RootTxnMixin[S <: Sys[S], D <: stm.DurableLike[D]]
@@ -465,7 +467,7 @@ object ConfluentImpl {
       path.write(out)
     }
 
-    override def toString = "<" + base + path.mkString(" @ ", ",", ">")
+    override def toString = path.mkString(s"<$base @ ", ",", ">")
 
     def dispose()(implicit tx: S#Tx) = ()
   }
@@ -501,14 +503,15 @@ object ConfluentImpl {
       path.write(out)
     }
 
-    override def toString = "<" + base + " @ " + {
-      if (path.isEmpty) ">"
-      else {
-        val head = path.head
-        val tail = path.tail
-        val (mid, last) = tail.splitIndex
-        mid.mkString(head.toInt.toString + "(,", ",", ")," + last.toInt + ">")
-      }
+    override def toString = {
+      val tail = if (path.isEmpty) ""
+        else {
+          val head = path.head
+          val tail = path.tail
+          val (mid, last) = tail.splitIndex
+          mid.mkString(s"${head.toInt}(,", ",", s"),${last.toInt}")
+        }
+      s"<$base @ $tail>"
     }
 
     def dispose()(implicit tx: S#Tx) = ()
@@ -528,7 +531,7 @@ object ConfluentImpl {
 
     private var writeTerm = 0L
 
-    override def toString = "handle: " + stale
+    override def toString = s"handle: $stale"
 
     def flushCache(term: Long)(implicit tx: S#Tx): Unit =
       writeTerm = term
@@ -596,21 +599,21 @@ object ConfluentImpl {
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putNonTxn(id, v)(ser)
     }
 
     def apply()(implicit tx: S#Tx): A = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getNonTxn[A](id)(ser)
     }
 
     def setInit(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " ini " + v)
+      log(s"$this ini $v")
       tx.putNonTxn(id, v)(ser)
     }
 
-    override def toString = "Var(" + id + ")"
+    override def toString = s"Var($id)"
   }
 
   private final class PartialVarTxImpl[S <: Sys[S], A](protected val id: S#ID)
@@ -618,21 +621,21 @@ object ConfluentImpl {
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      logPartial(this.toString + " set " + v)
+      logPartial(s"$this set $v")
       tx.putPartial(id, v)
     }
 
     def apply()(implicit tx: S#Tx): A = {
-      logPartial(this.toString + " get")
+      logPartial(s"$this get")
       tx.getPartial(id)
     }
 
     def setInit(v: A)(implicit tx: S#Tx): Unit = {
-      logPartial(this.toString + " ini " + v)
+      logPartial(s"$this ini $v")
       tx.putPartial(id, v)
     }
 
-    override def toString = "PartialVar(" + id + ")"
+    override def toString = s"PartialVar($id)"
   }
 
   private final class VarTxImpl[S <: Sys[S], A](protected val id: S#ID)
@@ -640,21 +643,21 @@ object ConfluentImpl {
     extends BasicVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putTxn(id, v)
     }
 
     def apply()(implicit tx: S#Tx): A = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getTxn(id)
     }
 
     def setInit(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " ini " + v)
+      log(s"$this ini $v")
       tx.putTxn(id, v)
     }
 
-    override def toString = "Var(" + id + ")"
+    override def toString = s"Var($id)"
   }
 
   private final class RootVar[S <: Sys[S], A](id1: Int, name: String)
@@ -668,19 +671,19 @@ object ConfluentImpl {
     private def id(implicit tx: S#Tx): S#ID = new ConfluentID[S](id1, tx.inputAccess)
 
     def meld(from: S#Acc)(implicit tx: S#Tx): A = {
-      log(this.toString + " meld " + from)
+      log(s"$this meld $from")
       val idm = new ConfluentID[S](id1, from)
       tx.addInputVersion(from)
       tx.getTxn(idm)
     }
 
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putTxn(id, v)
     }
 
     def apply()(implicit tx: S#Tx): A = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getTxn(id)
     }
 
@@ -698,21 +701,21 @@ object ConfluentImpl {
     extends BasicVar[S, Boolean] with ImmutableSerializer[Boolean] {
 
     def apply()(implicit tx: S#Tx): Boolean = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getNonTxn[Boolean](id)(this)
     }
 
     def setInit(v: Boolean)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " ini " + v)
+      log(s"$this ini $v")
       tx.putNonTxn(id, v)(this)
     }
 
     def update(v: Boolean)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putNonTxn(id, v)(this)
     }
 
-    override def toString = "Var[Boolean](" + id + ")"
+    override def toString = s"Var[Boolean]($id)"
 
     // ---- Serializer ----
     def write(v: Boolean, out: DataOutput): Unit = out.writeBoolean(v)
@@ -724,17 +727,17 @@ object ConfluentImpl {
     extends BasicVar[S, Int] with ImmutableSerializer[Int] {
 
     def apply()(implicit tx: S#Tx): Int = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getNonTxn[Int](id)(this)
     }
 
     def setInit(v: Int)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " ini " + v)
+      log(s"$this ini $v")
       tx.putNonTxn(id, v)(this)
     }
 
     def update(v: Int)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putNonTxn(id, v)(this)
     }
 
@@ -750,21 +753,21 @@ object ConfluentImpl {
     extends BasicVar[S, Long] with ImmutableSerializer[Long] {
 
     def apply()(implicit tx: S#Tx): Long = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getNonTxn[Long](id)(this)
     }
 
     def setInit(v: Long)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " ini " + v)
+      log(s"$this ini $v")
       tx.putNonTxn(id, v)(this)
     }
 
     def update(v: Long)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putNonTxn(id, v)(this)
     }
 
-    override def toString = "Var[Long](" + id + ")"
+    override def toString = s"Var[Long]($id)"
 
     // ---- Serializer ----
     def write(v: Long, out: DataOutput): Unit = out.writeLong(v)
@@ -818,7 +821,7 @@ object ConfluentImpl {
     def write(out: DataOutput) = ()
     def dispose()(implicit tx: S#Tx) = ()
 
-    override def toString = "IdentifierMap<" + hashCode().toHexString + ">"
+    override def toString = s"IdentifierMap<${hashCode().toHexString}>"
   }
 
   private final class DurableIDMapImpl[S <: Sys[S], A](val id: S#ID,
@@ -865,7 +868,7 @@ object ConfluentImpl {
       tx.removeDurableIDMap(this)
     }
 
-    override def toString = "IdentifierMap<" + id.base + ">"
+    override def toString = s"IdentifierMap<${id.base}>"
   }
 
   // ----------------------------------------------
@@ -1105,7 +1108,7 @@ object ConfluentImpl {
       } else {
         if (newVersion) flushOldTree() else tx.inputAccess.term
       }
-      log("::::::: txn flush - " + (if (newTree) "meld " else "") + "term = " + outTerm.toInt + " :::::::")
+      log(s"::::::: txn flush - ${if (newTree) "meld " else ""}term = ${outTerm.toInt} :::::::")
       if (newVersion) writeVersionInfo(outTerm)
       flush(outTerm, caches)
     }
@@ -1128,9 +1131,7 @@ object ConfluentImpl {
       }
     }
 
-    /**
-     * Retrieves the version information for a given version term.
-     */
+    /** Retrieves the version information for a given version term. */
     final def versionInfo(term: Long)(implicit tx: TxnLike): VersionInfo = {
       val vInt = term.toInt
       val opt = store.get { out =>
@@ -1340,7 +1341,7 @@ object ConfluentImpl {
     private def writeNewTree(index: S#Acc, level: Int)(implicit tx: S#Tx): Unit = {
       val dtx   = durableTx(tx)
       val term  = index.term
-      log("txn new tree " + term.toInt)
+      log(s"txn new tree ${term.toInt}")
       val tree  = Ancestor.newTree[D, Long](term)(dtx, ImmutableSerializer.Long, _.toInt)
       val it    = new IndexTreeImpl(tree, level)
       val vInt  = term.toInt
@@ -1372,7 +1373,7 @@ object ConfluentImpl {
       } { in =>
         readIndexMap[Unit](in, index)(tx, ImmutableSerializer.Unit)
       }
-      opt.getOrElse(sys.error("No time stamp map found for " + index))
+      opt.getOrElse(sys.error(s"No time stamp map found for $index"))
     }
 
     private def readIndexTree(term: Long)(implicit tx: D#Tx): Sys.IndexTree[D] = {
@@ -1415,7 +1416,7 @@ object ConfluentImpl {
         val level   = in.readInt()
         val v       = tree.vertexSerializer.read(in, ()) // , access) // durableTx( tx )) // tx.durable )
         (v, level)
-      } getOrElse sys.error("Trying to access inexistent vertex " + term.toInt)
+      } getOrElse sys.error(s"Trying to access nonexistent vertex ${term.toInt}")
     }
 
     // writes the partial tree leaf information, i.e. pre- and post-order entries (using cookie `3`).
@@ -1513,7 +1514,7 @@ object ConfluentImpl {
         // val access = index :+ term
         partialTree.vertexSerializer.read(in, ()) // access)
       } getOrElse {
-        sys.error("Trying to access inexistent vertex " + term.toInt)
+        sys.error(s"Trying to access nonexistent vertex ${term.toInt}")
       }
 
     final def getIndexTreeTerm(term: Long)(implicit tx: S#Tx): Long = {

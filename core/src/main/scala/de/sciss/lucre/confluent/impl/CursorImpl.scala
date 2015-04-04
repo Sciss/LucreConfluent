@@ -2,7 +2,7 @@
  *  CursorImpl.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -11,23 +11,20 @@
  *  contact@sciss.de
  */
 
-package de.sciss
-package lucre
-package confluent
+package de.sciss.lucre.confluent
 package impl
 
+import de.sciss.lucre.stm
+import de.sciss.serial
+import de.sciss.serial.{DataInput, DataOutput}
+
 import scala.concurrent.stm.{Txn, TxnExecutor}
-import serial.{DataInput, DataOutput}
 
 object CursorImpl {
   private final val COOKIE  = 0x4375  // "Cu"
 
   implicit def serializer[S <: Sys[S], D1 <: stm.DurableLike[D1]](
     implicit system: S { type D = D1 }): serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] = new Ser[S, D1]
-
-  //   private def pathSerializer[ S <: Sys[ S ]]( system: S ) : stm.Serializer[ S#Tx, S#Acc, S#Acc ] = anyPathSer.asInstanceOf[ PathSer[ S ]]
-  //
-  //   private val anyPathSer = new PathSer[ Confluent ]
 
   private final class Ser[S <: Sys[S], D1 <: stm.DurableLike[D1]](implicit system: S { type D = D1 })
     extends serial.Serializer[D1#Tx, D1#Acc, Cursor[S, D1]] {

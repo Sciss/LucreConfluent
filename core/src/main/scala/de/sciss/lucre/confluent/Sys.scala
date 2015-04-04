@@ -2,7 +2,7 @@
  *  Sys.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -15,12 +15,13 @@ package de.sciss
 package lucre
 package confluent
 
-import de.sciss.lucre.stm.{Txn => _Txn, SpecGroup => ialized, TxnLike, DataStore, Disposable, Identifier}
-import data.Ancestor
 import de.sciss.fingertree.FingerTree
-import collection.immutable.{IndexedSeq => Vec}
+import de.sciss.lucre.data.Ancestor
+import de.sciss.lucre.stm.{DataStore, Disposable, Identifier, SpecGroup => ialized, Txn => _Txn, TxnLike}
+import de.sciss.serial.{DataInput, ImmutableSerializer, Writable}
+
+import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.{specialized => spec}
-import serial.{ImmutableSerializer, DataInput, Writable}
 
 object Sys {
   trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
@@ -160,41 +161,37 @@ object Sys {
     private[confluent] def isEmpty:  Boolean
     private[confluent] def nonEmpty: Boolean
 
-    /**
-     * Retrieves the version information associated with the access path.
-     */
+    /** Retrieves the version information associated with the access path. */
     def info(implicit tx: S#Tx): VersionInfo
 
-    /**
-     * Truncates the path to a prefix corresponding to the most recent
-     * transaction along the path which has occurred not after a given
-     * point in (system) time.
-     *
-     * In other words, calling `info` on the returned path results in
-     * a `VersionInfo` object whose `timeStamp` field is less than or
-     * equal to the `timeStamp` argument of this method. The only
-     * exception is if the `timeStamp` argument is smaller than the
-     * root version of system; in that case, the root path is returned
-     * instead of an empty path.
-     *
-     * '''Note:''' This assumes that incremental versions correspond
-     * with incremental time stamps. This is not enforced and if this is not the case,
-     * the behaviour is undefined. Furthermore, if it is allowed that
-     * multiple successive versions have the same time stamp. In that
-     * case, it is undefined which of these versions is returned.
-     *
-     * @param   timeStamp  the query time (in terms of `System.currentTimeMillis`)
-     */
+    /** Truncates the path to a prefix corresponding to the most recent
+      * transaction along the path which has occurred not after a given
+      * point in (system) time.
+      *
+      * In other words, calling `info` on the returned path results in
+      * a `VersionInfo` object whose `timeStamp` field is less than or
+      * equal to the `timeStamp` argument of this method. The only
+      * exception is if the `timeStamp` argument is smaller than the
+      * root version of system; in that case, the root path is returned
+      * instead of an empty path.
+      *
+      * '''Note:''' This assumes that incremental versions correspond
+      * with incremental time stamps. This is not enforced and if this is not the case,
+      * the behaviour is undefined. Furthermore, if it is allowed that
+      * multiple successive versions have the same time stamp. In that
+      * case, it is undefined which of these versions is returned.
+      *
+      * @param   timeStamp  the query time (in terms of `System.currentTimeMillis`)
+      */
     def takeUntil(timeStamp: Long)(implicit tx: S#Tx): S#Acc
   }
 }
 
-/**
- * This is analogous to a `ConfluentLike` trait. Since there is only one system in
- * `LucreConfluent`, it was decided to just name it `confluent.Sys`.
- *
- * @tparam S   the implementing system
- */
+/** This is analogous to a `ConfluentLike` trait. Since there is only one system in
+  * `LucreConfluent`, it was decided to just name it `confluent.Sys`.
+  *
+  * @tparam S   the implementing system
+  */
 trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   type D <: stm.DurableLike [D]
   type I <: stm.InMemoryLike[I]
@@ -255,9 +252,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
                            (implicit aSer: serial.Serializer[S#Tx, S#Acc, A],
                                      bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B)
 
-  /**
-   * Retrieves the In information for a given version term.
-   */
+  /** Retrieves the In information for a given version term. */
   private[confluent] def versionInfo(term: Long)(implicit tx: TxnLike): VersionInfo
 
   private[confluent] def versionUntil(access: S#Acc, timeStamp: Long)(implicit tx: S#Tx): S#Acc // XXX TODO: can we get to TxnLike here, too?

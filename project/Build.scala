@@ -3,11 +3,11 @@ import Keys._
 import sbtbuildinfo.Plugin._
 
 object Build extends sbt.Build {
-  lazy val stmVersion       = "2.1.0"
+  lazy val stmVersion       = "2.1.1"
   lazy val dataVersion      = "2.3.0"
-  lazy val eventVersion     = "2.7.0"
+  lazy val eventVersion     = "2.7.3"
   lazy val fingerVersion    = "1.5.2"
-  lazy val scalaTestVersion = "2.2.0"
+  lazy val scalaTestVersion = "2.2.4"
 
   lazy val root: Project = Project(
     id            = "lucreconfluent",

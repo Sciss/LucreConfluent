@@ -2,7 +2,7 @@
  *  Cursor.scala
  *  (LucreConfluent)
  *
- *  Copyright (c) 2009-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
  *
  *  This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -15,9 +15,9 @@ package de.sciss
 package lucre
 package confluent
 
-import stm.Disposable
+import de.sciss.lucre.confluent.impl.{CursorImpl => Impl}
+import de.sciss.lucre.stm.Disposable
 import de.sciss.serial.{DataInput, Writable}
-import de.sciss.lucre.confluent.impl.{CursorImpl => Impl, ConfluentImpl}
 
 object Cursor {
   def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc = Sys.Acc.root[S])

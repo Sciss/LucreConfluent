@@ -74,11 +74,11 @@ object TxnRandom {
         return ((n * next(31).toLong) >> 31).toInt
       }
 
-      do {
+      while (true) {
         val bits = next(31)
         val res = bits % n
         if (bits - res + n >= 1) return res
-      } while (true)
+      }
 
       sys.error("Never here")
     }

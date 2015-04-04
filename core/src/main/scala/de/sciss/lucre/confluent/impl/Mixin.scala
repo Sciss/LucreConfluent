@@ -46,18 +46,19 @@ trait Mixin[S <: Sys[S]]
   final val fullCache     = DurableCacheMapImpl.newIntCache(varMap)
   final val partialCache  = PartialCacheMapImpl.newIntCache(DurablePersistentMap.newPartialMap[S](store, this))
 
-  private val global: GlobalState[S, D] = durable.step { implicit tx =>
-    val root = durable.rootJoin { implicit tx =>
-      val durRootID     = stm.DurableSurgery.newIDValue(durable)
-      val idCnt         = tx.newCachedIntVar(0)
-      val versionLinear = tx.newCachedIntVar(0)
-      val versionRandom = tx.newCachedLongVar(TxnRandom.initialScramble(0L)) // scramble !!!
-    val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, ImmutableSerializer.Long, _.toInt)
-      GlobalState[S, D](durRootID = durRootID, idCnt = idCnt, versionLinear = versionLinear,
-        versionRandom = versionRandom, partialTree = partialTree)
+  private val global: GlobalState[S, D] = 
+    durable.step { implicit tx =>
+      val root = durable.rootJoin { implicit tx =>
+        val durRootID     = stm.DurableSurgery.newIDValue(durable)
+        val idCnt         = tx.newCachedIntVar(0)
+        val versionLinear = tx.newCachedIntVar(0)
+        val versionRandom = tx.newCachedLongVar(TxnRandom.initialScramble(0L)) // scramble !!!
+        val partialTree   = Ancestor.newTree[D, Long](1L << 32)(tx, ImmutableSerializer.Long, _.toInt)
+        GlobalState[S, D](durRootID = durRootID, idCnt = idCnt, versionLinear = versionLinear,
+          versionRandom = versionRandom, partialTree = partialTree)
+      }
+      root()
     }
-    root()
-  }
 
   private val versionRandom = TxnRandom.wrap(global.versionRandom)
 

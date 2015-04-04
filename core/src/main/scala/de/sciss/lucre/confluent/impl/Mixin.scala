@@ -95,11 +95,17 @@ trait Mixin[S <: Sys[S]]
 
   final def newCursor()(implicit tx: S#Tx): Cursor[S, D] = newCursor(tx.inputAccess)
 
-  final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S, D] =
-    Cursor[S, D](init)(durableTx(tx), this)
+  final def newCursor(init: S#Acc)(implicit tx: S#Tx): Cursor[S, D] = {
+    implicit val dtx: D#Tx = durableTx(tx)
+    implicit val s: S { type D = system.D } = this  // this is to please the IntelliJ IDEA presentation compiler
+    Cursor[S, D](init)
+  }
 
-  final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] =
-    Cursor.read[S, D](in)(durableTx(tx), this)
+  final def readCursor(in: DataInput)(implicit tx: S#Tx): Cursor[S, D] = {
+    implicit val dtx: D#Tx = durableTx(tx)
+    implicit val s: S { type D = system.D } = this  // this is to please the IntelliJ IDEA presentation compiler
+    Cursor.read[S, D](in)
+  }
 
   final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] =
     executeRoot { implicit tx =>
@@ -229,7 +235,7 @@ trait Mixin[S <: Sys[S]]
       val timeStamp = in.readLong()
       VersionInfo(m, timeStamp)
     }
-    opt.getOrElse(sys.error("No version information stored for " + vInt))
+    opt.getOrElse(sys.error(s"No version information stored for $vInt"))
   }
 
   final def versionUntil(access: S#Acc, timeStamp: Long)(implicit tx: S#Tx): S#Acc = {

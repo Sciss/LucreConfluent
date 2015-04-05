@@ -34,7 +34,7 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
 
   protected def store: DataStore
 
-  protected def handler: Sys.PartialMapHandler[S]
+  protected def handler: PartialMapHandler[S]
 
   protected def writeKey(key: K, out: DataOutput): Unit
 
@@ -326,13 +326,13 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
   }
 }
 
-final class PartialIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.PartialMapHandler[S])
+final class PartialIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: PartialMapHandler[S])
   extends DurablePartialMapImpl[S, Int] {
 
   protected def writeKey(key: Int, out: DataOutput): Unit = out.writeInt(key)
 }
 
-final class PartialLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.PartialMapHandler[S])
+final class PartialLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: PartialMapHandler[S])
   extends DurablePartialMapImpl[S, Long] {
 
   protected def writeKey(key: Long, out: DataOutput): Unit = out.writeLong(key)

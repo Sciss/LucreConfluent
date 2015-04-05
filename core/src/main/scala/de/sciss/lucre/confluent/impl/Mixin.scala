@@ -26,7 +26,7 @@ import scala.collection.immutable.{IndexedSeq => Vec}
 import scala.concurrent.stm.{Txn => ScalaTxn, TxnExecutor, InTxn}
 
 trait Mixin[S <: Sys[S]]
-  extends Sys[S] with Sys.IndexMapHandler[S] with Sys.PartialMapHandler[S] {
+  extends Sys[S] with IndexMapHandler[S] with PartialMapHandler[S] {
 
   system: S =>
 
@@ -64,7 +64,7 @@ trait Mixin[S <: Sys[S]]
 
   override def toString = "Confluent"
 
-  final def indexMap: Sys.IndexMapHandler[S] = this
+  final def indexMap: IndexMapHandler[S] = this
 
   @inline private def partialTree: Ancestor.Tree[D, Long] = global.partialTree
 

@@ -13,37 +13,16 @@
 
 package de.sciss.lucre.confluent
 
-import de.sciss.lucre.stm.{DataStore, Txn => _Txn, TxnLike}
+import de.sciss.lucre.stm.{DataStore, TxnLike}
 import de.sciss.lucre.{confluent, stm}
 import de.sciss.serial
-import de.sciss.serial.{DataInput, ImmutableSerializer}
+import de.sciss.serial.DataInput
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
 object Sys {
   trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
     def meld(from: S#Acc)(implicit tx: S#Tx): A
-  }
-
-  trait IndexMapHandler[S <: Sys[S]] {
-    def readIndexMap[A](in: DataInput, index: S#Acc)
-                       (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
-
-    def newIndexMap[A](index: S#Acc, rootTerm: Long, rootValue: A)
-                      (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
-
-    // true is term1 is ancestor of term2
-    def isAncestor(term1: Long, term2: Long)(implicit tx: S#Tx): Boolean
-  }
-
-  trait PartialMapHandler[S <: Sys[S]] {
-    def getIndexTreeTerm(term: Long)(implicit tx: S#Tx): Long
-
-    def readPartialMap[A](in: DataInput)
-                         (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
-
-    def newPartialMap[A](rootValue: A)
-                        (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
   }
 }
 
@@ -76,7 +55,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
 
   private[confluent] def store: DataStore
 
-  private[confluent] def indexMap: Sys.IndexMapHandler[S]
+  private[confluent] def indexMap: IndexMapHandler[S]
 
   private[confluent] def flushRegular(meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])(implicit tx: S#Tx): Unit
   private[confluent] def flushRoot   (meldInfo: MeldInfo[S], newVersion: Boolean, caches: Vec[Cache[S#Tx]])(implicit tx: S#Tx): Unit

@@ -32,7 +32,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   import DurableConfluentMapImpl._
 
   protected def store: DataStore
-  protected def handler: Sys.IndexMapHandler[S]
+  protected def handler: IndexMapHandler[S]
   protected def isOblivious: Boolean
 
   protected def writeKey(key: K, out: DataOutput): Unit
@@ -308,14 +308,14 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
   }
 }
 
-final class ConfluentIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.IndexMapHandler[S],
+final class ConfluentIntMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: IndexMapHandler[S],
                                              protected val isOblivious: Boolean)
   extends DurableConfluentMapImpl[S, Int] {
 
   protected def writeKey(key: Int, out: DataOutput): Unit = out.writeInt(key)
 }
 
-final class ConfluentLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: Sys.IndexMapHandler[S],
+final class ConfluentLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: IndexMapHandler[S],
                                               protected val isOblivious: Boolean)
   extends DurableConfluentMapImpl[S, Long] {
 

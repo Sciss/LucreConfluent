@@ -18,15 +18,15 @@ import de.sciss.lucre.stm.DataStore
 import de.sciss.serial.ImmutableSerializer
 
 object DurablePersistentMap {
-  def newConfluentIntMap[S <: Sys[S]](store: DataStore, handler: Sys.IndexMapHandler[S],
+  def newConfluentIntMap[S <: Sys[S]](store: DataStore, handler: IndexMapHandler[S],
                                       isOblivious: Boolean): DurablePersistentMap[S, Int] =
     new ConfluentIntMapImpl[S](store, handler, isOblivious)
 
-  def newConfluentLongMap[S <: Sys[S]](store: DataStore, handler: Sys.IndexMapHandler[S],
+  def newConfluentLongMap[S <: Sys[S]](store: DataStore, handler: IndexMapHandler[S],
                                        isOblivious: Boolean): DurablePersistentMap[S, Long] =
     new ConfluentLongMapImpl[S](store, handler, isOblivious)
 
-  def newPartialMap[S <: Sys[S]](store: DataStore, handler: Sys.PartialMapHandler[S]): DurablePersistentMap[S, Int] =
+  def newPartialMap[S <: Sys[S]](store: DataStore, handler: PartialMapHandler[S]): DurablePersistentMap[S, Int] =
     new PartialIntMapImpl[S](store, handler)
 }
 

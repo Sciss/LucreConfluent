@@ -84,7 +84,7 @@ object RetroactiveEvents extends App {
     }
   }
 
-  val retroAcc = cursor3.stepFrom(Sys.Acc.root, retroactive = true) { implicit tx =>
+  val retroAcc = cursor3.stepFrom(Acc.root, retroactive = true) { implicit tx =>
     access().a_=(666)
     tx.inputAccess
   }

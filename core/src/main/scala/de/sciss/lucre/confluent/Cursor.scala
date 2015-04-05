@@ -20,7 +20,7 @@ import de.sciss.serial
 import de.sciss.serial.{DataInput, Writable}
 
 object Cursor {
-  def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc = Sys.Acc.root[S])
+  def apply[S <: Sys[S], D1 <: stm.DurableLike[D1]](init: S#Acc = Acc.root[S])
                                                    (implicit tx: D1#Tx, system: S { type D = D1 }): Cursor[S, D1] =
     Impl[S, D1](init)
 

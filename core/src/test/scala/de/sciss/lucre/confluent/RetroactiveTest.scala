@@ -61,7 +61,7 @@ object RetroactiveTest extends App {
 
   println("\nRETRO\n")
 
-  val retroAcc = cursor0.stepFrom(Acc.root, retroactive = true) { implicit tx =>
+  val retroAcc = cursor0.stepFrom(Access.root, retroactive = true) { implicit tx =>
     access().a() = 666
     tx.inputAccess
   }

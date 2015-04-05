@@ -18,7 +18,7 @@ import de.sciss.serial.DataOutput
 
 import scala.util.hashing.MurmurHash3
 
-private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Sys.ID[S] {
+private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Identifier[S] {
   override def hashCode = {
     import MurmurHash3._
     val h0  = productSeed
@@ -28,8 +28,8 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
   }
 
   override def equals(that: Any): Boolean =
-    that.isInstanceOf[Sys.ID[_]] && {
-      val b = that.asInstanceOf[Sys.ID[_]]
+    that.isInstanceOf[Identifier[_]] && {
+      val b = that.asInstanceOf[Identifier[_]]
       base == b.base && path == b.path
     }
 
@@ -43,7 +43,7 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
   def dispose()(implicit tx: S#Tx) = ()
 }
 
-private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Sys.ID[S] {
+private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Identifier[S] {
   override def hashCode = {
     import MurmurHash3._
     val h0  = productSeed

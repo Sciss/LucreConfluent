@@ -121,7 +121,7 @@ private[confluent] object PathImpl {
    * of the tree.
    */
   private final class Path[S <: Sys[S]](val tree: FingerTree[(Int, Long), Long])
-    extends Acc[S] with FingerTreeLike[(Int, Long), Long, Path[S]] {
+    extends Access[S] with FingerTreeLike[(Int, Long), Long, Path[S]] {
     implicit protected def m: fingertree.Measure[Long, (Int, Long)] = PathMeasure
 
     override def toString = mkString("Path(", ", ", ")")

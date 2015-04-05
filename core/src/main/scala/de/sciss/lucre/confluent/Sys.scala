@@ -13,11 +13,10 @@
 
 package de.sciss.lucre.confluent
 
-import de.sciss.lucre.data.Ancestor
-import de.sciss.lucre.stm.{DataStore, Disposable, Identifier, Txn => _Txn, TxnLike}
+import de.sciss.lucre.stm.{DataStore, Txn => _Txn, TxnLike}
 import de.sciss.lucre.{confluent, stm}
 import de.sciss.serial
-import de.sciss.serial.{DataInput, ImmutableSerializer, Writable}
+import de.sciss.serial.{DataInput, ImmutableSerializer}
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
@@ -60,8 +59,6 @@ object Sys {
 
     def isRetroactive: Boolean
 
-    // def forceWrite(): Unit
-
     private[confluent] def readTreeVertexLevel(term: Long): Int
     private[confluent] def addInputVersion(path: S#Acc): Unit
 
@@ -70,8 +67,6 @@ object Sys {
 
     private[confluent] def getTxn[A]   (id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
     private[confluent] def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A
-
-    // private[confluent] def isFresh(id: S#ID): Boolean
 
     private[confluent] def putPartial[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
     private[confluent] def getPartial[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
@@ -82,16 +77,6 @@ object Sys {
     private[confluent] def addDirtyLocalCache(cache: Cache[S#Tx]): Unit
 
     private[confluent] def removeDurableIDMap[A](map: stm.IdentifierMap[S#ID, S#Tx, A]): Unit
-
-    // ---- cursors ----
-
-    // def newCursor(init: S#Acc = inputAccess): Cursor[S, S#D]
-    // def readCursor(in: DataInput): Cursor[S, S#D]
-  }
-
-  trait ID[S <: Sys[S]] extends Identifier[S#Tx] {
-    def base: Int  // name, origin, base, agent, ancestry, germ, parent, root
-    def path: S#Acc
   }
 }
 
@@ -105,8 +90,8 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   type I <: stm.InMemoryLike[I]
 
   type Tx                          <: Sys.Txn[S]
-  final type ID                     = Sys.ID[S]
-  final type Acc                    = confluent.Acc[S]
+  final type ID                     = confluent.Identifier[S]
+  final type Acc                    = confluent.Access[S]
   final type Var[/* @spec(ialized) */ A]  = Sys.Var[S, A]
   final type Entry[A]               = Sys.Entry[S, A]
 

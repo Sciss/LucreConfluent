@@ -1,5 +1,5 @@
 /*
- *  Acc.scala
+ *  Access.scala
  *  (LucreConfluent)
  *
  *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
@@ -17,13 +17,13 @@ import de.sciss.fingertree.FingerTree
 import de.sciss.lucre.stm.TxnLike
 import de.sciss.serial.Writable
 
-object Acc {
-  def root[S <: Sys[S]]: Acc[S] = impl.PathImpl.root[S]
-  def info[S <: Sys[S]](access: Acc[S])(implicit tx: TxnLike, system: S): VersionInfo =
+object Access {
+  def root[S <: Sys[S]]: Access[S] = impl.PathImpl.root[S]
+  def info[S <: Sys[S]](access: Access[S])(implicit tx: TxnLike, system: S): VersionInfo =
     system.versionInfo(access.term)
 }
 
-trait Acc[S <: Sys[S]] extends Writable with PathLike {
+trait Access[S <: Sys[S]] extends Writable with PathLike {
   def mkString(prefix: String, sep: String, suffix: String): String
 
   // prepend element

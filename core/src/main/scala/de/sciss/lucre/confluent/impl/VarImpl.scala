@@ -14,15 +14,14 @@
 package de.sciss.lucre.confluent
 package impl
 
-import de.sciss.lucre.stm
 import de.sciss.serial
-import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 import scala.collection.immutable.LongMap
 
 private[impl] final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc)
                                               (implicit serializer: serial.Serializer[S#Tx, S#Acc, A])
-  extends stm.Source[S#Tx, A] with Cache[S#Tx] {
+  extends Source[S, A] with Cache[S#Tx] {
 
   private var writeTerm = 0L
 
@@ -31,11 +30,19 @@ private[impl] final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc
   def flushCache(term: Long)(implicit tx: S#Tx): Unit =
     writeTerm = term
 
+  def meld(from: S#Acc)(implicit tx: S#Tx): A = {
+    if (writeTerm == 0L) throw new IllegalStateException(s"Cannot meld a handle that was not yet flushed: $this")
+    log(s"$this meld $from")
+    tx.addInputVersion(from)
+    apply1(from)
+  }
+
   def apply()(implicit tx: S#Tx): A = {
     if (writeTerm == 0L) return stale // wasn't flushed yet
+    apply1(tx.inputAccess)
+  }
 
-    val readPath = tx.inputAccess
-
+  private def apply1(readPath: S#Acc)(implicit tx: S#Tx): A = {
     val out = DataOutput()
     serializer.write(stale, out)
     val in = DataInput(out.buffer, 0, out.size)

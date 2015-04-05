@@ -15,7 +15,7 @@ package de.sciss.lucre.confluent
 
 import de.sciss.lucre.stm
 import de.sciss.serial
-import de.sciss.serial.ImmutableSerializer
+import de.sciss.serial.{Serializer, ImmutableSerializer}
 
 trait Txn[S <: Sys[S]] extends stm.Txn[S] {
   implicit def durable: S#D#Tx
@@ -25,6 +25,9 @@ trait Txn[S <: Sys[S]] extends stm.Txn[S] {
   def info: VersionInfo.Modifiable
 
   def isRetroactive: Boolean
+
+  /** The confluent handle is enhanced with the `meld` method. */
+  override def newHandle[A](value: A)(implicit serializer: Serializer[S#Tx, S#Acc, A]): Source[S, A]
 
   private[confluent] def readTreeVertexLevel(term: Long): Int
   private[confluent] def addInputVersion(path: S#Acc): Unit

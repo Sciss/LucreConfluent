@@ -5,9 +5,12 @@ import stm.store.BerkeleyDB
 import annotation.tailrec
 import org.scalatest.{FunSpec, GivenWhenThen}
 
-/**
- * To run only this test:
- * test-only de.sciss.lucre.confluent.FiatKaplanSuite
+/*
+
+To run only this test:
+
+test-only de.sciss.lucre.confluent.FiatKaplanSuite
+
  */
 class FiatKaplanSuite extends FunSpec with GivenWhenThen with TestHasLinkedList {
 

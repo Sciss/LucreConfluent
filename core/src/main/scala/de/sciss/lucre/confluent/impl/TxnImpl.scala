@@ -156,7 +156,7 @@ trait TxnMixin[S <: Sys[S]]
     }
   }
 
-  final def newHandle[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): stm.Source[S#Tx, A] = {
+  final def newHandle[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): Source[S, A] = {
     val h = new HandleImpl[S, A](value, inputAccess.index)
     addDirtyLocalCache(h)
     h

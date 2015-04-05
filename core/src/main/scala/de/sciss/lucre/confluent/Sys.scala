@@ -247,6 +247,18 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
                       (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)
 
+  /** Initializes the data structure both with a confluently persisted and an ephemeral-durable value.
+    *
+    * @param confluent    a function that provides the initial confluent data (if the database is fresh)
+    * @param durable      a function that provides the initial ephemeral data (if the database is fresh)
+    * @param aSer         a serializer to read or write the confluent data structure
+    * @param bSer         a serializer to read or write the ephemeral data structure
+    * @tparam A           type of confluent data structure
+    * @tparam B           type of ephemeral data structure
+    * @return             a tuple consisting of a handle to the confluent structure and the
+    *                     ephemeral datum. The ephemeral datum, although written to disk, does not
+    *                     require an `stm.Source` because `D#Acc` is `Unit` and does not need refresh.
+    */
   def rootWithDurable[A, B](confluent: S#Tx => A)(durable: D#Tx => B)
                            (implicit aSer: serial.Serializer[S#Tx, S#Acc, A],
                                      bSer: serial.Serializer[D#Tx, D#Acc, B]): (stm.Source[S#Tx, A], B)

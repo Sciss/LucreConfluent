@@ -16,6 +16,8 @@ package de.sciss.lucre.confluent
 import java.util.concurrent.atomic.AtomicLong
 
 import de.sciss.lucre.stm
+import de.sciss.lucre.stm.{MutableSerializer, InMemory}
+import de.sciss.serial.{DataInput, DataOutput, Serializer}
 
 import scala.concurrent.stm.{InTxn, Ref}
 
@@ -101,11 +103,55 @@ object TxnRandom {
     protected def refGet(implicit tx: InTxn): Long = seedRef()
   }
 
-  private final class SysImpl[Txn](seedRef: stm.Var[Txn, Long]) extends Impl[Txn] {
-    protected def refSet(value: Long)(implicit tx: Txn): Unit = seedRef() = value
+  private sealed trait SysLike[Txn] extends Impl[Txn] {
+    protected def seedRef: stm.Var[Txn, Long]
 
-    protected def refGet(implicit tx: Txn): Long = seedRef()
+    protected final def refSet(value: Long)(implicit tx: Txn): Unit = seedRef() = value
+
+    protected final def refGet(implicit tx: Txn): Long = seedRef()
   }
+
+  private final class SysImpl[Txn](protected val seedRef: stm.Var[Txn, Long]) extends SysLike[Txn]
+
+  private final class PersistentImpl[S <: stm.Sys[S]](val id: S#ID, protected val seedRef: stm.Var[S#Tx, Long])
+    extends SysLike[S#Tx] with Persistent[S] {
+
+    def write(out: DataOutput): Unit = {
+      id     .write(out)
+      seedRef.write(out)
+    }
+
+    def dispose()(implicit tx: S#Tx): Unit = {
+      id     .dispose()
+      seedRef.dispose()
+    }
+  }
+
+  object Persistent {
+    def apply[S <: stm.Sys[S]]()(implicit tx: S#Tx): Persistent[S] =
+      apply(calcSeedUniquifier() ^ System.nanoTime())
+
+    def apply[S <: stm.Sys[S]](seed: Long)(implicit tx: S#Tx): Persistent[S] = {
+      val id = tx.newID()
+      new PersistentImpl[S](id, tx.newLongVar(id, initialScramble(seed)))
+    }
+
+    def read[S <: stm.Sys[S]](in: DataInput, access: S#Acc)(implicit tx: S#Tx): Persistent[S] =
+      serializer[S].read(in, access)
+
+    implicit def serializer[S <: stm.Sys[S]]: Serializer[S#Tx, S#Acc, Persistent[S]] = anySer.asInstanceOf[Ser[S]]
+
+    private val anySer = new Ser[InMemory]
+
+    private final class Ser[S <: stm.Sys[S]] extends MutableSerializer[S, Persistent[S]] {
+      protected def readData(in: DataInput, id: S#ID)(implicit tx: S#Tx): Persistent[S] = {
+        val seedRef = tx.readVar[Long](id, in)
+        new PersistentImpl(id, seedRef)
+      }
+    }
+  }
+  /** A random number generator that can be persisted (written and read). */
+  sealed trait Persistent[S <: stm.Sys[S]] extends TxnRandom[S#Tx] with stm.Mutable[S#ID, S#Tx]
 }
 
 trait TxnRandom[-Txn] {

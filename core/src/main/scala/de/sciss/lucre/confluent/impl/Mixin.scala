@@ -107,13 +107,13 @@ trait Mixin[S <: Sys[S]]
     Cursor.read[S, D](in)
   }
 
-  final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] =
+  final def root[A](init: S#Tx => A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] =
     executeRoot { implicit tx =>
       rootBody(init)
     }
 
   final def rootJoin[A](init: S#Tx => A)
-                       (implicit itx: TxnLike, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+                       (implicit itx: TxnLike, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
     log("::::::: rootJoin :::::::")
     TxnExecutor.defaultAtomic { itx =>
       implicit val tx = wrapRoot(itx)
@@ -122,13 +122,13 @@ trait Mixin[S <: Sys[S]]
   }
 
   private def rootBody[A](init: S#Tx => A)
-                         (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Entry[A] = {
+                         (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] = {
     val (rootVar, _, _) = initRoot(init, _ => (), _ => ())
     rootVar
   }
 
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                      (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B) =
+                      (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Var[A], B) =
     executeRoot { implicit tx =>
       val (rootVar, rootVal, _) = initRoot(init, _ => (), _ => ())
       rootVar -> result(tx)(rootVal)
@@ -164,7 +164,7 @@ trait Mixin[S <: Sys[S]]
   }
 
   private def initRoot[A, B](initA: S#Tx => A, readB: S#Tx => B, initB: S#Tx => B)
-                            (implicit tx: S#Tx, serA: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], A, B) = {
+                            (implicit tx: S#Tx, serA: serial.Serializer[S#Tx, S#Acc, A]): (S#Var[A], A, B) = {
     val rootVar     = new RootVar[S, A](0, "Root") // serializer
     val rootPath    = tx.inputAccess
     val arrOpt      = varMap.get[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)

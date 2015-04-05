@@ -91,6 +91,13 @@ private[impl] sealed trait BasicVar[S <: Sys[S], A] extends Var[S, A] {
 private[impl] final class VarImpl[S <: Sys[S], A](protected val id: S#ID, protected val ser: ImmutableSerializer[A])
   extends BasicVar[S, A] {
 
+  def meld(from: S#Acc)(implicit tx: S#Tx): A = {
+    log(s"$this meld $from")
+    val idm = new ConfluentID[S](id.base, from)
+    tx.addInputVersion(from)
+    tx.getNonTxn[A](idm)(ser)
+  }
+
   def update(v: A)(implicit tx: S#Tx): Unit = {
     log(s"$this set $v")
     tx.putNonTxn(id, v)(ser)
@@ -112,6 +119,8 @@ private[impl] final class VarImpl[S <: Sys[S], A](protected val id: S#ID, protec
 private[impl] final class PartialVarTxImpl[S <: Sys[S], A](protected val id: S#ID)
                                                     (implicit ser: serial.Serializer[S#Tx, S#Acc, A])
   extends BasicVar[S, A] {
+
+  def meld(from: S#Acc)(implicit tx: S#Tx): A = ???
 
   def update(v: A)(implicit tx: S#Tx): Unit = {
     logPartial(s"$this set $v")
@@ -135,6 +144,13 @@ private[impl] final class VarTxImpl[S <: Sys[S], A](protected val id: S#ID)
                                              (implicit ser: serial.Serializer[S#Tx, S#Acc, A])
   extends BasicVar[S, A] {
 
+  def meld(from: S#Acc)(implicit tx: S#Tx): A = {
+    log(s"$this meld $from")
+    val idm = new ConfluentID[S](id.base, from)
+    tx.addInputVersion(from)
+    tx.getTxn[A](idm)
+  }
+
   def update(v: A)(implicit tx: S#Tx): Unit = {
     log(s"$this set $v")
     tx.putTxn(id, v)
@@ -155,7 +171,7 @@ private[impl] final class VarTxImpl[S <: Sys[S], A](protected val id: S#ID)
 
 private final class RootVar[S <: Sys[S], A](id1: Int, name: String)
                                            (implicit val ser: serial.Serializer[S#Tx, S#Acc, A])
-  extends Sys.Entry[S, A] {
+  extends Var[S, A] {
 
   def setInit(v: A)(implicit tx: S#Tx): Unit = this() = v // XXX could add require( tx.inAccess == Path.root )
 
@@ -191,6 +207,13 @@ private final class RootVar[S <: Sys[S], A](id1: Int, name: String)
 private[impl] final class BooleanVar[S <: Sys[S]](protected val id: S#ID)
   extends BasicVar[S, Boolean] with ImmutableSerializer[Boolean] {
 
+  def meld(from: S#Acc)(implicit tx: S#Tx): Boolean = {
+    log(s"$this meld $from")
+    val idm = new ConfluentID[S](id.base, from)
+    tx.addInputVersion(from)
+    tx.getNonTxn[Boolean](idm)
+  }
+
   def apply()(implicit tx: S#Tx): Boolean = {
     log(s"$this get")
     tx.getNonTxn[Boolean](id)(this)
@@ -217,6 +240,13 @@ private[impl] final class BooleanVar[S <: Sys[S]](protected val id: S#ID)
 private[impl] final class IntVar[S <: Sys[S]](protected val id: S#ID)
   extends BasicVar[S, Int] with ImmutableSerializer[Int] {
 
+  def meld(from: S#Acc)(implicit tx: S#Tx): Int = {
+    log(s"$this meld $from")
+    val idm = new ConfluentID[S](id.base, from)
+    tx.addInputVersion(from)
+    tx.getNonTxn[Int](idm)
+  }
+
   def apply()(implicit tx: S#Tx): Int = {
     log(s"$this get")
     tx.getNonTxn[Int](id)(this)
@@ -242,6 +272,13 @@ private[impl] final class IntVar[S <: Sys[S]](protected val id: S#ID)
 
 private[impl] final class LongVar[S <: Sys[S]](protected val id: S#ID)
   extends BasicVar[S, Long] with ImmutableSerializer[Long] {
+
+  def meld(from: S#Acc)(implicit tx: S#Tx): Long = {
+    log(s"$this meld $from")
+    val idm = new ConfluentID[S](id.base, from)
+    tx.addInputVersion(from)
+    tx.getNonTxn[Long](idm)
+  }
 
   def apply()(implicit tx: S#Tx): Long = {
     log(s"$this get")

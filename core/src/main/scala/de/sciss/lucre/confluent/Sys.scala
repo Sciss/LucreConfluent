@@ -20,11 +20,11 @@ import de.sciss.serial.DataInput
 
 import scala.collection.immutable.{IndexedSeq => Vec}
 
-object Sys {
-  trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
-    def meld(from: S#Acc)(implicit tx: S#Tx): A
-  }
-}
+//object Sys {
+//  trait Entry[S <: Sys[S], A] extends stm.Var[S#Tx, A] {
+//    def meld(from: S#Acc)(implicit tx: S#Tx): A
+//  }
+//}
 
 /** This is analogous to a `ConfluentLike` trait. Since there is only one system in
   * `LucreConfluent`, it was decided to just name it `confluent.Sys`.
@@ -39,7 +39,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   final type ID         = confluent.Identifier[S]
   final type Acc        = confluent.Access[S]
   final type Var[A]     = confluent.Var[S, A]
-  final type Entry[A]   = Sys.Entry[S, A]
+  // final type Entry[A]   = Sys.Entry[S, A]
 
   def durable : D
   // def inMemory: I
@@ -85,7 +85,7 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
     * @return             the access to the data structure along with the result of the second function.
     */
   def cursorRoot[A, B](init: S#Tx => A)(result: S#Tx => A => B)
-                      (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Entry[A], B)
+                      (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): (S#Var[A], B)
 
   /** Initializes the data structure both with a confluently persisted and an ephemeral-durable value.
     *

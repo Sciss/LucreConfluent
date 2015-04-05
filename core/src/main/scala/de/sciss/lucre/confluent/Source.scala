@@ -1,5 +1,5 @@
 /*
- *  Var.scala
+ *  Source.scala
  *  (LucreConfluent)
  *
  *  Copyright (c) 2009-2015 Hanns Holger Rutz. All rights reserved.
@@ -15,6 +15,6 @@ package de.sciss.lucre.confluent
 
 import de.sciss.lucre.stm
 
-trait Var[S <: Sys[S], A] extends stm.Var[S#Tx, A] with Source[S, A] {
-  private[confluent] def setInit(value: A)(implicit tx: S#Tx): Unit
+trait Source[S <: Sys[S], +A] extends stm.Source[S#Tx, A] {
+  def meld(from: S#Acc)(implicit tx: S#Tx): A
 }

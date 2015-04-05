@@ -13,21 +13,27 @@
 
 package de.sciss.lucre.confluent.impl
 
-import de.sciss.lucre.confluent.Sys
 import de.sciss.lucre.data.Ancestor
 import de.sciss.lucre.stm
-import de.sciss.serial.DataOutput
+import de.sciss.lucre.stm.Disposable
+import de.sciss.serial.{DataOutput, Writable}
+
+private[impl] trait IndexTree[D <: stm.DurableLike[D]] extends Writable with Disposable[D#Tx] {
+  def tree : Ancestor.Tree[D, Long]
+  def level: Int
+  def term : Long
+}
 
 // an index tree holds the pre- and post-lists for each version (full) tree
 private[impl] final class IndexTreeImpl[D <: stm.DurableLike[D]](val tree: Ancestor.Tree[D, Long], val level: Int)
-  extends Sys.IndexTree[D] {
+  extends IndexTree[D] {
 
   override def hashCode: Int = term.toInt
 
   def term: Long = tree.root.version
 
   override def equals(that: Any): Boolean = {
-    that.isInstanceOf[Sys.IndexTree[_]] && term == that.asInstanceOf[Sys.IndexTree[_]].term
+    that.isInstanceOf[IndexTree[_]] && term == that.asInstanceOf[IndexTree[_]].term
   }
 
   def write(out: DataOutput): Unit = {

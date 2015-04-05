@@ -30,12 +30,6 @@ object Sys {
     private[confluent] def setInit(value: A)(implicit tx: S#Tx): Unit
   }
 
-  private[confluent] trait IndexTree[D <: stm.DurableLike[D]] extends Writable with Disposable[D#Tx] {
-    def tree : Ancestor.Tree[D, Long]
-    def level: Int
-    def term : Long
-  }
-
   trait IndexMapHandler[S <: Sys[S]] {
     def readIndexMap[A](in: DataInput, index: S#Acc)
                        (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]

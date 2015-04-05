@@ -414,7 +414,7 @@ trait Mixin[S <: Sys[S]]
   }
 
   // writes the vertex information (pre- and post-order entries) of a full tree's leaf (using cookie `0`).
-  private def writeTreeVertex(tree: Sys.IndexTree[D], v: Ancestor.Vertex[D, Long])(implicit tx: D#Tx): Unit =
+  private def writeTreeVertex(tree: IndexTree[D], v: Ancestor.Vertex[D, Long])(implicit tx: D#Tx): Unit =
     store.put { out =>
       out.writeByte(0)
       out.writeInt(v.version.toInt)
@@ -465,7 +465,7 @@ trait Mixin[S <: Sys[S]]
     opt.getOrElse(sys.error(s"No time stamp map found for $index"))
   }
 
-  private def readIndexTree(term: Long)(implicit tx: D#Tx): Sys.IndexTree[D] = {
+  private def readIndexTree(term: Long)(implicit tx: D#Tx): IndexTree[D] = {
     val st = store
     st.get { out =>
       out.writeByte(1)

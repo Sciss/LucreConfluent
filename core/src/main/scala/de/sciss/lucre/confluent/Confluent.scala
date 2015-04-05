@@ -14,7 +14,7 @@
 package de.sciss.lucre.confluent
 
 import de.sciss.lucre.confluent.impl.{ConfluentImpl => Impl}
-import de.sciss.lucre.stm
+import de.sciss.lucre.{confluent, stm}
 import de.sciss.lucre.stm.{DataStore, DataStoreFactory}
 
 import scala.language.implicitConversions
@@ -24,10 +24,10 @@ object Confluent {
 
   def apply(storeFactory: DataStoreFactory[DataStore]): Confluent = Impl(storeFactory)
 
-  trait Txn extends Sys.Txn[Confluent] {
-    // implicit def durable:  stm.Durable#Tx
-    // implicit def inMemory: stm.InMemory#Tx
-  }
+  //  trait Txn extends confluent.Txn[Confluent] {
+  //    // implicit def durable:  stm.Durable#Tx
+  //    // implicit def inMemory: stm.InMemory#Tx
+  //  }
 
   // implicit def inMemory(tx: Confluent#Tx): stm.InMemory#Tx = tx.inMemory
 }
@@ -36,5 +36,5 @@ trait Confluent extends Sys[Confluent] {
   final protected type S = Confluent
   final type D  = stm.Durable
   final type I  = stm.InMemory
-  final type Tx = Confluent.Txn
+  final type Tx = confluent.Txn[S] // Confluent.Txn
 }

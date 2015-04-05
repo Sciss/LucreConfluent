@@ -25,10 +25,6 @@ object Sys {
     def meld(from: S#Acc)(implicit tx: S#Tx): A
   }
 
-  trait Var[S <: Sys[S], /* @spec(ialized) */ A] extends stm.Var[S#Tx, A] {
-    private[confluent] def setInit(value: A)(implicit tx: S#Tx): Unit
-  }
-
   trait IndexMapHandler[S <: Sys[S]] {
     def readIndexMap[A](in: DataInput, index: S#Acc)
                        (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
@@ -49,35 +45,6 @@ object Sys {
     def newPartialMap[A](rootValue: A)
                         (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): IndexMap[S, A]
   }
-
-  trait Txn[S <: Sys[S]] extends _Txn[S] {
-    implicit def durable: S#D#Tx
-
-    def inputAccess: S#Acc
-
-    def info: VersionInfo.Modifiable
-
-    def isRetroactive: Boolean
-
-    private[confluent] def readTreeVertexLevel(term: Long): Int
-    private[confluent] def addInputVersion(path: S#Acc): Unit
-
-    private[confluent] def putTxn[A]   (id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
-    private[confluent] def putNonTxn[A](id: S#ID, value: A)(implicit ser: ImmutableSerializer[A]): Unit
-
-    private[confluent] def getTxn[A]   (id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
-    private[confluent] def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A
-
-    private[confluent] def putPartial[A](id: S#ID, value: A)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): Unit
-    private[confluent] def getPartial[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): A
-
-    private[confluent] def removeFromCache(id: S#ID): Unit
-
-    private[confluent] def addDirtyCache     (cache: Cache[S#Tx]): Unit
-    private[confluent] def addDirtyLocalCache(cache: Cache[S#Tx]): Unit
-
-    private[confluent] def removeDurableIDMap[A](map: stm.IdentifierMap[S#ID, S#Tx, A]): Unit
-  }
 }
 
 /** This is analogous to a `ConfluentLike` trait. Since there is only one system in
@@ -89,11 +56,11 @@ trait Sys[S <: Sys[S]] extends stm.Sys[S] {
   type D <: stm.DurableLike [D]
   type I <: stm.InMemoryLike[I]
 
-  type Tx                          <: Sys.Txn[S]
-  final type ID                     = confluent.Identifier[S]
-  final type Acc                    = confluent.Access[S]
-  final type Var[/* @spec(ialized) */ A]  = Sys.Var[S, A]
-  final type Entry[A]               = Sys.Entry[S, A]
+  type Tx               <: confluent.Txn[S]
+  final type ID         = confluent.Identifier[S]
+  final type Acc        = confluent.Access[S]
+  final type Var[A]     = confluent.Var[S, A]
+  final type Entry[A]   = Sys.Entry[S, A]
 
   def durable : D
   // def inMemory: I

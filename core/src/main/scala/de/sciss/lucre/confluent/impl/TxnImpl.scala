@@ -24,7 +24,7 @@ import scala.collection.immutable.{Queue => IQueue, IntMap, IndexedSeq => Vec}
 import scala.concurrent.stm.{InTxn, Txn => ScalaTxn}
 
 trait TxnMixin[S <: Sys[S]]
-  extends Sys.Txn[S] with stm.impl.BasicTxnImpl[S] with VersionInfo.Modifiable {
+  extends Txn[S] with stm.impl.BasicTxnImpl[S] with VersionInfo.Modifiable {
   _: S#Tx =>
 
   // ---- abstract ----
@@ -361,7 +361,7 @@ trait RootTxnMixin[S <: Sys[S], D <: stm.DurableLike[D]]
   override def toString = "Confluent.RootTxn"
 }
 
-private[impl] sealed trait TxnImpl extends Confluent.Txn {
+private[impl] sealed trait TxnImpl extends Txn[Confluent] {
   final lazy val inMemory: InMemory#Tx = system.inMemory.wrap(peer)
 }
 

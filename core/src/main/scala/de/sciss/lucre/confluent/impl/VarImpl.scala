@@ -73,7 +73,7 @@ private[impl] final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc
   }
 }
 
-private[impl] sealed trait BasicVar[S <: Sys[S], A] extends Sys.Var[S, A] {
+private[impl] sealed trait BasicVar[S <: Sys[S], A] extends Var[S, A] {
   protected def id: S#ID
 
   final def write(out: DataOutput): Unit = out.writeInt(id.base)

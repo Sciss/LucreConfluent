@@ -39,8 +39,8 @@ class HashingSpec extends FlatSpec with Matchers {
 
     test(p0, Seq(1, 1, 1, 1, 1))    // sz 1
     test(p1, Seq(0, 2, 2, 2, 2))    // sz 2
-    test(p2, Seq(0, 0, 3, 3, 3))    // sz 3
+    test(p2, Seq(0, 2 /* 0 */, 3, 3, 3))    // sz 3
     test(p3, Seq(0, 0, 0, 4, 4))    // sz 4
-    test(p4, Seq(0, 0, 0, 0, 5))    // sz 5
+    test(p4, Seq(0, 0, 0, 4 /* 0 */, 5))    // sz 5
   }
 }

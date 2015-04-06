@@ -44,9 +44,14 @@ object Hashing {
 
   /** Iterates over all the hash prefixes of a given path (excluding the full prefix itself).
     * The caller would typically test whether the returned element's sub path is empty or not, and store
-    * an appropriate empty or partial tag in its representation. After the method returns, the
+    * an appropriate empty or partial tag in its representation.
+    *
+    * After the method returns, the
     * caller will typically add an entry for the full hash (`s.sum`), an entry which is not provided by the
     * iterator itself.
+    *
+    * The reason why `s.sum` is not automatically added is that the caller might want to store
+    * a special values for this "full" entry.
     *
     * @param s          the path for which to calculate the prefixes
     * @param contains   a test function whether a given hash is already stored in the caller's representation. only
@@ -60,24 +65,16 @@ object Hashing {
 
     while (j < m) {
       val i = prefix(sz, j, m)
-      //            val sp   = s.take( i )
-      //            val sps  = sp.sum                             // "... we insert the values sum(\tau') ... to the table H"
-      val sps = s.sumUntil(i)
-      if (!contains(sps)) {
-        // ", if they are not already there."
-        val pre = maxPrefixKey(s, i, contains) // "... we compute ... the longest prefix of \tau' in \Pi"
-        //            nextVar  = (sps, pre)                        // ", and store a pointer to a representation of this sequence."
-        //            return true
-        if (pre != 0L) fun(sps, pre)
+      val sps = s.sumUntil(i)                   // "... we insert the values sum(\tau') ... to the table H"
+      if (!contains(sps)) {                     // ", if they are not already there."
+        val pre = maxPrefixKey(s, i, contains)  // "... we compute ... the longest prefix of \tau' in \Pi"
+        /* if (pre != 0L) */ fun(sps, pre)      // ", and store a pointer to a representation of this sequence."
+        // N.B. we also invoke `fun` if `pre == 0`!
+        // Fiat/Kaplan point out that in this case, the entry "points to null", but it does exist!
       }
       j += 1
     }
   }
-
-  //   def maxPrefixValue( s: PathLike, contains: Long => Boolean ) : Option[ V ] = {
-  //      val pre1Len = maxPrefix1Len( s, s.size, contains )
-  //      hash.get( pre1.sum ).orElse( hash.get( pre1.dropRight( 1 ).sum ))
-  //   }
 
   private def prefix(n: Int, j: Int, m: Int): Int = {
     var zero = m - j
@@ -152,7 +149,6 @@ object Hashing {
     var ij = -1
     do {
       j += 1
-      // if( j == m ) return s   // all prefixes already contained
       if (j == m) return sz // all prefixes already contained
       ij = isPre(j)
     } while (contains(s.sumUntil(ij)))

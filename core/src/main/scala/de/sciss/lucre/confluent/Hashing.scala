@@ -123,6 +123,13 @@ object Hashing {
     if (contains(pre1Sum)) pre1Sum else s.sumUntil(pre1Len - 1)
   }
 
+  /** Searches for the maximum prefix of a path `s` that is also
+    * a prefix of this path. Assumes that `s` _extends_ this path.
+    *
+    * @param s          the extension of this path
+    * @param contains   a function to check the hash map built before using `foreachPrefix`
+    * @return           the length of the prefix
+    */
   def maxPrefixLength(s: PathLike, contains: Long => Boolean): Int = {
     val sz      = s.size
     val pre1Len = maxPrefixLength(s, sz, contains)
@@ -130,10 +137,7 @@ object Hashing {
     if (contains(pre1Sum)) pre1Len else pre1Len - 1
   }
 
-  //   private def maxPrefix1( s: PathLike, contains: Long => Boolean ) : PathLike =
-
   private def maxPrefixLength(s: PathLike, sz: Int, contains: Long => Boolean): Int = {
-    // val sz      = s.size
     val m = bitCount(sz)
     // "We search for the minimum j, 1 <= j <= m(r), such that sum(p_i_j(r)) is not stored in the hash table H"
     val isPre = new Array[Int](m)

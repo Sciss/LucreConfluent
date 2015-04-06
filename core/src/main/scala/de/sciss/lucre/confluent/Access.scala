@@ -27,7 +27,7 @@ trait Access[S <: Sys[S]] extends Writable with PathLike {
   def mkString(prefix: String, sep: String, suffix: String): String
 
   // prepend element
-  private[confluent] def +:(suffix: Long): S#Acc
+  private[confluent] def +:(head: Long): S#Acc
 
   // append element
   private[confluent] def :+(last: Long): S#Acc

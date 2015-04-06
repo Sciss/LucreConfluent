@@ -238,7 +238,7 @@ private[confluent] object PathImpl {
       res
     }
 
-    def sumUntil(n: Int): Long = tree.find1(_._1 > n)._1._2
+    def sumUntil(n: Int): Long = if (tree.isEmpty) 0L else tree.find1(_._1 > n)._1._2
 
     def take(n: Int): S#Acc = {
       val left = tree.takeWhile(_._1 <= n)

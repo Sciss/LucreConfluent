@@ -242,7 +242,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
       writeKey(key, out) // out.writeInt( key )
       out.writeLong(hash)
     })
-    val (index, term) = if( preLen == maxIndex.size ) {
+    val (index, term) = if (preLen == maxIndex.size) {
       // maximum prefix lies in last tree
       (maxIndex, maxTerm)
     } else {
@@ -251,8 +251,8 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
     }
     val preSum = index.sum
     store.flatGet { out =>
-      writeKey( key, out ) // out.writeInt( key )
-      out.writeLong( preSum )
+      writeKey(key, out) // out.writeInt( key )
+      out.writeLong(preSum)
     } { in =>
       (in.readByte(): @switch) match {
         case 0 => // partial hash

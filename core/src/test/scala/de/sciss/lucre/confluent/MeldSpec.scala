@@ -68,4 +68,45 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     val expected = List("w0" -> 2, "w1" -> 1, "w1" -> 4, "w0" -> 5)
     assert(result === expected)
   }
+
+  "A confluent handle" should "be accessible after meld" in { system =>
+    val types   = new Types(system)
+    import types._
+
+    val (access, cursor) = s.cursorRoot { implicit tx =>
+      Option.empty[Node]
+    } { implicit tx =>
+      _ => s.newCursor()
+    }
+
+    cursor.step { implicit tx =>
+      val w0 = Node("w0", 1234)
+      access() = Some(w0)
+    }
+
+    val cursor2 = cursor.step { implicit tx =>
+      system.newCursor()
+    }
+
+    val h = cursor2.step { implicit tx =>
+      val Some(w0) = access()
+      w0.value() = 5678
+      tx.newHandle(w0)
+    }
+
+    val path2 = cursor2.step(_.inputAccess)
+    cursor.step { implicit tx =>
+      val w0_ = h.meld(path2)
+      w0_.next() = access()
+      access() = Some(w0_)
+    }
+
+    val result = cursor.step { implicit tx =>
+      val node = access()
+      toList(node)
+    }
+
+    val expected = List("w0" -> 5678, "w0" -> 1234)
+    assert(result === expected)
+  }
 }

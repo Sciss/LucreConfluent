@@ -73,10 +73,10 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     val types   = new Types(system)
     import types._
 
-    val (access, cursor) = s.cursorRoot { implicit tx =>
+    val (access, (cursor, forkCursor)) = s.cursorRoot { implicit tx =>
       Option.empty[Node]
     } { implicit tx =>
-      _ => s.newCursor()
+      _ => (s.newCursor(), s.newCursor())
     }
 
     cursor.step { implicit tx =>
@@ -84,17 +84,15 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
       access() = Some(w0)
     }
 
-    val cursor2 = cursor.step { implicit tx =>
-      system.newCursor()
-    }
+    val path1 = cursor.step { implicit tx => tx.inputAccess }
 
-    val h = cursor2.step { implicit tx =>
+    val h = forkCursor.stepFrom(path1) { implicit tx =>
       val Some(w0) = access()
       w0.value() = 5678
       tx.newHandle(w0)
     }
 
-    val path2 = cursor2.step(_.inputAccess)
+    val path2 = forkCursor.step(_.inputAccess)
     cursor.step { implicit tx =>
       val w0_ = h.meld(path2)
       w0_.next() = access()

@@ -1,5 +1,7 @@
 package de.sciss.lucre.confluent
 
+import de.sciss.lucre.stm
+
 import scala.annotation.tailrec
 
 /*
@@ -151,19 +153,28 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     def iterate(): Unit = {
       val path1 = cursor.step { implicit tx => tx.inputAccess }
 
-      val h = forkCursor.stepFrom(path1) { implicit tx =>
-        val acc = access()
-        val a :: b :: Nil = acc
-        val c = a.next()
-        val d = b.next()
-        a.next() = d
-        b.next() = c
-        tx.newHandle(acc)
+      def crossover(): (Source[S, List[Node]], S#Acc) = {
+        val h = forkCursor.stepFrom(path1) { implicit tx =>
+          val acc = access()
+          acc.foreach(a => toList(Some(a))) // test if traversal is possible
+          val a :: b :: Nil = acc.take(2)
+          val c = a.next()
+          val d = b.next()
+          a.next() = d
+          b.next() = c
+          tx.newHandle(acc)
+        }
+        val path2 = forkCursor.step { implicit tx => tx.inputAccess }
+
+        (h, path2)
       }
-      val path2 = forkCursor.step { implicit tx => tx.inputAccess }
+
+      val c = List(crossover(), crossover())
 
       cursor.step { implicit tx =>
-        val acc = h.meld(path2)
+        val acc = c.flatMap { case (src, path) =>
+          src.meld(path)
+        }
         access() = acc
       }
     }
@@ -172,7 +183,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     iterate()
 
     val result = cursor.step { implicit tx =>
-      access().map(a => toList(Some(a)))
+      access().take(2).map(a => toList(Some(a)))
     }
     val expected = List(List("w0" -> 0, "w1" -> 1), List("w2" -> 2, "w3" -> 3))
     assert(result === expected)

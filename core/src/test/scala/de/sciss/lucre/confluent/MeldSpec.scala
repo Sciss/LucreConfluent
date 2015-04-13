@@ -69,6 +69,8 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     assert(result === expected)
   }
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+
   "A confluent handle" should "be accessible after meld" in { system =>
     val types   = new Types(system)
     import types._
@@ -91,7 +93,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
       w0.value() = 5678
       tx.newHandle(w0)
     }
-    val cp = forkCursor.step { implicit tx => implicit val dtx = tx.durable; forkCursor.position }
+    // val cp = forkCursor.step { implicit tx => implicit val dtx = tx.durable; forkCursor.position }
     // println(s"$h - $cp")
 
     val path2 = forkCursor.step(_.inputAccess)
@@ -120,5 +122,59 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     forkCursor.stepFrom(ia) { implicit tx =>
       h1()  // this failed before
     }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+
+  "A confluent system" should "allow multiple melds of mutable objects" in { system =>
+    val types   = new Types(system)
+    import types._
+
+    val (access, (cursor, forkCursor)) = s.cursorRoot { implicit tx =>
+      List.empty[Node]
+    } { implicit tx =>
+      _ => (s.newCursor(), s.newCursor())
+    }
+
+    cursor.step { implicit tx =>
+      val w0 = Node("w0", 0)
+      val w1 = Node("w1", 1)
+      val w2 = Node("w2", 2)
+      val w3 = Node("w3", 3)
+
+      w0.next() = Some(w1)
+      w2.next() = Some(w3)
+
+      access() = List(w0, w2)
+    }
+
+    def iterate(): Unit = {
+      val path1 = cursor.step { implicit tx => tx.inputAccess }
+
+      val h = forkCursor.stepFrom(path1) { implicit tx =>
+        val acc = access()
+        val a :: b :: Nil = acc
+        val c = a.next()
+        val d = b.next()
+        a.next() = d
+        b.next() = c
+        tx.newHandle(acc)
+      }
+      val path2 = forkCursor.step { implicit tx => tx.inputAccess }
+
+      cursor.step { implicit tx =>
+        val acc = h.meld(path2)
+        access() = acc
+      }
+    }
+
+    iterate()
+    iterate()
+
+    val result = cursor.step { implicit tx =>
+      access().map(a => toList(Some(a)))
+    }
+    val expected = List(List("w0" -> 0, "w1" -> 1), List("w2" -> 2, "w3" -> 3))
+    assert(result === expected)
   }
 }

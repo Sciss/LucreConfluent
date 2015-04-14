@@ -1,7 +1,5 @@
 package de.sciss.lucre.confluent
 
-import de.sciss.lucre.stm
-
 import scala.annotation.tailrec
 
 /*
@@ -128,7 +126,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  "A confluent system" should "allow multiple melds of mutable objects" in { system =>
+  ignore /* "A confluent system" */ should "allow multiple melds of mutable objects" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -139,37 +137,53 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     }
 
     cursor.step { implicit tx =>
-      val w0 = Node("w0", 0)
-      val w1 = Node("w1", 1)
-      val w2 = Node("w2", 2)
-      val w3 = Node("w3", 3)
+      val w0 = Node("a", 1)
+      val w1 = Node("b", 2)
+      val w2 = Node("c", 3)
+      val w3 = Node("d", 4)
+      val w4 = Node("e", 5)
+      val w5 = Node("f", 6)
 
       w0.next() = Some(w1)
-      w2.next() = Some(w3)
+      w1.next() = Some(w2)
+      w3.next() = Some(w4)
+      w4.next() = Some(w5)
 
-      access() = List(w0, w2)
+      access() = List(w0, w3)
     }
 
-    def iterate(): Unit = {
+    def iterate(i1: Int, j1: Int, split1: Int, i2: Int, j2: Int, split2: Int): Unit = {
       val path1 = cursor.step { implicit tx => tx.inputAccess }
 
-      def crossover(): (Source[S, List[Node]], S#Acc) = {
+      def crossover(i: Int, j: Int, split: Int): (Source[S, List[Node]], S#Acc) = {
         val h = forkCursor.stepFrom(path1) { implicit tx =>
           val acc = access()
-          acc.foreach(a => toList(Some(a))) // test if traversal is possible
-          val a :: b :: Nil = acc.take(2)
-          val c = a.next()
-          val d = b.next()
-          a.next() = d
-          b.next() = c
-          tx.newHandle(acc)
+          val a = acc(i)
+          val b = acc(j)
+
+          // @tailrec def skip(n: Node, rem: Int): Node = if (rem == 0) n else skip(n.next().get, rem - 1)
+
+          @tailrec def skip(rem: Int, next: S#Var[Option[Node]]): S#Var[Option[Node]] =
+            if (rem == 0) next else {
+              val nn = next().get
+              skip(rem - 1, nn.next)
+            }
+
+
+          val c = skip(split - 1, a.next)
+          val d = skip(split - 1, b.next)
+          val cv = c()
+          val dv = d()
+          c() = dv
+          d() = cv
+          tx.newHandle(List(a, b))
         }
         val path2 = forkCursor.step { implicit tx => tx.inputAccess }
 
         (h, path2)
       }
 
-      val c = List(crossover(), crossover())
+      val c = List(crossover(i1, j1, split1), crossover(i2, j2, split2))
 
       cursor.step { implicit tx =>
         val acc = c.flatMap { case (src, path) =>
@@ -179,13 +193,29 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
       }
     }
 
-    iterate()
-    iterate()
-
-    val result = cursor.step { implicit tx =>
-      access().take(2).map(a => toList(Some(a)))
+    // [ a b c ], [ d e f ]
+    iterate(i1 = 0, j1 = 1, split1 = 1, i2 = 0, j2 = 1, split2 = 2)
+    // [ a e f ], [ d b c ], [ a b f ], [ d e c ]
+    val res1 = cursor.step { implicit tx =>
+      access().map(a => toList(Some(a)))
     }
-    val expected = List(List("w0" -> 0, "w1" -> 1), List("w2" -> 2, "w3" -> 3))
-    assert(result === expected)
+    val exp1 = List(
+      List(("a",1), ("e",5), ("f",6)),
+      List(("d",4), ("b",2), ("c",3)),
+      List(("a",1), ("b",2), ("f",6)),
+      List(("d",4), ("e",5), ("c",3)))
+    assert(res1 === exp1)
+
+    iterate(i1 = 2, j1 = 0, split1 = 1, i2 = 2, j2 = 0, split2 = 1)
+    // [ a b f ], [ a e f ], [ a b f ], [ a e f ]
+    val res2 = cursor.step { implicit tx =>
+      access().map(a => toList(Some(a)))
+    }
+    val exp2 = List(
+      List(("a",1), ("b",2), ("f",6)),
+      List(("a",1), ("e",5), ("f",6)),
+      List(("a",1), ("b",2), ("f",6)),
+      List(("a",1), ("e",5), ("f",6)))
+    assert(res2 === exp2)
   }
 }

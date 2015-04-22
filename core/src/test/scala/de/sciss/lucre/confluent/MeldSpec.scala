@@ -173,6 +173,9 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
           val c = skip(split - 1, a.next)
           val d = skip(split - 1, b.next)
+          if (tx.inputAccess.toString == "Path(0, 1, 4, 4)") {
+            println("DEBUG")
+          }
           val cv = c()
           val dv = d()
           c() = dv
@@ -191,6 +194,9 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
           src.meld(path)
         }
         access() = acc
+        if (tx.inputAccess.toString == "Path(0, 1, 4, 4)") {
+          println("DEBUG")
+        }
       }
     }
 

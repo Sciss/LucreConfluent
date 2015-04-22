@@ -120,7 +120,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extend
           get[A](key, path) match {
             case Some(prevValue) =>
               putPartials(key, index)
-              putFullMap[A](key, index, term, value, indexTerm, prevValue)
+              putFullMap   [A](key, index, term, value, indexTerm, prevValue)
 
             case _ =>
               putPartials(key, index)

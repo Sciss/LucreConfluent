@@ -171,11 +171,15 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], K] extends DurablePersistentMa
           // construct a new map containing that root value along with the
           // new value
         } else {
-          get[A](key, path) match {
+          val prevAccI  = path.index
+          val prevAcc   = prevAccI :+ prevAccI.last   // path where term is replaced by index-term (tree root)
+          val prevOpt   = get[A](key, prevAcc)
+          // println(s"prev value for new full tree, input = $prevAcc; path = $path; prev = $prevOpt")
+          prevOpt match {
             case Some(prevValue) =>
               // re-serialize previous value
               arrOut.reset()
-              ser.write(value, arrOut)
+              ser.write(prevValue, arrOut)
               val prevArr = arrOut.toByteArray
               putPartials(key, index)
               putFullMap   [Array[Byte]](key, index, term, arr, indexTerm, prevArr)(tx, ByteArraySerializer)

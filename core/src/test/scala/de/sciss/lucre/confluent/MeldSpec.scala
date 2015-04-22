@@ -126,7 +126,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ignore /* "A confluent system" */ should "allow multiple melds of mutable objects" in { system =>
+  "A confluent system" should "allow multiple melds of mutable objects" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -173,9 +173,6 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
           val c = skip(split - 1, a.next)
           val d = skip(split - 1, b.next)
-          if (tx.inputAccess.toString == "Path(0, 1, 4, 4)") {
-            println("DEBUG")
-          }
           val cv = c()
           val dv = d()
           c() = dv
@@ -194,9 +191,6 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
           src.meld(path)
         }
         access() = acc
-        if (tx.inputAccess.toString == "Path(0, 1, 4, 4)") {
-          println("DEBUG")
-        }
       }
     }
 
@@ -213,7 +207,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
       List(("d",4,"Path(1, 3, 4, 4)"), ("e",5,"Path(1, 3, 4, 4)"), ("c",3,"Path(1, 3, 4, 4)")))
     assert(res1 === exp1)
 
-    showLog = true
+    // showLog = true
 
     iterate(i1 = 2, j1 = 0, split1 = 1, i2 = 2, j2 = 0, split2 = 1)
     // iterate(i1 = 3, j1 = 1, split1 = 1, i2 = 2, j2 = 0, split2 = 1)
@@ -222,10 +216,10 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
       access().map(a => toListID(Some(a)))
     }
     val exp2 = List(
-      List(("a",1,"Path(1, 3, 4, 5, 7, 7)"), ("e",2,"Path(1, 2, 4, 5, 7, 7)"), ("f",6,"Path(1, 2, 4, 5, 7, 7)")),
-      List(("a",1,"Path(1, 2, 4, 5, 7, 7)"), ("b",5,"Path(1, 3, 4, 5, 7, 7)"), ("f",6,"Path(1, 3, 4, 5, 7, 7)")),
-      List(("a",1,"Path(1, 3, 4, 6, 7, 7)"), ("e",2,"Path(1, 2, 4, 6, 7, 7)"), ("f",6,"Path(1, 2, 4, 6, 7, 7)")),
-      List(("a",1,"Path(1, 2, 4, 6, 7, 7)"), ("b",5,"Path(1, 3, 4, 6, 7, 7)"), ("f",6,"Path(1, 3, 4, 6, 7, 7)")))
+      List(("a",1,"Path(1, 3, 4, 5, 7, 7)"), ("e",5,"Path(1, 2, 4, 5, 7, 7)"), ("f",6,"Path(1, 2, 4, 5, 7, 7)")),
+      List(("a",1,"Path(1, 2, 4, 5, 7, 7)"), ("b",2,"Path(1, 3, 4, 5, 7, 7)"), ("f",6,"Path(1, 3, 4, 5, 7, 7)")),
+      List(("a",1,"Path(1, 3, 4, 6, 7, 7)"), ("e",5,"Path(1, 2, 4, 6, 7, 7)"), ("f",6,"Path(1, 2, 4, 6, 7, 7)")),
+      List(("a",1,"Path(1, 2, 4, 6, 7, 7)"), ("b",2,"Path(1, 3, 4, 6, 7, 7)"), ("f",6,"Path(1, 3, 4, 6, 7, 7)")))
     assert(res2 === exp2)
   }
 }

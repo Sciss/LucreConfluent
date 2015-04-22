@@ -1,0 +1,390 @@
+[21 Apr 2015, 13:42'44.866] Confluent - ::::::: root :::::::
+[21 Apr 2015, 13:42'44.900] Confluent - txn durable
+[21 Apr 2015, 13:42'44.901] Confluent - txn new tree 0
+[21 Apr 2015, 13:42'44.976] Confluent - Root set List()
+[21 Apr 2015, 13:42'44.979] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'44.993] Confluent - txn flush write List() for <0 @ 0,0>
+[21 Apr 2015, 13:42'45.108] Confluent - ::::::: atomic - input access = Path(0, 0) :::::::
+[21 Apr 2015, 13:42'45.116] Confluent - txn newID <1 @ >
+[21 Apr 2015, 13:42'45.120] Confluent - txn newVar Var[Int](<2 @ >)
+[21 Apr 2015, 13:42'45.121] Confluent - Var[Int](<2 @ >) ini 1
+[21 Apr 2015, 13:42'45.122] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'45.124] Confluent - txn newVar Var(<3 @ >)
+[21 Apr 2015, 13:42'45.124] Confluent - Var(<3 @ >) ini None
+[21 Apr 2015, 13:42'45.125] Confluent - txn newID <4 @ >
+[21 Apr 2015, 13:42'45.125] Confluent - txn newVar Var[Int](<5 @ >)
+[21 Apr 2015, 13:42'45.125] Confluent - Var[Int](<5 @ >) ini 2
+[21 Apr 2015, 13:42'45.126] Confluent - txn newVar Var(<6 @ >)
+[21 Apr 2015, 13:42'45.126] Confluent - Var(<6 @ >) ini None
+[21 Apr 2015, 13:42'45.126] Confluent - txn newID <7 @ >
+[21 Apr 2015, 13:42'45.127] Confluent - txn newVar Var[Int](<8 @ >)
+[21 Apr 2015, 13:42'45.127] Confluent - Var[Int](<8 @ >) ini 3
+[21 Apr 2015, 13:42'45.127] Confluent - txn newVar Var(<9 @ >)
+[21 Apr 2015, 13:42'45.127] Confluent - Var(<9 @ >) ini None
+[21 Apr 2015, 13:42'45.128] Confluent - txn newID <10 @ >
+[21 Apr 2015, 13:42'45.128] Confluent - txn newVar Var[Int](<11 @ >)
+[21 Apr 2015, 13:42'45.128] Confluent - Var[Int](<11 @ >) ini 4
+[21 Apr 2015, 13:42'45.129] Confluent - txn newVar Var(<12 @ >)
+[21 Apr 2015, 13:42'45.129] Confluent - Var(<12 @ >) ini None
+[21 Apr 2015, 13:42'45.130] Confluent - txn newID <13 @ >
+[21 Apr 2015, 13:42'45.130] Confluent - txn newVar Var[Int](<14 @ >)
+[21 Apr 2015, 13:42'45.130] Confluent - Var[Int](<14 @ >) ini 5
+[21 Apr 2015, 13:42'45.131] Confluent - txn newVar Var(<15 @ >)
+[21 Apr 2015, 13:42'45.131] Confluent - Var(<15 @ >) ini None
+[21 Apr 2015, 13:42'45.132] Confluent - txn newID <16 @ >
+[21 Apr 2015, 13:42'45.132] Confluent - txn newVar Var[Int](<17 @ >)
+[21 Apr 2015, 13:42'45.132] Confluent - Var[Int](<17 @ >) ini 6
+[21 Apr 2015, 13:42'45.133] Confluent - txn newVar Var(<18 @ >)
+[21 Apr 2015, 13:42'45.133] Confluent - Var(<18 @ >) ini None
+[21 Apr 2015, 13:42'45.134] Confluent - Var(<3 @ >) set Some(Node(b, <4 @ >)<4 @ >)
+[21 Apr 2015, 13:42'45.135] Confluent - Var(<6 @ >) set Some(Node(c, <7 @ >)<7 @ >)
+[21 Apr 2015, 13:42'45.135] Confluent - Var(<12 @ >) set Some(Node(e, <13 @ >)<13 @ >)
+[21 Apr 2015, 13:42'45.135] Confluent - Var(<15 @ >) set Some(Node(f, <16 @ >)<16 @ >)
+[21 Apr 2015, 13:42'45.136] Confluent - Root set List(Node(a, <1 @ >)<1 @ >, Node(d, <10 @ >)<10 @ >)
+[21 Apr 2015, 13:42'45.199] Confluent - ::::::: txn flush - term = 1 :::::::
+[21 Apr 2015, 13:42'45.200] Confluent - txn flush write List(Node(a, <1 @ >)<1 @ >, Node(d, <10 @ >)<10 @ >) for <0 @ 0,1>
+[21 Apr 2015, 13:42'45.234] Confluent - txn flush write 2 for <5 @ 1,1>
+[21 Apr 2015, 13:42'45.235] Confluent - txn flush write 5 for <14 @ 1,1>
+[21 Apr 2015, 13:42'45.236] Confluent - txn flush write Some(Node(c, <7 @ >)<7 @ >) for <6 @ 1,1>
+[21 Apr 2015, 13:42'45.236] Confluent - txn flush write None for <9 @ 1,1>
+[21 Apr 2015, 13:42'45.237] Confluent - txn flush write 1 for <2 @ 1,1>
+[21 Apr 2015, 13:42'45.237] Confluent - txn flush write 6 for <17 @ 1,1>
+[21 Apr 2015, 13:42'45.238] Confluent - txn flush write Some(Node(e, <13 @ >)<13 @ >) for <12 @ 1,1>
+[21 Apr 2015, 13:42'45.238] Confluent - txn flush write Some(Node(b, <4 @ >)<4 @ >) for <3 @ 1,1>
+[21 Apr 2015, 13:42'45.239] Confluent - txn flush write None for <18 @ 1,1>
+[21 Apr 2015, 13:42'45.239] Confluent - txn flush write 4 for <11 @ 1,1>
+[21 Apr 2015, 13:42'45.240] Confluent - txn flush write 3 for <8 @ 1,1>
+[21 Apr 2015, 13:42'45.241] Confluent - txn flush write Some(Node(f, <16 @ >)<16 @ >) for <15 @ 1,1>
+[21 Apr 2015, 13:42'45.307] Confluent - ::::::: atomic - input access = Path(0, 1) :::::::
+[21 Apr 2015, 13:42'45.310] Confluent - ::::::: atomic - input access = Path(0, 1) :::::::
+[21 Apr 2015, 13:42'45.311] Confluent - Root get
+[21 Apr 2015, 13:42'45.311] Confluent - txn get' <0 @ 0,1>
+[21 Apr 2015, 13:42'45.316] Confluent - txn readID <1 @ 1,1>
+[21 Apr 2015, 13:42'45.318] Confluent - txn read Var[Int](<2 @ 1,1>)
+[21 Apr 2015, 13:42'45.318] Confluent - txn read Var(<3 @ 1,1>)
+[21 Apr 2015, 13:42'45.319] Confluent - txn readID <10 @ 1,1>
+[21 Apr 2015, 13:42'45.319] Confluent - txn read Var[Int](<11 @ 1,1>)
+[21 Apr 2015, 13:42'45.319] Confluent - txn read Var(<12 @ 1,1>)
+[21 Apr 2015, 13:42'45.320] Confluent - Var(<3 @ 1,1>) get
+[21 Apr 2015, 13:42'45.320] Confluent - txn get' <3 @ 1,1>
+[21 Apr 2015, 13:42'45.321] Confluent - txn readID <4 @ 1,1>
+[21 Apr 2015, 13:42'45.321] Confluent - txn read Var[Int](<5 @ 1,1>)
+[21 Apr 2015, 13:42'45.322] Confluent - txn read Var(<6 @ 1,1>)
+[21 Apr 2015, 13:42'45.322] Confluent - Var(<12 @ 1,1>) get
+[21 Apr 2015, 13:42'45.322] Confluent - txn get' <12 @ 1,1>
+[21 Apr 2015, 13:42'45.323] Confluent - txn readID <13 @ 1,1>
+[21 Apr 2015, 13:42'45.323] Confluent - txn read Var[Int](<14 @ 1,1>)
+[21 Apr 2015, 13:42'45.323] Confluent - txn read Var(<15 @ 1,1>)
+[21 Apr 2015, 13:42'45.324] Confluent - Var(<3 @ 1,1>) set Some(Node(e, <13 @ 1,1>)<13 @ 1,1>)
+[21 Apr 2015, 13:42'45.324] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'45.324] Confluent - Var(<12 @ 1,1>) set Some(Node(b, <4 @ 1,1>)<4 @ 1,1>)
+[21 Apr 2015, 13:42'45.361] Confluent - ::::::: txn flush - term = 2 :::::::
+[21 Apr 2015, 13:42'45.362] Confluent - txn flush write Some(Node(e, <13 @ 1,1>)<13 @ 1,1>) for <3 @ 1,2>
+[21 Apr 2015, 13:42'45.406] Confluent - txn flush write Some(Node(b, <4 @ 1,1>)<4 @ 1,1>) for <12 @ 1,2>
+[21 Apr 2015, 13:42'45.497] Confluent - ::::::: atomic - input access = Path(0, 2) :::::::
+[21 Apr 2015, 13:42'45.498] Confluent - ::::::: atomic - input access = Path(0, 1) :::::::
+[21 Apr 2015, 13:42'45.498] Confluent - Root get
+[21 Apr 2015, 13:42'45.498] Confluent - txn get' <0 @ 0,1>
+[21 Apr 2015, 13:42'45.500] Confluent - txn readID <1 @ 1,1>
+[21 Apr 2015, 13:42'45.500] Confluent - txn read Var[Int](<2 @ 1,1>)
+[21 Apr 2015, 13:42'45.501] Confluent - txn read Var(<3 @ 1,1>)
+[21 Apr 2015, 13:42'45.501] Confluent - txn readID <10 @ 1,1>
+[21 Apr 2015, 13:42'45.501] Confluent - txn read Var[Int](<11 @ 1,1>)
+[21 Apr 2015, 13:42'45.501] Confluent - txn read Var(<12 @ 1,1>)
+[21 Apr 2015, 13:42'45.501] Confluent - Var(<3 @ 1,1>) get
+[21 Apr 2015, 13:42'45.502] Confluent - txn get' <3 @ 1,1>
+[21 Apr 2015, 13:42'45.503] Confluent - txn readID <4 @ 1,1>
+[21 Apr 2015, 13:42'45.504] Confluent - txn read Var[Int](<5 @ 1,1>)
+[21 Apr 2015, 13:42'45.504] Confluent - txn read Var(<6 @ 1,1>)
+[21 Apr 2015, 13:42'45.504] Confluent - Var(<12 @ 1,1>) get
+[21 Apr 2015, 13:42'45.504] Confluent - txn get' <12 @ 1,1>
+[21 Apr 2015, 13:42'45.506] Confluent - txn readID <13 @ 1,1>
+[21 Apr 2015, 13:42'45.506] Confluent - txn read Var[Int](<14 @ 1,1>)
+[21 Apr 2015, 13:42'45.506] Confluent - txn read Var(<15 @ 1,1>)
+[21 Apr 2015, 13:42'45.507] Confluent - Var(<6 @ 1,1>) get
+[21 Apr 2015, 13:42'45.507] Confluent - txn get' <6 @ 1,1>
+[21 Apr 2015, 13:42'45.507] Confluent - txn readID <7 @ 1,1>
+[21 Apr 2015, 13:42'45.507] Confluent - txn read Var[Int](<8 @ 1,1>)
+[21 Apr 2015, 13:42'45.508] Confluent - txn read Var(<9 @ 1,1>)
+[21 Apr 2015, 13:42'45.508] Confluent - Var(<15 @ 1,1>) get
+[21 Apr 2015, 13:42'45.508] Confluent - txn get' <15 @ 1,1>
+[21 Apr 2015, 13:42'45.508] Confluent - txn readID <16 @ 1,1>
+[21 Apr 2015, 13:42'45.509] Confluent - txn read Var[Int](<17 @ 1,1>)
+[21 Apr 2015, 13:42'45.509] Confluent - txn read Var(<18 @ 1,1>)
+[21 Apr 2015, 13:42'45.509] Confluent - Var(<6 @ 1,1>) set Some(Node(f, <16 @ 1,1>)<16 @ 1,1>)
+[21 Apr 2015, 13:42'45.509] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'45.510] Confluent - Var(<15 @ 1,1>) set Some(Node(c, <7 @ 1,1>)<7 @ 1,1>)
+[21 Apr 2015, 13:42'45.554] Confluent - ::::::: txn flush - term = 3 :::::::
+[21 Apr 2015, 13:42'45.555] Confluent - txn flush write Some(Node(f, <16 @ 1,1>)<16 @ 1,1>) for <6 @ 1,3>
+[21 Apr 2015, 13:42'45.584] Confluent - txn flush write Some(Node(c, <7 @ 1,1>)<7 @ 1,1>) for <15 @ 1,3>
+[21 Apr 2015, 13:42'45.672] Confluent - ::::::: atomic - input access = Path(0, 3) :::::::
+[21 Apr 2015, 13:42'45.674] Confluent - ::::::: atomic - input access = Path(0, 1) :::::::
+[21 Apr 2015, 13:42'45.675] Confluent - handle: List(Node(a, <1 @ 1,1>)<1 @ 1,1>, Node(d, <10 @ 1,1>)<10 @ 1,1>) meld Path(0, 2)
+[21 Apr 2015, 13:42'45.685] Confluent - txn readID <1 @ 1,2>
+[21 Apr 2015, 13:42'45.685] Confluent - txn read Var[Int](<2 @ 1,2>)
+[21 Apr 2015, 13:42'45.685] Confluent - txn read Var(<3 @ 1,2>)
+[21 Apr 2015, 13:42'45.686] Confluent - txn readID <10 @ 1,2>
+[21 Apr 2015, 13:42'45.686] Confluent - txn read Var[Int](<11 @ 1,2>)
+[21 Apr 2015, 13:42'45.686] Confluent - txn read Var(<12 @ 1,2>)
+[21 Apr 2015, 13:42'45.686] Confluent - handle: List(Node(a, <1 @ 1,1>)<1 @ 1,1>, Node(d, <10 @ 1,1>)<10 @ 1,1>) meld Path(0, 3)
+[21 Apr 2015, 13:42'45.688] Confluent - txn readID <1 @ 1,3>
+[21 Apr 2015, 13:42'45.688] Confluent - txn read Var[Int](<2 @ 1,3>)
+[21 Apr 2015, 13:42'45.688] Confluent - txn read Var(<3 @ 1,3>)
+[21 Apr 2015, 13:42'45.689] Confluent - txn readID <10 @ 1,3>
+[21 Apr 2015, 13:42'45.689] Confluent - txn read Var[Int](<11 @ 1,3>)
+[21 Apr 2015, 13:42'45.690] Confluent - txn read Var(<12 @ 1,3>)
+[21 Apr 2015, 13:42'45.690] Confluent - Root set List(Node(a, <1 @ 1,2>)<1 @ 1,2>, Node(d, <10 @ 1,2>)<10 @ 1,2>, Node(a, <1 @ 1,3>)<1 @ 1,3>, Node(d, <10 @ 1,3>)<10 @ 1,3>)
+[21 Apr 2015, 13:42'45.691] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'45.693] Confluent - txn new tree 4
+[21 Apr 2015, 13:42'45.716] Confluent - ::::::: txn flush - meld term = 4 :::::::
+[21 Apr 2015, 13:42'45.717] Confluent - txn flush write List(Node(a, <1 @ 1,2>)<1 @ 1,2>, Node(d, <10 @ 1,2>)<10 @ 1,2>, Node(a, <1 @ 1,3>)<1 @ 1,3>, Node(d, <10 @ 1,3>)<10 @ 1,3>) for <0 @ 0,1,4,4>
+[21 Apr 2015, 13:42'45.772] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4) :::::::
+[21 Apr 2015, 13:42'45.773] Confluent - Root get
+[21 Apr 2015, 13:42'45.773] Confluent - txn get' <0 @ 0,1,4,4>
+[21 Apr 2015, 13:42'45.775] Confluent - txn readID <1 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.775] Confluent - txn read Var[Int](<2 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.776] Confluent - txn read Var(<3 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.776] Confluent - txn readID <10 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.777] Confluent - txn read Var[Int](<11 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.777] Confluent - txn read Var(<12 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.778] Confluent - txn readID <1 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.778] Confluent - txn read Var[Int](<2 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.778] Confluent - txn read Var(<3 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.779] Confluent - txn readID <10 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.779] Confluent - txn read Var[Int](<11 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.779] Confluent - txn read Var(<12 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.782] Confluent - Var[Int](<2 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.783] Confluent - txn get <2 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.785] Confluent - Var(<3 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.786] Confluent - txn get' <3 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.788] Confluent - txn readID <13 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.788] Confluent - txn read Var[Int](<14 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.789] Confluent - txn read Var(<15 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.789] Confluent - Var[Int](<14 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.789] Confluent - txn get <14 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.790] Confluent - Var(<15 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.790] Confluent - txn get' <15 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.823] Confluent - txn readID <16 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.823] Confluent - txn read Var[Int](<17 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.824] Confluent - txn read Var(<18 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.824] Confluent - Var[Int](<17 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.824] Confluent - txn get <17 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.825] Confluent - Var(<18 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.826] Confluent - txn get' <18 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.826] Confluent - Var[Int](<11 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.827] Confluent - txn get <11 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.827] Confluent - Var(<12 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.828] Confluent - txn get' <12 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.830] Confluent - txn readID <4 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.830] Confluent - txn read Var[Int](<5 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.831] Confluent - txn read Var(<6 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.831] Confluent - Var[Int](<5 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.831] Confluent - txn get <5 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.832] Confluent - Var(<6 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.833] Confluent - txn get' <6 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.838] Confluent - txn readID <7 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.838] Confluent - txn read Var[Int](<8 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.838] Confluent - txn read Var(<9 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.839] Confluent - Var[Int](<8 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.839] Confluent - txn get <8 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.839] Confluent - Var(<9 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.840] Confluent - txn get' <9 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.840] Confluent - Var[Int](<2 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.840] Confluent - txn get <2 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.841] Confluent - Var(<3 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.841] Confluent - txn get' <3 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.847] Confluent - txn readID <4 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.847] Confluent - txn read Var[Int](<5 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.848] Confluent - txn read Var(<6 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.848] Confluent - Var[Int](<5 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.848] Confluent - txn get <5 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.849] Confluent - Var(<6 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.850] Confluent - txn get' <6 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.853] Confluent - txn readID <16 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.853] Confluent - txn read Var[Int](<17 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.854] Confluent - txn read Var(<18 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.854] Confluent - Var[Int](<17 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.854] Confluent - txn get <17 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.855] Confluent - Var(<18 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.856] Confluent - txn get' <18 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.857] Confluent - Var[Int](<11 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.857] Confluent - txn get <11 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.858] Confluent - Var(<12 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.858] Confluent - txn get' <12 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.862] Confluent - txn readID <13 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.863] Confluent - txn read Var[Int](<14 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.863] Confluent - txn read Var(<15 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.863] Confluent - Var[Int](<14 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.863] Confluent - txn get <14 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.864] Confluent - Var(<15 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.864] Confluent - txn get' <15 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.866] Confluent - txn readID <7 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.866] Confluent - txn read Var[Int](<8 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.866] Confluent - txn read Var(<9 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.867] Confluent - Var[Int](<8 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.867] Confluent - txn get <8 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.867] Confluent - Var(<9 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.867] Confluent - txn get' <9 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.875] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4) :::::::
+[21 Apr 2015, 13:42'45.876] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4) :::::::
+[21 Apr 2015, 13:42'45.876] Confluent - Root get
+[21 Apr 2015, 13:42'45.876] Confluent - txn get' <0 @ 0,1,4,4>
+[21 Apr 2015, 13:42'45.877] Confluent - txn readID <1 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.878] Confluent - txn read Var[Int](<2 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.878] Confluent - txn read Var(<3 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.878] Confluent - txn readID <10 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.878] Confluent - txn read Var[Int](<11 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.879] Confluent - txn read Var(<12 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.879] Confluent - txn readID <1 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.879] Confluent - txn read Var[Int](<2 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.880] Confluent - txn read Var(<3 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.881] Confluent - txn readID <10 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.881] Confluent - txn read Var[Int](<11 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.881] Confluent - txn read Var(<12 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.882] Confluent - Var(<3 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'45.882] Confluent - txn get' <3 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.888] Confluent - txn readID <4 @ 1,3,4,4>
+[21 Apr 2015, 13:42'45.889] Confluent - txn read Var[Int](<5 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.889] Confluent - txn read Var(<6 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.889] Confluent - Var(<3 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'45.890] Confluent - txn get' <3 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.892] Confluent - txn readID <13 @ 1,2,4,4>
+[21 Apr 2015, 13:42'45.892] Confluent - txn read Var[Int](<14 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.892] Confluent - txn read Var(<15 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.893] Confluent - Var(<3 @ 1,3,4,4>) set Some(Node(e, <13 @ 1,2,4,4>)<13 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'45.893] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'45.893] Confluent - Var(<3 @ 1,2,4,4>) set Some(Node(b, <4 @ 1,3,4,4>)<4 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'45.918] Confluent - ::::::: txn flush - term = 5 :::::::
+[21 Apr 2015, 13:42'45.918] Confluent - txn flush write Some(Node(e, <13 @ 1,2,4,4>)<13 @ 1,2,4,4>) for <3 @ 1,3,4,5>
+[21 Apr 2015, 13:42'45.946] Confluent - txn flush write Some(Node(b, <4 @ 1,3,4,4>)<4 @ 1,3,4,4>) for <3 @ 1,2,4,5>
+[21 Apr 2015, 13:42'46.097] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 5) :::::::
+[21 Apr 2015, 13:42'46.099] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4) :::::::
+[21 Apr 2015, 13:42'46.100] Confluent - Root get
+[21 Apr 2015, 13:42'46.100] Confluent - txn get' <0 @ 0,1,4,4>
+[21 Apr 2015, 13:42'46.102] Confluent - txn readID <1 @ 1,2,4,4>
+[21 Apr 2015, 13:42'46.103] Confluent - txn read Var[Int](<2 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'46.105] Confluent - txn read Var(<3 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'46.106] Confluent - txn readID <10 @ 1,2,4,4>
+[21 Apr 2015, 13:42'46.106] Confluent - txn read Var[Int](<11 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'46.106] Confluent - txn read Var(<12 @ 1,2,4,4>)
+[21 Apr 2015, 13:42'46.107] Confluent - txn readID <1 @ 1,3,4,4>
+[21 Apr 2015, 13:42'46.108] Confluent - txn read Var[Int](<2 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'46.108] Confluent - txn read Var(<3 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'46.109] Confluent - txn readID <10 @ 1,3,4,4>
+[21 Apr 2015, 13:42'46.109] Confluent - txn read Var[Int](<11 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'46.110] Confluent - txn read Var(<12 @ 1,3,4,4>)
+[21 Apr 2015, 13:42'46.110] Confluent - Var(<3 @ 1,3,4,4>) get
+[21 Apr 2015, 13:42'46.110] Confluent - txn get' <3 @ 1,3,4,4>
+[21 Apr 2015, 13:42'46.112] Confluent - txn readID <4 @ 4,4>         	WRONG
+[21 Apr 2015, 13:42'46.112] Confluent - txn read Var[Int](<5 @ 4,4>)
+[21 Apr 2015, 13:42'46.113] Confluent - txn read Var(<6 @ 4,4>)
+[21 Apr 2015, 13:42'46.113] Confluent - Var(<3 @ 1,2,4,4>) get
+[21 Apr 2015, 13:42'46.113] Confluent - txn get' <3 @ 1,2,4,4>
+[21 Apr 2015, 13:42'46.116] Confluent - txn readID <13 @ 1,1,4,4>	WRONG
+[21 Apr 2015, 13:42'46.116] Confluent - txn read Var[Int](<14 @ 1,1,4,4>)
+[21 Apr 2015, 13:42'46.116] Confluent - txn read Var(<15 @ 1,1,4,4>)
+[21 Apr 2015, 13:42'46.116] Confluent - Var(<3 @ 1,3,4,4>) set Some(Node(e, <13 @ 1,1,4,4>)<13 @ 1,1,4,4>)
+[21 Apr 2015, 13:42'46.117] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'46.117] Confluent - Var(<3 @ 1,2,4,4>) set Some(Node(b, <4 @ 4,4>)<4 @ 4,4>)
+[21 Apr 2015, 13:42'46.140] Confluent - ::::::: txn flush - term = 6 :::::::
+[21 Apr 2015, 13:42'46.141] Confluent - txn flush write Some(Node(e, <13 @ 1,1,4,4>)<13 @ 1,1,4,4>) for <3 @ 1,3,4,6>
+[21 Apr 2015, 13:42'46.154] Confluent - txn flush write Some(Node(b, <4 @ 4,4>)<4 @ 4,4>) for <3 @ 1,2,4,6>
+[21 Apr 2015, 13:42'46.239] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 6) :::::::
+[21 Apr 2015, 13:42'46.240] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4) :::::::
+[21 Apr 2015, 13:42'46.240] Confluent - handle: List(Node(a, <1 @ 1,3,4,4>)<1 @ 1,3,4,4>, Node(a, <1 @ 1,2,4,4>)<1 @ 1,2,4,4>) meld Path(0, 1, 4, 5)
+[21 Apr 2015, 13:42'46.244] Confluent - txn readID <1 @ 1,3,4,5>
+[21 Apr 2015, 13:42'46.245] Confluent - txn read Var[Int](<2 @ 1,3,4,5>)
+[21 Apr 2015, 13:42'46.245] Confluent - txn read Var(<3 @ 1,3,4,5>)
+[21 Apr 2015, 13:42'46.246] Confluent - txn readID <1 @ 1,2,4,5>
+[21 Apr 2015, 13:42'46.246] Confluent - txn read Var[Int](<2 @ 1,2,4,5>)
+[21 Apr 2015, 13:42'46.246] Confluent - txn read Var(<3 @ 1,2,4,5>)
+[21 Apr 2015, 13:42'46.247] Confluent - handle: List(Node(a, <1 @ 1,3,4,4>)<1 @ 1,3,4,4>, Node(a, <1 @ 1,2,4,4>)<1 @ 1,2,4,4>) meld Path(0, 1, 4, 6)
+[21 Apr 2015, 13:42'46.249] Confluent - txn readID <1 @ 1,3,4,6>
+[21 Apr 2015, 13:42'46.249] Confluent - txn read Var[Int](<2 @ 1,3,4,6>)
+[21 Apr 2015, 13:42'46.249] Confluent - txn read Var(<3 @ 1,3,4,6>)
+[21 Apr 2015, 13:42'46.250] Confluent - txn readID <1 @ 1,2,4,6>
+[21 Apr 2015, 13:42'46.250] Confluent - txn read Var[Int](<2 @ 1,2,4,6>)
+[21 Apr 2015, 13:42'46.250] Confluent - txn read Var(<3 @ 1,2,4,6>)
+[21 Apr 2015, 13:42'46.251] Confluent - Root set List(Node(a, <1 @ 1,3,4,5>)<1 @ 1,3,4,5>, Node(a, <1 @ 1,2,4,5>)<1 @ 1,2,4,5>, Node(a, <1 @ 1,3,4,6>)<1 @ 1,3,4,6>, Node(a, <1 @ 1,2,4,6>)<1 @ 1,2,4,6>)
+[21 Apr 2015, 13:42'46.252] Confluent - ....... txn dirty .......
+[21 Apr 2015, 13:42'46.253] Confluent - txn new tree 7
+[21 Apr 2015, 13:42'46.275] Confluent - ::::::: txn flush - meld term = 7 :::::::
+[21 Apr 2015, 13:42'46.276] Confluent - txn flush write List(Node(a, <1 @ 1,3,4,5>)<1 @ 1,3,4,5>, Node(a, <1 @ 1,2,4,5>)<1 @ 1,2,4,5>, Node(a, <1 @ 1,3,4,6>)<1 @ 1,3,4,6>, Node(a, <1 @ 1,2,4,6>)<1 @ 1,2,4,6>) for <0 @ 0,1,4,4,7,7>
+[21 Apr 2015, 13:42'46.318] Confluent - ::::::: atomic - input access = Path(0, 1, 4, 4, 7, 7) :::::::
+[21 Apr 2015, 13:42'46.318] Confluent - Root get
+[21 Apr 2015, 13:42'46.318] Confluent - txn get' <0 @ 0,1,4,4,7,7>
+[21 Apr 2015, 13:42'46.320] Confluent - txn readID <1 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.320] Confluent - txn read Var[Int](<2 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.320] Confluent - txn read Var(<3 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.321] Confluent - txn readID <1 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.322] Confluent - txn read Var[Int](<2 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.322] Confluent - txn read Var(<3 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.323] Confluent - txn readID <1 @ 1,3,4,6,7,7>
+[21 Apr 2015, 13:42'46.323] Confluent - txn read Var[Int](<2 @ 1,3,4,6,7,7>)
+[21 Apr 2015, 13:42'46.323] Confluent - txn read Var(<3 @ 1,3,4,6,7,7>)
+[21 Apr 2015, 13:42'46.324] Confluent - txn readID <1 @ 1,2,4,6,7,7>
+[21 Apr 2015, 13:42'46.324] Confluent - txn read Var[Int](<2 @ 1,2,4,6,7,7>)
+[21 Apr 2015, 13:42'46.325] Confluent - txn read Var(<3 @ 1,2,4,6,7,7>)
+[21 Apr 2015, 13:42'46.326] Confluent - Var[Int](<2 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.326] Confluent - txn get <2 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.327] Confluent - Var(<3 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.327] Confluent - txn get' <3 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.330] Confluent - txn readID <13 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.331] Confluent - txn read Var[Int](<14 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.331] Confluent - txn read Var(<15 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.331] Confluent - Var[Int](<14 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.331] Confluent - txn get <14 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.332] Confluent - Var(<15 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.333] Confluent - txn get' <15 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.337] Confluent - txn readID <16 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.337] Confluent - txn read Var[Int](<17 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.338] Confluent - txn read Var(<18 @ 1,2,4,5,7,7>)
+[21 Apr 2015, 13:42'46.338] Confluent - Var[Int](<17 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.338] Confluent - txn get <17 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.339] Confluent - Var(<18 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.339] Confluent - txn get' <18 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.340] Confluent - Var[Int](<2 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.340] Confluent - txn get <2 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.341] Confluent - Var(<3 @ 1,2,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.341] Confluent - txn get' <3 @ 1,2,4,5,7,7>
+[21 Apr 2015, 13:42'46.344] Confluent - txn readID <4 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.345] Confluent - txn read Var[Int](<5 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.345] Confluent - txn read Var(<6 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.346] Confluent - Var[Int](<5 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.346] Confluent - txn get <5 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.347] Confluent - Var(<6 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.348] Confluent - txn get' <6 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.350] Confluent - txn readID <16 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.351] Confluent - txn read Var[Int](<17 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.351] Confluent - txn read Var(<18 @ 1,3,4,5,7,7>)
+[21 Apr 2015, 13:42'46.351] Confluent - Var[Int](<17 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.351] Confluent - txn get <17 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.352] Confluent - Var(<18 @ 1,3,4,5,7,7>) get
+[21 Apr 2015, 13:42'46.352] Confluent - txn get' <18 @ 1,3,4,5,7,7>
+[21 Apr 2015, 13:42'46.353] Confluent - Var[Int](<2 @ 1,3,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.353] Confluent - txn get <2 @ 1,3,4,6,7,7>
+[21 Apr 2015, 13:42'46.354] Confluent - Var(<3 @ 1,3,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.354] Confluent - txn get' <3 @ 1,3,4,6,7,7>
+[21 Apr 2015, 13:42'46.357] Confluent - txn readID <13 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.357] Confluent - txn read Var[Int](<14 @ 1,1,4,6,7,7>)
+[21 Apr 2015, 13:42'46.358] Confluent - txn read Var(<15 @ 1,1,4,6,7,7>)
+[21 Apr 2015, 13:42'46.358] Confluent - Var[Int](<14 @ 1,1,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.358] Confluent - txn get <14 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.359] Confluent - Var(<15 @ 1,1,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.359] Confluent - txn get' <15 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.361] Confluent - txn readID <16 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.361] Confluent - txn read Var[Int](<17 @ 1,1,4,6,7,7>)
+[21 Apr 2015, 13:42'46.361] Confluent - txn read Var(<18 @ 1,1,4,6,7,7>)
+[21 Apr 2015, 13:42'46.361] Confluent - Var[Int](<17 @ 1,1,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.362] Confluent - txn get <17 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.363] Confluent - Var(<18 @ 1,1,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.363] Confluent - txn get' <18 @ 1,1,4,6,7,7>
+[21 Apr 2015, 13:42'46.364] Confluent - Var[Int](<2 @ 1,2,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.364] Confluent - txn get <2 @ 1,2,4,6,7,7>
+[21 Apr 2015, 13:42'46.365] Confluent - Var(<3 @ 1,2,4,6,7,7>) get
+[21 Apr 2015, 13:42'46.365] Confluent - txn get' <3 @ 1,2,4,6,7,7>
+[21 Apr 2015, 13:42'46.368] Confluent - txn readID <4 @ 4,6,7,7>
+[21 Apr 2015, 13:42'46.369] Confluent - txn read Var[Int](<5 @ 4,6,7,7>)
+[21 Apr 2015, 13:42'46.369] Confluent - txn read Var(<6 @ 4,6,7,7>)
+[21 Apr 2015, 13:42'46.369] Confluent - Var[Int](<5 @ 4,6,7,7>) get
+[21 Apr 2015, 13:42'46.370] Confluent - txn get <5 @ 4,6,7,7>

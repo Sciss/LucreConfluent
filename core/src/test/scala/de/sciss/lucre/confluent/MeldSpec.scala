@@ -10,7 +10,7 @@ test-only de.sciss.lucre.confluent.MeldSpec
 
  */
 class MeldSpec extends ConfluentSpec with TestHasLinkedList {
-  "A confluent.Source" should "meld correctly" in { system =>
+  ignore /* "A confluent.Source" */ should "meld correctly" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -71,7 +71,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  "A confluent handle" should "be accessible after meld" in { system =>
+  ignore /* "A confluent handle" */ should "be accessible after meld" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -126,9 +126,11 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ignore /* "A confluent system" */ should "allow multiple melds of mutable objects" in { system =>
+  "A confluent system" should "allow multiple melds of mutable objects" in { system =>
     val types   = new Types(system)
     import types._
+
+    showLog = true
 
     val (access, (cursor, forkCursor)) = s.cursorRoot { implicit tx =>
       List.empty[Node]
@@ -168,7 +170,6 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
               val nn = next().get
               skip(rem - 1, nn.next)
             }
-
 
           val c = skip(split - 1, a.next)
           val d = skip(split - 1, b.next)

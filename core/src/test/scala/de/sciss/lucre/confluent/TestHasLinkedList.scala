@@ -43,11 +43,17 @@ trait TestHasLinkedList {
         next .write(out)
       }
 
-      override def toString = "Node(" + name + ", " + id + ")"
+      override def toString = s"Node($name, $id)"
     }
 
     def toList(next: Option[Node])(implicit tx: S#Tx): List[(String, Int)] = next match {
       case Some(n)  => (n.name, n.value()) :: toList(n.next())
+      case _        => Nil
+    }
+
+    // tuples of (name, value, id.path)
+    def toListID(next: Option[Node])(implicit tx: S#Tx): List[(String, Int, String)] = next match {
+      case Some(n)  => (n.name, n.value(), n.id.path.toString) :: toListID(n.next())
       case _        => Nil
     }
   }

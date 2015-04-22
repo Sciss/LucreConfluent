@@ -10,7 +10,7 @@ test-only de.sciss.lucre.confluent.MeldSpec
 
  */
 class MeldSpec extends ConfluentSpec with TestHasLinkedList {
-  ignore /* "A confluent.Source" */ should "meld correctly" in { system =>
+  "A confluent.Source" should "meld correctly" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -71,7 +71,7 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  ignore /* "A confluent handle" */ should "be accessible after meld" in { system =>
+  "A confluent handle" should "be accessible after meld" in { system =>
     val types   = new Types(system)
     import types._
 
@@ -126,11 +126,11 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
-  "A confluent system" should "allow multiple melds of mutable objects" in { system =>
+  ignore /* "A confluent system" */ should "allow multiple melds of mutable objects" in { system =>
     val types   = new Types(system)
     import types._
 
-    showLog = true
+    // showLog = true
 
     val (access, (cursor, forkCursor)) = s.cursorRoot { implicit tx =>
       List.empty[Node]
@@ -204,25 +204,28 @@ class MeldSpec extends ConfluentSpec with TestHasLinkedList {
     iterate(i1 = 0, j1 = 1, split1 = 1, i2 = 0, j2 = 1, split2 = 2)
     // [ a e f ], [ d b c ], [ a b f ], [ d e c ]
     val res1 = cursor.step { implicit tx =>
-      access().map(a => toList(Some(a)))
+      access().map(a => toListID(Some(a)))
     }
     val exp1 = List(
-      List(("a",1), ("e",5), ("f",6)),
-      List(("d",4), ("b",2), ("c",3)),
-      List(("a",1), ("b",2), ("f",6)),
-      List(("d",4), ("e",5), ("c",3)))
+      List(("a",1,"Path(1, 2, 4, 4)"), ("e",5,"Path(1, 2, 4, 4)"), ("f",6,"Path(1, 2, 4, 4)")),
+      List(("d",4,"Path(1, 2, 4, 4)"), ("b",2,"Path(1, 2, 4, 4)"), ("c",3,"Path(1, 2, 4, 4)")),
+      List(("a",1,"Path(1, 3, 4, 4)"), ("b",2,"Path(1, 3, 4, 4)"), ("f",6,"Path(1, 3, 4, 4)")),
+      List(("d",4,"Path(1, 3, 4, 4)"), ("e",5,"Path(1, 3, 4, 4)"), ("c",3,"Path(1, 3, 4, 4)")))
     assert(res1 === exp1)
 
+    showLog = true
+
     iterate(i1 = 2, j1 = 0, split1 = 1, i2 = 2, j2 = 0, split2 = 1)
-    // [ a b f ], [ a e f ], [ a b f ], [ a e f ]
+    // iterate(i1 = 3, j1 = 1, split1 = 1, i2 = 2, j2 = 0, split2 = 1)
+    // [ a e f ], [ a b f ], [ a e f ], [ a b f ]
     val res2 = cursor.step { implicit tx =>
-      access().map(a => toList(Some(a)))
+      access().map(a => toListID(Some(a)))
     }
     val exp2 = List(
-      List(("a",1), ("b",2), ("f",6)),
-      List(("a",1), ("e",5), ("f",6)),
-      List(("a",1), ("b",2), ("f",6)),
-      List(("a",1), ("e",5), ("f",6)))
+      List(("a",1,"Path(1, 3, 4, 5, 7, 7)"), ("e",2,"Path(1, 2, 4, 5, 7, 7)"), ("f",6,"Path(1, 2, 4, 5, 7, 7)")),
+      List(("a",1,"Path(1, 2, 4, 5, 7, 7)"), ("b",5,"Path(1, 3, 4, 5, 7, 7)"), ("f",6,"Path(1, 3, 4, 5, 7, 7)")),
+      List(("a",1,"Path(1, 3, 4, 6, 7, 7)"), ("e",2,"Path(1, 2, 4, 6, 7, 7)"), ("f",6,"Path(1, 2, 4, 6, 7, 7)")),
+      List(("a",1,"Path(1, 2, 4, 6, 7, 7)"), ("b",5,"Path(1, 3, 4, 6, 7, 7)"), ("f",6,"Path(1, 3, 4, 6, 7, 7)")))
     assert(res2 === exp2)
   }
 }

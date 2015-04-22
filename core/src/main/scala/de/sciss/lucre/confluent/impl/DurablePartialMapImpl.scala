@@ -16,7 +16,7 @@ package impl
 
 import de.sciss.lucre.stm.DataStore
 import de.sciss.serial
-import de.sciss.serial.{DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, Serializer, DataOutput, ImmutableSerializer}
 
 import scala.annotation.switch
 
@@ -40,26 +40,8 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
 
   final def isFresh(key: K, conPath: S#Acc)(implicit tx: S#Tx): Boolean = true // III
 
-  //   // {
-  //      val path = conPath.partial
-  //      store.get { out =>
-  //         out.writeUnsignedByte( 2 )
-  //         writeKey( key, out ) // out.writeInt( key )
-  ////         out.writeLong( path.indexSum )
-  //      } { in =>
-  //         // XXX TODO i don't think we'll encounter a partial hash unless
-  //         // there is a hash collision. the whole method should thus be
-  //         // simplified to a plain store.contains( key )
-  //         (in.readUnsignedByte(): @switch) match {
-  //            case 1 => true    // a single value is found
-  //            case 2 => true    // a map is found
-  //            case _ => false   // only a partial hash is found
-  //         }
-  //      } getOrElse( false )
-  //   }
-
   // XXX boom! specialized
-  final def put[ /* @spec(ValueSpec) */ A](key: K, conPath: S#Acc, value: A)
+  final def putImmutable[ /* @spec(ValueSpec) */ A](key: K, conPath: S#Acc, value: A)
                                           (implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //      val path = conPath.partial
     // val (index, term) = conPath.splitIndex
@@ -139,6 +121,11 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
     }
   }
 
+
+  final def put[A](key: K, conPath: S#Acc, value: A)(implicit tx: S#Tx, ser: Serializer[S#Tx, S#Acc, A]): Unit = {
+    ???
+  }
+
   private def putFullMap[/* @spec(ValueSpec) */ A](key: K, /* conIndex: S#Acc, */ term: Long, value: A, /* prevTerm: Long, */
                                              prevValue: A)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Unit = {
     //         require( prevTerm != term, "Duplicate flush within same transaction? " + term.toInt )
@@ -212,20 +199,19 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
     true
   }
 
-  final def get[A](key: K, conPath: S#Acc)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Option[A] = {
+  final def getImmutable[A](key: K, conPath: S#Acc)(implicit tx: S#Tx, ser: ImmutableSerializer[A]): Option[A] = {
     if (conPath.isEmpty) return None
     val (maxIndex, maxTerm) = conPath.splitIndex
     //      val maxTerm = conPath.term
     getWithPrefixLen[A, A](key, maxIndex, maxTerm)((/* _, */ _, value) => value)
   }
 
-  final def getWithSuffix[A](key: K, conPath: S#Acc)
-                            (implicit tx: S#Tx, ser: ImmutableSerializer[A]): Option[(S#Acc, A)] = {
+  final def get[A](key: K, conPath: S#Acc)(implicit tx: S#Tx, ser: Serializer[S#Tx, S#Acc, A]): Option[A] = {
     if (conPath.isEmpty) return None
     val (maxIndex, maxTerm) = conPath.splitIndex
     //      val maxTerm = conPath.term
-    getWithPrefixLen[A, (S#Acc, A)](key, maxIndex, maxTerm) {
-      (/* preLen, */ writeTerm, value) =>
+    getWithPrefixLen[Array[Byte], A](key, maxIndex, maxTerm) {
+      (/* preLen, */ writeTerm, arr) =>
         val treeTerm = handler.getIndexTreeTerm(writeTerm)
         val i = maxIndex.maxPrefixLength(treeTerm) // XXX TODO: this is wrong -- maxPrefixLength currently compares sums not terms
       // XXX TODO ugly ugly ugly
@@ -237,8 +223,10 @@ sealed trait DurablePartialMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K] extends 
         } else {
           conPath.drop(i)
         }
-        (writeTerm +: suffix, value)
-    }
+        val access  = writeTerm +: suffix
+        val in      = DataInput(arr)
+        ser.read(in, access)
+    } (tx, ByteArraySerializer)
   }
 
   // XXX boom! specialized

@@ -15,7 +15,7 @@ package de.sciss.lucre.confluent
 
 import impl.{ConfluentIntMapImpl, ConfluentLongMapImpl, PartialIntMapImpl}
 import de.sciss.lucre.stm.DataStore
-import de.sciss.serial.ImmutableSerializer
+import de.sciss.serial.{Serializer, ImmutableSerializer}
 
 object DurablePersistentMap {
   def newConfluentIntMap[S <: Sys[S]](store: DataStore, handler: IndexMapHandler[S],
@@ -54,8 +54,10 @@ trait DurablePersistentMap[S <: Sys[S], /* @spec(KeySpec) */ K] {
     * @param serializer the serializer used to store the entity's values
     * @tparam A         the type of values stored with the entity
     */
-  def put[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Unit
+  def putImmutable[/* @spec(ValueSpec) */ A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Unit
   // XXX boom! specialized
+
+  def put[A](key: K, path: S#Acc, value: A)(implicit tx: S#Tx, serializer: Serializer[S#Tx, S#Acc, A]): Unit
 
   /** Finds the most recent value for an entity `id` with respect to version `path`.
     *
@@ -73,7 +75,7 @@ trait DurablePersistentMap[S <: Sys[S], /* @spec(KeySpec) */ K] {
     * @tparam A         the type of values stored with the entity
     * @return           `None` if no value was found, otherwise a `Some` of that value.
     */
-  def get[A](key: K, path: S#Acc)(implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A]
+  def getImmutable[A](key: K, path: S#Acc)(implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A]
 
   /** Finds the most recent value for an entity `id` with respect to version `path`. If a value is found,
     * it is return along with a suffix suitable for identifier path actualisation.
@@ -88,8 +90,7 @@ trait DurablePersistentMap[S <: Sys[S], /* @spec(KeySpec) */ K] {
     *                   value was found. However, the suffix overlaps the prefix in that it begins with the
     *                   tree entering/exiting tuple at which the value was found.
     */
-  def getWithSuffix[A](key: K, path: S#Acc)
-                                   (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[(S#Acc, A)]
+  def get[A](key: K, path: S#Acc)(implicit tx: S#Tx, serializer: Serializer[S#Tx, S#Acc, A]): Option[A]
 
   /** '''Note:''' requires that `path` is non-empty. */
   def isFresh(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean

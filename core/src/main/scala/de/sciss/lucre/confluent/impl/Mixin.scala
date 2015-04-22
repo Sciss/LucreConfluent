@@ -167,7 +167,7 @@ trait Mixin[S <: Sys[S]]
                             (implicit tx: S#Tx, serA: serial.Serializer[S#Tx, S#Acc, A]): (S#Var[A], A, B) = {
     val rootVar     = new RootVar[S, A](0, "Root") // serializer
     val rootPath    = tx.inputAccess
-    val arrOpt      = varMap.get[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)
+    val arrOpt      = varMap.getImmutable[Array[Byte]](0, rootPath)(tx, ByteArraySerializer)
     val (aVal, bVal) = arrOpt match {
       case Some(arr) =>
         val in      = DataInput(arr)

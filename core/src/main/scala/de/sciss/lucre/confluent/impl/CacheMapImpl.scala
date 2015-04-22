@@ -15,7 +15,7 @@ package de.sciss.lucre.confluent
 package impl
 
 import de.sciss.serial
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.ImmutableSerializer
 
 import scala.concurrent.stm.TxnLocal
 
@@ -142,7 +142,7 @@ object DurableCacheMapImpl {
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
-      store.put(key, pathOut, value)
+      store.putImmutable(key, pathOut, value)
     }
   }
 
@@ -154,10 +154,10 @@ object DurableCacheMapImpl {
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
       log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
-      val out = DataOutput()
-      serializer.write(value, out)
-      val arr = out.toByteArray
-      store.put(key, pathOut, arr)(tx, ByteArraySerializer)
+//      val out = DataOutput()
+//      serializer.write(value, out)
+//      val arr = out.toByteArray
+      store.put(key, pathOut, value)
     }
   }
 }
@@ -215,14 +215,7 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     */
   final def getCacheTxn[A](key: K, path: S#Acc)
                           (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
-    getCacheOnly(key, path).orElse {
-      store.getWithSuffix[Array[Byte]](key, path)(tx, ByteArraySerializer).map { tup =>
-        val access = tup._1
-        val arr = tup._2
-        val in = DataInput(arr)
-        serializer.read(in, access)
-      }
-    }
+    getCacheOnly(key, path) orElse store.get[A](key, path)
 
   /** Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
     * non-transactional serializer exists.
@@ -239,7 +232,7 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     */
   final def getCacheNonTxn[A](key: K, path: S#Acc)
                              (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A] =
-    getCacheOnly(key, path).orElse(store.get[A](key, path))
+    getCacheOnly(key, path).orElse(store.getImmutable[A](key, path))
 
   //   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
   //      cacheContains( key, path ) || {
@@ -309,10 +302,10 @@ object PartialCacheMapImpl {
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = fullPath.addTerm(outTerm)
       log(s"txn flush write $value for ${pathOut.mkString(s"<$key @ ", ",", ">")}")
-      val out     = DataOutput()
-      serializer.write(value, out)
-      val arr     = out.toByteArray
-      store.put(key, pathOut, arr)(tx, ByteArraySerializer)
+//      val out     = DataOutput()
+//      serializer.write(value, out)
+//      val arr     = out.toByteArray
+      store.put(key, pathOut, value)
     }
   }
 }
@@ -329,14 +322,7 @@ trait PartialCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
 
   final def getPartial[A](key: K, path: S#Acc)(implicit tx: S#Tx,
                                                serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
-    getCacheOnly(key, path.partial).orElse {
-      store.getWithSuffix[Array[Byte]](key, path)(tx, ByteArraySerializer).map { tup =>
-          val access  = tup._1
-          val arr     = tup._2
-          val in      = DataInput(arr)
-          serializer.read(in, access)
-      }
-    }
+    getCacheOnly(key, path.partial) orElse store.get[A](key, path)
 
   final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean =
     removeCacheOnly(key, path) || store.remove(key, path)

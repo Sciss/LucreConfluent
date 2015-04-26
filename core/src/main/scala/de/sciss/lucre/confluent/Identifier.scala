@@ -18,4 +18,6 @@ import de.sciss.lucre.stm
 trait Identifier[S <: Sys[S]] extends stm.Identifier[S#Tx] {
   def base: Int  // name, origin, base, agent, ancestry, germ, parent, root
   def path: S#Acc
+
+  def copy(path: S#Acc): Identifier[S]
 }

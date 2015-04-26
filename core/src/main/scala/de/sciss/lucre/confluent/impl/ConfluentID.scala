@@ -27,6 +27,8 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
     finalizeHash(h2, 2)
   }
 
+  def copy(newPath: S#Acc): Identifier[S] = new ConfluentID(base = base, path = newPath)
+
   override def equals(that: Any): Boolean =
     that.isInstanceOf[Identifier[_]] && {
       val b = that.asInstanceOf[Identifier[_]]
@@ -57,6 +59,8 @@ private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) exten
       finalizeHash(h3, 3)
     }
   }
+
+  def copy(newPath: S#Acc): Identifier[S] = new PartialID(base = base, path = newPath)
 
   override def equals(that: Any): Boolean =
     that.isInstanceOf[PartialID[_]] && {

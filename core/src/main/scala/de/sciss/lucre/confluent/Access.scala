@@ -26,16 +26,20 @@ object Access {
 trait Access[S <: Sys[S]] extends Writable with PathLike {
   def mkString(prefix: String, sep: String, suffix: String): String
 
-  // prepend element
-  private[confluent] def +:(head: Long): S#Acc
+  /** Prepends a single element. */
+  def +:(head: Long): S#Acc
 
-  // append element
-  private[confluent] def :+(last: Long): S#Acc
+  /** Appends a single element. */
+  def :+(last: Long): S#Acc
 
-  private[confluent] def index: S#Acc
-  private[confluent] def tail:  S#Acc
+  /** Drops the last element. */
+  def index: S#Acc
 
-  private[confluent] def term:     Long
+  /** Drops the head element. */
+  def tail:  S#Acc
+
+  def term: Long
+
   private[confluent] def indexSum: Long
 
   private[confluent] def apply(idx: Int): Long
@@ -48,8 +52,8 @@ trait Access[S <: Sys[S]] extends Writable with PathLike {
 
   private[confluent] def tree: FingerTree[(Int, Long), Long] // :-( it's unfortunate having to expose this
 
-  // split off last term, return index (init) and that last term
-  private[confluent] def splitIndex: (S#Acc, Long)
+  /** Splits off last term, returning index (init) and that last term. */
+  def splitIndex: (S#Acc, Long)
 
   // split an index and term at a given point. that is
   // return the `idx` first elements of the path, and the one
@@ -60,21 +64,22 @@ trait Access[S <: Sys[S]] extends Writable with PathLike {
 
   private[confluent] def splitAtSum(hash: Long): (S#Acc, Long)
 
-  //      private[confluent] def indexOfSum( hash: Long ): Int
-
-  //      private[confluent] def dropAndReplaceHead( dropLen: Int, newHead: Long ) : S#Acc
-
-  private[confluent] def addTerm(term: Long)(implicit tx: S#Tx): S#Acc
+  /** Replaces the terminal version with the given `term`.
+    * If the new term is on the same tree level as the old term,
+    * the term is replaced, otherwise a new tree is entered
+    * (the new term is appended twice).
+    */
+  def addTerm(term: Long)(implicit tx: S#Tx): S#Acc
 
   // drop initial elements
-  private[confluent] def drop(num: Int): S#Acc
-  private[confluent] def take(num: Int): S#Acc
+  def drop(num: Int): S#Acc
+  def take(num: Int): S#Acc
 
-  private[confluent] def head: Long
-  private[confluent] def last: Long
+  def head: Long
+  def last: Long
 
-  private[confluent] def isEmpty:  Boolean
-  private[confluent] def nonEmpty: Boolean
+  def isEmpty:  Boolean
+  def nonEmpty: Boolean
 
   /** Retrieves the version information associated with the access path. */
   def info(implicit tx: S#Tx): VersionInfo

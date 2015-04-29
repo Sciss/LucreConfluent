@@ -1,5 +1,7 @@
 lazy val baseName         = "LucreConfluent"
 
+lazy val projectVersion   = "2.10.0"
+
 lazy val baseNameL        = baseName.toLowerCase
 
 lazy val stmVersion       = "2.1.1"
@@ -9,7 +11,7 @@ lazy val fingerVersion    = "1.5.2"
 lazy val scalaTestVersion = "2.2.4"
 
 lazy val commonSettings = Seq(
-  version             := "2.10.0-SNAPSHOT",
+  version             := projectVersion,
   organization        := "de.sciss",
   description         := "Confluently persistent references for Scala",
   homepage            := Some(url("https://github.com/Sciss/LucreConfluent")),

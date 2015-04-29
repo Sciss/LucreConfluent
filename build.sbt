@@ -1,6 +1,6 @@
 lazy val baseName         = "LucreConfluent"
 
-lazy val projectVersion   = "2.10.0"
+lazy val projectVersion   = "2.11.0"
 
 lazy val baseNameL        = baseName.toLowerCase
 

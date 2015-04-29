@@ -27,7 +27,7 @@ trait Txn[S <: Sys[S]] extends stm.Txn[S] {
   def isRetroactive: Boolean
 
   /** The confluent handle is enhanced with the `meld` method. */
-  override def newHandle[A](value: A)(implicit serializer: Serializer[S#Tx, S#Acc, A]): Source[S, A]
+  def newHandleM[A](value: A)(implicit serializer: Serializer[S#Tx, S#Acc, A]): Source[S, A]
 
   private[confluent] def readTreeVertexLevel(term: Long): Int
   private[confluent] def addInputVersion(path: S#Acc): Unit

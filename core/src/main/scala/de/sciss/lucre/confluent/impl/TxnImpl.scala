@@ -162,6 +162,9 @@ trait TxnMixin[S <: Sys[S]]
     h
   }
 
+  final def newHandleM[A](value: A)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): Source[S, A] =
+    newHandle(value)
+
   final def getNonTxn[A](id: S#ID)(implicit ser: ImmutableSerializer[A]): A = {
     log(s"txn get $id")
     fullCache.getCacheNonTxn[A](id.base, id.path)(this, ser).getOrElse(sys.error("No value for " + id))

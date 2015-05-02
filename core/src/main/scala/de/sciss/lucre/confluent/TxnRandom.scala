@@ -154,13 +154,37 @@ object TxnRandom {
   sealed trait Persistent[S <: stm.Sys[S]] extends TxnRandom[S#Tx] with stm.Mutable[S#ID, S#Tx]
 }
 
+/** A transactional pseudo-random number generator which
+  * behaves numerically like `java.util.Random`.
+  */
 trait TxnRandom[-Txn] {
+  /** Generates a random `Boolean` value. */
   def nextBoolean  ()(implicit tx: Txn): Boolean
+
+  /** Generates a random `Double` value, uniformly distributed
+    * between `0.0` (inclusive) and `1.0` (exclusive).
+    */
   def nextDouble   ()(implicit tx: Txn): Double
+
+  /** Generates a random `Float` value, uniformly distributed
+    * between `0.0f` (inclusive) and `1.0f` (exclusive).
+    */
   def nextFloat    ()(implicit tx: Txn): Float
+
+  /** Generates a random `Int` value in the range `Int.MinValue` to `Int.MaxValue`. */
   def nextInt      ()(implicit tx: Txn): Int
+
+  /** Generates a random `Int` value in the range of 0 (inclusive) until the specified value `n` (exclusive). */
   def nextInt(n: Int)(implicit tx: Txn): Int
+
+  /** Generates a random `Long` value in the range `Long.MinValue` to `Long.MaxValue`.
+    *
+    * __WARNING:__
+    * Because it uses the same algorithm as `java.util.Random`, with a seed of only 48 bits,
+    * this function will not return all possible long values!
+    */
   def nextLong     ()(implicit tx: Txn): Long
 
+  /** Resets the internal seed value to the given argument. */
   def setSeed(seed: Long)(implicit tx: Txn): Unit
 }

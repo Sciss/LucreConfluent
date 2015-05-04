@@ -143,7 +143,7 @@ object DurableCacheMapImpl {
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
-      log(s"txn flush write $value for ${pathOut.mkString("<" + key + " @ ", ",", ">")}")
+      log(s"txn flush write $value for ${pathOut.mkString(s"<$key @ ", ",", ">")}")
       store.putImmutable(key, pathOut, value)
     }
   }
@@ -155,7 +155,7 @@ object DurableCacheMapImpl {
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
-      log(s"txn flush write $value for ${pathOut.mkString("<" + key + " @ ", ",", ">")}")
+      log(s"txn flush write $value for ${pathOut.mkString(s"<$key @ ", ",", ">")}")
 //      val out = DataOutput()
 //      serializer.write(value, out)
 //      val arr = out.toByteArray
@@ -170,7 +170,7 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
 
   import DurableCacheMapImpl._
 
-  private[this] val readCache = TxnLocal(new java.util.WeakHashMap[(K, S#Acc), WeakReference[_]])
+  private[this] val readCache = TxnLocal(new java.util.WeakHashMap[(K, S#Acc), AnyRef])
 
   /** Stores an entry in the cache for which 'only' a transactional serializer exists.
     *
@@ -225,7 +225,7 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     val rc    = readCache.get(tx.peer)
     val kp    = (key, path)
     val ref_? = rc.get(kp)
-    val v2_?  = if (ref_? == null) null else ref_?.get()
+    val v2_?  = if (ref_? == null) null else ref_?.asInstanceOf[WeakReference[_]].get()
     if (v2_? == null) {
       val v3Opt = store.get[A](key, path)
       if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
@@ -255,11 +255,10 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
 
     val rc    = readCache.get(tx.peer)
     val kp    = (key, path)
-    val ref_? = rc.get(kp)
-    val v2_?  = if (ref_? == null) null else ref_?.get()
+    val v2_?  = rc.get(kp)
     if (v2_? == null) {
       val v3Opt = store.getImmutable[A](key, path)
-      if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
+      if (v3Opt.isDefined) rc.put(kp, v3Opt.get.asInstanceOf[AnyRef])
       v3Opt
     } else {
       Some(v2_?.asInstanceOf[A])
@@ -271,9 +270,8 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
   //         store.getWithSuffix()
   //      }
 
-  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean = {
+  final def removeCache(key: K, path: S#Acc)(implicit tx: S#Tx): Boolean =
     removeCacheOnly(key, path) || store.remove(key, path)
-  }
 }
 
 object InMemoryCacheMapImpl {

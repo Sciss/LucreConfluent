@@ -14,6 +14,8 @@
 package de.sciss.lucre.confluent
 package impl
 
+import java.lang.ref.WeakReference
+
 import de.sciss.serial
 import de.sciss.serial.ImmutableSerializer
 
@@ -141,7 +143,7 @@ object DurableCacheMapImpl {
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
-      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      log(s"txn flush write $value for ${pathOut.mkString("<" + key + " @ ", ",", ">")}")
       store.putImmutable(key, pathOut, value)
     }
   }
@@ -153,7 +155,7 @@ object DurableCacheMapImpl {
 
     def flush(key: K, outTerm: Long, store: Store[S, K])(implicit tx: S#Tx): Unit = {
       val pathOut = path.addTerm(outTerm)
-      log("txn flush write " + value + " for " + pathOut.mkString("<" + key + " @ ", ",", ">"))
+      log(s"txn flush write $value for ${pathOut.mkString("<" + key + " @ ", ",", ">")}")
 //      val out = DataOutput()
 //      serializer.write(value, out)
 //      val arr = out.toByteArray
@@ -167,6 +169,8 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
   with CacheMapImpl[S, K, DurablePersistentMap[S, K]] {
 
   import DurableCacheMapImpl._
+
+  private[this] val readCache = TxnLocal(new java.util.WeakHashMap[(K, S#Acc), WeakReference[_]])
 
   /** Stores an entry in the cache for which 'only' a transactional serializer exists.
     *
@@ -214,8 +218,22 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     *                   neither in the cache nor in the persistent store.
     */
   final def getCacheTxn[A](key: K, path: S#Acc)
-                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] =
-    getCacheOnly(key, path) orElse store.get[A](key, path)
+                          (implicit tx: S#Tx, serializer: serial.Serializer[S#Tx, S#Acc, A]): Option[A] = {
+    val v1Opt = getCacheOnly(key, path)
+    if (v1Opt.isDefined) return v1Opt
+
+    val rc    = readCache.get(tx.peer)
+    val kp    = (key, path)
+    val ref_? = rc.get(kp)
+    val v2_?  = if (ref_? == null) null else ref_?.get()
+    if (v2_? == null) {
+      val v3Opt = store.get[A](key, path)
+      if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
+      v3Opt
+    } else {
+      Some(v2_?.asInstanceOf[A])
+    }
+  }
 
   /** Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
     * non-transactional serializer exists.
@@ -231,8 +249,22 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     *                   neither in the cache nor in the persistent store.
     */
   final def getCacheNonTxn[A](key: K, path: S#Acc)
-                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A] =
-    getCacheOnly(key, path).orElse(store.getImmutable[A](key, path))
+                             (implicit tx: S#Tx, serializer: ImmutableSerializer[A]): Option[A] = {
+    val v1Opt = getCacheOnly(key, path)
+    if (v1Opt.isDefined) return v1Opt
+
+    val rc    = readCache.get(tx.peer)
+    val kp    = (key, path)
+    val ref_? = rc.get(kp)
+    val v2_?  = if (ref_? == null) null else ref_?.get()
+    if (v2_? == null) {
+      val v3Opt = store.getImmutable[A](key, path)
+      if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
+      v3Opt
+    } else {
+      Some(v2_?.asInstanceOf[A])
+    }
+  }
 
   //   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =
   //      cacheContains( key, path ) || {

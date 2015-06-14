@@ -6,9 +6,12 @@ import stm.MutableSerializer
 import collection.immutable.{IndexedSeq => Vec}
 import serial.{DataInput, DataOutput}
 
-/**
- * To run only this test:
- * test-only de.sciss.lucre.confluent.CursorsSpec
+/*
+
+To run only this test:
+
+test-only de.sciss.lucre.confluent.CursorsSpec
+
  */
 class CursorsSpec extends ConfluentSpec {
   //   confluent.showLog = true

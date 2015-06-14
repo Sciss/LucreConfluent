@@ -9,11 +9,12 @@ import java.io.File
 import data.{SkipList, HASkipList}
 import stm.store.BerkeleyDB
 
-/**
- * To run this test copy + paste the following into sbt:
- * {{
- * test-only de.sciss.confluent.SkipListSuite
- * }}
+/*
+
+To run this test copy + paste the following into sbt:
+
+test-only de.sciss.confluent.SkipListSuite
+
  */
 class SkipListSuite extends FeatureSpec with GivenWhenThen {
    val CONSISTENCY   = true

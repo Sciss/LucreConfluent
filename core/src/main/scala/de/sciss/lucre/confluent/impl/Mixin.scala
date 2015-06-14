@@ -231,7 +231,7 @@ trait Mixin[S <: Sys[S]]
       out.writeByte(4)
       out.writeInt(vInt)
     } { in =>
-      val m = in.readUTF()
+      val m         = in.readUTF()
       val timeStamp = in.readLong()
       VersionInfo(m, timeStamp)
     }
@@ -419,8 +419,8 @@ trait Mixin[S <: Sys[S]]
       out.writeByte(0)
       out.writeInt(v.version.toInt)
     } { out =>
-      out.writeInt(tree.term.toInt)
-      out.writeInt(tree.level)
+      out.writePackedInt(tree.term.toInt) // writeInt
+      out.writePackedInt(tree.level)      // writeInt
       tree.tree.vertexSerializer.write(v, out)
     }
 
@@ -472,7 +472,7 @@ trait Mixin[S <: Sys[S]]
       out.writeInt(term.toInt)
     } { in =>
       val tree = Ancestor.readTree[D, Long](in, ())(tx, ImmutableSerializer.Long, _.toInt) // tx.durable
-    val level = in.readInt()
+      val level = in.readPackedInt() // readInt()
       new IndexTreeImpl(tree, level)
     } getOrElse {
       // `term` does not form a tree index. it may be a tree vertex, though. thus,
@@ -482,7 +482,7 @@ trait Mixin[S <: Sys[S]]
         out.writeByte(0)
         out.writeInt(term.toInt)
       } { in =>
-        val term2 = in.readInt() // tree index!
+        val term2 = in.readPackedInt() // readInt; tree index!
         if (term2 == term) throw new IllegalStateException(s"Trying to access nonexistent tree ${term.toInt}")
         readIndexTree(term2)
       } getOrElse {
@@ -498,8 +498,8 @@ trait Mixin[S <: Sys[S]]
       out.writeByte(0)
       out.writeInt(term.toInt)
     } { in =>
-      in.readInt() // tree index!
-    val level   = in.readInt()
+      in.readPackedInt() // tree index!
+      val level   = in.readPackedInt() // readInt()
       val v       = tree.vertexSerializer.read(in, ())
       (v, level)
     } getOrElse sys.error(s"Trying to access nonexistent vertex ${term.toInt}")

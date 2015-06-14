@@ -32,13 +32,14 @@ private[impl] final class IndexTreeImpl[D <: stm.DurableLike[D]](val tree: Ances
 
   def term: Long = tree.root.version
 
-  override def equals(that: Any): Boolean = {
-    that.isInstanceOf[IndexTree[_]] && term == that.asInstanceOf[IndexTree[_]].term
+  override def equals(that: Any): Boolean = that match {
+    case b: IndexTree[_] => term == b.term
+    case _ => false
   }
 
   def write(out: DataOutput): Unit = {
     tree.write(out)
-    out.writeInt(level)
+    out.writePackedInt(level)
   }
 
   def dispose()(implicit tx: D#Tx): Unit = tree.dispose()

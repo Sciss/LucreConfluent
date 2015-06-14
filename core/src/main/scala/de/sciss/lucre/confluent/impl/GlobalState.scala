@@ -20,7 +20,7 @@ import de.sciss.serial
 import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
 
 private[impl] object GlobalState {
-  private val SER_VERSION = 0x436F6E666C6E7400L  // "Conflnt\0"
+  private val SER_VERSION = 0x436F6E666C6E7401L  // "Conflnt\1"
 
   implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
     new Ser[S, D]
@@ -31,7 +31,7 @@ private[impl] object GlobalState {
     def write(v: GlobalState[S, D], out: DataOutput): Unit = {
       import v._
       out.writeLong(SER_VERSION)
-      out.writeInt(durRootID)
+      out.writePackedInt(durRootID) // writeInt(durRootID)
       idCnt        .write(out)
       versionLinear.write(out)
       versionRandom.write(out)
@@ -42,7 +42,7 @@ private[impl] object GlobalState {
       val serVer = in.readLong()
       if (serVer != SER_VERSION)
         throw new IllegalStateException(s"Incompatible serialized version. Found $serVer but require $SER_VERSION")
-      val durRootID     = in.readInt()
+      val durRootID     = in.readPackedInt() // readInt()
       val idCnt         = tx.readCachedIntVar(in)
       val versionLinear = tx.readCachedIntVar(in)
       val versionRandom = tx.readCachedLongVar(in)

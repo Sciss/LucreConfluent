@@ -1,42 +1,45 @@
 package de.sciss.lucre.confluent
 
-/**
- * To run only this test:
- * test-only de.sciss.lucre.confluent.TimeStampSpec
+/*
+
+To run only this test:
+
+test-only de.sciss.lucre.confluent.TimeStampSpec
+
  */
 class TimeStampSpec extends ConfluentSpec {
-   // ensure time stamps are distinct
-   def sleep(): Unit = Thread.sleep(10)
+  // ensure time stamps are distinct
+  def sleep(): Unit = Thread.sleep(10)
 
-   "Time stamps and version info" should "work in a non-melded graph" in { system =>
-      val (access, cursor) = system.cursorRoot { implicit tx => 0
-      } { implicit tx => _ => system.newCursor() }
+  "Time stamps and version info" should "work in a non-melded graph" in { system =>
+    val (access, cursor) = system.cursorRoot { implicit tx => 0
+    } { implicit tx => _ => system.newCursor() }
 
-//      sleep()
+    //      sleep()
 
-      // test dummy step
-      val path0a = cursor.step { implicit tx => access(); tx.inputAccess }
+    // test dummy step
+    val path0a = cursor.step { implicit tx => access(); tx.inputAccess }
 
-      sleep()
+    sleep()
 
-      // test write step
-      val path0 = cursor.step { implicit tx =>
-         tx.info.message = "message 1"
-         access() = 1
-         tx.inputAccess
-      }
+    // test write step
+    val path0 = cursor.step { implicit tx =>
+      tx.info.message = "message 1"
+      access() = 1
+      tx.inputAccess
+    }
 
-      assert( path0a === path0 )
+    assert(path0a === path0)
 
-      sleep()
+    sleep()
 
-      val path1 = cursor.step { implicit tx =>
-         tx.info.message = "message 2"
-         access() = 2
-         tx.inputAccess
-      }
+    val path1 = cursor.step { implicit tx =>
+      tx.info.message = "message 2"
+      access() = 2
+      tx.inputAccess
+    }
 
-      val path2 = cursor.step( _.inputAccess )
+    val path2 = cursor.step(_.inputAccess)
 
       // ---- first of all, ensure version infos can be read ----
 

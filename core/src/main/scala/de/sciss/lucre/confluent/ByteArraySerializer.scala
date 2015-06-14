@@ -17,12 +17,14 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object ByteArraySerializer extends ImmutableSerializer[Array[Byte]] {
   def write(v: Array[Byte], out: DataOutput): Unit = {
-    out.writeInt(v.length)
+    // out.writeInt(v.length)
+    out.writePackedInt(v.length)
     out.write(v)
   }
 
   def read(in: DataInput): Array[Byte] = {
-    val sz = in.readInt()
+    // val sz = in.readInt()
+    val sz = in.readPackedInt()
     val v = new Array[Byte](sz)
     in.readFully(v)
     v

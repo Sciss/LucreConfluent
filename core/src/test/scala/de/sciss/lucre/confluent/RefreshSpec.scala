@@ -7,9 +7,12 @@ import stm.MutableSerializer
 import stm.store.BerkeleyDB
 import serial.{DataInput, DataOutput}
 
-/**
-  To run only this test:
-  test-only de.sciss.lucre.confluent.RefreshSpec
+/*
+
+To run only this test:
+
+test-only de.sciss.lucre.confluent.RefreshSpec
+
  */
 class RefreshSpec extends fixture.FlatSpec with Matchers {
   type FixtureParam = stm.Cursor[Confluent]

@@ -19,7 +19,7 @@ import de.sciss.serial.DataOutput
 import scala.util.hashing.MurmurHash3
 
 private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) extends Identifier[S] {
-  override def hashCode = {
+  override def hashCode: Int = {
     import MurmurHash3._
     val h0  = productSeed
     val h1  = mix(h0, base)
@@ -29,14 +29,13 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
 
   def copy(newPath: S#Acc): Identifier[S] = new ConfluentID(base = base, path = newPath)
 
-  override def equals(that: Any): Boolean =
-    that.isInstanceOf[Identifier[_]] && {
-      val b = that.asInstanceOf[Identifier[_]]
-      base == b.base && path == b.path
-    }
+  override def equals(that: Any): Boolean = that match {
+    case b: Identifier[_] => base == b.base && path == b.path
+    case _ => false
+  }
 
   def write(out: DataOutput): Unit = {
-    out.writeInt(base)
+    out.writePackedInt(base) // writeInt(base)
     path.write(out)
   }
 
@@ -62,19 +61,20 @@ private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) exten
 
   def copy(newPath: S#Acc): Identifier[S] = new PartialID(base = base, path = newPath)
 
-  override def equals(that: Any): Boolean =
-    that.isInstanceOf[PartialID[_]] && {
-      val b  = that.asInstanceOf[PartialID[_]]
+  override def equals(that: Any): Boolean = that match {
+    case b: PartialID[_] =>
       val bp = b.path
       if (path.isEmpty) {
         base == b.base && bp.isEmpty
       } else {
         base == b.base && bp.nonEmpty && path.head == bp.head && path.last == bp.last
       }
-    }
+
+    case _ => false
+  }
 
   def write(out: DataOutput): Unit = {
-    out.writeInt(base)
+    out.writePackedInt(base) // writeInt(base)
     path.write(out)
   }
 

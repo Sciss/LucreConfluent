@@ -1,60 +1,61 @@
 package de.sciss.lucre
 package confluent
 
-import org.scalatest.{GivenWhenThen, FeatureSpec}
 import java.io.File
-import stm.store.BerkeleyDB
-import data.TotalOrder
 
-/**
- * To run this test copy + paste the following into sbt:
- * {{
- * test-only de.sciss.confluent.TotalOrderSuite
- * }}
+import de.sciss.lucre.data.TotalOrder
+import de.sciss.lucre.stm.store.BerkeleyDB
+import org.scalatest.{FeatureSpec, GivenWhenThen}
+
+/*
+
+To run this test copy + paste the following into sbt:
+
+test-only de.sciss.confluent.TotalOrderSuite
+
  */
 class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
-   val MONITOR_LABELING = false
+  val MONITOR_LABELING = false
 
-   val NUM              = 0x8000 // 0x10000 // 0x80000  // 0x200000
-   val RND_SEED         = 0L
+  val NUM              = 0x8000 // 0x10000 // 0x80000  // 0x200000
+  val RND_SEED         = 0L
 
-   // make sure we don't look tens of thousands of actions
-   showLog = false
+  // make sure we don't look tens of thousands of actions
+  showLog = false
 
-   withSys[ Confluent ]( "Confluent", () => {
-      val dir     = File.createTempFile( "totalorder", "_database" )
-      dir.delete()
-      dir.mkdir()
-      println( dir.getAbsolutePath )
-      val store = BerkeleyDB.factory( dir )
-      val res = Confluent( store )
-//      res.root[ Unit ] { _ => }
-      res
-   }, s => {
-//      val sz = bdb.step( bdb.numUserRecords( _ ))
-////         println( "FINAL DB SIZE = " + sz )
-//      assert( sz == 0, "Final DB user size should be 0, but is " + sz )
-//      bdb.close()
-      s.close()
-   })
+  withSys[Confluent]("Confluent", () => {
+    val dir = File.createTempFile("totalorder", "_database")
+    dir.delete()
+    dir.mkdir()
+    println(dir.getAbsolutePath)
+    val store = BerkeleyDB.factory(dir)
+    val res = Confluent(store)
+    //      res.root[ Unit ] { _ => }
+    res
+  }, s => {
+    //      val sz = bdb.step( bdb.numUserRecords( _ ))
+    ////         println( "FINAL DB SIZE = " + sz )
+    //      assert( sz == 0, "Final DB user size should be 0, but is " + sz )
+    //      bdb.close()
+    s.close()
+  })
 
   def withSys[S <: Sys[S]](sysName: String, sysCreator: () => S, sysCleanUp: S => Unit): Unit = {
     def scenarioWithTime(descr: String)(body: => Unit): Unit =
-      scenario( descr ) {
+      scenario(descr) {
         val t1 = System.currentTimeMillis()
         body
         val t2 = System.currentTimeMillis()
-        println("For " + sysName + " the tests took " + TestUtil.formatSeconds((t2 - t1) * 0.001))
+        println(s"For $sysName the tests took ${TestUtil.formatSeconds((t2 - t1) * 0.001)}")
       }
 
-    feature( "The ordering of the structure should be consistent" ) {
+    feature("The ordering of the structure should be consistent") {
       info("Each two successive elements of the structure")
       info("should yield '<' in comparison")
 
-      scenarioWithTime("Ordering is verified on a randomly filled " + sysName + " structure") {
-        Given("a randomly filled structure (" + sysName + ")")
+      scenarioWithTime(s"Ordering is verified on a randomly filled $sysName structure") {
+        Given(s"a randomly filled structure ($sysName)")
 
-        //            type E = TotalOrder.Set.Entry[ S ]
         implicit val system = sysCreator()
         try {
           implicit val ser = TotalOrder.Set.serializer[S]
@@ -86,7 +87,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
               var e = access().root
               var coll = Set[TotalOrder.Set.Entry[S]]() // ( e )
               for (i <- 1 until n) {
-                //if( (i % 1000) == 0 ) println( "i = " + i )
+                if ((i % 1000) == 0) println("i = " + i)
                 if (rnd.nextBoolean()(tx.peer)) {
                   e = e.append() // to.insertAfter( e ) // to.insertAfter( i )
                 } else {
@@ -98,7 +99,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
           }
           //println( "AQUI" )
 
-          When( "the structure size is determined" )
+          When("the structure size is determined")
           val sz = cursor.step {
             implicit tx => access().size
           }
@@ -108,53 +109,55 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
           //           i
           //        }
           Then("it should be equal to the number of elements inserted")
-          assert(sz == n, sz.toString + " != " + n)
+          assert(sz === n)
 
-          When( "the structure is mapped to its pairwise comparisons" )
-               val result = cursor.step { implicit tx =>
-                  var res   = Set.empty[ Int ]
-                  var prev  = access().head
-                  var next  = prev.next.orNull
-                  while( next != null ) {
-//                  res     += prev compare next
-                     res    += prev.tag compare next.tag
-                     prev    = next
-                     next    = next.next.orNull
-                  }
-                  res
-               }
-
-               Then( "the resulting set should only contain -1" )
-               assert( result == Set( -1 ), result.toString + " -- " + cursor.step( implicit tx =>
-                  access().tagList( access().head )
-               ))
-
-               When( "the structure is emptied" )
-               val sz2 = cursor.step { implicit tx =>
-//                  set.foreach( _.removeAndDispose() )
-                  val to = access()
-                  var prev = to.head
-                  var next = prev
-                  while( prev != null ) {
-                     next    = next.next.orNull
-                     if( prev != to.root ) prev.removeAndDispose()
-                     prev     = next
-                  }
-
-                  to.size
-               }
-               Then( "the order should have size 1" )
-               assert( sz2 == 1, "Size is " + sz2 + " and not 1" )
-
-//               system.step { implicit tx =>
-////                  set.foreach( _.removeAndDispose() )
-//                  access.dispose()
-//               }
-
-            } finally {
-               sysCleanUp( system )
+          When("the structure is mapped to its pairwise comparisons")
+          val result = cursor.step { implicit tx =>
+            var res  = Set.empty[Int]
+            var prev = access().head
+            var next = prev.next.orNull
+            while (next != null) {
+              //                  res     += prev compare next
+              res += prev.tag compare next.tag
+              prev = next
+              next = next.next.orNull
             }
-         }
+            res
+          }
+
+          Then("the resulting set should only contain -1")
+          assert(result === Set(-1))
+//          , s"$result -- ${cursor.step(implicit tx =>
+//            access().tagList(access().head)
+//          )}")
+
+          When("the structure is emptied")
+          val sz2 = cursor.step { implicit tx =>
+            //                  set.foreach( _.removeAndDispose() )
+            val to = access()
+            var prev = to.head
+            var next = prev
+            while (prev != null) {
+              next = next.next.orNull
+              if (prev != to.root) prev.removeAndDispose()
+              prev = next
+            }
+
+            to.size
+          }
+
+          Then("the order should have size 1")
+          assert(sz2 === 1)
+
+          //               system.step { implicit tx =>
+          ////                  set.foreach( _.removeAndDispose() )
+          //                  access.dispose()
+          //               }
+
+        } finally {
+          sysCleanUp(system)
+        }
       }
-   }
+    }
+  }
 }

@@ -132,8 +132,8 @@ trait TxnMixin[S <: Sys[S]]
       out.writeByte(0)
       out.writeInt(term.toInt)
     })(in => {
-      in.readInt() // tree index!
-      in.readInt()
+      in.readPackedInt()  // readInt() // tree index!
+      in.readPackedInt()  // readInt()
     })(this).getOrElse(sys.error(s"Trying to access inexistent vertex ${term.toInt}"))
   }
 
@@ -264,13 +264,13 @@ trait TxnMixin[S <: Sys[S]]
   }
 
   final protected def readSource(in: DataInput, pid: S#ID): S#ID = {
-    val id = in.readInt()
-    new ConfluentID(id, pid.path)
+    val base = in.readPackedInt() // in.readInt()
+    new ConfluentID(base, pid.path)
   }
 
   final protected def readPartialSource(in: DataInput, pid: S#ID): S#ID = {
-    val id = in.readInt()
-    new PartialID(id, pid.path)
+    val base = in.readPackedInt() // in.readInt()
+    new PartialID(base, pid.path)
   }
 
   private def makeVar[A](id: S#ID)(implicit ser: serial.Serializer[S#Tx, S#Acc, A]): S#Var[A] /* BasicVar[ S, A ] */ = {
@@ -315,7 +315,8 @@ trait TxnMixin[S <: Sys[S]]
   }
 
   final def readID(in: DataInput, acc: S#Acc): S#ID = {
-    val res = new ConfluentID(in.readInt(), Path.readAndAppend[S](in, acc)(this))
+    val base  = in.readPackedInt()
+    val res   = new ConfluentID(base, Path.readAndAppend[S](in, acc)(this))
     log(s"txn readID $res")
     res
   }
@@ -323,13 +324,14 @@ trait TxnMixin[S <: Sys[S]]
   final def readPartialID(in: DataInput, acc: S#Acc): S#ID = {
     if (Confluent.DEBUG_DISABLE_PARTIAL) return readID(in, acc)
 
-    val res = new PartialID(in.readInt(), Path.readAndAppend(in, acc)(this))
+    val base  = in.readPackedInt()
+    val res   = new PartialID(base, Path.readAndAppend(in, acc)(this))
     log(s"txn readPartialID $res")
     res
   }
 
   final def readDurableIDMap[A](in: DataInput)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
-    val id = in.readInt()
+    val id = in.readPackedInt() // in.readInt()
     durableIDMaps.get(id) match {
       case Some(existing) => existing.asInstanceOf[DurableIDMapImpl[S, A]]
       case _              => mkDurableIDMap(id)

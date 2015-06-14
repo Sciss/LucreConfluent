@@ -1,14 +1,14 @@
 lazy val baseName         = "LucreConfluent"
 
-lazy val projectVersion   = "2.11.1-SNAPSHOT"
+lazy val projectVersion   = "2.12.0-SNAPSHOT"
 
 lazy val baseNameL        = baseName.toLowerCase
 
-lazy val stmVersion       = "2.1.1"
-lazy val dataVersion      = "2.3.0"
-lazy val eventVersion     = "2.7.3"
+lazy val stmVersion       = "2.2.0-SNAPSHOT"
+lazy val dataVersion      = "2.4.0-SNAPSHOT"
+lazy val eventVersion     = "2.8.0-SNAPSHOT"
 lazy val fingerVersion    = "1.5.2"
-lazy val scalaTestVersion = "2.2.4"
+lazy val scalaTestVersion = "2.2.5"
 
 lazy val commonSettings = Seq(
   version             := projectVersion,
@@ -51,26 +51,24 @@ lazy val commonSettings = Seq(
   }
 )
 
-lazy val root = Project(
-  id            = baseNameL,
-  base          = file("."),
-  aggregate     = Seq(core, event),
-  dependencies  = Seq(core, event), // i.e. root = full sub project. if you depend on root, will draw all sub modules.
-  settings      = lsSettings ++ commonSettings ++ Seq(
+lazy val root = Project(id = baseNameL, base = file(".")).
+  aggregate(core, event).
+  dependsOn(core, event). // i.e. root = full sub project. if you depend on root, will draw all sub modules.
+  settings(commonSettings).
+  settings(
     name := baseName,
     publishArtifact in(Compile, packageBin) := false, // there are no binaries
     publishArtifact in(Compile, packageDoc) := false, // there are no javadocs
-    publishArtifact in(Compile, packageSrc) := false, // there are no sources
+    publishArtifact in(Compile, packageSrc) := false  // there are no sources
     // ---- ls.implicit.ly ----
-    (LsKeys.tags   in LsKeys.lsync) := Seq("confluent", "persistence"),
-    (LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
+    // (LsKeys.tags   in LsKeys.lsync) := Seq("confluent", "persistence"),
+    // (LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
   )
-)
 
-lazy val core = Project(
-  id = s"$baseNameL-core",
-  base = file("core"),
-  settings = commonSettings ++ Seq(
+lazy val core = Project(id = s"$baseNameL-core", base = file("core")).
+  enablePlugins(BuildInfoPlugin).
+  settings(commonSettings).
+  settings(
     name := s"$baseName-core",
     libraryDependencies ++= Seq(
       "de.sciss"      %% "fingertree"      % fingerVersion,
@@ -79,27 +77,22 @@ lazy val core = Project(
       "de.sciss"      %% "lucrestm-bdb"    % stmVersion       % "test",
       "org.scalatest" %% "scalatest"       % scalaTestVersion % "test"
     ),
-    initialCommands in console := """import de.sciss.lucre.confluent._"""
+    initialCommands in console := """import de.sciss.lucre.confluent._""",
+    buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
+      BuildInfoKey.map(homepage) {
+        case (k, opt) => k -> opt.get
+      },
+      BuildInfoKey.map(licenses) {
+        case (_, Seq((lic, _))) => "license" -> lic
+      }
+    ),
+    buildInfoPackage := "de.sciss.lucre.confluent"
   )
-)
-.enablePlugins(BuildInfoPlugin).settings(
-  // sourceGenerators in Compile <+= buildInfo,
-  buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
-    BuildInfoKey.map(homepage) {
-      case (k, opt) => k -> opt.get
-    },
-    BuildInfoKey.map(licenses) {
-      case (_, Seq((lic, _))) => "license" -> lic
-    }
-  ),
-  buildInfoPackage := "de.sciss.lucre.confluent"
-)
 
-lazy val event = Project(
-  id = s"$baseNameL-event",
-  base = file("event"),
-  dependencies = Seq(core),
-  settings = commonSettings ++ Seq(
+lazy val event = Project(id = s"$baseNameL-event", base = file("event")).
+  dependsOn(core).
+  settings(commonSettings).
+  settings(
     name := s"$baseName-event",
     libraryDependencies ++= Seq(
       "de.sciss"      %% "lucreevent-core" % eventVersion,
@@ -107,4 +100,3 @@ lazy val event = Project(
       "org.scalatest" %% "scalatest"       % scalaTestVersion % "test"
     )
   )
-)

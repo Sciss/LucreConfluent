@@ -8,7 +8,7 @@ lazy val stmVersion       = "2.2.0-SNAPSHOT"
 lazy val dataVersion      = "2.4.0-SNAPSHOT"
 lazy val eventVersion     = "2.8.0-SNAPSHOT"
 lazy val fingerVersion    = "1.5.2"
-lazy val scalaTestVersion = "2.2.5"
+lazy val scalaTestVersion = "2.2.4"
 
 lazy val commonSettings = Seq(
   version             := projectVersion,

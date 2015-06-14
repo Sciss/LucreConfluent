@@ -31,7 +31,7 @@ private[impl] object GlobalState {
     def write(v: GlobalState[S, D], out: DataOutput): Unit = {
       import v._
       out.writeLong(SER_VERSION)
-      out.writePackedInt(durRootID) // writeInt(durRootID)
+      out.writeInt(durRootID) // writeInt(durRootID)
       idCnt        .write(out)
       versionLinear.write(out)
       versionRandom.write(out)
@@ -42,7 +42,7 @@ private[impl] object GlobalState {
       val serVer = in.readLong()
       if (serVer != SER_VERSION)
         throw new IllegalStateException(s"Incompatible serialized version. Found $serVer but require $SER_VERSION")
-      val durRootID     = in.readPackedInt() // readInt()
+      val durRootID     = in.readInt() // readInt()
       val idCnt         = tx.readCachedIntVar(in)
       val versionLinear = tx.readCachedIntVar(in)
       val versionRandom = tx.readCachedLongVar(in)

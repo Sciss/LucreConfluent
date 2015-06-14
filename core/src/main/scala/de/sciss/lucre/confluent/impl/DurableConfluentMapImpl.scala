@@ -353,7 +353,7 @@ final class ConfluentIntMapImpl[S <: Sys[S]](protected val store: DataStore, pro
                                              protected val isOblivious: Boolean)
   extends DurableConfluentMapImpl[S, Int] {
 
-  protected def writeKey(key: Int, out: DataOutput): Unit = out.write(key)
+  protected def writeKey(key: Int, out: DataOutput): Unit = out.writeInt(key)
 }
 
 final class ConfluentLongMapImpl[S <: Sys[S]](protected val store: DataStore, protected val handler: IndexMapHandler[S],

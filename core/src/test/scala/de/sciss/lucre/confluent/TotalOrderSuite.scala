@@ -11,7 +11,7 @@ import org.scalatest.{FeatureSpec, GivenWhenThen}
 
 To run this test copy + paste the following into sbt:
 
-test-only de.sciss.confluent.TotalOrderSuite
+test-only de.sciss.lucre.confluent.TotalOrderSuite
 
  */
 class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
@@ -87,7 +87,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
               var e = access().root
               var coll = Set[TotalOrder.Set.Entry[S]]() // ( e )
               for (i <- 1 until n) {
-                if ((i % 1000) == 0) println("i = " + i)
+                // if ((i % 16) == 0) println(s"i = $i")
                 if (rnd.nextBoolean()(tx.peer)) {
                   e = e.append() // to.insertAfter( e ) // to.insertAfter( i )
                 } else {
@@ -97,7 +97,7 @@ class TotalOrderSuite extends FeatureSpec with GivenWhenThen {
               }
               coll
           }
-          //println( "AQUI" )
+          // println("AQUI")
 
           When("the structure size is determined")
           val sz = cursor.step {

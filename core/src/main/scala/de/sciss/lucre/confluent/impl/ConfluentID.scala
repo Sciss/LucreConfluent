@@ -35,7 +35,7 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
   }
 
   def write(out: DataOutput): Unit = {
-    out.writePackedInt(base) // writeInt(base)
+    out.writeInt(base) // writeInt(base)
     path.write(out)
   }
 
@@ -74,7 +74,7 @@ private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) exten
   }
 
   def write(out: DataOutput): Unit = {
-    out.writePackedInt(base) // writeInt(base)
+    out.writeInt(base) // writeInt(base)
     path.write(out)
   }
 

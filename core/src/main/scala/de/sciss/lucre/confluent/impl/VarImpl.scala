@@ -83,7 +83,7 @@ private[impl] final class HandleImpl[S <: Sys[S], A](stale: A, writeIndex: S#Acc
 private[impl] sealed trait BasicVar[S <: Sys[S], A] extends Var[S, A] {
   protected def id: S#ID
 
-  final def write(out: DataOutput): Unit = out.writeInt(id.base)  // writeInt
+  final def write(out: DataOutput): Unit = out.writePackedInt(id.base)
 
   final def dispose()(implicit tx: S#Tx): Unit = {
     tx.removeFromCache(id)
@@ -272,9 +272,9 @@ private[impl] final class IntVar[S <: Sys[S]](protected val id: S#ID)
   override def toString = s"Var[Int]($id)"
 
   // ---- Serializer ----
-  def write(v: Int, out: DataOutput): Unit = out.writeInt(v) // out.writeInt(v)
+  def write(v: Int, out: DataOutput): Unit = out.writePackedInt(v)
 
-  def read(in: DataInput): Int = in.readInt() // in.readInt()
+  def read(in: DataInput): Int = in.readPackedInt()
 }
 
 private[impl] final class LongVar[S <: Sys[S]](protected val id: S#ID)

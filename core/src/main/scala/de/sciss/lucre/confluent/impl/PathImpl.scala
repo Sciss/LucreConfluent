@@ -44,8 +44,7 @@ private[confluent] object PathImpl {
 
     def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): S#Acc = {
       //        implicit val m  = PathMeasure
-      // val sz          = in.readInt()
-      val sz          = in.readInt()
+      val sz          = in.readPackedInt()
       var tree        = FingerTree.empty(PathMeasure)
       var i = 0
       while (i < sz) {
@@ -66,8 +65,7 @@ private[confluent] object PathImpl {
 
   def read[S <: Sys[S]](in: DataInput): S#Acc = {
     // implicit val m  = PathMeasure
-    // val sz          = in.readInt()
-    val sz          = in.readInt()
+    val sz          = in.readPackedInt()
     var tree        = FingerTree.empty(PathMeasure)
     var i = 0
     while (i < sz) {
@@ -80,7 +78,7 @@ private[confluent] object PathImpl {
   def readAndAppend[S <: Sys[S]](in: DataInput, acc: S#Acc)(implicit tx: S#Tx): S#Acc = {
     // implicit val m = PathMeasure
     // val sz      = in.readInt()
-    val sz      = in.readInt()
+    val sz      = in.readPackedInt()
     val accTree = acc.tree
 
     val res     = if (accTree.isEmpty) {
@@ -138,8 +136,10 @@ private[confluent] object PathImpl {
       finalizeHash(h2, 2)
     }
 
-    override def equals(that: Any): Boolean =
-      that.isInstanceOf[PathLike] && that.asInstanceOf[PathLike].sum == sum
+    override def equals(that: Any): Boolean = that match {
+      case b: PathLike => b.sum == sum
+      case _ => false
+    }
 
     def :+(last: Long): S#Acc = wrap(tree :+ last)
     def +:(head: Long): S#Acc = wrap(head +: tree)
@@ -222,8 +222,7 @@ private[confluent] object PathImpl {
     }
 
     def write(out: DataOutput): Unit = {
-      // out.writeInt(size)
-      out.writeInt(size)
+      out.writePackedInt(size)
       tree.iterator.foreach(out.writeLong)
     }
 

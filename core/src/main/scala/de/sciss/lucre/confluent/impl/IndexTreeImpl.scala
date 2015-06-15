@@ -39,7 +39,7 @@ private[impl] final class IndexTreeImpl[D <: stm.DurableLike[D]](val tree: Ances
 
   def write(out: DataOutput): Unit = {
     tree.write(out)
-    out.writePackedInt(level)
+    out./* PACKED */ writeInt(level)
   }
 
   def dispose()(implicit tx: D#Tx): Unit = tree.dispose()

@@ -1,14 +1,14 @@
 lazy val baseName         = "LucreConfluent"
 
-lazy val projectVersion   = "2.12.0-SNAPSHOT"
+lazy val projectVersion   = "2.11.1"
 
 lazy val baseNameL        = baseName.toLowerCase
 
-lazy val stmVersion       = "2.2.0-SNAPSHOT"
-lazy val dataVersion      = "2.4.0-SNAPSHOT"
-lazy val eventVersion     = "2.8.0-SNAPSHOT"
+lazy val stmVersion       = "2.1.2"
+lazy val dataVersion      = "2.3.2"
+lazy val eventVersion     = "2.7.4"
 lazy val fingerVersion    = "1.5.2"
-lazy val scalaTestVersion = "2.2.4"
+lazy val scalaTestVersion = "2.2.5"
 
 lazy val commonSettings = Seq(
   version             := projectVersion,

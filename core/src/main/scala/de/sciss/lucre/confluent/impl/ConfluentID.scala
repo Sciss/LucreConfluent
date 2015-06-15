@@ -35,7 +35,7 @@ private final class ConfluentID[S <: Sys[S]](val base: Int, val path: S#Acc) ext
   }
 
   def write(out: DataOutput): Unit = {
-    out.writePackedInt(base)
+    out./* PACKED */ writeInt(base)
     path.write(out)
   }
 
@@ -52,8 +52,8 @@ private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) exten
       val h1  = mixLast(h0, base)
       finalizeHash(h1, 1)
     } else {
-      val h1  = mix(h0, base)
-      val h2  = mix(h1, (path.head >> 32).toInt)
+      val h1  = mix    (h0, base)
+      val h2  = mix    (h1, (path.head >> 32).toInt)
       val h3  = mixLast(h2, (path.last >> 32).toInt)
       finalizeHash(h3, 3)
     }
@@ -74,7 +74,7 @@ private final class PartialID[S <: Sys[S]](val base: Int, val path: S#Acc) exten
   }
 
   def write(out: DataOutput): Unit = {
-    out.writePackedInt(base)
+    out./* PACKED */ writeInt(base)
     path.write(out)
   }
 

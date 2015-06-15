@@ -132,8 +132,8 @@ trait TxnMixin[S <: Sys[S]]
       out.writeByte(0)
       out.writeInt(term.toInt)
     })(in => {
-      in.readPackedInt()  // tree index!
-      in.readPackedInt()
+      in./* PACKED */ readInt()  // tree index!
+      in./* PACKED */ readInt()
     })(this).getOrElse(sys.error(s"Trying to access inexistent vertex ${term.toInt}"))
   }
 
@@ -264,12 +264,12 @@ trait TxnMixin[S <: Sys[S]]
   }
 
   final protected def readSource(in: DataInput, pid: S#ID): S#ID = {
-    val base = in.readPackedInt()
+    val base = in./* PACKED */ readInt()
     new ConfluentID(base, pid.path)
   }
 
   final protected def readPartialSource(in: DataInput, pid: S#ID): S#ID = {
-    val base = in.readPackedInt()
+    val base = in./* PACKED */ readInt()
     new PartialID(base, pid.path)
   }
 
@@ -315,7 +315,7 @@ trait TxnMixin[S <: Sys[S]]
   }
 
   final def readID(in: DataInput, acc: S#Acc): S#ID = {
-    val base  = in.readPackedInt()
+    val base  = in./* PACKED */ readInt()
     val res   = new ConfluentID(base, Path.readAndAppend[S](in, acc)(this))
     log(s"txn readID $res")
     res
@@ -324,14 +324,14 @@ trait TxnMixin[S <: Sys[S]]
   final def readPartialID(in: DataInput, acc: S#Acc): S#ID = {
     if (Confluent.DEBUG_DISABLE_PARTIAL) return readID(in, acc)
 
-    val base  = in.readPackedInt()
+    val base  = in./* PACKED */ readInt()
     val res   = new PartialID(base, Path.readAndAppend(in, acc)(this))
     log(s"txn readPartialID $res")
     res
   }
 
   final def readDurableIDMap[A](in: DataInput)(implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): IdentifierMap[S#ID, S#Tx, A] = {
-    val id = in.readPackedInt()
+    val id = in./* PACKED */ readInt()
     durableIDMaps.get(id) match {
       case Some(existing) => existing.asInstanceOf[DurableIDMapImpl[S, A]]
       case _              => mkDurableIDMap(id)

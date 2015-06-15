@@ -90,7 +90,7 @@ private[impl] final class DurableIDMapImpl[S <: Sys[S], A](val id: S#ID,
   def remove(id: S#ID)(implicit tx: S#Tx): Unit =
     if (removeCacheOnly(id.base, id.path)) markDirty()
 
-  def write(out: DataOutput): Unit = out.writePackedInt(id.base)
+  def write(out: DataOutput): Unit = out./* PACKED */ writeInt(id.base)
 
   def dispose()(implicit tx: S#Tx): Unit = {
     println("WARNING: Durable IDMap.dispose : not yet implemented")

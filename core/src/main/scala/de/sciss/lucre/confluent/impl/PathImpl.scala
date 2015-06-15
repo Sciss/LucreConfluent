@@ -43,16 +43,22 @@ private[confluent] object PathImpl {
     def write(v: S#Acc, out: DataOutput): Unit = v.write(out)
 
     def read(in: DataInput, acc: D#Acc)(implicit tx: D#Tx): S#Acc = {
-      //        implicit val m  = PathMeasure
-      val sz          = in.readPackedInt()
+      val sz          = in./* PACKED */ readInt()
       var tree        = FingerTree.empty(PathMeasure)
       var i = 0
       while (i < sz) {
-        tree :+= in.readLong()
+        tree :+= readPathComponent(in)
         i += 1
       }
       new Path[S](tree)
     }
+  }
+
+  @inline private def readPathComponent(in: DataInput): Long = {
+    // val hi = in.readInt()
+    // val lo = in./* PACKED */ readInt()
+    // (hi.toLong << 32) | (lo.toLong & 0xFFFF)
+    in.readLong()
   }
 
   //    def test_empty[S <: Sys[S]]: S#Acc = empty
@@ -64,28 +70,25 @@ private[confluent] object PathImpl {
   def root[S <: Sys[S]]: S#Acc = new Path[S](FingerTree(1L << 32, 1L << 32)(PathMeasure))
 
   def read[S <: Sys[S]](in: DataInput): S#Acc = {
-    // implicit val m  = PathMeasure
-    val sz          = in.readPackedInt()
+    val sz          = in./* PACKED */ readInt()
     var tree        = FingerTree.empty(PathMeasure)
     var i = 0
     while (i < sz) {
-      tree :+= in.readLong()
+      tree :+= readPathComponent(in)
       i += 1
     }
     new Path[S](tree)
   }
 
   def readAndAppend[S <: Sys[S]](in: DataInput, acc: S#Acc)(implicit tx: S#Tx): S#Acc = {
-    // implicit val m = PathMeasure
-    // val sz      = in.readInt()
-    val sz      = in.readPackedInt()
+    val sz      = in./* PACKED */ readInt()
     val accTree = acc.tree
 
     val res     = if (accTree.isEmpty) {
       var i = 0
       var tree = FingerTree.empty(PathMeasure)
       while (i < sz) {
-        tree :+= in.readLong()
+        tree :+= readPathComponent(in)
         i += 1
       }
       tree
@@ -98,10 +101,10 @@ private[confluent] object PathImpl {
       val szm = sz - 1
       var i = 0
       while (i < szm) {
-        tree :+= in.readLong()
+        tree :+= readPathComponent(in)
         i += 1
       }
-      val lastTerm  = in.readLong()
+      val lastTerm  = readPathComponent(in)
       val oldLevel  = tx.readTreeVertexLevel(lastTerm)
       val writeTerm = accTree.head
       val newLevel  = tx.readTreeVertexLevel(writeTerm)
@@ -131,7 +134,7 @@ private[confluent] object PathImpl {
       import MurmurHash3._
       val m   = sum
       val h0  = productSeed
-      val h1  = mix(h0, (m >> 32).toInt)
+      val h1  = mix(h0, (m >>> 32).toInt)
       val h2  = mixLast(h1, m.toInt)
       finalizeHash(h2, 2)
     }
@@ -222,8 +225,12 @@ private[confluent] object PathImpl {
     }
 
     def write(out: DataOutput): Unit = {
-      out.writePackedInt(size)
-      tree.iterator.foreach(out.writeLong)
+      out./* PACKED */ writeInt(size)
+      tree.iterator.foreach { l =>
+        // out.writeInt((l >>> 32).toInt)
+        // out./* PACKED */ writeInt(l.toInt)
+        out.writeLong(l)
+      }
     }
 
     def index: S#Acc  = wrap(tree.init)

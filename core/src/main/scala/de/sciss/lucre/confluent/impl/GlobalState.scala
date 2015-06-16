@@ -20,7 +20,7 @@ import de.sciss.serial
 import de.sciss.serial.{ImmutableSerializer, DataInput, DataOutput}
 
 private[impl] object GlobalState {
-  private val SER_VERSION = 0x436F6E666C6E7401L  // "Conflnt\1"
+  private val SER_VERSION = 0x436F6E666C6E7400L  // "Conflnt\0"
 
   implicit def serializer[S <: Sys[S], D <: stm.DurableLike[D]]: serial.Serializer[D#Tx, D#Acc, GlobalState[S, D]] =
     new Ser[S, D]

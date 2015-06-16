@@ -66,12 +66,12 @@ object ConfluentReactiveImpl {
     extends BasicEventVar[S, A] {
 
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putEventTxn(id, v)
     }
 
     def get(implicit tx: S#Tx): Option[A] = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getEventTxn(id)
     }
   }
@@ -80,12 +80,12 @@ object ConfluentReactiveImpl {
                                                                      protected val ser: ImmutableSerializer[A])
     extends BasicEventVar[S, A] {
     def update(v: A)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putEventNonTxn(id, v)(ser)
     }
 
     def get(implicit tx: S#Tx): Option[A] = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getEventNonTxn[A](id)(ser)
     }
   }
@@ -110,12 +110,12 @@ object ConfluentReactiveImpl {
     }
 
     def update(v: Int)(implicit tx: S#Tx): Unit = {
-      log(this.toString + " set " + v)
+      log(s"$this set $v")
       tx.putEventNonTxn(id, v)(this)
     }
 
     def get(implicit tx: S#Tx): Option[Int] = {
-      log(this.toString + " get")
+      log(s"$this get")
       tx.getEventNonTxn[Int](id)(this)
     }
 
@@ -253,7 +253,7 @@ object ConfluentReactiveImpl {
     final def readEventVar[A](pid: S#ID, in: DataInput)
                              (implicit serializer: serial.Serializer[S#Tx, S#Acc, A]): evt.Var[S, A] = {
       val res = makeEventVar[A](readSource(in, pid))
-      log("read evt " + res)
+      log(s"read evt $res")
       res
     }
 
@@ -266,14 +266,14 @@ object ConfluentReactiveImpl {
     final def newEventValidity (pid: S#ID): evt.Validity[S#Tx] = {
       val id  = alloc(pid)
       val res = new ValidityImpl[S](id)
-      log("new evt validity " + res)
+      log(s"new evt validity $res")
       res
     }
 
     final def readEventValidity(pid: S#ID, in: DataInput): evt.Validity[S#Tx] = {
       val id  = readSource(in, pid)
       val res = new ValidityImpl[S](id)
-      log("read evt validity " + res)
+      log(s"read evt validity $res")
       res
     }
   }

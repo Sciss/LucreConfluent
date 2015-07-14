@@ -76,7 +76,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], K] extends DurablePersistentMa
       // with the previous entry read, react as follows:
       // if there is a single entry, construct a new ancestor.map with the
       // entry's value taken as root value
-      case Some(EntrySingle(prevTerm, prevValue)) =>
+      case Some(EntrySingle(prevTerm, prevValue)) if term != prevTerm =>  // skip to overwrite existing entries
         putFullMap[A](key, index, term, value, prevTerm, prevValue)
       // if there is an existing map, simply add the new value to it
       case Some(EntryMap(m)) =>
@@ -152,7 +152,7 @@ sealed trait DurableConfluentMapImpl[S <: Sys[S], K] extends DurablePersistentMa
       // with the previous entry read, react as follows:
       // if there is a single entry, construct a new ancestor.map with the
       // entry's value taken as root value
-      case Some(EntrySingle(prevTerm, prevArr)) =>
+      case Some(EntrySingle(prevTerm, prevArr)) if term != prevTerm =>  // skip to overwrite existing entries
         putFullMap[Array[Byte]](key, index, term, arr, prevTerm, prevArr)(tx, ByteArraySerializer)
       // if there is an existing map, simply add the new value to it
       case Some(EntryMap(m)) =>

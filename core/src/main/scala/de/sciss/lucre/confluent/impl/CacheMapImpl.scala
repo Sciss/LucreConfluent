@@ -170,7 +170,7 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
 
   import DurableCacheMapImpl._
 
-  private[this] val readCache = TxnLocal(new java.util.WeakHashMap[(K, S#Acc), AnyRef])
+  // private[this] val readCache = TxnLocal(new java.util.WeakHashMap[(K, S#Acc), AnyRef])
 
   /** Stores an entry in the cache for which 'only' a transactional serializer exists.
     *
@@ -222,17 +222,17 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     val v1Opt = getCacheOnly(key, path)
     if (v1Opt.isDefined) return v1Opt
 
-    val rc    = readCache.get(tx.peer)
-    val kp    = (key, path)
-    val ref_? = rc.get(kp)
-    val v2_?  = if (ref_? == null) null else ref_?.asInstanceOf[WeakReference[_]].get()
-    if (v2_? == null) {
-      val v3Opt = store.get[A](key, path)
-      if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
-      v3Opt
-    } else {
-      Some(v2_?.asInstanceOf[A])
-    }
+    // val rc    = readCache.get(tx.peer)
+    // val kp    = (key, path)
+    // val ref_? = rc.get(kp)
+    // val v2_?  = if (ref_? == null) null else ref_?.asInstanceOf[WeakReference[_]].get()
+    // if (v2_? == null) {
+      /* val v3Opt = */ store.get[A](key, path)
+    // if (v3Opt.isDefined) rc.put(kp, new WeakReference(v3Opt.get))
+    //   v3Opt
+    // } else {
+    //   Some(v2_?.asInstanceOf[A])
+    // }
   }
 
   /** Retrieves a value from the cache _or_ the underlying store (if not found in the cache), where a
@@ -253,16 +253,16 @@ trait DurableCacheMapImpl[S <: Sys[S], /* @spec(KeySpec) */ K]
     val v1Opt = getCacheOnly(key, path)
     if (v1Opt.isDefined) return v1Opt
 
-    val rc    = readCache.get(tx.peer)
-    val kp    = (key, path)
-    val v2_?  = rc.get(kp)
-    if (v2_? == null) {
-      val v3Opt = store.getImmutable[A](key, path)
-      if (v3Opt.isDefined) rc.put(kp, v3Opt.get.asInstanceOf[AnyRef])
-      v3Opt
-    } else {
-      Some(v2_?.asInstanceOf[A])
-    }
+    // val rc    = readCache.get(tx.peer)
+    // val kp    = (key, path)
+    // val v2_?  = rc.get(kp)
+    // if (v2_? == null) {
+      /* val v3Opt = */ store.getImmutable[A](key, path)
+    // if (v3Opt.isDefined) rc.put(kp, v3Opt.get.asInstanceOf[AnyRef])
+    // v3Opt
+    // } else {
+    //   Some(v2_?.asInstanceOf[A])
+    // }
   }
 
   //   final protected def isFresh( key: K, path: S#Acc )( implicit tx: S#Tx ) : Boolean =

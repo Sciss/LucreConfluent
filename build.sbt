@@ -1,6 +1,6 @@
 lazy val baseName         = "LucreConfluent"
 
-lazy val projectVersion   = "2.11.2"
+lazy val projectVersion   = "2.11.3-SNAPSHOT"
 
 lazy val baseNameL        = baseName.toLowerCase
 
@@ -16,8 +16,8 @@ lazy val commonSettings = Seq(
   description         := "Confluently persistent references for Scala",
   homepage            := Some(url("https://github.com/Sciss/LucreConfluent")),
   licenses            := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
-  scalaVersion        := "2.11.6",
-  crossScalaVersions  := Seq("2.11.6", "2.10.5"),
+  scalaVersion        := "2.11.7",
+  crossScalaVersions  := Seq("2.11.7", "2.10.6"),
   resolvers           += "Oracle Repository" at "http://download.oracle.com/maven",  // required for sleepycat
   scalacOptions      ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8"),
   scalacOptions      ++= {

@@ -1,6 +1,5 @@
 # LucreConfluent
 
-[![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=sciss&url=https%3A%2F%2Fgithub.com%2FSciss%2FLucreConfluent&title=LucreConfluent&language=Scala&tags=github&category=software)
 [![Build Status](https://travis-ci.org/Sciss/LucreConfluent.svg?branch=master)](https://travis-ci.org/Sciss/LucreConfluent)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/lucreconfluent_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/lucreconfluent_2.11)
 
